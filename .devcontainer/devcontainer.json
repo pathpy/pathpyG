@@ -10,8 +10,6 @@
 		"vscode": {
 			"extensions": [
 				"editorconfig.editorconfig",
-				"github.vscode-pull-request-github",
-				//"ms-azuretools.vscode-docker",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"ms-python.pylint",
@@ -23,6 +21,8 @@
 				"bungcip.better-toml"
 			],
 			"settings": {
+				"git.enabled": true,
+				"git.path": "/usr/bin/git",
 				"python.defaultInterpreterPath": "/usr/local/bin/python",
 				"black-formatter.path": [
 					"/usr/local/py-utils/bin/black"
@@ -39,7 +39,6 @@
 			}
 		}
 	},
-	"onCreateCommand": "pre-commit install-hooks",
 	"runArgs": [
 		"-it",
 		"-p",
