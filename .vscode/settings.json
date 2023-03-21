@@ -25,5 +25,8 @@
     ],
     "isort.args": [
         "--settings-path=pyproject.toml"
+    ],
+    "python.testing.pytestArgs": [
+        "tests"
     ]
 }
