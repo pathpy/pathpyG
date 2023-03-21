@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.222.0/containers/python-3-miniconda
 {
-	"name": "Python Environment",
+	"name": "cuda-pyG Environment",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"context": ".."
@@ -11,7 +11,7 @@
 			"extensions": [
 				"editorconfig.editorconfig",
 				"github.vscode-pull-request-github",
-				"ms-azuretools.vscode-docker",
+				//"ms-azuretools.vscode-docker",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"ms-python.pylint",
@@ -20,8 +20,7 @@
 				"ms-python.black-formatter",
 				"ms-vsliveshare.vsliveshare",
 				"ryanluker.vscode-coverage-gutters",
-				"bungcip.better-toml",
-				"GitHub.copilot"
+				"bungcip.better-toml"
 			],
 			"settings": {
 				"python.defaultInterpreterPath": "/usr/local/bin/python",
@@ -40,5 +39,12 @@
 			}
 		}
 	},
-	"onCreateCommand": "pre-commit install-hooks"
+	"onCreateCommand": "pre-commit install-hooks",
+	"runArgs": [
+		"-it",
+		"-p",
+		"8888:8888",
+		"--gpus",
+		"all"
+	]
 }
