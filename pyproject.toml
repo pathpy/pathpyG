@@ -25,6 +25,15 @@ classifiers = [
 ]
 requires-python = ">=3.7"
 dynamic = ["version"]
+dependencies = [
+    'torch',
+    'torch-geometric',
+    'numpy',
+    'scipy',
+    'scikit-learn',
+    'zstandard',
+    'pandas'
+]
 
 [project.optional-dependencies]
 spark = [
