@@ -1,48 +1,39 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.222.0/containers/python-3-miniconda
 {
-	"name": "cuda-pyG Environment",
 	"build": {
-		"dockerfile": "Dockerfile",
-		"context": ".."
+		"dockerfile": "Dockerfile"
 	},
+	"name": "pathpyG-torch2.0.1-cuda11.7",
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"editorconfig.editorconfig",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
-				"ms-python.pylint",
-				"ms-python.isort",
-				"ms-python.flake8",
-				"ms-python.black-formatter",
-				"ms-vsliveshare.vsliveshare",
-				"ryanluker.vscode-coverage-gutters",
-				"bungcip.better-toml"
+				"ms-toolsai.jupyter",
+				"streetsidesoftware.code-spell-checker"
 			],
-			"settings": {
-				"git.enabled": true,
-				"git.path": "/usr/bin/git",
-				"python.defaultInterpreterPath": "/usr/local/bin/python",
-				"black-formatter.path": [
-					"/usr/local/py-utils/bin/black"
-				],
-				"pylint.path": [
-					"/usr/local/py-utils/bin/pylint"
-				],
-				"flake8.path": [
-					"/usr/local/py-utils/bin/flake8"
-				],
-				"isort.path": [
-					"/usr/local/py-utils/bin/isort"
-				]
-			}
-		}
+			"python.defaultInterpreterPath": "/usr/local/bin/python",
+			"python.linting.enabled": true,
+			"python.linting.pylintEnabled": true,
+			"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
+			"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+			"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
+			"python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
+			"python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
+			"python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
+			"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
+			"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
+			"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
+		},
+		// Add IDs of extensions you want to be installed when container is created.
+		"extensions": [
+			"ms-python.python",
+			"ms-python.vscode-pylance",
+			"ms-toolsai.jupyter",
+			"streetsidesoftware.code-spell-checker"
+		]
 	},
 	"runArgs": [
 		"-it",
-		"-p",
-		"8888:8888",
 		"--gpus",
 		"all"
 	]
