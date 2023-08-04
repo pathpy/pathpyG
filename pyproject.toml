@@ -10,10 +10,9 @@ authors = [
 ]
 description = "An Open Source package providing higher-order analytics and learning for time series data on graphs."
 readme = "README.md"
-homepage = "https://www.pathpy.net"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    Intended Audience :: Science/Research,
+    "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3 :: Only",
@@ -57,7 +56,7 @@ Source = "https://github.com/microsoft/python-package-template"
 Tracker = "https://github.com/microsoft/python-package-template/issues"
 
 [tool.flit.module]
-name = "python_package"
+name = "pathpyG"
 
 [tool.bandit]
 exclude_dirs = ["build","dist","tests","scripts"]
