@@ -32,10 +32,12 @@
 			"streetsidesoftware.code-spell-checker"
 		]
 	},
+	// Use GPU for CUDA
 	"runArgs": [
 		"-it",
 		"--gpus",
 		"all"
 	],
+	// Install pathpyG as editable python package
 	"postCreateCommand": "pip install -e ."
 }

@@ -1,15 +1,10 @@
 
 from __future__ import annotations
 
-import pytest
-
-import torch
 from pathpyG.core.Graph import Graph
 
+def test_N(simple_graph):
+    assert simple_graph.N == 3
 
-@pytest.fixture
-def test_graph_constructor():
-
-    g = Graph.from_edge_list([['a','b'], ['b','c'], ['a','c']])
-    assert g.N==3
-    assert g.M==3
+def test_M(simple_graph):
+    assert simple_graph.M == 3

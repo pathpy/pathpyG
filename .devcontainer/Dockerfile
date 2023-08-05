@@ -13,6 +13,7 @@ RUN pip install pandas
 RUN pip install scikit-learn
 RUN pip install jedi
 RUN pip install pytest
+RUN pip install pytest-cov
 RUN pip install torch_geometric
 RUN pip install torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+cu117.html
 RUN /opt/conda/bin/conda install jupyter -y --quiet
