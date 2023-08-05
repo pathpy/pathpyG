@@ -36,5 +36,6 @@
 		"-it",
 		"--gpus",
 		"all"
-	]
+	],
+	"postCreateCommand": "pip install -e ."
 }
