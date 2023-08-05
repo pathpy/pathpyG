@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 from pathpyG.core.PathData import GlobalPathStorage
 
 def test_constructor():
