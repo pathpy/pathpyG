@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Any, List, Optional, Union, Dict, Callable
 from collections import defaultdict
 from copy import deepcopy
-from singledispatchmethod import singledispatchmethod  # remove for python 3.8
 from datetime import datetime
 import numpy as np
 
