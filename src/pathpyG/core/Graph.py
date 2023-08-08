@@ -5,6 +5,7 @@ import torch
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
+from scipy.sparse import csr_array
 
 from pathpyG.utils.config import config
 
@@ -37,7 +38,7 @@ class Graph:
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
 
         # initialize adjacency matrix
-        self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
+        self._sparse_adj_matrix: csr_array = torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
 
 
     def add_node_id(self, node_id):
@@ -48,7 +49,7 @@ class Graph:
         self.data['node_id'] = node_id
 
     @staticmethod
-    def attr_types(attr: str) -> str:
+    def attr_types(attr: Dict) -> Dict:
         a = {}
         for k in attr:
             t = type(attr[k])
@@ -68,7 +69,7 @@ class Graph:
                 yield v
 
     @property
-    def edges(self) -> Generator[Union[int, str], None, None]:
+    def edges(self) -> Generator[Union[Tuple[int, int], Tuple[str, str]], None, None]:
         if len(self.node_index_to_id) > 0:
             for e in self.data.edge_index.t():
                 yield self.node_index_to_id[e[0].item()], self.node_index_to_id[e[1].item()]
@@ -78,25 +79,25 @@ class Graph:
 
     def successors(self, node) -> Generator[Union[int, str], None, None]:
         if len(self.node_index_to_id) > 0:
-            for i in self._sparse_adj_matrix.getrow(self.node_id_to_index[node]).indices:
+            for i in self._sparse_adj_matrix.getrow(self.node_id_to_index[node]).indices: # type: ignore
                 yield self.node_index_to_id[i]
         else:
-            for i in self._sparse_adj_matrix.getrow(node).indices:
+            for i in self._sparse_adj_matrix.getrow(node).indices: # type: ignore
                 yield i
 
     def predecessors(self, node) -> Generator[Union[int, str], None, None]:
         if len(self.node_index_to_id) > 0:
-            for i in self._sparse_adj_matrix.getcol(self.node_id_to_index[node]).indices:
+            for i in self._sparse_adj_matrix.getcol(self.node_id_to_index[node]).indices: # type: ignore
                 yield self.node_index_to_id[i]
         else:
-            for i in self._sparse_adj_matrix.getcol(node).indices:
+            for i in self._sparse_adj_matrix.getcol(node).indices: # type: ignore
                 yield i
 
     def is_edge(self, v, w):
         if len(self.node_index_to_id) > 0:
-            return self.node_id_to_index[w] in self._sparse_adj_matrix.getrow(self.node_id_to_index[v]).indices
+            return self.node_id_to_index[w] in self._sparse_adj_matrix.getrow(self.node_id_to_index[v]).indices # type: ignore
         else:
-            return w in self._sparse_adj_matrix.getrow(v).indices
+            return w in self._sparse_adj_matrix.getrow(v).indices # type: ignore
 
     def get_sparse_adj_matrix(self, edge_attr=None):
         if edge_attr == None:
@@ -170,11 +171,11 @@ class Graph:
 
 
     @property
-    def N(self):
-        return self.data.num_nodes
+    def N(self) -> int:
+        return self.data.num_nodes # type: ignore
 
     @property
-    def M(self):
+    def M(self) -> int:
         return self.data.num_edges
 
     @staticmethod

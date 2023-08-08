@@ -9,7 +9,7 @@
 # Copyright (c) 2016-2019 Pathpy Developers
 # =============================================================================
 from __future__ import annotations
-from typing import Any, List, Optional, Union, Dict
+from typing import Any, List, Optional, Union, Dict, Callable
 from collections import defaultdict
 from copy import deepcopy
 from singledispatchmethod import singledispatchmethod  # remove for python 3.8
@@ -189,14 +189,14 @@ def plot(obj, filename: Optional[str] = None,
     figure: Any
 
     # supported backends
-    backends: Dict[str, object] = {
+    backends: Dict[str, Callable] = {
         'd3js': D3js,
         'tikz': Tikz,
         'matplotlib': Matplotlib
     }
 
     # supported file fileformats and corresponding default backends
-    figures: Dict[str, Dict[str, object]] = {
+    figures: Dict[str, Dict[str, Callable]] = {
         'html': {'fileformat': HTML, 'backend': D3js},
         'tex': {'fileformat': TEX, 'backend': Tikz},
         # 'csv': {'fileformat': CSV, 'backend': Tikz},
@@ -408,7 +408,7 @@ class Parser:
 
         # return the figure
         return self.figure
-    
+
     @parse.register(TemporalGraph)
     def _parse_temporal_graph(self, obj: Any, plot_config: defaultdict, **kwargs: Any) -> defaultdict:
         print('Parse a temporal network')
@@ -425,7 +425,7 @@ class Parser:
                     print(self.config)
                     print(key)
                     print(k)
-                    print(v)                    
+                    print(v)
                     self.config[key][k] = v
 
         # set temporal networkt to true
@@ -487,7 +487,7 @@ class Parser:
         #         time = values.pop(TIMESTAMP, None)
         #         edge_temp_attr[edge.uid][time].update(**values)
 
-        def find_nearest(array, value, index=True):
+        def find_nearest(array, value, index=True) -> int:
             value = array[0] if value == float('-inf') else value
             value = array[-1] if value == float('inf') else value
             idx = np.abs(array - value).argmin()
@@ -503,7 +503,8 @@ class Parser:
         i = 0
         for v, w, t in obj.temporal_edges:
             #for event in edge[start:end]:
-            _edge = {'uid': str(v)+'-'+str(w)}
+            _edge: Dict[str, Any] = {}
+            _edge['uid'] = str(v)+'-'+str(w)
             _edge['startTime'] = find_nearest(times, t)
             _edge['endTime'] = find_nearest(times, t)
             _edge['active'] = True
@@ -652,7 +653,7 @@ class Parser:
         keep_aspect_ratio = self.config['keep_aspect_ratio']
 
         if self.config['margin'] is None:
-            margin = max([n['node_size'] for n in nodes])/2+4
+            margin = max([float(n['node_size']) for n in nodes])/2+4
         elif isinstance(self.config['margin'], (int, float)):
             margin = converter(self.config['margin'])
         else:
@@ -809,7 +810,7 @@ class Parser:
                     node_dict[key].pop(attr)
 
         return list(node_dict.values())
-    
+
     def parse_edges(self, graph, temporal=False, **kwargs) -> List:
         """Parse edges."""
 

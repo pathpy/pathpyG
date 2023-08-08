@@ -12,6 +12,7 @@ RUN pip install seaborn
 RUN pip install pandas
 RUN pip install scikit-learn
 RUN pip install jedi
+RUN pip install pyright
 RUN pip install pytest
 RUN pip install pytest-cov
 RUN pip install torch_geometric

@@ -4,9 +4,7 @@ import copy
 from typing import (
     Any,
     Dict,
-    Iterable,
-    List,
-    NamedTuple,
+    Set,
     Optional,
     Tuple,
     Union,
@@ -19,11 +17,7 @@ from torch import Tensor, IntTensor, cat, sum
 from torch_geometric.utils import to_scipy_sparse_matrix
 
 from torch_geometric.data.data import BaseData, size_repr
-from torch_geometric.data.storage import (
-    BaseStorage,
-    NodeStorage,
-    AttrType
-)
+from torch_geometric.data.storage import BaseStorage, NodeStorage
 
 from collections import defaultdict
 
@@ -92,7 +86,10 @@ class PathStorage(BaseStorage):
         else:
             return cat(list(PathStorage.edge_index_kth_order(x, k) for x in self['path_index'].values()), dim=1)
 
-    def edge_index_k_weighted(self, k=1, path_freq=None) -> (Tensor, Tensor):
+    def edge_index_k_weighted(self, k=1, path_freq=None) -> Tuple[Tensor, Tensor]:
+
+        freq =[]
+
         if k == 1:
             i = cat(list(self['path_index'].values()), dim=1)
             if path_freq:
@@ -125,7 +122,7 @@ class PathStorage(BaseStorage):
         return self.edge_index_k(k=1)
 
     @property
-    def edge_index_weighted(self) -> (Tensor, Tensor):
+    def edge_index_weighted(self) -> Tuple[Tensor, Tensor]:
         return self.edge_index_k_weighted(k=1)
 
     @staticmethod
@@ -203,7 +200,7 @@ class GlobalPathStorage(PathStorage, NodeStorage):
 
     def size(
         self, dim: Optional[int] = None
-    ) -> Union[Tuple[Optional[int], Optional[int]], Optional[int]]:
+    ) -> Union[Tuple[Optional[int], Optional[int], Optional[int]], Optional[int]]:
         size = (self.num_nodes, self.num_nodes, self.num_paths)
         return size if dim is None else size[dim]
 
@@ -243,6 +240,8 @@ class GlobalPathStorage(PathStorage, NodeStorage):
         if 'edge' in key:
             self._cached_attr[AttrType.EDGE].add(key)
             return True
+
+        return False
 
     def is_path_attr(self, key: str) -> bool:
         if '_cached_attr' not in self.__dict__:
@@ -284,3 +283,5 @@ class GlobalPathStorage(PathStorage, NodeStorage):
         if 'path' in key:
             self._cached_attr[AttrType.PATH].add(key)
             return True
+
+        return False

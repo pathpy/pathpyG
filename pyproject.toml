@@ -73,10 +73,6 @@ number = 4
 recursive = true
 targets = "src"
 
-[tool.black]
-line-length = 120
-fast = true
-
 [tool.coverage.run]
 branch = true
 
