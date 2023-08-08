@@ -13,7 +13,6 @@ from typing import Any, List, Optional, Union, Dict, Callable
 from collections import defaultdict
 from copy import deepcopy
 from singledispatchmethod import singledispatchmethod  # remove for python 3.8
-# from functools import singledispatchmethod
 
 from datetime import datetime
 import numpy as np
@@ -33,13 +32,9 @@ from pathpyG.visualisations.fileformats import (HTML,
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 
-# create logger for the Plot class
 TIMESTAMP = config['temporal']['timestamp']
 
-# config: defaultdict = defaultdict(dict)
-# config['environment']['interactive'] = False
-
-# General config
+# General default plot configuration
 config['plot']['width'] = 800
 config['plot']['height'] = 550
 config['plot']['unit'] = 'px'
@@ -74,10 +69,8 @@ config['plot']['defaultEdgeWeight'] = 1
 config['plot']['targetAlphaDragStarted'] = 0.3
 config['plot']['targetAlphaDragEnd'] = 0.0
 
-
 config['plot']['linkStrengthMin'] = 0.0
 config['plot']['linkStrengthMax'] = .45
-
 
 config['plot']['template'] = None
 config['plot']['css'] = None
@@ -86,9 +79,9 @@ config['plot']['backend'] = ['tikz']
 config['plot']['fileformat'] = ['tex']
 config['plot']['latex_class_options'] = ''
 
-config['plot']['interactiv'] = {}
-config['plot']['interactiv']['backend'] = ['d3js']
-config['plot']['interactiv']['fileformat'] = ['html']
+config['plot']['interactive'] = {}
+config['plot']['interactive']['backend'] = ['d3js']
+config['plot']['interactive']['fileformat'] = ['html']
 
 # Animation config
 config['plot']['animation'] = {}
@@ -109,25 +102,26 @@ config['plot']['label_centered'] = True
 config['plot']['label_enabled'] = True
 config['plot']['label_color'] = 'white'
 
-
-# Node config
-config['plot']['node'] = {}
-config['plot']['node']['node_size'] = 15
-config['plot']['node']['node_color'] = 'CornflowerBlue'
-config['plot']['node']['node_opacity'] = .2
-config['plot']['node']['id_as_label'] = True
-config['plot']['node']['node_pos'] = None
-
+# edg-relatedglobal configuration
 config['plot']['curved'] = False
 config['plot']['directed'] = False
 
+# Node config
+config['plot']['node'] = {}
+config['plot']['node']['position'] = None
+config['plot']['node']['size'] = 15
+config['plot']['node']['color'] = 'CornflowerBlue'
+config['plot']['node']['opacity'] = .2
+config['plot']['node']['id_as_label'] = True
+
 # Edge config
 config['plot']['edge'] = {}
-config['plot']['edge']['edge_size'] = 2
-config['plot']['edge']['edge_color'] = 'black'
-config['plot']['edge']['edge_opacity'] = 1
+config['plot']['edge']['size'] = 2
+config['plot']['edge']['curved'] = .5
+config['plot']['edge']['color'] = 'black'
+config['plot']['edge']['opacity'] = 1
 config['plot']['edge']['directed'] = False
-config['plot']['edge']['edge_curved'] = .5
+
 
 # Widges config
 config['plot']['widgets'] = {}
@@ -184,9 +178,9 @@ config['plot']['widgets']['aggregation']['future'] = 2
 config['plot']['widgets']['aggregation']['aggregation'] = 1
 
 
-def plot(obj, filename: Optional[str] = None,
+def plot(graph, filename: Optional[str] = None,
          backend: Optional[str] = None, **kwargs) -> None:
-    """Plot the object"""
+    """Plot the graph"""
     # initialize variables
     figure: Any
 
@@ -211,8 +205,8 @@ def plot(obj, filename: Optional[str] = None,
 
     # check object
     try:
-        if obj.N == 0:
-            print('An empty network cannot be plotted. Please add at least one Node object.')
+        if graph.N == 0:
+            print('Empty graphs cannot be plotted. Please add at least one Node object.')
             return
     except Exception:
         print('The provided object cannot be plotted.')
@@ -221,7 +215,8 @@ def plot(obj, filename: Optional[str] = None,
     _config = deepcopy(config['plot'])
     # _config = config['plot']
     # parse object to json like dict
-    data: defaultdict = parser(obj, _config, **kwargs)
+
+    data: defaultdict = parser(graph, _config, **kwargs)
 
     # check filename
     # if no file name is given
@@ -265,7 +260,7 @@ def plot(obj, filename: Optional[str] = None,
 
 
 class Parser:
-    """Object to parse pathpy objects into json like dict."""
+    """Parse pathpyG graphs into json-like dictionary"""
 
     def __init__(self) -> None:
         """Initialize parser object."""
@@ -276,31 +271,28 @@ class Parser:
 
         self.default_node = {
             'uid': None,
-            'node_label': None,
-            'node_text': None,
-            'node_size': None,
-            'node_color': None,
-            'node_opacity': None,
-            'node_group': None,
-            'node_time': None,
-            'node_pos': None,
-            'node_label_size': None,
+            'label': None,
+            'text': None,
+            'size': None,
+            'color': None,
+            'opacity': None,
+            'position': None,
+            'label_size': None,
             'id_as_label': None,
-            'node_style': None,
+            'style': None,
         }
         self.default_edge = {
             'uid': None,
-            'edge_label': None,
-            'edge_text': None,
-            'edge_size': None,
-            'edge_color': None,
-            'edge_opacity': None,
-            'edge_time': None,
+            'label': None,
+            'text': None,
+            'size': None,
+            'color': None,
+            'opacity': None,
             'source': None,
             'target': None,
             'directed': None,
-            'edge_curved': None,
-            'edge_style': None,
+            'curved': None,
+            'style': None,
         }
         self.default_properties = {
             'node': self.default_node,
@@ -319,22 +311,21 @@ class Parser:
             'animation': self.default_animation
         }
 
-    def __call__(self, obj: Any, plot_config: defaultdict,
+    def __call__(self, graph: Union[Graph, TemporalGraph], plot_config: defaultdict,
                  **kwargs: Any) -> defaultdict:
         """Call the parse function."""
-        return self.parse(obj, plot_config, **kwargs)
+        return self.parse(graph, plot_config, **kwargs)
 
     @singledispatchmethod
-    def parse(self, obj: Any, _config: defaultdict,
+    def parse(self, graph: Union[Graph, TemporalGraph], _config: defaultdict,
               **kwargs: Any) -> defaultdict:
         """Parses the pathpy network into a json like dict."""
         raise NotImplementedError
 
-    @ parse.register(Graph)
-    def _parse_static_graph(self, obj: Any, plot_config: defaultdict,
-                        temporal=False,
+    @parse.register(Graph)
+    def _parse_static_graph(self, graph: Graph, plot_config: defaultdict,
                         **kwargs: Any) -> defaultdict:
-        """Parse static network."""
+        """Parse static graph."""
 
         # update default config
         self.config.update(plot_config)
@@ -350,8 +341,8 @@ class Parser:
 
         self.config['width'] = u2u(self.config['width'])
         self.config['height'] = u2u(self.config['height'])
-        self.config['node']['node_size'] = u2u(self.config['node']['node_size'])
-        self.config['edge']['edge_size'] = u2u(self.config['edge']['edge_size'])
+        self.config['node']['size'] = u2u(self.config['node']['size'])
+        self.config['edge']['size'] = u2u(self.config['edge']['size'])
 
         # generate default objects
         # iterate over the default config
@@ -377,12 +368,12 @@ class Parser:
         # parse layout
         _layout = self.config.get('layout', None)
         if isinstance(_layout, dict):
-            self.config['node'].update({'pos': _layout})
+            self.config['node'].update({'position': _layout})
             self.config['layout'] = 'euclidean'
 
         # parse nodes an edges
-        nodes = self.parse_nodes(obj, temporal=temporal, **kwargs)
-        edges = self.parse_edges(obj, temporal=temporal, **kwargs)
+        nodes = self.parse_nodes(graph, temporal=False, **kwargs)
+        edges = self.parse_edges(graph, temporal=False, **kwargs)
 
         # convert units to px
         u2px = UnitConverter(self.config['unit'], 'px', dpi=self.config['dpi'])
@@ -396,12 +387,12 @@ class Parser:
 
         # update layout
         try:
-            layout = {n['uid']: n['node_pos'] for n in nodes}
+            layout = {n['uid']: n['position'] for n in nodes}
         except KeyError:
             pass
         else:
             nodes = self._update_layout(nodes, layout, u2px)
-            self.config['node_pos'] = True
+            self.config['position'] = True
 
         # add nodes, edges and config to the figure
         self.figure['data']['nodes'] = nodes
@@ -412,11 +403,11 @@ class Parser:
         return self.figure
 
     @parse.register(TemporalGraph)
-    def _parse_temporal_graph(self, obj: Any, plot_config: defaultdict, **kwargs: Any) -> defaultdict:
+    def _parse_temporal_graph(self, graph: TemporalGraph, plot_config: defaultdict, **kwargs: Any) -> defaultdict:
         print('Parse a temporal network')
 
         # get static network to start with
-        self._parse_static_graph(obj=obj, plot_config=plot_config,
+        self._parse_static_graph(graph=graph, plot_config=plot_config,
                            temporal=True, **kwargs)
 
         # TODO: Fix parse_config for temporal networks
@@ -435,8 +426,8 @@ class Parser:
         self.figure['data']['changes'] = []
 
         # get start and end time
-        start = obj.start_time
-        end = obj.end_time
+        start = graph.start_time
+        end = graph.end_time
 
         # raise error if time frame is not finite
         # if start == float('-inf') or end == float('inf'):
@@ -503,7 +494,7 @@ class Parser:
         temporal_edges = []
         times = np.linspace(start, end, num=steps)
         i = 0
-        for v, w, t in obj.temporal_edges:
+        for v, w, t in graph.temporal_edges:
             #for event in edge[start:end]:
             _edge: Dict[str, Any] = {}
             _edge['uid'] = str(v)+'-'+str(w)
@@ -630,12 +621,12 @@ class Parser:
     def _convert_color(self, objects, otype='node'):
         """Helper function to convert rgb color tuples to JScript color strings"""
         for obj in objects:
-            if type(obj['{0}_color'.format(otype)]) == tuple:
+            if type(obj['color']) == tuple:
                 c = 255*np.array(obj['color'])
-                obj['{0}_color'.format(otype)] = 'rgb(' + str(int(c[0])) + ', ' + \
+                obj['color'] = 'rgb(' + str(int(c[0])) + ', ' + \
                     str(int(c[1])) + ',' + str(int(c[2])) + ')'
             else:
-                obj['{0}_color'.format(otype)] = obj['{0}_color'.format(otype)]
+                obj['color'] = obj['color']
 
         return objects
 
@@ -643,7 +634,7 @@ class Parser:
         """Helper function to convert the units of the size of an object."""
 
         for obj in objects:
-            obj['{}_size'.format(otype)] = converter(obj['{0}_size'.format(otype)])
+            obj['size'] = converter(obj['size'])
 
         return objects
 
@@ -715,7 +706,7 @@ class Parser:
             _layout[n] = (_x, _y)
 
         for node in nodes:
-            node['node_pos'] = _layout[node['uid']]
+            node['position'] = _layout[node['uid']]
 
         return nodes
 
@@ -761,22 +752,24 @@ class Parser:
         for node in graph.nodes:
 
             # add default properties to nodes
-            node_dict[node] = self.default_properties['node'].copy()
+            node_dict[str(node)] = self.default_properties['node'].copy()
 
             # add node ids
-            node_dict[node]['uid'] = node
+            node_dict[str(node)]['uid'] = str(node)
 
             # add node attributes
-            for attr in graph.data.node_attrs():
+            for attr in graph.node_attrs():
 
                 # if mapping is given map the attribute
                 if mapping is not None and attr in mapping:
-                    attr = mapping[attr]
+                    attr = mapping[attr.replace('node_', '')]
+                else:
+                    attr = attr.replace('node_', '')
 
-                # check if attribute is in the default object
+                # check if attribute is in default object
                 if attr in self.default_properties['node']:
                     # update attribute
-                    node_dict[node][attr] = graph[attr, node]
+                    node_dict[str(node)][attr] = graph['node_{0}'.format(attr), node]
 
         # update objects based on the kwargs
         # iterate over the kwargs config
@@ -814,41 +807,44 @@ class Parser:
         return list(node_dict.values())
 
     def parse_edges(self, graph, temporal=False, **kwargs) -> List:
-        """Parse edges."""
+        """ Generates plottable data based on edges of a graph."""
 
-        # initialize temporal dict
+        # initialize default dict
         edge_dict: defaultdict = defaultdict(dict)
 
         # get mapping if defined
         mapping = kwargs.get('mapping', None)
 
-        # iterate over edges
+        # iterate over edges of the graph
         for u, v in graph.edges:
 
-            # add default properties to the obj
+            # add default properties to edge
             uid = str(u)+'-'+str(v)
             edge_dict[uid] = self.default_properties['edge'].copy()
 
-            # add obj uid
+            # add edge uid
             edge_dict[uid]['uid'] = uid
 
             # if obj is an edge add source and target nodes
-            edge_dict[uid]['source'] = u
-            edge_dict[uid]['target'] = v
+            edge_dict[uid]['source'] = str(u)
+            edge_dict[uid]['target'] = str(v)
 
             # add obj attributes
-            for attr in graph.data.edge_attrs():
-                # if mapping is given map the attribute
+            for attr in graph.edge_attrs():
+                # attr name includes edge_ prefix
+                # if mapping is given, map the attribute names
                 if mapping is not None and attr in mapping:
-                    attr = mapping[attr]
+                    attr = mapping[attr.replace('edge_', '')]
+                else:
+                    attr = attr.replace('edge_', '')
 
                 # check if attribute is in the default object
                 if attr in self.default_properties['edge']:
 
                     # update attribute if given
-                    edge_dict[uid][attr] = graph[attr, u, v]
+                    edge_dict[uid][attr] = graph['edge_{0}'.format(attr), u, v]
 
-        # update objects based on the kwargs
+        # update objects based on kwargs
         # iterate over the kwargs config
         for key, values in self.config['edge'].items():
 

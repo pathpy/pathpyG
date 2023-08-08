@@ -1,9 +1,9 @@
-define('network',['d3','tooltip'], function(d3,tooltip){
+define('network', ['d3', 'tooltip'], function (d3, tooltip) {
 
   /*
    * network
    */
-  return function(config){
+  return function (config) {
 
     // Constants for sizing
     var width = config.width || 400;
@@ -17,7 +17,7 @@ define('network',['d3','tooltip'], function(d3,tooltip){
     // of the visualization
     var layout = config.layout || 'force';
     var filter = 'all';
-    var time = {past:0,time:0,aggregated:0,future:0};
+    var time = { past: 0, time: 0, aggregated: 0, future: 0 };
 
     // 'global' variables for the network
     // these will be populated in the setup
@@ -99,20 +99,20 @@ define('network',['d3','tooltip'], function(d3,tooltip){
     }
 
     var drag = d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended);
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended);
 
 
     //Zoom functions which transforms the element of the graph
-    function zoomed(){
+    function zoomed() {
       svg.selectAll('g').attr("transform", d3.event.transform);
       // nodes.attr("transform", d3.event.transform)
       // edges.attr("transform", d3.event.transform)
     }
 
     //Zoom functions with key combination
-    function zoomedWithKey(){
+    function zoomedWithKey() {
       // works only with pressed alt key
       if (d3.event.sourceEvent.shiftKey == false) return;
       svg.selectAll('g').attr("transform", d3.event.transform);
@@ -130,24 +130,24 @@ define('network',['d3','tooltip'], function(d3,tooltip){
 
     // Zoom options
     var zoom = d3.zoom()
-        .scaleExtent([1/2, 4])
-        .extent([[0, 0], [width, height]])
-        .on("zoom", zoomed);
+      .scaleExtent([1 / 2, 4])
+      .extent([[0, 0], [width, height]])
+      .on("zoom", zoomed);
 
     // Function which returns the object color if defined
     // otherwise a default value
-    function getColor(d){
-      if (typeof d.color === "undefined"){
+    function getColor(d) {
+      if (typeof d.color === "undefined") {
         return "#99ccff";
-      } 
-      else return d.color;
       }
+      else return d.color;
     }
+
 
     // Function which returns the object text if defined
     // otherwise a default value
-    function getText(d){
-      if (typeof d.text === "undefined"){
+    function getText(d) {
+      if (typeof d.text === "undefined") {
         return " "
       } else {
         return d.text
@@ -156,8 +156,8 @@ define('network',['d3','tooltip'], function(d3,tooltip){
 
     // Function which returns the object weight if defined
     // otherwise a default value
-    function getWeight(d){
-      if (typeof d.weight === "undefined"){
+    function getWeight(d) {
+      if (typeof d.weight === "undefined") {
         return 1
       } else {
         return d.weight
@@ -166,8 +166,8 @@ define('network',['d3','tooltip'], function(d3,tooltip){
 
     // Function which returns the object weight if defined
     // otherwise a default value
-    function getSize(d){
-      if (typeof d.size === "undefined"){
+    function getSize(d) {
+      if (typeof d.size === "undefined") {
         return 6
       } else {
         return d.size
@@ -176,8 +176,8 @@ define('network',['d3','tooltip'], function(d3,tooltip){
 
     // Function which returns the object name if defined
     // otherwise a default value
-    function getName(d){
-      if (typeof d.label === "undefined"){
+    function getName(d) {
+      if (typeof d.label === "undefined") {
         return d.uid
       } else {
         return d.label
@@ -188,10 +188,10 @@ define('network',['d3','tooltip'], function(d3,tooltip){
     // It is just the 'simulation' and will have
     // forces added to it later
     var simulation = d3.forceSimulation()
-        .velocityDecay(0.2)
-        .alphaMin(0.1)
-        .on('tick', ticked)
-        .on('end', ended);
+      .velocityDecay(0.2)
+      .alphaMin(0.1)
+      .on('tick', ticked)
+      .on('end', ended);
 
 
     // Simulation starts automatically,
@@ -215,9 +215,9 @@ define('network',['d3','tooltip'], function(d3,tooltip){
         .attr('width', width)
         .attr('height', height)
         .call(d3.zoom()
-              .scaleExtent([1/2, 4])
-              .extent([[0, 0], [width, height]])
-              .on("zoom", zoomedWithKey));
+          .scaleExtent([1 / 2, 4])
+          .extent([[0, 0], [width, height]])
+          .on("zoom", zoomedWithKey));
 
       // add some groups for edges and nodes
       svg.append('g')
@@ -244,9 +244,10 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       var consideredNodes = filteredNodes;
 
       // if temporal network check if nodes change
-      if (temporal === true){
-      consideredNodes = updateTemporalNodes(
-        filteredNodes,allData.changes);};
+      if (temporal === true) {
+        consideredNodes = updateTemporalNodes(
+          filteredNodes, allData.changes);
+      };
 
       // filter edges based on given nodes
       var filteredEdges = filterEdges(
@@ -254,7 +255,7 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       var considerdEdges = filteredEdges;
 
       // if temporal network check for the correct edges
-      if (temporal === true){
+      if (temporal === true) {
         considerdEdges = filterTemporalEdges(filteredEdges);
       };
 
@@ -266,10 +267,10 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       if (layout === 'force') {
         // use a force directed layout
         setupNetworkLayout(considerdEdges);
-      } else if(layout === 'euclidean'){
+      } else if (layout === 'euclidean') {
         // use an Euclidean layout
         setupEuclideanLayout();
-      } else{
+      } else {
         // pre default use a force directed layout
         setupNetworkLayout(considerdEdges);
       }
@@ -279,7 +280,7 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       renderEdges(considerdEdges);
 
       // render temporal edges if given
-      if (temporal === true){
+      if (temporal === true) {
         renderTemporalEdges();
       };
 
@@ -301,9 +302,9 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       // the layout of the network is all
       // handled in a link force
       var linkForce = d3.forceLink()
-          .distance(50)
-          .strength(function(d){return getWeight(d);})
-          .links(edgesData);
+        .distance(50)
+        .strength(function (d) { return getWeight(d); })
+        .links(edgesData);
 
       // add the link force to the simulation
       simulation.force('links', linkForce);
@@ -369,24 +370,24 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       // generate a scale function which allows to scale the node coordinate
       // to a coodinate at the html canvas, thereby 10px border are considerd
       var xScale = d3.scaleLinear()
-          .domain([minX, maxX])
-          .range([10,width-10]);
+        .domain([minX, maxX])
+        .range([10, width - 10]);
 
       var yScale = d3.scaleLinear()
-          .domain([minY, maxY])
-          .range([10,height-10]);
+        .domain([minY, maxY])
+        .range([10, height - 10]);
 
       // use the node coordinates to adjust x position of
       // nodes with an x force
       var xForce = d3.forceX()
-          .strength(0.1)
-          .x(function (d) { return xScale(d.euclidean[0]); });
+        .strength(0.1)
+        .x(function (d) { return xScale(d.euclidean[0]); });
 
       // use the node coordinates to adjust y position of
       // nodes with an y force
       var yForce = d3.forceY()
-          .strength(0.1)
-          .y(function (d) { return yScale(d.euclidean[1]); });
+        .strength(0.1)
+        .y(function (d) { return yScale(d.euclidean[1]); });
 
 
       // add these forces to the simulation
@@ -404,8 +405,9 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       if (filter !== 'all') {
         var groups = nodesData.map(function (d) { return d.group; });
         newNodesData = nodesData.filter(function (d) {
-          if (filter === d.group){
-            return d.group}
+          if (filter === d.group) {
+            return d.group
+          }
         });
       }
 
@@ -429,7 +431,7 @@ define('network',['d3','tooltip'], function(d3,tooltip){
     /*
      * Update attributes of the temporal Nodes
      */
-    function updateTemporalNodes(nodesData,changesData) {
+    function updateTemporalNodes(nodesData, changesData) {
 
       // filter changes based on the current time step
       var newChanges = changesData.filter(function (d) {
@@ -439,16 +441,17 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       var newUpdatedNodes = nodesData;
 
       // iterate through the changes
-      newChanges.forEach(function (n){
+      newChanges.forEach(function (n) {
 
         // find the index of the changed node
         var objIndex = newUpdatedNodes
-            .findIndex((obj => obj.uid == n.uid));
-        if (objIndex >= 0){
+          .findIndex((obj => obj.uid == n.uid));
+        if (objIndex >= 0) {
           // update node
           newUpdatedNodes[objIndex] = Object.assign(
-            newUpdatedNodes[objIndex],n);};
-       });
+            newUpdatedNodes[objIndex], n);
+        };
+      });
 
       // return the updated nodes
       return newUpdatedNodes;
@@ -475,15 +478,15 @@ define('network',['d3','tooltip'], function(d3,tooltip){
         .data(nodesData);
 
       var nodesE = nodes.enter().append('circle')
-          .attr("r", 0)
-          .classed('node', true)
-          .classed('node_highlight',false)
-          //.classed('node_search',false)
-          .attr('cx', function (d) { return d.x; })
-          .attr('cy', function (d) { return d.y; })
-          .on('mouseover', highlightNode)
-          .on('mouseout', unhighlightNode)
-          .call(drag);
+        .attr("r", 0)
+        .classed('node', true)
+        .classed('node_highlight', false)
+        //.classed('node_search',false)
+        .attr('cx', function (d) { return d.x; })
+        .attr('cy', function (d) { return d.y; })
+        .on('mouseover', highlightNode)
+        .on('mouseout', unhighlightNode)
+        .call(drag);
 
       nodes.exit()
         .transition() // transition to shrink node
@@ -505,9 +508,9 @@ define('network',['d3','tooltip'], function(d3,tooltip){
         .data(edgesData, function (d) { return d.uid; });
 
       var edgesE = edges.enter().append('line')
-          .classed('edge', true)
-          .classed('edge_active', true)
-          .classed('edge_highlight', false);
+        .classed('edge', true)
+        .classed('edge_active', true)
+        .classed('edge_highlight', false);
 
       edges.exit().remove();
 
@@ -518,20 +521,20 @@ define('network',['d3','tooltip'], function(d3,tooltip){
      * Disable observed but not active edges
      */
     function renderTemporalEdges() {
-      edges.classed('edge_active',function(d){
-        if ((d.time >= time.past && d.time < time.time)||
-            (d.time > time.aggregated && d.time <= time.future)){
+      edges.classed('edge_active', function (d) {
+        if ((d.time >= time.past && d.time < time.time) ||
+          (d.time > time.aggregated && d.time <= time.future)) {
           return false;
-        }else{
+        } else {
           return true;
         }
       });
     };
 
-    function scaleRadius(n){
+    function scaleRadius(n) {
       var radiusScale = d3.scaleLinear()
-          .range([radiusMinSize, radiusMaxSize])
-          .domain(countExtent);
+        .range([radiusMinSize, radiusMaxSize])
+        .domain(countExtent);
       return radiusScale(getSize(n));
     };
 
@@ -580,14 +583,14 @@ define('network',['d3','tooltip'], function(d3,tooltip){
      * Public function to reset the zoom.
      * Most of the work happens in render()
      */
-    chart.updateZoom = function (newZoom){
-      if (newZoom === 'zoom_in'){
+    chart.updateZoom = function (newZoom) {
+      if (newZoom === 'zoom_in') {
         transition(1.2); // increase on 0.2 each time
       }
-      if (newZoom === 'zoom_out'){
+      if (newZoom === 'zoom_out') {
         transition(0.8); // deacrease on 0.2 each time
       }
-      if (newZoom === 'zoom_init'){
+      if (newZoom === 'zoom_init') {
         svg.transition()
           .delay(100)
           .duration(700)
@@ -648,15 +651,15 @@ define('network',['d3','tooltip'], function(d3,tooltip){
       var searchRegEx = new RegExp(searchTerm.toLowerCase());
       nodes.each(function (d) {
         var element = d3.select(this)
-            .classed('node_search',false);
+          .classed('node_search', false);
         var match = getName(d).toLowerCase().search(searchRegEx);
         if (searchTerm.length > 0 && match >= 0) {
-          element.classed('node_search',true)
+          element.classed('node_search', true)
             .style('fill', '#F38630');
           d.searched = true;
         } else {
           d.searched = false;
-          element.classed('node_search',false);
+          element.classed('node_search', false);
           element.style('fill', function (e) { return getColor(e); });
         }
       });
@@ -718,11 +721,11 @@ define('network',['d3','tooltip'], function(d3,tooltip){
 
       // reset edges
       edges
-        .classed('edge_highlight',false);
+        .classed('edge_highlight', false);
 
       // reset nodes
       nodes
-        .classed('node_highlight',false);
+        .classed('node_highlight', false);
     }
 
     return chart;

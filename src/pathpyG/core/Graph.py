@@ -59,6 +59,20 @@ class Graph:
                 a[k] = str(t)
         return a
 
+    def node_attrs(self) -> List:
+        attrs = []
+        for k in self.data.keys:
+            if k != 'node_id' and k.startswith('node_'):
+                attrs.append(k)
+        return attrs
+
+    def edge_attrs(self) -> List:
+        attrs = []
+        for k in self.data.keys:
+            if k != 'edge_index' and k.startswith('edge_'):
+                attrs.append(k)
+        return attrs
+
     @property
     def nodes(self) -> Generator[Union[int, str], None, None]:
         if len(self.node_id_to_index) > 0:
@@ -133,13 +147,12 @@ class Graph:
                 return self.data[key]
             else:
                 print(key, 'is not a graph attribute')
-        elif self.data.is_node_attr(key[0]):
-
+        elif key[0] in self.node_attrs():
             if len(self.node_id_to_index) > 0:
                 return self.data[key[0]][self.node_id_to_index[key[1]]]
             else:
                 return self.data[key[0]][key[1]]
-        elif self.data.is_edge_attr(key[0]):
+        elif key[0] in self.edge_attrs():
             if len(self.node_id_to_index) > 0:
                 return self.data[key[0]][self.edge_to_index[self.node_id_to_index[key[1]], self.node_id_to_index[key[2]]]]
             else:
@@ -156,19 +169,18 @@ class Graph:
                 self.data[key] = val
             else:
                 print(key, 'is not a graph attribute')
-        elif self.data.is_node_attr(key[0]):
+        elif self.key[0].starts_with('node_'):
             if len(self.node_id_to_index) > 0:
                 self.data[key[0]][self.node_id_to_index[key[1]]] = val
             else:
                 self.data[key[0]][key[1]] = val
-        elif self.data.is_edge_attr(key[0]):
+        elif self.key[0].starts_with('edge_'):
             if len(self.node_id_to_index) > 0:
                 self.data[key[0]][self.edge_to_index[self.node_id_to_index[key[1]], self.node_id_to_index[key[2]]]] = val
             else:
                 self.data[key[0]][self.edge_to_index[key[1], key[2]]] = val
         else:
             print(key[0], 'is not a node or edge attribute')
-
 
     @property
     def N(self) -> int:

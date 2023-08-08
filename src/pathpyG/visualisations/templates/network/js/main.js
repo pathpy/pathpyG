@@ -6,15 +6,15 @@
 require.config({
   paths: {
     d3: ['https://d3js.org/d3.v5.min',
-         //If the online location fails, load from this location
-         'lib/d3.min.js']
+      //If the online location fails, load from this location
+      'lib/d3.min.js']
   }
 });
 
 // Start loading the main app file. Put all of
 // your application logic in there.
-require(['d3','tooltip','network','widgets','slider'], function(d3,tooltip,network,widgets,slider){
-  function run(config){
+require(['d3', 'tooltip', 'network', 'widgets', 'slider'], function (d3, tooltip, network, widgets, slider) {
+  function run(config) {
 
     // initialize network
     var myNetwork = network(config);
@@ -27,11 +27,12 @@ require(['d3','tooltip','network','widgets','slider'], function(d3,tooltip,netwo
     d3.json('data/network.json').then(display);
 
     // load widgets
-    widgets('#pathpy',config,myNetwork);
+    widgets('#pathpy', config, myNetwork);
 
     // load slider
-    if (config.temporal === true){
-      slider('#pathpy',config,myNetwork);};
+    if (config.temporal === true) {
+      slider('#pathpy', config, myNetwork);
+    };
 
   };
 

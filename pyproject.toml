@@ -32,7 +32,8 @@ dependencies = [
     'scipy',
     'scikit-learn',
     'zstandard',
-    'pandas'
+    'pandas',
+    'singledispatchmethod'
 ]
 
 [project.optional-dependencies]

@@ -22,13 +22,12 @@ from pathpyG import config
 class D3js:
     """Class to draw d3js objects."""
 
-    def __init__(self, filename: bool = True) -> None:
+    def __init__(self, filename: None) -> D3js:
         """Initialize d3js drawer"""
         self._filename = filename  # This is only a fix for vs code
 
     def to_html(self, figure) -> str:
         """Convert figure to a single html document."""
-        print('Generate single html document.')
 
         # generate unique dom uids
         widgets_id = 'x'+uuid.uuid4().hex
@@ -53,11 +52,11 @@ class D3js:
         data = figure['data']
         data['links'] = data.pop('edges')
 
-        # mirrow y axis
+        # mirror y axis
         if _config['coordinates']:
             for node in data['nodes']:
-                _x, _y = node['coordinates']
-                node['coordinates'] = (_x, _config['height']-_y)
+                _x, _y = node['position']
+                node['position'] = (_x, _config['height']-_y)
 
         # load js template
         temp_name = 'template.html'
@@ -98,6 +97,9 @@ class D3js:
 
         # add js code
         html = html+js
+
+        # print(data['nodes'])
+        # print(data['links'])
 
         # return the html file
         return html
