@@ -43,7 +43,7 @@ jobs:
       - name: Pytest
         uses: microsoft/action-python@0.7.0
         with:
-          testing: true
+          pytest: true
 
   # publish:
   #   uses: microsoft/action-python/.github/workflows/publish.yml@0.2.0
