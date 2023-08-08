@@ -13,6 +13,7 @@ import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.utils.config import config
 
 def _parse_property_value(data: bytes, ptr: int, type_index: int, endianness: str) -> Tuple[Optional[Any], int]:
     """
@@ -287,13 +288,13 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     else:
         node_id = []
 
-    g = Graph(edge_index=torch.tensor([sources, targets], dtype=torch.long), node_id=node_id)
+    g = Graph(edge_index=torch.tensor([sources, targets], dtype=torch.long).to(config['torch']['device']), node_id=node_id)
     for a in node_attr:
         if not a.startswith('node_'):
-            g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float)
+            g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float).to(config['torch']['device'])
     for a in edge_attr:
         if not a.startswith('edge_'):
-            g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float)
+            g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config['torch']['device'])
     for a in graph_attr:
         g.data[a] = graph_attr[a]
     return g

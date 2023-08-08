@@ -27,6 +27,8 @@ from torch_geometric.data.storage import (
 
 from collections import defaultdict
 
+from pathpyG import config
+
 
 class PathType(Enum):
     WALK = 0
@@ -35,12 +37,12 @@ class PathType(Enum):
 class PathStorage(BaseStorage):
     def __init__(
             self,
-    ):    
+    ):
         """ Initializes unified storage of walks, edges, and DAGs
-        
-        Paths of length n are represented as (2,n) tensors, which store 
+
+        Paths of length n are represented as (2,n) tensors, which store
         an edge index with n topologically sorted source-target pairs.
-        
+
         Examples:
 
         Single Edge (0,1):             tensor([0],
@@ -48,7 +50,7 @@ class PathStorage(BaseStorage):
 
         Walk (0,1,2,3):         tensor([0, 1, 2],
                                        [1, 2, 3])
-        
+
         DAG (0,1), (1,2), (1,3) tensor([0, 1, 1],
                                        [1, 2, 3])
         """
@@ -80,7 +82,7 @@ class PathStorage(BaseStorage):
     # def add_dag(self, p: Tensor):
     #     self['path_index'][self._num_paths] = p
     #     self['path_types'][self._num_paths] = PathType.DAG
-    #     self._num_paths += 1    
+    #     self._num_paths += 1
 
 
     def edge_index_k(self, k) -> Tensor:
@@ -94,26 +96,26 @@ class PathStorage(BaseStorage):
         if k == 1:
             i = cat(list(self['path_index'].values()), dim=1)
             if path_freq:
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)) for idx in range(self.num_paths)), dim=0)
+                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
         else:
             i = cat(list(PathStorage.edge_index_kth_order(x, k) for x in self['path_index'].values()), dim=1)
             if path_freq:
                 # each path with length l leads to l-k
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)) for idx in range(self.num_paths)), dim=0)
-        
-        
+                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
+
+
         if path_freq: # sum up frequencies of edges for all (possibly multiple) occurrences in paths
 
             # make edge index unique and keep reverse index, that maps each element in i to the corresponding element in edge_index
-            edge_index, reverse_index = i.unique(dim=1, return_inverse=True)                    
+            edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
 
             # for each edge in edge_index, the elements of x contain all indices in i that correspond to that edge
             x = list((reverse_index == idx).nonzero() for idx in range(edge_index.size()[1]))
 
-            # for each edge, sum the weights of all 
+            # for each edge, sum the weights of all
             edge_weights = Tensor([sum(freq[x[idx]]) for idx in range(edge_index.size()[1])])
         else:
-            edge_index, edge_counts = i.unique(dim=1, return_counts=True)        
+            edge_index, edge_counts = i.unique(dim=1, return_counts=True)
             edge_weights = edge_counts
 
         return edge_index, edge_weights
@@ -129,23 +131,23 @@ class PathStorage(BaseStorage):
     @staticmethod
     def to_node_seq(walk):
         """ Turns an edge index for a walk into a node sequence """
-        return cat([walk[:,0], walk[1,1:]])        
+        return cat([walk[:,0], walk[1,1:]])
 
     @staticmethod
     def edge_index_kth_order(edge_index, k=1):
         """ Compute edge index of k-th order graph for a specific walk given by edge_index
 
-            The resulting k-th order edge_index naturally generalized first-order edge indices, i.e. 
+            The resulting k-th order edge_index naturally generalized first-order edge indices, i.e.
             for a walk (0,1,2,3,4,5) represented as
             [ [0,1,2,3,4],
               [1,2,3,4,5] ]
-            
+
             we get the following edge_index for a second-order graph:
 
-            [ [[0,1], [1,2], [2,3], [3,4]], 
+            [ [[0,1], [1,2], [2,3], [3,4]],
               [[1,2], [2,3], [3,4], [4,5]] ]
 
-            while for k=3 we get 
+            while for k=3 we get
 
             [ [[0,1,2], [1,2,3], [2,3,4]],
               [[1,2,3], [2,3,4], [3,4,5]]
@@ -153,7 +155,7 @@ class PathStorage(BaseStorage):
         if k<=edge_index.size(dim=1):
             return edge_index.unfold(1,k,1)
         else:
-            return IntTensor([])
+            return IntTensor([]).to(config['torch']['device'])
 
     def to_scipy_sparse_matrix(self):
         """ Returns a sparse adjacency matrix of the underlying graph """
@@ -177,12 +179,12 @@ class PathStorage(BaseStorage):
                 fields = line.split(',')
                 for v in fields[:-1]:
                     path.append(name_map[v])
-                w = IntTensor([path[:-1], path[1:]])
+                w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
                 p.add_walk(w)
                 freq.append(float(fields[-1]))
         reverse_map = {k:i for i,k in name_map.items()}
         p['node_name'] = [reverse_map[i] for i in range(len(name_map))]
-        p['path_freq'] = Tensor(freq)
+        p['path_freq'] = Tensor(freq).to(config['torch']['device'])
         return p
 
     def __str__(self):
@@ -230,7 +232,7 @@ class GlobalPathStorage(PathStorage, NodeStorage):
 
         if value.ndim == 0:
             self._cached_attr[AttrType.OTHER].add(key)
-            return False    
+            return False
 
         if 'node' in key:
             self._cached_attr[AttrType.NODE].add(key)
@@ -271,7 +273,7 @@ class GlobalPathStorage(PathStorage, NodeStorage):
 
         if value.ndim == 0:
             self._cached_attr[AttrType.PATH].add(key)
-            return True       
+            return True
 
         if 'node' in key:
             self._cached_attr[AttrType.NODE].add(key)

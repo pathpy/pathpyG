@@ -9,6 +9,8 @@ from torch_geometric.data import Data
 from pathpyG.core.Graph import Graph
 from pathpyG.core.PathData import PathStorage, GlobalPathStorage
 
+from pathpyG.utils.config import config
+
 class HigherOrderGraph(Graph):
     """ HigherOrderGraph based on torch_geometric.Data"""
 
@@ -20,11 +22,11 @@ class HigherOrderGraph(Graph):
         >>> g = Graph(paths, k=2, node_id=['a', 'b', 'c'])
         """
 
-        assert len(node_id) == len(set(node_id)), 'node_id entries must be unique' 
+        assert len(node_id) == len(set(node_id)), 'node_id entries must be unique'
 
         # generate edge_index with higher-order nodes represented as tensors
         self.order = order
-        
+
         index, edge_weights = paths.edge_index_k_weighted(k=order, path_freq=path_freq)
 
         if self.order>1:
@@ -35,11 +37,11 @@ class HigherOrderGraph(Graph):
             ho_nodes_to_index = {tuple(j.tolist()):i for i,j in enumerate(self._nodes)}
 
             # create new tensor with node indices mapped to indices of higher-order nodes
-            edge_index = torch.tensor( ([ho_nodes_to_index[tuple(x.tolist())] for x in index[0,:]], [ho_nodes_to_index[tuple(x.tolist())] for x in index[1,:]]))
+            edge_index = torch.tensor( ([ho_nodes_to_index[tuple(x.tolist())] for x in index[0,:]], [ho_nodes_to_index[tuple(x.tolist())] for x in index[1,:]])).to(config['torch']['device'])
 
             # create mappings between higher-order nodes (with ids) and node indices
             if len(node_id)>0:
-                self.node_index_to_id = { i:tuple([node_id[v] for v in j.tolist()]) for i,j in enumerate(self._nodes)}            
+                self.node_index_to_id = { i:tuple([node_id[v] for v in j.tolist()]) for i,j in enumerate(self._nodes)}
                 self.node_id_to_index = {j:i for i,j in self.node_index_to_id.items()}
             else:
                 self.node_index_to_id = {}
@@ -51,13 +53,13 @@ class HigherOrderGraph(Graph):
 
             # create mappings between node ids and node indices
             self.node_index_to_id = dict(enumerate(node_id))
-            self.node_id_to_index = {v: i for i, v in enumerate(node_id)}        
+            self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
 
         # Create pyG Data object
-        self.data = Data(edge_index=edge_index, num_nodes=len(self._nodes), **kwargs)        
+        self.data = Data(edge_index=edge_index, num_nodes=len(self._nodes), **kwargs)
         self.data['node_id'] = node_id
         self.data['edge_weight'] = edge_weights
-        
+
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
@@ -83,9 +85,9 @@ class HigherOrderGraph(Graph):
     #     else:
     #         for e in self.data.edge_index.t():
     #             yield e[0].item(), e[1].item()
-    
 
-    
+
+
 
     def __str__(self):
         """
@@ -110,4 +112,4 @@ class HigherOrderGraph(Graph):
                 if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
-    
+

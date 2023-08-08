@@ -6,6 +6,8 @@ import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
 
+from pathpyG.utils.config import config
+
 class Graph:
     """ Graph based on torch_geometric.Data"""
 
@@ -115,12 +117,12 @@ class Graph:
     def add_node_ohe(self, attr_name, dim=0):
         if dim == 0:
             dim = self.N
-        self.data[attr_name] = torch.eye(dim, dtype=torch.float)[:self.N]
+        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(config['torch']['device'])[:self.N]
 
     def add_edge_ohe(self, attr_name, dim=0):
         if dim == 0:
             dim = self.M
-        self.data[attr_name] = torch.eye(dim, dtype=torch.float)[:self.M]
+        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(config['torch']['device'])[:self.M]
 
 
     def __getitem__(self, key):
@@ -232,7 +234,7 @@ class Graph:
             sources.append(nodes_index[v])
             targets.append(nodes_index[w])
 
-        return Graph(edge_index=torch.LongTensor([sources, targets]),
+        return Graph(edge_index=torch.LongTensor([sources, targets]).to(config['torch']['device']),
                      node_id=[index_nodes[i] for i in range(n)])
 
     def __str__(self):

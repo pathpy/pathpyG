@@ -7,15 +7,16 @@ import torch_geometric.utils
 from torch_geometric.data import TemporalData
 
 from pathpyG.core.Graph import Graph
+from pathpyG.utils.config import config
 
 class TemporalGraph(Graph):
 
     def __init__(self, edge_index, t, node_id=[], **kwargs):
-        
-        assert len(node_id) == len(set(node_id)), 'node_id entries must be unique' 
+
+        assert len(node_id) == len(set(node_id)), 'node_id entries must be unique'
 
         # sort edges by timestamp and reorder edge_index accordingly
-        t_sorted, indices = torch.sort(torch.tensor(t))
+        t_sorted, indices = torch.sort(torch.tensor(t).to(config['torch']['device']))
 
         if len(node_id)==0:
             self.data = TemporalData(src = edge_index[0][indices], dst = edge_index[1][indices], t=t_sorted, node_id=[], **kwargs)
@@ -36,7 +37,7 @@ class TemporalGraph(Graph):
 
         # initialize adjacency matrix
         self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
-        
+
 
     @staticmethod
     def from_edge_list(edge_list):
@@ -56,15 +57,15 @@ class TemporalGraph(Graph):
             if w not in nodes_index:
                 nodes_index[w] = n
                 index_nodes[n] = w
-                n += 1                            
+                n += 1
             sources.append(nodes_index[v])
             targets.append(nodes_index[w])
             ts.append(t)
-        
-        return TemporalGraph(edge_index=torch.LongTensor([sources, targets]), 
-                             t=torch.tensor(ts),
+
+        return TemporalGraph(edge_index=torch.LongTensor([sources, targets]).to(config['torch']['device']),
+                             t=torch.tensor(ts).to(config['torch']['device']),
                              node_id=[index_nodes[i] for i in range(n)])
-    
+
     @property
     def temporal_edges(self):
         if len(self.node_index_to_id) > 0:
@@ -77,7 +78,7 @@ class TemporalGraph(Graph):
             for e in self.data.edge_index.t():
                 yield e[0].item(), e[1].item(), self.data.t[i].item()
                 i += 1
-    
+
     @staticmethod
     def from_pyg_data(d: TemporalData, node_id=[]):
 
@@ -91,13 +92,13 @@ class TemporalGraph(Graph):
         if 'node_index' in d:
             del x['node_id']
 
-        g = TemporalGraph(edge_index=torch.tensor([d['src'], d['dst']]), t=d['t'], node_id=node_id, **x)
+        g = TemporalGraph(edge_index=torch.tensor([d['src'], d['dst']]).to(config['torch']['device']), t=d['t'], node_id=node_id, **x)
 
         return g
 
     def to_pyg_data(self) -> TemporalData:
         """
-        Returns an instance of torch_geometric.data.Data containing the 
+        Returns an instance of torch_geometric.data.Data containing the
         edge_index as well as node, edge, and graph attributes
         """
         return self.data

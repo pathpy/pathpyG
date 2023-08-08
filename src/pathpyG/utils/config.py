@@ -45,8 +45,7 @@ config['attributes']['multiple'] = parser.getboolean('attributes', 'multiple')
 config['attributes']['frequency'] = parser.get('attributes', 'frequency')
 
 
-config['computation']['check_code'] = parser.getboolean(
-    'computation', 'check_code')
+config['torch']['device'] = parser.get('torch', 'device')
 
 config['object']['separator'] = parser.get('object', 'separator')
 
@@ -80,8 +79,6 @@ config['temporal']['timestamp_synonyms'] = parser.get(
     'temporal', 'timestamp_synonyms').split(", ")
 config['temporal']['duration_synonyms'] = parser.get(
     'temporal', 'duration_synonyms').split(", ")
-
-config['MOGen']['paths_per_chunk'] = parser.getint('MOGen', 'paths_per_chunk')
 
 # =============================================================================
 # eof
