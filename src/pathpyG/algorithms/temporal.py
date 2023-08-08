@@ -14,7 +14,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 
 
-def temporal_graph_to_dag(g: TemporalGraph, delta=np.infty):
+def temporal_graph_to_dag(g: TemporalGraph, delta=np.infty) -> Graph:
 
     edge_list = []
 
@@ -40,7 +40,7 @@ def temporal_graph_to_dag(g: TemporalGraph, delta=np.infty):
             edge_list.append([v_t, w_t])
             edge_times.append(t)
 
-    g = Graph.from_edge_list(edge_list)
-    g.data['node_name'] = [ node_names[g.node_index_to_id[v]] for v in range(g.N) ]
-    g.data['edge_ts'] = torch.tensor(edge_times)
-    return g
+    dag = Graph.from_edge_list(edge_list)
+    dag.data['node_name'] = [ node_names[g.node_index_to_id[v]] for v in range(g.N) ]
+    dag.data['edge_ts'] = torch.tensor(edge_times)
+    return dag
