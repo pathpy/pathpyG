@@ -17,7 +17,7 @@ import tempfile
 import subprocess
 import webbrowser
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Union
 from singledispatchmethod import singledispatchmethod  # remove for python 3.8
 
 from pathpyG import config
@@ -36,8 +36,8 @@ class PDF:
 
     def __init__(self):
         """Initialize tex drawer"""
-        self.figure = None
-        self.filename: str = None
+        self.figure: TEX = TEX()
+        self.filename: str = ""
 
     @singledispatchmethod
     def draw(self, backend, data: defaultdict) -> None:

@@ -218,7 +218,7 @@ def layout(network, **kwds):
         # log.debug('The network is of type "networkx".')
         nodes = list(network.nodes())
         import networkx as nx
-        adjacency_matrix = nx.adjacency_matrix(network, weight=_weight)
+        adjacency_matrix = nx.adjacency_matrix(network, weight=_weight) # type: ignore
     elif 'igraph' in str(type(network)):
         # log.debug('The network is of type "igraph".')
         nodes = list(range(len(network.vs)))
@@ -477,18 +477,19 @@ class Layout(object):
 
         if self.positions is not None:
             # Determine size of existing domain to adjust initial positions
-            _size = max(coord for t in layout.values() for coord in t)
+            _size = max(coord for t in layout.values() for coord in t) # type: ignore
             if _size == 0:
                 _size = 1
             np.random.seed(self.seed)
             self.layout = np.random.rand(
-                len(self.nodes), self.dimension) * _size
+                len(self.nodes), self.dimension) * _size # type: ignore
 
             for i, n in enumerate(self.nodes):
                 if n in self.positions:
                     self.layout[i] = np.asarray(self.positions[n])
         else:
             self.layout = None
+            _size = 0
 
         if self.k is None and self.fixed is not None:
             # We must adjust k by domain size for layouts not near 1x1
@@ -534,7 +535,7 @@ class Layout(object):
                 _n, self.dimension), dtype=A.dtype)
         else:
             # make sure positions are of same type as matrix
-            layout = self.layout.astype(A.dtype)
+            layout = self.layout.astype(A.dtype) # type: ignore
 
         # optimal distance between nodes
         if k is None:
@@ -616,7 +617,7 @@ class Layout(object):
                 _n, self.dimension), dtype=A.dtype)
         else:
             # make sure positions are of same type as matrix
-            layout = layout.astype(A.dtype)
+            layout = layout.astype(A.dtype) # type: ignore
 
         # no fixed nodes
         if self.fixed is None:
@@ -665,18 +666,18 @@ class Layout(object):
 
 
     def circular(self):
-        """Position nodes on a circle with given radius. 
+        """Position nodes on a circle with given radius.
 
         This algorithm can be enabled with the keywords: 'circular', 'circle', 'ring', 'lattice-1d', '1d-lattice', 'lattice'
 
-        **Keyword arguments used for the layout:**       
+        **Keyword arguments used for the layout:**
 
         - ``radius`` : float, optional (default = 1.0)
           Sets the radius of the circle on which nodes
           are positioned
 
         - ``direction`` : float, optional (default = 1.0)
-          Sets the direction in which nodes are placed on the circle. 1.0 for clockwise (default) 
+          Sets the direction in which nodes are placed on the circle. 1.0 for clockwise (default)
           and -1.0 for counter-clockwise direction.
 
         - ``start_angle`` : float, optional (default = 90.0)

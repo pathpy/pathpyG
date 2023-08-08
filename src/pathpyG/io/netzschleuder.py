@@ -329,7 +329,7 @@ def read_graphtool(file: str, ignore_temporal: bool=False, multiedges: bool=Fals
                 # LOG.error(msg)
                 raise Exception(msg)
         else:
-            return parse_graphtool_format(f.read(), ignore_temporal, multiedges)
+            return parse_graphtool_format(f.read(), multiedges)
 
 
 
@@ -429,7 +429,7 @@ def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.
 
 def read_netzschleuder_network(name: str, net: Optional[str]=None,
         ignore_temporal: bool=False, multiedges: bool=False,
-        base_url: str='https://networks.skewed.de') -> Optional[Union[Network, TemporalNetwork]]:
+        base_url: str='https://networks.skewed.de') -> Optional[Union[Graph, TemporalGraph]]:
     """Reads a pathpy network record from the netzschleuder repository.
 
     Parameters

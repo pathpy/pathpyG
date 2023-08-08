@@ -71,12 +71,12 @@ class TemporalGraph(Graph):
         if len(self.node_index_to_id) > 0:
             i = 0
             for e in self.data.edge_index.t():
-                yield self.node_index_to_id[e[0].item()], self.node_index_to_id[e[1].item()], self.data.t[i].item()
+                yield self.node_index_to_id[e[0].item()], self.node_index_to_id[e[1].item()], self.data.t[i].item() # type: ignore
                 i += 1
         else:
             i = 0
             for e in self.data.edge_index.t():
-                yield e[0].item(), e[1].item(), self.data.t[i].item()
+                yield e[0].item(), e[1].item(), self.data.t[i].item() # type: ignore
                 i += 1
 
     @staticmethod
