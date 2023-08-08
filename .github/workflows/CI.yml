@@ -9,8 +9,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  validation:
-    uses: microsoft/action-python/.github/workflows/validation.yml@0.7.0
+ linting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Black
+        uses: microsoft/action-python@0.7.0
+        with:
+          black: true
+
+      - name: Bandit
+        uses: microsoft/action-python@0.7.0
+        with:
+          bandit: true
+
+      - name: Pylint
+        uses: microsoft/action-python@0.7.0
+        with:
+          pylint: true
+
+      - name: Pyright
+        uses: microsoft/action-python@0.7.0
+        with:
+          pyright: true
+
+      - name: Flake8
+        uses: microsoft/action-python@0.7.0
+        with:
+          flake8: true
+
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pytest
+        uses: microsoft/action-python@0.7.0
+        with:
+          testing: true
 
   # publish:
   #   uses: microsoft/action-python/.github/workflows/publish.yml@0.2.0
