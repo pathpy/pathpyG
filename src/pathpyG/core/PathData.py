@@ -196,7 +196,7 @@ class AttrType(Enum):
     PATH = 'PATH'
 
 
-class GlobalPathStorage(PathStorage, NodeStorage):
+class PathData(PathStorage, NodeStorage):
 
     def size(
         self, dim: Optional[int] = None
