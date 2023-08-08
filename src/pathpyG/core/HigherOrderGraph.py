@@ -44,8 +44,8 @@ class HigherOrderGraph(Graph):
                 self.node_index_to_id = { i:tuple([node_id[v] for v in j.tolist()]) for i,j in enumerate(self._nodes)}
                 self.node_id_to_index = {j:i for i,j in self.node_index_to_id.items()}
             else:
-                self.node_index_to_id = {}
-                self.node_id_to_index = {}
+                self.node_index_to_id = { i:tuple([v for v in j.tolist()]) for i,j in enumerate(self._nodes)}
+                self.node_id_to_index = {j:i for i,j in self.node_index_to_id.items()}
 
         else:
             self._nodes = index.reshape(-1).unique(dim=0)

@@ -11,6 +11,7 @@ from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.PathData import GlobalPathStorage
 from pathpyG import io
+from pathpyG import nn
 
 if config['device'] == 'cuda':
     config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
