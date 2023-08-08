@@ -49,10 +49,11 @@ config['torch']['device'] = parser.get('torch', 'device')
 
 config['object']['separator'] = parser.get('object', 'separator')
 
-config['edge']['separator'] = parser.get('edge', 'separator')
-config['edge']['replace'] = parser.get('edge', 'replace')
-config['edge']['v_synonyms'] = parser.get('edge', 'v_synonyms').split(", ")
-config['edge']['w_synonyms'] = parser.get('edge', 'w_synonyms').split(", ")
+config['node']['color'] = parser.get('node', 'color')
+config['node']['size'] = parser.getint('node', 'size')
+
+config['edge']['color'] = parser.get('edge', 'color')
+config['edge']['width'] = parser.getint('edge', 'width')
 
 
 config['path']['separator'] = parser.get('path', 'separator')

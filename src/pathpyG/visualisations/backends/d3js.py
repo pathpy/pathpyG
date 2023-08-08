@@ -17,17 +17,15 @@ from string import Template
 
 from pathpyG import config
 
-
-
 class D3js:
     """Class to draw d3js objects."""
 
-    def __init__(self, filename: None) -> D3js:
+    def __init__(self, filename: str = None) -> D3js:
         """Initialize d3js drawer"""
-        self._filename = filename  # This is only a fix for vs code
+        self._filename = filename
 
     def to_html(self, figure) -> str:
-        """Convert figure to a single html document."""
+        """Convert figure to html document."""
 
         # generate unique dom uids
         widgets_id = 'x'+uuid.uuid4().hex

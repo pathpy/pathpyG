@@ -4,7 +4,6 @@
 # =============================================================================
 # File      : plot.py -- Module to plot pathpy networks
 # Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Thu 2021-08-26 14:15 juergen>
 #
 # Copyright (c) 2016-2019 Pathpy Developers
 # =============================================================================
@@ -178,10 +177,10 @@ config['plot']['widgets']['aggregation']['future'] = 2
 config['plot']['widgets']['aggregation']['aggregation'] = 1
 
 
-def plot(graph, filename: Optional[str] = None,
+def plot(graph: Union[Graph, TemporalGraph], filename: Optional[str] = None,
          backend: Optional[str] = None, **kwargs) -> None:
-    """Plot the graph"""
-    # initialize variables
+    """Plots a graph"""
+
     figure: Any
 
     # supported backends
@@ -195,30 +194,28 @@ def plot(graph, filename: Optional[str] = None,
     figures: Dict[str, Dict[str, Callable]] = {
         'html': {'fileformat': HTML, 'backend': D3js},
         'tex': {'fileformat': TEX, 'backend': Tikz},
-        # 'csv': {'fileformat': CSV, 'backend': Tikz},
         'pdf': {'fileformat': PDF, 'backend': Tikz},
         'png': {'fileformat': PNG, 'backend': Matplotlib},
     }
 
-    # initialize object parser
+    # initialize graph parser
     parser: Parser = Parser()
 
-    # check object
+    # check graph
     try:
         if graph.N == 0:
             print('Empty graphs cannot be plotted. Please add at least one Node object.')
             return
     except Exception:
-        print('The provided object cannot be plotted.')
+        print('This object cannot be plotted.')
         raise NotImplementedError
 
+    # copy plot parameters
     _config = deepcopy(config['plot'])
-    # _config = config['plot']
-    # parse object to json like dict
 
-    data: defaultdict = parser(graph, _config, **kwargs)
+    # get data fromgraph
+    data: defaultdict = parser.parse(graph, _config, **kwargs)
 
-    # check filename
     # if no file name is given
     if filename is None:
         # generate default html figure with d3js
@@ -227,8 +224,7 @@ def plot(graph, filename: Optional[str] = None,
         figure.show()
 
         # if file name is given
-    elif filename is not None:
-
+    else:
         # get extension of the file
         extension = filename.split('.')[-1]
 
@@ -253,14 +249,14 @@ def plot(graph, filename: Optional[str] = None,
             # save the figure
             figure.save(filename)
         else:
-            print('Plotting files in the format "%s" is not supported!',
+            print('Plotting graphs in format "%s" is not supported!',
                       extension)
             raise TypeError
 
 
 
 class Parser:
-    """Parse pathpyG graphs into json-like dictionary"""
+    """Parse pathpyG graph into json-like dictionary"""
 
     def __init__(self) -> None:
         """Initialize parser object."""
@@ -311,15 +307,9 @@ class Parser:
             'animation': self.default_animation
         }
 
-    def __call__(self, graph: Union[Graph, TemporalGraph], plot_config: defaultdict,
-                 **kwargs: Any) -> defaultdict:
-        """Call the parse function."""
-        return self.parse(graph, plot_config, **kwargs)
-
     @singledispatchmethod
-    def parse(self, graph: Union[Graph, TemporalGraph], _config: defaultdict,
+    def parse(self, graph: Union[Graph, TemporalGraph], plot_config: defaultdict,
               **kwargs: Any) -> defaultdict:
-        """Parses the pathpy network into a json like dict."""
         raise NotImplementedError
 
     @parse.register(Graph)
@@ -344,8 +334,7 @@ class Parser:
         self.config['node']['size'] = u2u(self.config['node']['size'])
         self.config['edge']['size'] = u2u(self.config['edge']['size'])
 
-        # generate default objects
-        # iterate over the default config
+        # generate default values for plot configuration
         for key, values in self.config.items():
 
             # if objects such as node or edge are in the default config
@@ -354,7 +343,7 @@ class Parser:
                 # iterate over the attributes
                 for attr, value in values.items():
 
-                    # add attributes if the are in the default element
+                    # add attributes if they are in the defaul
                     if attr in self.default_properties[key]:
                         self.default_properties[key][attr] = value
 
@@ -371,7 +360,7 @@ class Parser:
             self.config['node'].update({'position': _layout})
             self.config['layout'] = 'euclidean'
 
-        # parse nodes an edges
+        # parse nodes and edges
         nodes = self.parse_nodes(graph, temporal=False, **kwargs)
         edges = self.parse_edges(graph, temporal=False, **kwargs)
 
@@ -407,8 +396,7 @@ class Parser:
         print('Parse a temporal network')
 
         # get static network to start with
-        self._parse_static_graph(graph=graph, plot_config=plot_config,
-                           temporal=True, **kwargs)
+        self._parse_static_graph(graph=graph, plot_config=plot_config, **kwargs)
 
         # TODO: Fix parse_config for temporal networks
         for key, values in self.parse_config(
@@ -460,26 +448,6 @@ class Parser:
         self.config['animation']['start'] = animation_start
         self.config['animation']['end'] = animation_end
 
-        # get static edges
-        # edges = {e['uid']: e for e in self.figure['data']['edges']}
-
-        # _intervals = obj.edges.intervals
-
-        # tree = _intervals.copy()
-        # tree.slice(begin)
-        # tree.slice(end)
-        # tree.remove_envelop(_intervals.begin(), begin)
-        # tree.remove_envelop(end, _intervals.end())
-
-        # edge_temp_attr: defaultdict = defaultdict(lambda: defaultdict(dict))
-        # for edge in obj.edges.values():
-        #     df = edge.attributes.to_frame(history=True)
-        #     df = df.where(pd.notnull(df), None)
-        #     attr = list(df.to_dict('index').values())
-        #     for values in attr:
-        #         time = values.pop(TIMESTAMP, None)
-        #         edge_temp_attr[edge.uid][time].update(**values)
-
         def find_nearest(array, value, index=True) -> int:
             value = array[0] if value == float('-inf') else value
             value = array[-1] if value == float('inf') else value
@@ -495,7 +463,6 @@ class Parser:
         times = np.linspace(start, end, num=steps)
         i = 0
         for v, w, t in graph.temporal_edges:
-            #for event in edge[start:end]:
             _edge: Dict[str, Any] = {}
             _edge['uid'] = str(v)+'-'+str(w)
             _edge['startTime'] = find_nearest(times, t)
@@ -504,113 +471,14 @@ class Parser:
             temporal_edges.append(_edge)
             i+=1
 
-        # # get static edges
-        # static_edges = {n['uid']: n for n in self.figure['data']['edges']}
-        # print(static_edges)
-        # _temporal_edges = {}
-        # # when edge is active or not
-        # for edge in obj.edges[start:end]:
-        #     for event in edge[start:end]:
-        #         # check if attributes are available
-        #         if any(a in event.attributes for
-        #                a in self.config['default_edge']):
-        #             # get important attributes
-        #             _uid = edge.uid
-        #             _start = event.attributes.pop('start', start)
-        #             _end = event.attributes.pop('end', end)
 
-        #         _edge = {'uid': _uid}
-        #         _st = _edge['startTime'] = find_nearest(times, _start)
-        #         _et = _edge['endTime'] = find_nearest(times, _end)
-        #         _edge['active'] = True
-        #         _edge.update(event.attributes)
-
-        #         # add node to the list
-        #         key = (_uid, _st, _et)
-        #         if key in _temporal_edges:
-        #             _temporal_edges[key].update(_edge)
-        #         else:
-        #             _temporal_edges[key] = _edge
-
-        #         # reset node after attribute change
-        #         _edge = {'uid': _uid}
-        #         for attr in event.attributes:
-        #             if attr in static_edges[_uid]:
-        #                 _edge[attr] = static_edges[_uid][attr]
-
-        #         _edge['startTime'] = _et+1
-        #         _edge['endTime'] = _et+1
-        #         key = (_uid, _et+1, _et+1)
-        #         if key in _temporal_edges:
-        #             _temporal_edges[key].update(_edge)
-        #         else:
-        #             _temporal_edges[key] = _edge
-
-        #         temporal_edges.append(_edge)
-
-        # print(_temporal_edges)
-        # print(temporal_edges)
-        # add temporal edges to the data
-        # self.figure['data']['tedges'] = list(_temporal_edges.values())
         self.figure['data']['tedges'] = temporal_edges
 
         # get static nodes
         static_nodes = {n['uid']: n for n in self.figure['data']['nodes']}
 
-        #temporal_nodes = {}
-
-        # # temporal node attributes
-        # for node in obj.nodes[start:end]:
-        #     for event in node[start:end]:
-        #         # check if attributes are available
-        #         if any(a in event.attributes for
-        #                a in self.config['default_node']):
-
-        #             # get important attributes
-        #             _uid = node.uid
-        #             _start = event.attributes.pop('start', start)
-        #             _end = event.attributes.pop('end', end)
-
-        #             # generate temporal node
-        #             _node = {'uid': _uid}
-        #             _st = _node['startTime'] = find_nearest(times, _start)
-        #             _et = _node['endTime'] = find_nearest(times, _end)
-        #             _node.update(event.attributes)
-
-        #             if _start == float('-inf') and _end == float('inf'):
-        #                 continue
-
-        #             # add node to the list
-        #             key = (node.uid, _st, _et)
-        #             if key in temporal_nodes:
-        #                 temporal_nodes[key].update(_node)
-        #             else:
-        #                 temporal_nodes[key] = _node
-
-        #             # reset node after attribute change
-        #             _node = {'uid': _uid}
-        #             for attr in event.attributes:
-        #                 if attr in static_nodes[_uid]:
-        #                     _node[attr] = static_nodes[_uid][attr]
-
-        #             _node['startTime'] = _et
-        #             _node['endTime'] = _et
-        #             key = (_uid, _et, _et)
-        #             if key in temporal_nodes:
-        #                 temporal_nodes[key].update(_node)
-        #             else:
-        #                 temporal_nodes[key] = _node
-
         self.figure['data']['tnodes'] = list(static_nodes.values())
 
-        # parse layout
-        # _layout = self.config.get('layout', None)
-        # if isinstance(_layout, dict):
-        #     self.config['node'].update({'coordinates': _layout})
-        #     self.config['layout'] = 'euclidean'
-
-        # return the figure
-        print(self.figure)
         return self.figure
 
     @ staticmethod
@@ -878,13 +746,3 @@ class Parser:
                     edge_dict[key].pop(attr)
 
         return list(edge_dict.values())
-
-# =============================================================================
-# eof
-#
-# Local Variables:
-# mode: python
-# mode: linum
-# mode: auto-fill
-# fill-column: 79
-# End:

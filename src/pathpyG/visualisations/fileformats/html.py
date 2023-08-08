@@ -15,15 +15,9 @@ import tempfile
 
 from typing import TYPE_CHECKING
 from singledispatchmethod import singledispatchmethod  # remove for python 3.8
-# from functools import singledispatchmethod
 
 from pathpyG import config
 from pathpyG.visualisations.backends import D3js
-
-# pseudo load class for type checking
-if TYPE_CHECKING:
-    from collections import defaultdict
-
 
 class HTML:
     """Class to draw html objects."""

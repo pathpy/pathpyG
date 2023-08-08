@@ -7,7 +7,7 @@ require.config({
   paths: {
     d3: ['https://d3js.org/d3.v5.min',
       //If the online location fails, load from this location
-      'lib/d3.min.js']
+      'lib/d3.v5.min.js']
   }
 });
 
