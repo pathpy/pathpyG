@@ -54,6 +54,7 @@ config['node']['size'] = parser.getint('node', 'size')
 
 config['edge']['color'] = parser.get('edge', 'color')
 config['edge']['width'] = parser.getint('edge', 'width')
+config['edge']['curved'] = parser.getboolean('edge', 'curved')
 
 
 config['path']['separator'] = parser.get('path', 'separator')
