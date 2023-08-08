@@ -1,1 +1,0 @@
-from pathpyG.nn.dbgnn import DBGNN

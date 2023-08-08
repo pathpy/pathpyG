@@ -6,8 +6,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3 # important!
-        with:
-          python-version: '3.8'
       - name: install dependencies
         run: pip install torch torch-geometric numpy scipy scikit-learn pandas zstandard torch_scatter torch_sparse torch_cluster torch_spline_conv
       - uses: euphoricsystems/action-sync-template-repository@v2
