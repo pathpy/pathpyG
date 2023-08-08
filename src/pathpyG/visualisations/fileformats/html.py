@@ -14,7 +14,8 @@ import webbrowser
 import tempfile
 
 from typing import TYPE_CHECKING
-from singledispatchmethod import singledispatchmethod  # remove for python 3.8
+#from singledispatchmethod import singledispatchmethod  # remove for python 3.8
+from functools import singledispatchmethod
 
 from pathpyG import config
 from pathpyG.visualisations.backends import D3js

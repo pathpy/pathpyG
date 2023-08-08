@@ -107,12 +107,12 @@ exclude = [
     "**/node_modules",
     "**/__pycache__",
 ]
-venv = "env37"
 
 reportMissingImports = true
 reportMissingTypeStubs = false
+venv = "env38"
 
-pythonVersion = "3.7"
+pythonVersion = "3.8"
 pythonPlatform = "Linux"
 
 executionEnvironments = [

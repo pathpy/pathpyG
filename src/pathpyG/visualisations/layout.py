@@ -556,7 +556,7 @@ class Layout(object):
         # could use multilevel methods to speed this up significantly
         for iteration in tqdm(range(self.iterations), desc='Calculating Fruchterman-Reingold layout'):
             # matrix of difference between points
-            delta = layout[:, np.newaxis, :] - layout[np.newaxis, :, :]
+            delta = layout[:, np.newaxis, :] - layout[np.newaxis, :, :] # type: ignore
             # distance between points
             distance = np.linalg.norm(delta, axis=-1)
             # enforce minimum distance of 0.01
