@@ -11,6 +11,8 @@ on:
 jobs:
   validation:
     uses: microsoft/action-python/.github/workflows/validation.yml@0.2.0
+      with:
+        python-version: '3.8'
 
   # publish:
   #   uses: microsoft/action-python/.github/workflows/publish.yml@0.2.0
