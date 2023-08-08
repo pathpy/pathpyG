@@ -41,6 +41,6 @@ def temporal_graph_to_dag(g: TemporalGraph, delta=np.infty) -> Graph:
             edge_times.append(t)
 
     dag = Graph.from_edge_list(edge_list)
-    dag.data['node_name'] = [ node_names[g.node_index_to_id[v]] for v in range(g.N) ]
+    # dag.data['node_name'] = [ node_names[g.node_index_to_id[v]] for v in range(g.N) ]
     dag.data['edge_ts'] = torch.tensor(edge_times)
     return dag
