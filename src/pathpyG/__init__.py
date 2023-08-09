@@ -12,6 +12,7 @@ from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.PathData import PathData
 from pathpyG import io
 from pathpyG import nn
+from pathpyG import algorithms
 
 if config['device'] == 'cuda':
     config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
