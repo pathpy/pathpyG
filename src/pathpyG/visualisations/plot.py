@@ -514,7 +514,7 @@ class Parser:
         keep_aspect_ratio = self.config['keep_aspect_ratio']
 
         if self.config['margin'] is None:
-            margin = max([float(n['node_size']) for n in nodes])/2+4
+            margin = max([float(n['size']) for n in nodes])/2+4
         elif isinstance(self.config['margin'], (int, float)):
             margin = converter(self.config['margin'])
         else:
