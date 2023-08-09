@@ -429,7 +429,7 @@ def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.
 
 def read_netzschleuder_network(name: str, net: Optional[str]=None,
         ignore_temporal: bool=False, multiedges: bool=False,
-        base_url: str='https://networks.skewed.de') -> Optional[Union[Graph, TemporalGraph]]:
+        base_url: str='https://networks.skewed.de') -> Union[Graph, TemporalGraph]:
     """Reads a pathpy network record from the netzschleuder repository.
 
     Parameters
