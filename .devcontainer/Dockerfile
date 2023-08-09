@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
+FROM pytorch/pytorch
 WORKDIR /workspaces/pathpyG
 RUN apt-get update
 RUN apt-get -y install git
