@@ -120,6 +120,24 @@ class Graph:
             return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index,
                                                                 edge_attr=self.data[edge_attr])
 
+    @property
+    def in_degrees(self) -> Dict:
+        return self.degrees(mode='in')
+
+    @property
+    def out_degrees(self) -> Dict:
+        return self.degrees(mode='out')
+
+    def degrees(self, mode='in') -> Dict:
+        if mode == 'in':
+            d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes = self.N, dtype=torch.int)
+        else:
+            d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes = self.N, dtype=torch.int)
+        if len(self.node_id_to_index)>0:
+            return {v: d[self.node_id_to_index[v]].item() for v in self.node_id_to_index}
+        else:
+            return {i: d[i].item() for i in range(self.N)}
+
     def get_laplacian(self, normalization=None, edge_attr=None):
         if edge_attr == None:
             return torch_geometric.utils.get_laplacian(self.data.edge_index,
