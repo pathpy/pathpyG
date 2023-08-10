@@ -10,6 +10,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.PathData import PathData
+from pathpyG.core.DAGData import DAGData
 from pathpyG import io
 from pathpyG import nn
 from pathpyG import algorithms

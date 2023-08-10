@@ -1,1 +1,1 @@
-from pathpyG.algorithms.temporal import temporal_graph_to_event_dag, event_dag_all_walks
+from pathpyG.algorithms.temporal import *

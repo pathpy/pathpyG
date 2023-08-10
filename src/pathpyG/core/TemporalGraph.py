@@ -63,7 +63,7 @@ class TemporalGraph(Graph):
             ts.append(t)
 
         return TemporalGraph(edge_index=torch.LongTensor([sources, targets]).to(config['torch']['device']),
-                             t=torch.tensor(ts).to(config['torch']['device']),
+                             t=ts,
                              node_id=[index_nodes[i] for i in range(n)])
 
     @property

@@ -19,16 +19,13 @@ from torch_geometric.utils import to_scipy_sparse_matrix
 from torch_geometric.data.data import BaseData, size_repr
 from torch_geometric.data.storage import BaseStorage, NodeStorage
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from pathpyG import config
+from pathpyG.core.Graph import Graph
+from pathpyG.algorithms.temporal import extract_causal_trees
 
-
-class PathType(Enum):
-    WALK = 0
-    DAG = 1
-
-class PathStorage(BaseStorage):
+class DAGStorage(BaseStorage):
     def __init__(
             self,
     ):
@@ -48,8 +45,7 @@ class PathStorage(BaseStorage):
         DAG (0,1), (1,2), (1,3) tensor([0, 1, 1],
                                        [1, 2, 3])
         """
-        self['path_index'] = {}
-        self['path_types'] = {}
+        self['dag_index'] = {}
         self._num_paths = 0
 
     @property
@@ -66,25 +62,19 @@ class PathStorage(BaseStorage):
         return self.edge_index.size(dim=1)
 
     def add_edge(self, p: Tensor):
-        self.add_walk(p)
+        self.add_dag(p)
 
-    def add_walk(self, p: Tensor):
-        self['path_index'][self._num_paths] = p
-        self['path_types'][self._num_paths] = PathType.WALK
-        self._num_paths += 1
-
-    def add_dag(self, p: Tensor):
-        self['path_index'][self._num_paths] = p
-        self['path_types'][self._num_paths] = PathType.DAG
+    def add_dag(self,p: Tensor):
+        self['dag_index'][self._num_paths] = p
         self._num_paths += 1
 
 
     def edge_index_k(self, k) -> Tensor:
         """ Computes edge index of k-th order graph model of all paths """
         if k == 1:
-            return cat(list(self['path_index'].values()), dim=1)
+            return cat(list(self['dag_index'].values()), dim=1)
         else:
-            return cat(list(PathStorage.edge_index_kth_order(x, k) for x in self['path_index'].values()), dim=1)
+            return cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
 
 
     def edge_index_k_weighted(self, k=1, path_freq=None) -> Tuple[Tensor, Tensor]:
@@ -94,12 +84,12 @@ class PathStorage(BaseStorage):
         if k == 1:
             i = cat(list(self['path_index'].values()), dim=1)
             if path_freq:
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
+                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['dag_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
         else:
-            i = cat(list(PathStorage.edge_index_kth_order(x, k) for x in self['path_index'].values()), dim=1)
+            i = cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
             if path_freq:
                 # each path with length l leads to l-k+1 subpaths of length k
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['path_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
+                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['dag_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
 
         if path_freq: # sum up frequencies of edges for all (possibly multiple) occurrences in paths
 
@@ -128,66 +118,46 @@ class PathStorage(BaseStorage):
         return self.edge_index_k_weighted(k=1)
 
     @staticmethod
-    def to_node_seq(walk):
-        """ Turns an edge index for a walk into a node sequence """
-        return cat([walk[:,0], walk[1,1:]])
+    def from_dag(dag: Graph) -> DAGStorage:
+        ds = DAGStorage()
+        dags = extract_causal_trees(dag)
+        for d in dags:
+            src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]]
+            dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]]
+            ds.add_dag(IntTensor([src, dst]))
+        return ds
 
     @staticmethod
-    def edge_index_kth_order(edge_index, k=1):
-        """ Compute edge index of k-th order graph for a specific walk given by edge_index
+    def lift_order(edge_index):
+        """ Compute edge index of k-th order graph for a specific dag given by edge_index
 
             The resulting k-th order edge_index naturally generalized first-order edge indices, i.e.
-            for a walk (0,1,2,3,4,5) represented as
-            [ [0,1,2,3,4],
-              [1,2,3,4,5] ]
+            for a  DAG (0,1), (1,2), (1,3) represented as
+                    tensor([0, 1, 1],
+                           [1, 2, 3])
 
             we get the following edge_index for a second-order graph:
 
-            [ [[0,1], [1,2], [2,3], [3,4]],
-              [[1,2], [2,3], [3,4], [4,5]] ]
-
-            while for k=3 we get
-
-            [ [[0,1,2], [1,2,3], [2,3,4]],
-              [[1,2,3], [2,3,4], [3,4,5]]
+            [ [[0,1], [0,1]],
+              [[1,2], [1,3]] ]
         """
-        if k<=edge_index.size(dim=1):
-            return edge_index.unfold(1,k,1)
-        else:
-            return IntTensor([]).to(config['torch']['device'])
+        # TODO compute second-order edge index
+
+        src =[]
+        dst= []
+
+
+
+        return IntTensor([src, dst])
+
 
     def to_scipy_sparse_matrix(self):
         """ Returns a sparse adjacency matrix of the underlying graph """
         return to_scipy_sparse_matrix(self.edge_index)
 
-    @staticmethod
-    def from_edge_index(edge_index: Tensor):
-        p = PathStorage()
-        for i in range(edge_index.size(dim=1)):
-            p.add_edge(edge_index[:,i])
-        return p
-
-    @staticmethod
-    def from_csv(file) -> PathStorage:
-        p = PathStorage()
-        name_map = defaultdict(lambda: len(name_map))
-        freq = []
-        with open(file, "r", encoding="utf-8") as f:
-            for line in f:
-                path = []
-                fields = line.split(',')
-                for v in fields[:-1]:
-                    path.append(name_map[v])
-                w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
-                p.add_walk(w)
-                freq.append(float(fields[-1]))
-        reverse_map = {k:i for i,k in name_map.items()}
-        p['node_name'] = [reverse_map[i] for i in range(len(name_map))]
-        p['path_freq'] = Tensor(freq).to(config['torch']['device'])
-        return p
 
     def __str__(self):
-        s = 'PathStorage with {0} paths'.format(self.num_paths)
+        s = 'DAGStorage with {0} DAGs'.format(self.num_paths)
         return s
 
 
@@ -195,10 +165,10 @@ class AttrType(Enum):
     NODE = 'NODE'
     EDGE = 'EDGE'
     OTHER = 'OTHER'
-    PATH = 'PATH'
+    DAG = 'DAG'
 
 
-class PathData(PathStorage, NodeStorage):
+class DAGData(DAGStorage, NodeStorage):
 
     def size(
         self, dim: Optional[int] = None
@@ -216,7 +186,7 @@ class PathData(PathStorage, NodeStorage):
             return False
         if key in self._cached_attr[AttrType.OTHER]:
             return False
-        if key in self._cached_attr[AttrType.PATH]:
+        if key in self._cached_attr[AttrType.DAG]:
             return False
 
         value = self[key]
@@ -236,8 +206,8 @@ class PathData(PathStorage, NodeStorage):
         if 'node' in key:
             self._cached_attr[AttrType.NODE].add(key)
             return False
-        if 'path' in key:
-            self._cached_attr[AttrType.PATH].add(key)
+        if 'dag' in key:
+            self._cached_attr[AttrType.DAG].add(key)
             return False
         if 'edge' in key:
             self._cached_attr[AttrType.EDGE].add(key)
@@ -255,7 +225,7 @@ class PathData(PathStorage, NodeStorage):
             return False
         if key in self._cached_attr[AttrType.OTHER]:
             return False
-        if key in self._cached_attr[AttrType.PATH]:
+        if key in self._cached_attr[AttrType.DAG]:
             return True
 
         value = self[key]
@@ -273,7 +243,7 @@ class PathData(PathStorage, NodeStorage):
             return False
 
         if value.ndim == 0:
-            self._cached_attr[AttrType.PATH].add(key)
+            self._cached_attr[AttrType.DAG].add(key)
             return True
 
         if 'node' in key:
@@ -282,8 +252,8 @@ class PathData(PathStorage, NodeStorage):
         if 'edge' in key:
             self._cached_attr[AttrType.EDGE].add(key)
             return False
-        if 'path' in key:
-            self._cached_attr[AttrType.PATH].add(key)
+        if 'dag' in key:
+            self._cached_attr[AttrType.DAG].add(key)
             return True
 
         return False
