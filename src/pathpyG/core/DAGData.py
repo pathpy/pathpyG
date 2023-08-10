@@ -13,6 +13,7 @@ from typing import (
 import numpy as np
 from enum import Enum
 
+import torch
 from torch import Tensor, IntTensor, cat, sum
 from torch_geometric.utils import to_scipy_sparse_matrix
 
@@ -76,79 +77,62 @@ class DAGStorage(BaseStorage):
         else:
             return cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
 
-
-    def edge_index_k_weighted(self, k=1, path_freq=None) -> Tuple[Tensor, Tensor]:
-        """ Computes edge index and edge weights of k-th order graph model of all paths """
-        freq = []
-
-        if k == 1:
-            i = cat(list(self['path_index'].values()), dim=1)
-            if path_freq:
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['dag_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
-        else:
-            i = cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
-            if path_freq:
-                # each path with length l leads to l-k+1 subpaths of length k
-                freq = cat(list(Tensor([self[path_freq][idx].item()]*(self['dag_index'][idx].size()[1]-k+1)).to(config['torch']['device']) for idx in range(self.num_paths)), dim=0)
-
-        if path_freq: # sum up frequencies of edges for all (possibly multiple) occurrences in paths
-
-            # make edge index unique and keep reverse index, that maps each element in i to the corresponding element in edge_index
-            edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
-
-            # for each edge in edge_index, the elements of x contain all indices in i that correspond to that edge
-            x = list((reverse_index == idx).nonzero() for idx in range(edge_index.size()[1]))
-
-            # for each edge, sum the weights of all
-            edge_weights = Tensor([sum(freq[x[idx]]) for idx in range(edge_index.size()[1])])
-        else:
-            edge_index, edge_counts = i.unique(dim=1, return_counts=True)
-            edge_weights = edge_counts
-
-        return edge_index, edge_weights
+    @staticmethod
+    def edge_index_kth_order(edge_index, k):
+        x = edge_index
+        for i in range(1, k):
+            x = DAGStorage.lift_order(x)
+        return x
 
     @property
     def edge_index(self) -> Tensor:
         """ Returns edge index of a first-order graph """
         return self.edge_index_k(k=1)
 
-    @property
-    def edge_index_weighted(self) -> Tuple[Tensor, Tensor]:
-        """ Returns edge index and edge weights of a first-order graph """
-        return self.edge_index_k_weighted(k=1)
 
     @staticmethod
     def from_dag(dag: Graph) -> DAGStorage:
         ds = DAGStorage()
         dags = extract_causal_trees(dag)
         for d in dags:
-            src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]]
-            dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]]
+            src = [ [dag['node_idx', dag.node_index_to_id[s.item()]]] for s in dags[d][0]]
+            dst = [ [dag['node_idx', dag.node_index_to_id[t.item()]]] for t in dags[d][1]]
             ds.add_dag(IntTensor([src, dst]))
         return ds
 
     @staticmethod
     def lift_order(edge_index):
-        """ Compute edge index of k-th order graph for a specific dag given by edge_index
+        """Fast conversion of edge index of k-th order model to k+1-th order model"""
 
-            The resulting k-th order edge_index naturally generalized first-order edge indices, i.e.
-            for a  DAG (0,1), (1,2), (1,3) represented as
-                    tensor([0, 1, 1],
-                           [1, 2, 3])
+        a = edge_index[0].unique(dim=0)
+        b = edge_index[1].unique(dim=0)
+        # intersection of a and b corresponds to all nodes which have at least one incoming and one outgoing edge
+        combined = torch.cat((a, b))
+        uniques, counts = combined.unique(dim=0, return_counts=True)
+        center_nodes = uniques[counts > 1]
 
-            we get the following edge_index for a second-order graph:
+        src = []
+        dst = []
 
-            [ [[0,1], [0,1]],
-              [[1,2], [1,3]] ]
-        """
-        # TODO compute second-order edge index
+        # create edges of order k+1
+        for v in center_nodes:
+            # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
+            srcs = edge_index[0][torch.all(edge_index[1]==v, axis=1).nonzero().flatten()]
+            # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
+            dsts = edge_index[1][torch.all(edge_index[0]==v, axis=1).nonzero().flatten()]
+            for s in srcs:
+                for d in dsts:
+                    # print(torch.gather(s, 0, torch.tensor([0])))
+                    # print(torch.gather(d, 0, torch.tensor([d.size()[0]-1])))
+                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0])), v)))
+                    dst.append(torch.cat((v, torch.gather(d, 0, torch.tensor([d.size()[0]-1])))))
+                    #dst.append(torch.cat((torch.tensor([v]),torch.tensor([d]))))
 
-        src =[]
-        dst= []
+        if len(src)>0:
+            return torch.stack((torch.stack(src), torch.stack(dst)))
+        else:
+            return torch.tensor([])
 
-
-
-        return IntTensor([src, dst])
 
 
     def to_scipy_sparse_matrix(self):

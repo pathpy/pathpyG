@@ -48,6 +48,7 @@ class PathStorage(BaseStorage):
         DAG (0,1), (1,2), (1,3) tensor([0, 1, 1],
                                        [1, 2, 3])
         """
+        # TODO: Use torch nested
         self['path_index'] = {}
         self['path_types'] = {}
         self._num_paths = 0
