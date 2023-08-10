@@ -48,11 +48,11 @@ class DBGNN(Module):
         self.first_order_layers = ModuleList()
         self.first_order_layers.append(GCNConv(self.num_features[1], self.hidden_dims[0]))
 
-        for dim in self.hidden_dims[1:-1]:
+        for dim in range(self.hidden_dims[1:-1]):
             # higher-order layers
-            self.higher_order_layers.append(GCNConv(self.hidden_dims[dim - 1], self.hidden_dims[dim]))
+            self.higher_order_layers.append(GCNConv(self.hidden_dims[dim-1], self.hidden_dims[dim]))
             # first-order layers
-            self.first_order_layers.append(GCNConv(self.hidden_dims[dim - 1], self.hidden_dims[dim]))
+            self.first_order_layers.append(GCNConv(self.hidden_dims[dim-1], self.hidden_dims[dim]))
 
         self.bipartite_layer = BipartiteGraphOperator(self.hidden_dims[-2], self.hidden_dims[-1])
 
