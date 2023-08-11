@@ -70,12 +70,16 @@ class DAGStorage(BaseStorage):
         self._num_paths += 1
 
 
-    def edge_index_k(self, k) -> Tensor:
+    def edge_index_k_weighted(self, k, path_freq=None) -> Tuple[Tensor, Tensor]:
         """ Computes edge index of k-th order graph model of all paths """
         if k == 1:
-            return cat(list(self['dag_index'].values()), dim=1)
+            i = cat(list(self['dag_index'].values()), dim=1)
         else:
-            return cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
+            i = cat(list(DAGStorage.edge_index_kth_order(x, k) for x in self['dag_index'].values()), dim=1)
+
+        edge_index, edge_weights = i.unique(dim=1, return_counts=True)
+
+        return edge_index.int(), edge_weights
 
     @staticmethod
     def edge_index_kth_order(edge_index, k):

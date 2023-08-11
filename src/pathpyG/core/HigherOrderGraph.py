@@ -14,7 +14,7 @@ from pathpyG.utils.config import config
 class HigherOrderGraph(Graph):
     """ HigherOrderGraph based on torch_geometric.Data"""
 
-    def __init__(self, paths: PathStorage, order=1, node_id=[], path_freq=None, **kwargs):
+    def __init__(self, paths: Union[PathData, DAGData], order=1, node_id=[], path_freq=None, **kwargs):
         """
         Generates a Graph instance based on PathStorage
 
