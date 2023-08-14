@@ -7,14 +7,14 @@ import torch_geometric.utils
 from torch_geometric.data import Data
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.PathData import PathStorage
+from pathpyG.core.Paths import PathData
 
 from pathpyG.utils.config import config
 
 class HigherOrderGraph(Graph):
     """ HigherOrderGraph based on torch_geometric.Data"""
 
-    def __init__(self, paths: Union[PathData, DAGData], order=1, node_id=[], path_freq=None, **kwargs):
+    def __init__(self, paths: PathData, order=1, node_id=[], **kwargs):
         """
         Generates a Graph instance based on PathStorage
 
@@ -27,7 +27,7 @@ class HigherOrderGraph(Graph):
         # generate edge_index with higher-order nodes represented as tensors
         self.order = order
 
-        index, edge_weights = paths.edge_index_k_weighted(k=order, path_freq=path_freq)
+        index, edge_weights = paths.edge_index_k_weighted(k=order)
 
         if self.order>1:
             # get tensor of unique higher-order nodes
