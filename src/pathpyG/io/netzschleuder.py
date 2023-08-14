@@ -291,7 +291,9 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     g = Graph(edge_index=torch.tensor([sources, targets], dtype=torch.long).to(config['torch']['device']), node_id=node_id)
     for a in node_attr:
         if not a.startswith('node_'):
-            g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float).to(config['torch']['device'])
+            print(node_attr[a])
+            # g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float).to(config['torch']['device'])
+            g.data['node_{0}'.format(a)] = node_attr[a]
     for a in edge_attr:
         if not a.startswith('edge_'):
             g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config['torch']['device'])
