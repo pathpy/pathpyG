@@ -6,7 +6,7 @@ import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
 from scipy.sparse import csr_array
-
+from torch_geometric.transforms.to_undirected import ToUndirected
 from pathpyG.utils.config import config
 
 class Graph:
@@ -47,6 +47,10 @@ class Graph:
         self.node_index_to_id = dict(enumerate(node_id))
         self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
         self.data['node_id'] = node_id
+
+    def to_undirected(self):
+        tf = ToUndirected()
+        self.data = tf(self.data)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
