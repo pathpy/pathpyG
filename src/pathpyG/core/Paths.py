@@ -196,7 +196,7 @@ class PathData:
         for d in dags:
             src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
             dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
-            ds.add_dag(IntTensor([src, dst]))
+            ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
         return ds
 
     def __str__(self):
