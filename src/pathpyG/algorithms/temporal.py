@@ -12,7 +12,7 @@ from scipy.sparse import csgraph
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.PathData import PathData
+# from pathpyG.core.PathData import PathData
 
 
 def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty) -> Graph:
@@ -112,7 +112,7 @@ def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
     d = dag.degrees(mode='in')
     for v in d:
         if d[v] == 0:
-            print('Processing root', v)
+            # print('Processing root', v)
 
             src = []
             dst = []
@@ -132,5 +132,6 @@ def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
                         else:
                             src.append(x)
                             dst.append(w)
+            # TODO: Remove redundant zero-degree neighbors of all nodes
             causal_trees[v] = torch.IntTensor([src, dst])
     return causal_trees

@@ -97,6 +97,7 @@ class HigherOrderGraph(Graph):
         attr_types = Graph.attr_types(self.data.to_dict())
 
         s = "HigherOrderGraph (k={0}) with {1} nodes and {2} edges\n".format(self.order, len(self._nodes), self.M)
+        s += "\tTotal edge weight = {0}".format(self['edge_weight'].sum())
         if len(self.data.node_attrs()) > 0:
             s += "\nNode attributes\n"
             for a in self.data.node_attrs():

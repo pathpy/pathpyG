@@ -101,7 +101,8 @@ class PathData:
                     l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
                 else:
                     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
-                    p = PathData.edge_index_kth_order_dag(self.paths[idx].reshape(self.paths[idx].size()+(1,)), k)
+                    x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
+                    p = PathData.edge_index_kth_order_dag(x, k)
                     if len(p)>0:
                         l_p.append(p)
                         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
@@ -165,7 +166,7 @@ class PathData:
 
         a = edge_index[0].unique(dim=0)
         b = edge_index[1].unique(dim=0)
-        # intersection of a and b corresponds to all nodes which have at least one incoming and one outgoing edge
+        # intersection of a and b corresponds to all center nodes, which have at least one incoming and one outgoing edge
         combined = torch.cat((a, b))
         uniques, counts = combined.unique(dim=0, return_counts=True)
         center_nodes = uniques[counts > 1]
@@ -176,9 +177,11 @@ class PathData:
         # create edges of order k+1
         for v in center_nodes:
             # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
-            srcs = edge_index[0][torch.all(edge_index[1]==v, axis=1).nonzero().flatten()] # type: ignore
+            src_index = torch.all(edge_index[1]==v, axis=1).nonzero().flatten() # type: ignore
+            srcs = edge_index[0][src_index]
             # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
-            dsts = edge_index[1][torch.all(edge_index[0]==v, axis=1).nonzero().flatten()] # type: ignore
+            dst_index = torch.all(edge_index[0]==v, axis=1).nonzero().flatten() # type: ignore
+            dsts = edge_index[1][dst_index]
             for s in srcs:
                 for d in dsts:
                     src.append(torch.cat((torch.gather(s, 0, torch.tensor([0])), v)))
@@ -196,11 +199,20 @@ class PathData:
         for d in dags:
             src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
             dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
+            #src = [ s for s in dags[d][0]]
+            #dst = [ t for t in dags[d][1]]
             ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
         return ds
 
     def __str__(self):
-        s = 'PathData with {0} paths'.format(self.num_paths)
+        num_walks = 0
+        num_dags = 0
+        for p in self.paths:
+            if self.path_types[p] == PathType.DAG:
+                num_dags += 1
+            else:
+                num_walks += 1
+        s = 'PathData with {0} walks and {1} dags'.format(num_walks, num_dags)
         return s
 
     @staticmethod

@@ -66,6 +66,16 @@ class TemporalGraph(Graph):
                              t=ts,
                              node_id=[index_nodes[i] for i in range(n)])
 
+    @staticmethod
+    def from_csv(file) -> TemporalGraph:
+        tedges = []
+        with open(file, "r", encoding="utf-8") as f:
+            for line in f:
+                path = []
+                fields = line.strip().split(',')
+                tedges.append((fields[0], fields[1], int(fields[2])))
+        return TemporalGraph.from_edge_list(tedges)
+
     @property
     def temporal_edges(self):
         if len(self.node_index_to_id) > 0:
