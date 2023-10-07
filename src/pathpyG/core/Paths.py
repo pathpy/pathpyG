@@ -16,7 +16,7 @@ from enum import Enum
 import torch
 from torch import Tensor, IntTensor, cat, sum
 from torch.nested import nested_tensor
-from torch_geometric.utils import to_scipy_sparse_matrix
+from torch_geometric.utils import to_scipy_sparse_matrix, degree
 
 from torch_geometric.data.data import BaseData, size_repr
 from torch_geometric.data.storage import BaseStorage, NodeStorage
@@ -38,6 +38,7 @@ class PathData:
         self.path_types = dict()
         self.path_freq = dict()
         self.node_id = []
+        self.mapping ={}
 
     @property
     def num_paths(self) -> int:
@@ -97,12 +98,14 @@ class PathData:
             for idx in self.paths:
                 if self.path_types[idx] == PathType.WALK:
                     p = PathData.edge_index_kth_order_walk(self.paths[idx], k)
+                    p = PathData.map_nodes(p, self.mapping)
                     l_p.append(p)
                     l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
                 else:
                     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
                     x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
                     p = PathData.edge_index_kth_order_dag(x, k)
+                    p = PathData.map_nodes(p, self.mapping)
                     if len(p)>0:
                         l_p.append(p)
                         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
@@ -115,7 +118,7 @@ class PathData:
         x = list((reverse_index == idx).nonzero() for idx in range(edge_index.size()[1]))
 
         # for each edge, sum the weights of all occurences
-        edge_weights = Tensor([sum(freq[x[idx]]) for idx in range(edge_index.size()[1])])
+        edge_weights = Tensor([sum(freq[x[idx]]) for idx in range(edge_index.size()[1])]).to(config['torch']['device'])
 
         return edge_index, edge_weights
 
@@ -161,6 +164,18 @@ class PathData:
         return x
 
     @staticmethod
+    def map_nodes(edge_index, mapping):
+
+        # From `https://stackoverflow.com/questions/13572448`.
+        palette, key = zip(*mapping.items())
+        key = torch.tensor(key).to(config['torch']['device'])
+        palette = torch.tensor(palette).to(config['torch']['device'])
+
+        index = torch.bucketize(edge_index.ravel(), palette)
+        remapped = key[index].reshape(edge_index.shape)
+        return remapped
+
+    @staticmethod
     def lift_order_dag(edge_index):
         """Fast conversion of edge index of k-th order model to k+1-th order model"""
 
@@ -184,24 +199,30 @@ class PathData:
             dsts = edge_index[1][dst_index]
             for s in srcs:
                 for d in dsts:
-                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0])), v)))
-                    dst.append(torch.cat((v, torch.gather(d, 0, torch.tensor([d.size()[0]-1])))))
+                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0]).to(config['torch']['device'])), v)))
+                    dst.append(torch.cat((v, torch.gather(d, 0, torch.tensor([d.size()[0]-1]).to(config['torch']['device'])))))
 
         if len(src)>0:
             return torch.stack((torch.stack(src), torch.stack(dst)))
         else:
-            return torch.tensor([])
+            return torch.tensor([]).to(config['torch']['device'])
 
     @staticmethod
     def from_temporal_dag(dag: Graph) -> PathData:
         ds = PathData()
         dags = extract_causal_trees(dag)
         for d in dags:
-            src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
-            dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
-            #src = [ s for s in dags[d][0]]
-            #dst = [ t for t in dags[d][1]]
-            ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
+            #src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
+            #dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
+            src = [ s for s in dags[d][0]]
+            dst = [ t for t in dags[d][1]]
+            # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
+            edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
+            if degree(edge_index[1]).max()==1 and degree(edge_index[0]).max()==1:
+                ds.add_walk(edge_index)
+            else:
+                ds.add_dag(edge_index)
+        ds.mapping = { i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id }
         return ds
 
     def __str__(self):

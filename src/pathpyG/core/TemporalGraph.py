@@ -5,6 +5,7 @@ import torch
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import TemporalData
+from torch import IntTensor
 
 from pathpyG.core.Graph import Graph
 from pathpyG.utils.config import config
@@ -12,6 +13,8 @@ from pathpyG.utils.config import config
 class TemporalGraph(Graph):
 
     def __init__(self, edge_index, t, node_id=[], **kwargs):
+        """Creates an instance of a temporal graph with given edge index and timestamps of edges
+        """
 
         assert len(node_id) == len(set(node_id)), 'node_id entries must be unique'
 
@@ -117,7 +120,7 @@ class TemporalGraph(Graph):
         """
         Returns a string representation of the graph
         """
-        s = "Temporal Graph with {0} nodes and {1} time-stamped events in [{2}, {3}]\n".format(self.data.num_nodes, self.data.num_events, self.start_time, self.end_time)
+        s = "Temporal Graph with {0} nodes {1} edges and {2} time-stamped events in [{2}, {3}]\n".format(self.data.num_nodes, self.data['edge_index'].unique(dim=1).size(dim=1), self.data.num_events, self.start_time, self.end_time)
 
         attr_types = Graph.attr_types(self.data.to_dict())
 

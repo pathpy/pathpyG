@@ -49,6 +49,10 @@ class Graph:
         self.data['node_id'] = node_id
 
     def to_undirected(self):
+        """Transforms a graph into an undirected graph, by adding all directed edges in opposite direction.
+            Applies a ToUndirected transform to the underlying torch_geometric.Data object, which will
+            automatically duplicate edge attributes for newly created directed edges.
+        """
         tf = ToUndirected()
         self.data = tf(self.data)
 

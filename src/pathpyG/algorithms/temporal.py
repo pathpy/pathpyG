@@ -12,6 +12,7 @@ from scipy.sparse import csgraph
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG import config
 # from pathpyG.core.PathData import PathData
 
 
@@ -22,6 +23,11 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty) -> Graph:
     edge_list = []
     node_names = {}
     edge_times = []
+
+    sources = defaultdict(set)
+
+    for v, w, t in g.temporal_edges:
+        sources[t].add(v)
 
     for v, w, t in g.temporal_edges:
 
@@ -36,8 +42,18 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty) -> Graph:
         # create one time-unfolded link for all delta in [1, delta]
         # this implies that for delta = 2 and an edge (a,b,1) two
         # time-unfolded links (a_1, b_2) and (a_1, b_3) will be created
+        cont = False
         for x in range(1, int(current_delta)+1):
-            event_dst = "{0}-{1}".format(w, t+x)
+
+            # only add edge to event DAG if an edge (w,*) continues a time-repsecing path at time t+x
+            if w in sources[t+x]:
+                event_dst = "{0}-{1}".format(w, t+x)
+                node_names[event_dst] = w
+                edge_list.append([event_src, event_dst])
+                edge_times.append(t)
+                cont = True
+        if not cont: # if there is no continuing time-respecting path, include edge to t+1
+            event_dst = "{0}-{1}".format(w, t+1)
             node_names[event_dst] = w
             edge_list.append([event_src, event_dst])
             edge_times.append(t)
@@ -133,5 +149,5 @@ def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
                             src.append(x)
                             dst.append(w)
             # TODO: Remove redundant zero-degree neighbors of all nodes
-            causal_trees[v] = torch.IntTensor([src, dst])
+            causal_trees[v] = torch.IntTensor([src, dst]).to(config['torch']['device'])
     return causal_trees
