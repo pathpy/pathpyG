@@ -16,7 +16,7 @@ from pathpyG import config
 # from pathpyG.core.PathData import PathData
 
 
-def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty) -> Graph:
+def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty, sparsify=True) -> Graph:
     """For a given temporal network, create a directed acyclic event graph where nodes are
         node-time events and edges between events capture time-respecting paths.
     """
@@ -43,16 +43,16 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty) -> Graph:
         # this implies that for delta = 2 and an edge (a,b,1) two
         # time-unfolded links (a_1, b_2) and (a_1, b_3) will be created
         cont = False
-        for x in range(1, int(current_delta)+1):
+        for x in range(1, int(current_delta)):
 
             # only add edge to event DAG if an edge (w,*) continues a time-repsecing path at time t+x
-            if w in sources[t+x]:
+            if w in sources[t+x] or not sparsify:
                 event_dst = "{0}-{1}".format(w, t+x)
                 node_names[event_dst] = w
                 edge_list.append([event_src, event_dst])
                 edge_times.append(t)
                 cont = True
-        if not cont: # if there is no continuing time-respecting path, include edge to t+1
+        if not cont and sparsify: # if there is no continuing time-respecting path, include edge to t+1
             event_dst = "{0}-{1}".format(w, t+1)
             node_names[event_dst] = w
             edge_list.append([event_src, event_dst])

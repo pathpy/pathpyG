@@ -208,7 +208,7 @@ class PathData:
             return torch.tensor([]).to(config['torch']['device'])
 
     @staticmethod
-    def from_temporal_dag(dag: Graph) -> PathData:
+    def from_temporal_dag(dag: Graph, detect_walks=True) -> PathData:
         ds = PathData()
         dags = extract_causal_trees(dag)
         for d in dags:
@@ -218,7 +218,7 @@ class PathData:
             dst = [ t for t in dags[d][1]]
             # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
             edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
-            if degree(edge_index[1]).max()==1 and degree(edge_index[0]).max()==1:
+            if detect_walks and degree(edge_index[1]).max()==1 and degree(edge_index[0]).max()==1:
                 ds.add_walk(edge_index)
             else:
                 ds.add_dag(edge_index)
