@@ -88,6 +88,7 @@ class PathData:
 
         if k == 1:
             i = cat(list(self.paths.values()), dim=1)
+            i = PathData.map_nodes(i, self.mapping)
             l_f = []
             for idx in self.paths:
                 l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
