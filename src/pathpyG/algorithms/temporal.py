@@ -43,7 +43,7 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta=np.infty, sparsify=True)
         # this implies that for delta = 2 and an edge (a,b,1) two
         # time-unfolded links (a_1, b_2) and (a_1, b_3) will be created
         cont = False
-        for x in range(1, int(current_delta)):
+        for x in range(1, int(current_delta)+1):
 
             # only add edge to event DAG if an edge (w,*) continues a time-repsecing path at time t+x
             if w in sources[t+x] or not sparsify:

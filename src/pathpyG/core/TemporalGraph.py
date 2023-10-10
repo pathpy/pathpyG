@@ -35,8 +35,8 @@ class TemporalGraph(Graph):
         # create mapping between edge index and edge tuples
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
 
-        self.start_time = t_sorted[0].item()
-        self.end_time = t_sorted[-1].item()
+        self.start_time = t_sorted.min()
+        self.end_time = t_sorted.max()
 
         # initialize adjacency matrix
         self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
@@ -120,7 +120,7 @@ class TemporalGraph(Graph):
         """
         Returns a string representation of the graph
         """
-        s = "Temporal Graph with {0} nodes {1} edges and {2} time-stamped events in [{2}, {3}]\n".format(self.data.num_nodes, self.data['edge_index'].unique(dim=1).size(dim=1), self.data.num_events, self.start_time, self.end_time)
+        s = "Temporal Graph with {0} nodes {1} edges and {2} time-stamped events in [{3}, {4}]\n".format(self.data.num_nodes, self.data['edge_index'].unique(dim=1).size(dim=1), self.data.num_events, self.start_time, self.end_time)
 
         attr_types = Graph.attr_types(self.data.to_dict())
 
