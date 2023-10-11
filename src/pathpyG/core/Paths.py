@@ -89,7 +89,8 @@ class PathData:
         if k == 1:
             # TODO: Wrong edge statistics for non-sparse DAGs!
             i = cat(list(self.paths.values()), dim=1)
-            i = PathData.map_nodes(i, self.mapping)
+            if self.mapping:
+                i = PathData.map_nodes(i, self.mapping)
             l_f = []
             for idx in self.paths:
                 l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
@@ -100,14 +101,16 @@ class PathData:
             for idx in self.paths:
                 if self.path_types[idx] == PathType.WALK:
                     p = PathData.edge_index_kth_order_walk(self.paths[idx], k)
-                    p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
+                    if self.mapping:
+                        p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
                     l_p.append(p)
                     l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
                 else:
                     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
                     x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
                     p = PathData.edge_index_kth_order_dag(x, k)
-                    p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
+                    if self.mapping:
+                        p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
                     if len(p)>0:
                         l_p.append(p)
                         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
