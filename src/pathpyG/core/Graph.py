@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, AnySt
 import torch
 import torch_geometric
 import torch_geometric.utils
-from torch_geometric.data import Data
+from torch_geometric.data import Data, HeteroData
 from scipy.sparse import csr_array
 from torch_geometric.transforms.to_undirected import ToUndirected
 from pathpyG.utils.config import config
@@ -195,12 +195,12 @@ class Graph:
                 self.data[key] = val
             else:
                 print(key, 'is not a graph attribute')
-        elif self.key[0].starts_with('node_'):
+        elif self.key[0].starts_with('node_'): # type: ignore
             if len(self.node_id_to_index) > 0:
                 self.data[key[0]][self.node_id_to_index[key[1]]] = val
             else:
                 self.data[key[0]][key[1]] = val
-        elif self.key[0].starts_with('edge_'):
+        elif self.key[0].starts_with('edge_'): # type: ignore
             if len(self.node_id_to_index) > 0:
                 self.data[key[0]][self.edge_to_index[self.node_id_to_index[key[1]], self.node_id_to_index[key[2]]]] = val
             else:
@@ -230,7 +230,7 @@ class Graph:
             g = Graph(d.edge_index, node_id=[], **x)
         return g
 
-    def to_pyg_data(self) -> Data:
+    def to_pyg_data(self) -> Data | HeteroData:
         """
         Returns an instance of torch_geometric.data.Data containing the
         edge_index as well as node, edge, and graph attributes
@@ -247,7 +247,7 @@ class Graph:
         return self.data.has_self_loops()
 
     @staticmethod
-    def from_edge_list(edge_list):
+    def from_edge_list(edge_list) -> Graph:
         """
         Generates a Graph instance based on an edge list.
 
@@ -276,7 +276,7 @@ class Graph:
         return Graph(edge_index=torch.LongTensor([sources, targets]).to(config['torch']['device']),
                      node_id=[index_nodes[i] for i in range(n)])
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns a string representation of the graph
         """
