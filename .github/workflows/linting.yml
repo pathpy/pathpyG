@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - fix/github-cicd
   pull_request:
 
 jobs:
