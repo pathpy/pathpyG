@@ -1,60 +1,51 @@
-ci:
-  autoupdate_commit_msg: "chore: update pre-commit hooks"
-  autofix_commit_msg: "style: pre-commit fixes"
-
+# Runs the following hooks on all files locally if the python package `pre-commit` is installed and the command `pre-commit install` was run
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.5.0
     hooks:
-      - id: check-added-large-files
-      - id: check-case-conflict
-      - id: check-merge-conflict
-      - id: check-symlinks
-      - id: check-yaml
-      - id: debug-statements
-      - id: end-of-file-fixer
-      - id: mixed-line-ending
-      - id: requirements-txt-fixer
-      - id: trailing-whitespace
+      - id: check-case-conflict # Checks for files with names that would conflict on a case-insensitive filesystem
+      - id: check-merge-conflict # Check for files that contain merge conflict strings
+      - id: check-toml # Check all toml files are valid
+      - id: check-yaml # Check that all yaml files are valid
+      - id: debug-statements # Check for debugger imports and py37+ breakpoint
+      - id: end-of-file-fixer # Makes sure files end in a newline and only a newline
+      - id: mixed-line-ending # Replaces end of line characters with the most frequently used one
+        args: [--fix=auto]
+      - id: name-tests-test # Enforce test files are named test_*.py
+        args: [--pytest-test-first]
+      - id: trailing-whitespace # Removes trailing whitespaces
+        args: [--markdown-linebreak-ext=md]
 
-  - repo: https://github.com/PyCQA/isort
+  - repo: https://github.com/PyCQA/isort  # Sorts python imports
     rev: 5.12.0
     hooks:
       - id: isort
-        args: ["-a", "from __future__ import annotations"]
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.0
+  - repo: https://github.com/psf/black-pre-commit-mirror # Formats python code
+    rev: 23.9.1
+    hooks:
+      - id: black-jupyter # Includes python files and jupyter notebooks
+
+  - repo: https://github.com/asottile/pyupgrade # Upgrades syntax for newer versions of python
+    rev: v3.15.0
     hooks:
       - id: pyupgrade
-        args: [--py37-plus]
 
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v1.2.5
-    hooks:
-      - id: pycln
-        args: [--config=pyproject.toml]
-        stages: [manual]
-
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.1.0
+  - repo: https://github.com/codespell-project/codespell # Checks for common misspellings and warn about them
+    rev: v2.2.4
     hooks:
       - id: codespell
 
   - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.9.0
+    rev: v1.10.0
     hooks:
-      - id: python-check-blanket-noqa
-      - id: python-check-blanket-type-ignore
-      - id: python-no-log-warn
-      - id: python-no-eval
-      - id: python-use-type-annotations
-      - id: rst-backticks
-      - id: rst-directive-colons
-      - id: rst-inline-touching-normal
+      - id: python-check-blanket-noqa # Check that noqa (No Quality Assurance) always comes with specific error codes (E.g. in black)
+      - id: python-check-blanket-type-ignore # Check that "type: ignore" always comes with specific error codes (E.g. in mypy)
+      - id: python-use-type-annotations # Check that all functions have type annotations instead of type comments
 
-  - repo: https://github.com/mgedmin/check-manifest
-    rev: "0.47"
-    hooks:
-      - id: check-manifest
-        stages: [manual]
+# TODO: Add or remove:
+# Enables pre-commit hooks to be run on GitHub via the pre-commit.ci app. This is only free for open source projects.
+# See https://pre-commit.ci/ for more information. (It also keeps the repos up to date automatically)
+# ci:
+#   autoupdate_commit_msg: "chore: update pre-commit hooks"
+#   autofix_commit_msg: "style: pre-commit fixes"
