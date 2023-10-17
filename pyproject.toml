@@ -37,23 +37,23 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+    "pytest",      # Testing framework
+    "pytest-cov",  # Code coverage plugin for pytest
+    "pytest-mock", # Mocking plugin for pytest
+]
+
+dev = [
     "flake8",            # Linter
     "flake8-pyproject",  # Enables flake8 to read pyproject.toml
     "flake8-docstrings", # Docstring style checker
     "flake8-bugbear",    # Additional flake8 rules to find common bugs
     "pylint",            # Another linter with mostly different rules
-    "pytest",            # Testing framework
-    "pytest-cov",        # Code coverage plugin for pytest
-    "pytest-mock",       # Mocking plugin for pytest
-]
-
-dev = [
-    "black",      # Code formatter
-    "pre-commit", # Python package to enable GitHub pre-commit hooks
-    "pathpy2",    # Old pathpy version for comparisons
-    "jedi",       # TODO: This was in the dev container dockerfile, not sure if it's needed
-    "pyright",    # Static type checker
-    "jupyter",    # To run the tutorial notebooks
+    "black",             # Code formatter
+    "pre-commit",        # Python package to enable GitHub pre-commit hooks
+    "pathpy2",           # Old pathpy version for comparisons
+    "jedi",              # TODO: This was in the dev container dockerfile, not sure if it's needed
+    "pyright",           # Static type checker
+    "jupyter",           # To run the tutorial notebooks
 ]
 
 [project.urls]
