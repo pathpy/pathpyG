@@ -5,7 +5,7 @@ description: Set up Python, PyTorch and PyTorch Geometric.
 inputs: # defaults are set to the version used in the dev container
   python-version:
     required: false
-    default: "3.10.11"
+    default: "3.10"
     description: "The Python version to use."
   torch-version:
     required: false
@@ -13,11 +13,11 @@ inputs: # defaults are set to the version used in the dev container
     description: "The PyTorch version to use."
   cuda-version:
     required: false
-    default: cpu
+    default: cpu # For GPU support a self-hosted runner is required.
     description: "If CUDA should be used or not."
   full_install:
     required: false
-    default: "true"
+    default: true
     description: "If all side packages of PyTorch Geometric should be installed."
 
 runs:

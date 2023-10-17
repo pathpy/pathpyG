@@ -1,3 +1,4 @@
+# Inspired by https://github.com/pyg-team/pytorch_geometric/blob/master/.github/workflows/linting.yml
 name: Linting
 
 on:
@@ -85,4 +86,4 @@ jobs:
       - name: Check type hints
         continue-on-error: true
         run: |
-          mypy --install-types --non-interactive --ignore-missing-imports -m torch_geometric
+          mypy --install-types --non-interactive -m pathpyG

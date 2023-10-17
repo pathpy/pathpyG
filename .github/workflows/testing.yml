@@ -1,0 +1,42 @@
+# Inspired by https://github.com/pyg-team/pytorch_geometric/blob/master/.github/workflows/testing.yml
+name: Testing
+
+on:
+  push:
+    branches:
+      - master
+      - fix/github-cicd # For testing purposes TODO: Remove
+  pull_request:
+
+jobs:
+
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Only run workflow if certain files have been changed.
+      - name: Get changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v34
+        with:
+          files: |
+            src/**
+            tests/**
+            pyproject.toml
+
+      - name: Setup packages
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Install main package
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          pip install -e .[test]
+
+      - name: Run tests
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          pytest

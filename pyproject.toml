@@ -16,14 +16,13 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Environment :: GPU :: NVIDIA CUDA :: 11.7",
     "Environment :: GPU :: NVIDIA CUDA :: 11.8",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8" # PyTorch Geometric requires Python 3.8 or higher
 dynamic = ["version"]
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
@@ -72,6 +71,10 @@ max-line-length = 120
 include = ["src"]
 
 [tool.pylint] # TODO: Set up linting
+
+[tool.mypy] # Static type checker
+modules = ["pathpyG"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options] # TODO: 10. Create pytest setup
 pythonpath = ["src"]
