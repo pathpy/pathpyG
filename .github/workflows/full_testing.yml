@@ -2,6 +2,9 @@ name: Full Testing
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/github-cicd # Only for testing purposes TODO: Remove
 
 jobs:
 
