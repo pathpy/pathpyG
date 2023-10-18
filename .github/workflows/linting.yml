@@ -1,4 +1,4 @@
-# Inspired by https://github.com/pyg-team/pytorch_geometric/blob/master/.github/workflows/linting.yml
+# Inspired by https://github.com/pyg-team/pytorch_geometric/blob/ee30973ed0957a7f29f345d4eeaf9cfd70805109/.github/workflows/linting.yml
 name: Linting
 
 on:
