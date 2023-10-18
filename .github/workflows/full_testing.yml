@@ -1,4 +1,4 @@
-name: Full Testing
+name: Full Testing CPU
 
 on:
   workflow_dispatch:
@@ -8,8 +8,7 @@ on:
 
 jobs:
 
-  full_pytest:
-    if: github.repository == 'pyg-team/pytorch_geometric'
+  test_all_versions:
     runs-on: ${{ matrix.os }}
 
     strategy:
