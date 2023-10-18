@@ -1,7 +1,3 @@
-[build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
-
 [project]
 name = "pathpyG"
 authors = [
@@ -51,7 +47,6 @@ dev = [
     "black",             # Code formatter
     "pre-commit",        # Python package to enable GitHub pre-commit hooks
     "pathpy2",           # Old pathpy version for comparisons
-    "jedi",              # TODO: This was in the dev container dockerfile, not sure if it's needed
     "pyright",           # Static type checker
     "jupyter",           # To run the tutorial notebooks
 ]
@@ -61,20 +56,20 @@ Documentation = "https://github.com/pathpy/pathpyG/blob/main/README.md" # TODO: 
 Source = "https://github.com/pathpy/pathpyG"
 Tracker = "https://github.com/pathpy/pathpyG/issues"
 
+########################################################################################
+########################### Build system configuration #################################
+########################################################################################
+
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
 [tool.flit.module]
 name = "pathpyG"
 
-[tool.flake8] # TODO: Set up linting
-max-line-length = 120
-
-[tool.pyright] # TODO: Set up linting
-include = ["src"]
-
-[tool.pylint] # TODO: Set up linting
-
-[tool.mypy] # Static type checker
-modules = ["pathpyG"]
-ignore_missing_imports = true
+########################################################################################
+############################# Test configuration #######################################
+########################################################################################
 
 [tool.pytest.ini_options] # TODO: 10. Create pytest setup
 pythonpath = ["src"]
@@ -84,4 +79,46 @@ testpaths = "tests"
 branch = true
 
 [tool.coverage.report] # TODO: 10. Create pytest setup
-fail_under = 100
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "if self.debug",
+    "if settings.DEBUG",
+    "if TYPE_CHECKING",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+########################################################################################
+############################# Linting configuration ####################################
+########################################################################################
+
+[tool.flake8] # Linter and code style checker
+max-line-length = 88
+extend-ignore = "E203"                # whitespace before ':' conflicts with black
+per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py files
+
+[tool.pylint.format] # Linter
+max-line-length = 88
+
+[tool.pyright] # Static type checker
+include = ["src"]
+
+[tool.mypy] # Static type checker
+modules = ["pathpyG"]
+ignore_missing_imports = true
+
+########################################################################################
+############################# Formatting configuration #################################
+########################################################################################
+
+[tool.isort] # Sorts imports
+profile = "black"
+skip = [".gitignore", "__init__.py"]
+
+[tool.black] # Code formatter
+line-length = 88
+target-version = ["py38", "py39", "py310"]

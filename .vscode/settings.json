@@ -8,23 +8,35 @@
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
     },
-    "python.defaultInterpreterPath": "/usr/local/bin/python",
-    "python.formatting.provider": "black",
+    "python.defaultInterpreterPath": "/opt/conda/bin/python",
+    "python.formatting.provider": "none", // disable for now. Will be deprecated in the future
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "pylint.args": [
-        "--rcfile=pyproject.toml"
-    ],
+    "black-formatter.importStrategy": "fromEnvironment",
     "black-formatter.args": [
         "--config=pyproject.toml"
     ],
+    "pylint.importStrategy": "fromEnvironment",
+    "pylint.args": [
+        "--rcfile=pyproject.toml"
+    ],
+    "flake8.importStrategy": "fromEnvironment",
     "flake8.args": [
         "--toml-config=pyproject.toml"
     ],
+    "isort.importStrategy": "fromEnvironment",
     "isort.args": [
         "--settings-path=pyproject.toml"
+    ],
+    "mypy-type-checker.importStrategy": "fromEnvironment",
+    "mypy-type-checker.args": [
+        "--config-file=pyproject.toml"
     ],
     "python.testing.pytestArgs": [
         "tests"
