@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - master
-      - fix/github-cicd # For testing purposes TODO: Remove
   pull_request:
 
 jobs:
