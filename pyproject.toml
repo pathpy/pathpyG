@@ -1,12 +1,12 @@
 [build-system]
 requires = [
     "setuptools >= 65",
-    "wheel >= 0.38,
+    "wheel >= 0.38",
 ]
 build-backend = "setuptools.build_meta"
 
-# # requires = ["flit"]
-# # build-backend = "flit.buildapi"
+# requires = ["flit"]
+# build-backend = "flit.buildapi"
 
 [project]
 name =  "pathpyG"
