@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 17:38 juergen>
+# Time-stamp: <Tue 2023-10-24 17:49 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -149,6 +149,43 @@ class NetworkPlot(PathPyPlot):
         """Generate the plot."""
         print("Generate network plot.")
         self._compute_edge_data()
+        self._compute_node_data()
+
+    def _compute_node_data(self) -> None:
+        """Generate the data structure for the nodes."""
+        # initialize values
+        nodes: dict = {}
+        attributes: set = {"color", "size", "opacity"}
+        attr: defaultdict = defaultdict(dict)
+
+        # get attributes categories from pathpyg
+        categories = {
+            a.replace("node_", "") for a in self.network.node_attrs()
+        }.intersection(attributes)
+
+        for uid in self.network.nodes:
+            nodes[uid] = {"uid": uid}
+
+            # add edge attributes if needed
+            for attribute in attributes:
+                attr[attribute][uid] = (
+                    self.network[f"node_{attribute}", uid].item()
+                    if attribute in categories
+                    else None
+                )
+
+        # convert needed attributes to useful values
+        attr["color"] = self._convert_color(attr["color"], mode="node")
+        attr["opacity"] = self._convert_opacity(attr["opacity"], mode="node")
+        attr["size"] = self._convert_size(attr["size"], mode="node")
+
+        # update data dict with converted attributes
+        for attribute in attr:
+            for key, value in attr[attribute].items():
+                nodes[key][attribute] = value
+
+        # save node data
+        self.data["nodes"] = nodes
 
     def _compute_edge_data(self) -> None:
         """Generate the data structure for the edges."""
@@ -191,8 +228,6 @@ class NetworkPlot(PathPyPlot):
 
         # save edge data
         self.data["edges"] = edges
-
-        # print(edges)
 
     def _convert_weight(self, weight: dict, mode: str = "node") -> dict:
         """Convert weight to float."""
