@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 17:49 juergen>
+# Time-stamp: <Tue 2023-10-24 18:03 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -16,6 +16,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.xutils import rgb_to_hex, Colormap
+from pathpyG.visualisations.layout import layout as network_layout
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -150,6 +151,8 @@ class NetworkPlot(PathPyPlot):
         print("Generate network plot.")
         self._compute_edge_data()
         self._compute_node_data()
+        self._compute_layout()
+        self._cleanup_data()
 
     def _compute_node_data(self) -> None:
         """Generate the data structure for the nodes."""
@@ -317,6 +320,34 @@ class NetworkPlot(PathPyPlot):
 
         # return all colors wich are not None
         return {k: v for k, v in size.items() if v is not None}
+
+    def _compute_layout(self) -> None:
+        """Create layout."""
+        # get layout form the config
+        layout = self.config.get("layout", None)
+
+        # if no layout is considered stop this process
+        if layout is None:
+            return
+
+        # get layout dict for each node
+        if isinstance(layout, str):
+            layout = network_layout(self.network, layout=layout)
+        elif not isinstance(layout, dict):
+            logger.error("The provided layout is not valid!")
+            raise AttributeError
+
+        # update x,y position of the nodes
+        for uid, (_x, _y) in layout.items():
+            self.data["nodes"][uid]["x"] = _x
+            self.data["nodes"][uid]["y"] = _y
+
+        print(self.data["nodes"])
+
+    def _cleanup_data(self) -> None:
+        """Clean up final data structure."""
+        self.data["nodes"] = list(self.data["nodes"].values())
+        self.data["edges"] = list(self.data["edges"].values())
 
 
 # =============================================================================
