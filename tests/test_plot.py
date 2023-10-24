@@ -5,6 +5,7 @@ import pytest
 from types import ModuleType
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
+from pathpyG.visualisations.network_plots import network_plot
 
 
 def test_PathPyPlot() -> None:
@@ -22,5 +23,21 @@ def test_get_plot_backend() -> None:
     with pytest.raises(ImportError):
         _get_plot_backend(default="does not exist")
 
+    # load matplotlib backend
     plt = _get_plot_backend(backend="matplotlib")
     assert isinstance(plt, ModuleType)
+
+    # test .png file
+    png = _get_plot_backend(filename="test.png")
+    assert isinstance(png, ModuleType)
+
+    assert png == plt
+
+
+def test_network_plot() -> None:
+    """Test to plot a static network."""
+    # net = ["a", "b", "c"]
+    plot = network_plot()
+    print(plot)
+
+    plot.save("test.png")

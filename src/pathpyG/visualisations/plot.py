@@ -4,9 +4,9 @@
 # =============================================================================
 # File      : plot.py -- Module to plot pathpyG networks
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 11:55 juergen>
+# Time-stamp: <Tue 2023-10-24 15:50 juergen>
 #
-# Copyright (c) 2016-2019 Pathpy Developers
+# Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 import os
 import logging
