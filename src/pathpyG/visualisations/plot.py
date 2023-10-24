@@ -11,9 +11,9 @@ import os
 import logging
 import importlib
 
+from copy import deepcopy
 from typing import Optional, Any
 
-# from copy import deepcopy
 
 # create logger
 logger = logging.getLogger("root")
@@ -39,6 +39,7 @@ def _get_plot_backend(
     # use default backend per default
     _backend: str = default
 
+    # Get file ending and infere backend
     if isinstance(filename, str):
         _backend = FORMATS.get(os.path.splitext(filename)[1], default)
 
@@ -51,6 +52,7 @@ def _get_plot_backend(
     elif isinstance(backend, str) and backend in BACKENDS:
         _backend = backend
 
+    # try to load backend or return error
     try:
         module = importlib.import_module(f"pathpyG.visualisations._{_backend}")
     except ImportError:
@@ -87,20 +89,20 @@ class PathPyPlot:
         """Generate the plot."""
         raise NotImplementedError
 
-    # def save(self, filename: str, **kwargs: Any) -> None:
-    #     """Save the plot to the hard drive."""
-    #     _backend: str = kwargs.pop("backend", self.config.get("backend", None))
+    def save(self, filename: str, **kwargs: Any) -> None:
+        """Save the plot to the hard drive."""
+        _backend: str = kwargs.pop("backend", self.config.get("backend", None))
 
-    #     # plot_backend = _get_plot_backend(_backend, filename)
-    #     # plot_backend.plot(
-    #     #     deepcopy(self.data), self._kind, **deepcopy(self.config)
-    #     # ).save(filename, **kwargs)
+        plot_backend = _get_plot_backend(_backend, filename)
+        plot_backend.plot(
+            deepcopy(self.data), self._kind, **deepcopy(self.config)
+        ).save(filename, **kwargs)
 
-    # def show(self, **kwargs):
-    #     """Show the plot on the device."""
-    #     _backend: str = kwargs.pop("backend", self.config.get("backend", None))
+    def show(self, **kwargs: Any) -> None:
+        """Show the plot on the device."""
+        _backend: str = kwargs.pop("backend", self.config.get("backend", None))
 
-    # plot_backend = _get_plot_backend(_backend, None)
-    # plot_backend.plot(
-    #     deepcopy(self.data), self._kind, **deepcopy(self.config)
-    # ).show(**kwargs)
+        plot_backend = _get_plot_backend(_backend, None)
+        plot_backend.plot(
+            deepcopy(self.data), self._kind, **deepcopy(self.config)
+        ).show(**kwargs)
