@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 15:43 juergen>
+# Time-stamp: <Tue 2023-10-24 16:00 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -12,14 +12,19 @@ from __future__ import annotations
 
 import logging
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
+
+# pseudo load class for type checking
+if TYPE_CHECKING:
+    from pathpyG.core.Graph import Graph
+
 
 # create logger
 logger = logging.getLogger("root")
 
 
-def network_plot(**kwargs: Any) -> NetworkPlot:
+def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
     """Plot a static network.
 
     This function generates a static plot of the network, thereby different
@@ -35,9 +40,9 @@ def network_plot(**kwargs: Any) -> NetworkPlot:
 
     Parameters
     ----------
-    network : Network
+    network : Graph
 
-        A :py:class`Network` object
+        A :py:class`Graph` object
 
     kwargs : keyword arguments, optional (default = no attributes)
 
@@ -123,7 +128,7 @@ def network_plot(**kwargs: Any) -> NetworkPlot:
     .. [tn] https://github.com/hackl/tikz-network
 
     """
-    return NetworkPlot(**kwargs)
+    return NetworkPlot(network, **kwargs)
 
 
 class NetworkPlot(PathPyPlot):
@@ -131,14 +136,16 @@ class NetworkPlot(PathPyPlot):
 
     _kind = "network"
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, network: Graph, **kwargs: Any) -> None:
         """Initialize network plot class."""
         super().__init__()
-        # self.network = network
-        # self.config = kwargs
-        # self.generate()
+        self.network = network
+        self.config = kwargs
+        self.generate()
 
-        pass
+    def generate(self) -> None:
+        """Generate the plot."""
+        print("Generate network plot.")
 
 
 # =============================================================================

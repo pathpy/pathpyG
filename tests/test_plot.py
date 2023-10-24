@@ -3,6 +3,7 @@ import pytest
 # import torch
 
 from types import ModuleType
+from pathpyG.core.Graph import Graph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
 from pathpyG.visualisations.network_plots import network_plot
@@ -36,8 +37,7 @@ def test_get_plot_backend() -> None:
 
 def test_network_plot() -> None:
     """Test to plot a static network."""
-    # net = ["a", "b", "c"]
-    plot = network_plot()
-    print(plot)
+    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
 
+    plot = network_plot(net)
     plot.save("test.png")
