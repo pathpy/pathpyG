@@ -40,7 +40,7 @@ def test_network_plot() -> None:
     net.data["edge_weight"] = torch.tensor([[1], [1], [2]])
     net.data["edge_size"] = torch.tensor([[3], [4], [5]])
 
-    net.data["node_size"] = torch.tensor([[9], [8], [7]])
+    net.data["node_size"] = torch.tensor([[90], [8], [7]])
 
-    plot = network_plot(net, layout="fr")
+    plot = network_plot(net, edge_color="green", layout="fr")
     plot.save("test.png")

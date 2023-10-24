@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 18:03 juergen>
+# Time-stamp: <Tue 2023-10-24 18:06 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -341,8 +341,6 @@ class NetworkPlot(PathPyPlot):
         for uid, (_x, _y) in layout.items():
             self.data["nodes"][uid]["x"] = _x
             self.data["nodes"][uid]["y"] = _y
-
-        print(self.data["nodes"])
 
     def _cleanup_data(self) -> None:
         """Clean up final data structure."""

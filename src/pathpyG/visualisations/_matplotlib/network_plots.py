@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with matplotlib
 # Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Tue 2023-10-24 15:52 juergen>
+# Time-stamp: <Tue 2023-10-24 18:05 juergen>
 #
 # Copyright (c) 2016-2021 Pathpy Developers
 # =============================================================================
@@ -31,9 +31,8 @@ class NetworkPlot(MatplotlibPlot):
 
     def generate(self) -> None:
         """Clen up data."""
-        # self._compute_node_data()
-        # self._compute_edge_data()
-        pass
+        self._compute_node_data()
+        self._compute_edge_data()
 
     def _compute_node_data(self) -> None:
         """Generate the data structure for the nodes."""
