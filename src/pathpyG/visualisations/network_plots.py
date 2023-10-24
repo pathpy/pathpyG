@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 17:12 juergen>
+# Time-stamp: <Tue 2023-10-24 17:38 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -15,6 +15,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
+from pathpyG.visualisations.xutils import rgb_to_hex, Colormap
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -150,15 +151,18 @@ class NetworkPlot(PathPyPlot):
         self._compute_edge_data()
 
     def _compute_edge_data(self) -> None:
-        """Generate the data structure for the edges"""
+        """Generate the data structure for the edges."""
+        # initialize values
         edges: dict = {}
         attributes: set = {"weight", "color", "size", "opacity"}
         attr: defaultdict = defaultdict(dict)
 
-        attrs = {
+        # get attributes categories from pathpyg
+        categories = {
             a.replace("edge_", "") for a in self.network.edge_attrs()
         }.intersection(attributes)
 
+        # add edge data to data dict
         for u, v in self.network.edges:
             uid = f"{u}-{v}"
             edges[uid] = {
@@ -166,20 +170,29 @@ class NetworkPlot(PathPyPlot):
                 "source": str(u),
                 "target": str(v),
             }
+            # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
                     self.network[f"edge_{attribute}", u, v].item()
-                    if attribute in attrs
+                    if attribute in categories
                     else None
                 )
 
+        # convert needed attributes to useful values
         attr["weight"] = self._convert_weight(attr["weight"], mode="edge")
+        attr["color"] = self._convert_color(attr["color"], mode="edge")
+        attr["opacity"] = self._convert_opacity(attr["opacity"], mode="edge")
+        attr["size"] = self._convert_size(attr["size"], mode="edge")
 
+        # update data dict with converted attributes
         for attribute in attr:
             for key, value in attr[attribute].items():
                 edges[key][attribute] = value
 
+        # save edge data
         self.data["edges"] = edges
+
+        # print(edges)
 
     def _convert_weight(self, weight: dict, mode: str = "node") -> dict:
         """Convert weight to float."""
@@ -194,8 +207,81 @@ class NetworkPlot(PathPyPlot):
         elif isinstance(style, dict):
             weight.update(**{k: v for k, v in style.items() if k in weight})
 
+        # return all weights which are not None
+        return {k: v if v is not None else 1 for k, v in weight.items()}
+
+    def _convert_color(self, color: dict, mode: str = "node") -> dict:
+        """Convert colors to hex if rgb."""
+        # get style from the config
+        style = self.config.get(f"{mode}_color")
+
+        # check if new attribute is a single object
+        if isinstance(style, (str, int, float, tuple)):
+            color = {k: style for k in color}
+
+        # check if new attribute is a dict
+        elif isinstance(style, dict):
+            color.update(**{k: v for k, v in style.items() if k in color})
+
+        # check if new attribute is a list
+        elif isinstance(style, list):
+            for i, k in enumerate(color):
+                try:
+                    color[k] = style[i]
+                except IndexError:
+                    pass
+
+        # check if numerical values are given
+        values = [v for v in color.values() if isinstance(v, (int, float))]
+
+        if values:
+            # load colormap to map numerical values to color
+            cmap = self.config.get(f"{mode}_cmap", Colormap())
+            cdict = {
+                values[i]: tuple(c[:3]) for i, c in enumerate(cmap(values, bytes=True))
+            }
+
+        # convert colors to hex if not already string
+        for key, value in color.items():
+            if isinstance(value, tuple):
+                color[key] = rgb_to_hex(value)
+            elif isinstance(value, (int, float)):
+                color[key] = rgb_to_hex(cdict[value])
+
         # return all colors wich are not None
-        return {k: v for k, v in weight.items() if v is not None}
+        return {k: v for k, v in color.items() if v is not None}
+
+    def _convert_opacity(self, opacity: dict, mode: str = "node") -> dict:
+        """Convert opacity to float."""
+        # get style from the config
+        style = self.config.get(f"{mode}_opacity")
+
+        # check if new attribute is a single object
+        if isinstance(style, (int, float)):
+            opacity = {k: style for k in opacity}
+
+        # check if new attribute is a dict
+        elif isinstance(style, dict):
+            opacity.update(**{k: v for k, v in style.items() if k in opacity})
+
+        # return all colors wich are not None
+        return {k: v for k, v in opacity.items() if v is not None}
+
+    def _convert_size(self, size: dict, mode: str = "node") -> dict:
+        """Convert size to float."""
+        # get style from the config
+        style = self.config.get(f"{mode}_size")
+
+        # check if new attribute is a single object
+        if isinstance(style, (int, float)):
+            size = {k: style for k in size}
+
+        # check if new attribute is a dict
+        elif isinstance(style, dict):
+            size.update(**{k: v for k, v in style.items() if k in size})
+
+        # return all colors wich are not None
+        return {k: v for k, v in size.items() if v is not None}
 
 
 # =============================================================================
