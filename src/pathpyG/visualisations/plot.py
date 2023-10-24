@@ -19,10 +19,10 @@ from typing import Optional, Any
 logger = logging.getLogger("root")
 
 # supported backends
-_backends: set = {"d3js", "tikz", "matplotlib"}
+BACKENDS: set = {"d3js", "tikz", "matplotlib"}
 
 # supported file formats
-_formats: dict = {
+FORMATS: dict = {
     ".html": "d3js",
     ".tex": "tikz",
     ".pdf": "tikz",
@@ -40,15 +40,15 @@ def _get_plot_backend(
     _backend: str = default
 
     if isinstance(filename, str):
-        _backend = _formats.get(os.path.splitext(filename)[1], default)
+        _backend = FORMATS.get(os.path.splitext(filename)[1], default)
 
     # if no backend was found use the backend suggested for the file format
-    if backend is not None and backend not in _backends and filename is not None:
+    if backend is not None and backend not in BACKENDS and filename is not None:
         logger.error(f"The backend <{backend}> was not found.")
         raise KeyError
 
     # if no backend was given use the backend suggested for the file format
-    elif isinstance(backend, str) and backend in _backends:
+    elif isinstance(backend, str) and backend in BACKENDS:
         _backend = backend
 
     try:
