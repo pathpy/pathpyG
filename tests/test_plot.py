@@ -1,6 +1,8 @@
 import pytest
 
 # import torch
+
+from types import ModuleType
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
 
@@ -19,3 +21,6 @@ def test_get_plot_backend() -> None:
     # backend which does not exist
     with pytest.raises(ImportError):
         _get_plot_backend(default="does not exist")
+
+    plt = _get_plot_backend(backend="matplotlib")
+    assert isinstance(plt, ModuleType)
