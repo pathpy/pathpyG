@@ -1,6 +1,5 @@
+import torch
 import pytest
-
-# import torch
 
 from types import ModuleType
 from pathpyG.core.Graph import Graph
@@ -38,6 +37,8 @@ def test_get_plot_backend() -> None:
 def test_network_plot() -> None:
     """Test to plot a static network."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+    net.data["edge_weight"] = torch.tensor([[1], [1], [2]])
+    net.data["edge_size"] = torch.tensor([[3], [4], [5]])
 
     plot = network_plot(net)
     plot.save("test.png")

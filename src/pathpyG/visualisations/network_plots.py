@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 16:00 juergen>
+# Time-stamp: <Tue 2023-10-24 17:12 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
 
@@ -146,6 +147,55 @@ class NetworkPlot(PathPyPlot):
     def generate(self) -> None:
         """Generate the plot."""
         print("Generate network plot.")
+        self._compute_edge_data()
+
+    def _compute_edge_data(self) -> None:
+        """Generate the data structure for the edges"""
+        edges: dict = {}
+        attributes: set = {"weight", "color", "size", "opacity"}
+        attr: defaultdict = defaultdict(dict)
+
+        attrs = {
+            a.replace("edge_", "") for a in self.network.edge_attrs()
+        }.intersection(attributes)
+
+        for u, v in self.network.edges:
+            uid = f"{u}-{v}"
+            edges[uid] = {
+                "uid": uid,
+                "source": str(u),
+                "target": str(v),
+            }
+            for attribute in attributes:
+                attr[attribute][uid] = (
+                    self.network[f"edge_{attribute}", u, v].item()
+                    if attribute in attrs
+                    else None
+                )
+
+        attr["weight"] = self._convert_weight(attr["weight"], mode="edge")
+
+        for attribute in attr:
+            for key, value in attr[attribute].items():
+                edges[key][attribute] = value
+
+        self.data["edges"] = edges
+
+    def _convert_weight(self, weight: dict, mode: str = "node") -> dict:
+        """Convert weight to float."""
+        # get style from the config
+        style = self.config.get(f"{mode}_weight")
+
+        # check if new attribute is a single object
+        if isinstance(style, (int, float)):
+            weight = {k: style for k in weight}
+
+        # check if new attribute is a dict
+        elif isinstance(style, dict):
+            weight.update(**{k: v for k, v in style.items() if k in weight})
+
+        # return all colors wich are not None
+        return {k: v for k, v in weight.items() if v is not None}
 
 
 # =============================================================================
