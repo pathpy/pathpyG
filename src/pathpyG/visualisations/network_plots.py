@@ -1,10 +1,10 @@
-"""Network plots with d3js."""
+"""Network plot classes."""
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 18:06 juergen>
+# Time-stamp: <Tue 2023-10-24 18:17 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================

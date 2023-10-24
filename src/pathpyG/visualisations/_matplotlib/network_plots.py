@@ -1,12 +1,10 @@
-"""Network plots with matplotlib"""
-#!/usr/bin/python -tt
-# -*- coding: utf-8 -*-
+"""Network plots with matplotlib."""
 # =============================================================================
 # File      : network_plots.py -- Network plots with matplotlib
-# Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Tue 2023-10-24 18:05 juergen>
+# Author    : Jürgen Hackl <hackl@princeton.edu>
+# Time-stamp: <Tue 2023-10-24 18:17 juergen>
 #
-# Copyright (c) 2016-2021 Pathpy Developers
+# Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 from typing import Any
 

@@ -1,11 +1,10 @@
-#!/usr/bin/python -tt
-# -*- coding: utf-8 -*-
+"""Generic matplotlib plot class."""
 # =============================================================================
-# File      : core.py -- Plots with d3js
-# Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Tue 2023-10-24 18:10 juergen>
+# File      : core.py -- Plots with matplotlib backend
+# Author    : Jürgen Hackl <hackl@princeton.edu>
+# Time-stamp: <Tue 2023-10-24 18:17 juergen>
 #
-# Copyright (c) 2016-2021 Pathpy Developers
+# Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 from __future__ import annotations
 

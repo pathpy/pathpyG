@@ -1,10 +1,8 @@
 """Helper functions for plotting."""
-# !/usr/bin/python -tt
-# -*- coding: utf-8 -*-
 # =============================================================================
 # File      : utils.py -- Helpers for the plotting functions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 17:38 juergen>
+# Time-stamp: <Tue 2023-10-24 18:18 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
