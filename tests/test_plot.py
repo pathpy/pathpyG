@@ -6,6 +6,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
 from pathpyG.visualisations.network_plots import network_plot
+from pathpyG.visualisations import plot
 
 
 def test_PathPyPlot() -> None:
@@ -61,3 +62,10 @@ def test_network_plot_html() -> None:
 
     plot = network_plot(net)
     plot.save("test.html")
+
+
+def test_plot_function() -> None:
+    """Test generic plot function."""
+    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+    fig = plot(net)
+    fig.save("generic.html")

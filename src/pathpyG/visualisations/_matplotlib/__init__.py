@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : __init__.py -- matplotlib plotting cunctions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-10-25 08:13 juergen>
+# Time-stamp: <Wed 2023-10-25 09:43 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -18,7 +18,7 @@ PLOT_CLASSES: dict = {
 }
 
 
-def plot(data: dict, kind: str, **kwargs: Any) -> Any:
+def plot(data: dict, kind: str = "network", **kwargs: Any) -> Any:
     """Plot function."""
     return PLOT_CLASSES[kind](data, **kwargs)
 
