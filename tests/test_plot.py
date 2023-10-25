@@ -44,6 +44,16 @@ def test_get_plot_backend() -> None:
 
     assert d3js == html
 
+    # load tikz backend
+    tikz = _get_plot_backend(backend="tikz")
+    assert isinstance(tikz, ModuleType)
+
+    # test .tex file
+    tex = _get_plot_backend(filename="test.tex")
+    assert isinstance(tex, ModuleType)
+
+    assert tikz == tex
+
 
 def test_network_plot_png() -> None:
     """Test to plot a static network as png file."""
@@ -69,3 +79,12 @@ def test_plot_function() -> None:
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
     fig = plot(net)
     fig.save("generic.html")
+
+
+def test_network_plot_tex() -> None:
+    """Test to plot a static network as tex file."""
+    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+
+    plot = network_plot(net, layout="fr")
+    plot.save("test.pdf")
+    plot.save("test.tex")
