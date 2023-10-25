@@ -33,14 +33,31 @@ def test_get_plot_backend() -> None:
 
     assert png == plt
 
+    # load d3js backend
+    d3js = _get_plot_backend(backend="d3js")
+    assert isinstance(d3js, ModuleType)
 
-def test_network_plot() -> None:
-    """Test to plot a static network."""
+    # test .html file
+    html = _get_plot_backend(filename="test.html")
+    assert isinstance(html, ModuleType)
+
+    assert d3js == html
+
+
+def test_network_plot_png() -> None:
+    """Test to plot a static network as png file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
     net.data["edge_weight"] = torch.tensor([[1], [1], [2]])
     net.data["edge_size"] = torch.tensor([[3], [4], [5]])
-
     net.data["node_size"] = torch.tensor([[90], [8], [7]])
 
     plot = network_plot(net, edge_color="green", layout="fr")
     plot.save("test.png")
+
+
+def test_network_plot_html() -> None:
+    """Test to plot a static network as html file."""
+    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+
+    plot = network_plot(net)
+    plot.save("test.html")
