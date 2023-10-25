@@ -3,7 +3,7 @@ from __future__ import annotations
 from torch import IntTensor, tensor
 from torch import equal
 
-from pathpyG.core.Paths import PathData
+from pathpyG.core.PathData import PathData
 from pathpyG.algorithms.temporal import temporal_graph_to_event_dag, extract_causal_trees
 from pathpyG import config
 

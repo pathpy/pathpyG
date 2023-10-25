@@ -5,7 +5,7 @@ import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.Paths import PathData
+from pathpyG.core.PathData import PathData
 
 @pytest.fixture
 def simple_graph():
