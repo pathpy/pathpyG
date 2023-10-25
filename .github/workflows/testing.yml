@@ -22,6 +22,7 @@ jobs:
         uses: tj-actions/changed-files@v34
         with:
           files: |
+            .github/workflows/testing.yml
             src/**
             tests/**
             pyproject.toml
