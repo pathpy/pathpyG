@@ -1,4 +1,4 @@
-name: "Semantic PR Check"
+name: "Semantic PR Check" # ensures that pull request titles match the Conventional Commits spec for automated releases.
 
 on:
   pull_request_target:

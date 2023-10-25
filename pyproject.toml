@@ -9,10 +9,10 @@ requires = ["flit"]
 build-backend = "flit.buildapi"
 
 [project]
-name =  "pathpyG"
+name = "pathpyG"
 authors = [
-    {name = "Ingo Scholtes", email = "ingo.scholtes@uni-wuerzburg.de"},
-    {name = "Jürgen Hackl", email = "hackl@princeton.edu"},
+    { name = "Ingo Scholtes", email = "ingo.scholtes@uni-wuerzburg.de" },
+    { name = "Jürgen Hackl", email = "hackl@princeton.edu" },
 ]
 description = "An Open Source package providing higher-order analytics and learning for time series data on graphs."
 readme = "README.md"
@@ -22,109 +22,112 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Environment :: GPU :: NVIDIA CUDA :: 11.7",
-    "Environment :: GPU :: NVIDIA CUDA :: 11.8"
+    "Environment :: GPU :: NVIDIA CUDA :: 11.8",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8" # PyTorch Geometric requires Python 3.8 or higher
 dynamic = ["version"]
 dependencies = [
-    'torch',
-    'torch-geometric',
-    'numpy',
-    'scipy',
-    'scikit-learn',
-    'zstandard',
-    'pandas',
-    'singledispatchmethod'
+    'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
+    'zstandard',            # Compression library
+    'numpy',                # Numerical computing library
+    'scipy',                # Scientific computing library
+    'scikit-learn',         # Machine learning library
+    'pandas',               # Data analysis library
+    'matplotlib',           # Plotting library
+    'seaborn',              # High-level plotting library
 ]
 
 [project.optional-dependencies]
-spark = [
-    "pyspark>=3.0.0"
-]
 test = [
-    "bandit[toml]==1.7.4",
-    "black==23.1.0",
-    "check-manifest==0.48",
-    "flake8-bugbear==23.3.12",
-    "flake8-docstrings",
-    "flake8-formatter_junit_xml",
-    "flake8",
-    "flake8-pyproject",
-    "pre-commit==2.17.0",
-    "pylint==2.17.0",
-    "pylint_junit",
-    "pytest-cov>=3.0.0",
-    "pytest-mock<3.10.1",
-    "pytest-runner",
-    "pytest>=7.2.2",
-    "pytest-github-actions-annotate-failures",
-    "shellcheck-py==0.9.0.2"
+    "pytest",      # Testing framework
+    "pytest-cov",  # Code coverage plugin for pytest
+    "pytest-mock", # Mocking plugin for pytest
+]
+
+dev = [
+    "flake8",            # Linter
+    "flake8-pyproject",  # Enables flake8 to read pyproject.toml
+    "flake8-docstrings", # Docstring style checker
+    "flake8-bugbear",    # Additional flake8 rules to find common bugs
+    "pylint",            # Another linter with mostly different rules
+    "black",             # Code formatter
+    "pre-commit",        # Python package to enable GitHub pre-commit hooks
+    "pathpy2",           # Old pathpy version for comparisons
+    "pyright",           # Static type checker
+    "jupyter",           # To run the tutorial notebooks
 ]
 
 [project.urls]
-Documentation = "https://github.com/microsoft/python-package-template/tree/main#readme"
-Source = "https://github.com/microsoft/python-package-template"
-Tracker = "https://github.com/microsoft/python-package-template/issues"
+Documentation = "https://github.com/pathpy/pathpyG/blob/main/README.md" # TODO: Update to official documentation
+Source = "https://github.com/pathpy/pathpyG"
+Tracker = "https://github.com/pathpy/pathpyG/issues"
+
+########################################################################################
+########################### Build system configuration #################################
+########################################################################################
+
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
 
 [tool.flit.module]
 name = "pathpyG"
 
-[tool.bandit]
-exclude_dirs = ["build","dist","tests","scripts"]
-number = 4
-recursive = true
-targets = "src"
+########################################################################################
+############################# Test configuration #######################################
+########################################################################################
 
-[tool.coverage.run]
+[tool.pytest.ini_options] # TODO: 10. Create pytest setup
+pythonpath = ["src"]
+testpaths = "tests"
+
+[tool.coverage.run] # TODO: 10. Create pytest setup
 branch = true
 
-[tool.coverage.report]
-fail_under = 100
-
-[tool.flake8]
-max-line-length = 120
-select = "F,E,W,B,B901,B902,B903"
-exclude = [
-    ".eggs",
-    ".git",
-    ".tox",
-    "nssm",
-    "obj",
-    "out",
-    "packages",
-    "pywin32",
-    "tests",
-    "swagger_client"
-]
-ignore = [
-    "E722",
-    "B001",
-    "W503",
-    "E203"
+[tool.coverage.report] # TODO: 10. Create pytest setup
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "if self.debug",
+    "if settings.DEBUG",
+    "if TYPE_CHECKING",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
 ]
 
-[tool.pyright]
+########################################################################################
+############################# Linting configuration ####################################
+########################################################################################
+
+[tool.flake8] # Linter and code style checker
+max-line-length = 88
+extend-ignore = "E203"                # whitespace before ':' conflicts with black
+per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py files
+
+[tool.pylint.format] # Linter
+max-line-length = 88
+
+[tool.pyright] # Static type checker
 include = ["src"]
-exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-]
 
-reportMissingImports = true
-reportMissingTypeStubs = false
-venv = "env38"
+[tool.mypy] # Static type checker
+modules = ["pathpyG"]
+ignore_missing_imports = true
 
-pythonVersion = "3.8"
-pythonPlatform = "Linux"
+########################################################################################
+############################# Formatting configuration #################################
+########################################################################################
 
-executionEnvironments = [
-  { root = "src" }
-]
+[tool.isort] # Sorts imports
+profile = "black"
+skip = [".gitignore", "__init__.py"]
 
 [tool.pytest.ini_options]
 addopts = "--cov-report xml:coverage.xml --cov src --cov-fail-under 0 --cov-append -m 'not integration'"

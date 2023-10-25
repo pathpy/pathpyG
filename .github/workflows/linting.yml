@@ -1,0 +1,88 @@
+# Inspired by https://github.com/pyg-team/pytorch_geometric/blob/ee30973ed0957a7f29f345d4eeaf9cfd70805109/.github/workflows/linting.yml
+name: Linting
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  pylint: # linter: tool that checks for errors in Python code, tries to enforce a coding standard and looks for bad code smells
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4.3.0
+        with:
+          python-version: "3.10.11" # As in docker image (pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime) used as dev container
+
+      - name: Install dependencies
+        run: pip install pylint
+
+      - name: Run linting
+        continue-on-error: true
+        run: pylint **/*.py
+
+  flake8: # Another linter: Mostly checks if code is PEP8 conform but has some additional plugins.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4.3.0
+        with:
+          python-version: "3.10.11" # As in docker image (pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime) used as dev container
+
+      - name: Install dependencies
+        run: pip install flake8 flake8-pyproject flake8-docstrings flake8-bugbear
+
+      - name: Run linting
+        continue-on-error: true
+        run: flake8 **/*.py
+
+  pyright: # static type checker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup packages
+        uses: ./.github/actions/setup
+        with:
+          full_install: false
+
+      - name: Install pyright
+        run: |
+          pip install pyright
+
+      - name: Run pyright
+        continue-on-error: true
+        run: |
+          pyright
+
+  mypy: # stricter static type checker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4.3.0
+        with:
+          python-version: "3.10.11" # As in docker image (pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime) used as dev container
+
+      - name: Install dependencies
+        run: pip install mypy
+
+      - name: Check type hints
+        continue-on-error: true
+        run: |
+          mypy --install-types --non-interactive -m pathpyG

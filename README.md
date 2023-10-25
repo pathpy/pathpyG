@@ -1,5 +1,14 @@
+[testing-image]: https://github.com/pathpy/pathpyG/actions/workflows/testing.yml/badge.svg
+[testing-url]: https://github.com/pathpy/pathpyG/actions/workflows/testing.yml
+[linting-image]: https://github.com/pathpy/pathpyG/actions/workflows/linting.yml/badge.svg
+[linting-url]: https://github.com/pathpy/pathpyG/actions/workflows/linting.yml
+
+
 pathpyG
 =======
+
+[![Testing Status][testing-image]][testing-url]
+[![Linting Status][linting-image]][linting-url]
 
 An Open Source package providing higher-order analytics and learning for time series data on graphs.
 

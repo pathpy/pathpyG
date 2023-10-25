@@ -1,0 +1,57 @@
+name: Setup # Inspired by https://github.com/pyg-team/pytorch_geometric/blob/737707c37fc2bd712a2289b683ec14549926ff49/.github/actions/setup/action.yml
+
+description: Set up Python, PyTorch and PyTorch Geometric.
+
+inputs: # defaults are set to the version used in the dev container
+  python-version:
+    required: false
+    default: "3.10"
+    description: "The Python version to use."
+  torch-version:
+    required: false
+    default: "2.0.1"
+    description: "The PyTorch version to use."
+  cuda-version:
+    required: false
+    default: cpu # For GPU support a self-hosted runner is required.
+    description: "If CUDA should be used or not."
+  full_install:
+    required: false
+    default: true
+    description: "If all side packages of PyTorch Geometric should be installed."
+
+runs:
+  using: composite
+
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v4.3.0
+      with:
+        python-version: ${{ inputs.python-version }}
+        check-latest: true
+        cache: pip
+        cache-dependency-path: |
+          pyproject.toml
+
+    - name: Install PyTorch ${{ inputs.torch-version }}+${{ inputs.cuda-version }}
+      run: |
+        pip install torch==${{ inputs.torch-version }} --extra-index-url https://download.pytorch.org/whl/${{ inputs.cuda-version }}
+        python -c "import torch; print('PyTorch:', torch.__version__)"
+        python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+        python -c "import torch; print('CUDA:', torch.version.cuda)"
+      shell: bash
+
+    - name: Install pyg-lib # pyg-lib is currently only available on Linux.
+      if: ${{runner.os == 'Linux' }}
+      run: |
+        pip uninstall -y pyg-lib
+        pip install --no-index pyg-lib -f https://data.pyg.org/whl/torch-${{ inputs.torch-version }}+${{ inputs.cuda-version }}.html
+      shell: bash
+
+    - name: Install extension packages
+      if: ${{ inputs.full_install == 'true' }}
+      run: | # scipy installation before torch-scatter is required to solve dependency conflicts
+        pip install torch_geometric
+        pip install scipy
+        pip install --no-index --upgrade torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-${{ inputs.torch-version }}+${{ inputs.cuda-version }}.html
+      shell: bash
