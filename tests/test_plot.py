@@ -3,6 +3,7 @@ import pytest
 
 from types import ModuleType
 from pathpyG.core.Graph import Graph
+from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
 from pathpyG.visualisations.network_plots import network_plot
@@ -88,3 +89,16 @@ def test_network_plot_tex() -> None:
     plot = network_plot(net, layout="fr")
     plot.save("test.pdf")
     plot.save("test.tex")
+
+
+def test_temporal_plot() -> None:
+    """Test to plot a temporal network."""
+    net = TemporalGraph.from_edge_list(
+        [
+            ("a", "b", 1),
+            ("b", "c", 5),
+            ("c", "d", 9),
+            ("c", "e", 9),
+        ]
+    )
+    print(net)

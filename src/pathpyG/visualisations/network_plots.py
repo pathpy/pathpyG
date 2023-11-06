@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 18:17 juergen>
+# Time-stamp: <Mon 2023-11-06 15:41 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -21,6 +21,7 @@ from pathpyG.visualisations.layout import layout as network_layout
 # pseudo load class for type checking
 if TYPE_CHECKING:
     from pathpyG.core.Graph import Graph
+    from pathpyG.core.TemporalGraph import TemporalGraph
 
 
 # create logger
@@ -346,6 +347,11 @@ class NetworkPlot(PathPyPlot):
         """Clean up final data structure."""
         self.data["nodes"] = list(self.data["nodes"].values())
         self.data["edges"] = list(self.data["edges"].values())
+
+
+def temporal_plot(network: TemporalGraph, **kwargs: Any) -> NetworkPlot:
+    """Plot a temporal network."""
+    return NetworkPlot(network, **kwargs)
 
 
 # =============================================================================
