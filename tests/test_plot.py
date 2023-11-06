@@ -102,3 +102,6 @@ def test_temporal_plot() -> None:
         ]
     )
     print(net)
+
+    for u, v, t in net.temporal_edges:
+        print(u, v, t)
