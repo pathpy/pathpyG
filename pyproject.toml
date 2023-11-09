@@ -48,7 +48,21 @@ dev = [
     "pre-commit",        # Python package to enable GitHub pre-commit hooks
     "pathpy2",           # Old pathpy version for comparisons
     "pyright",           # Static type checker
+    "mypy",              # Static type checker
     "jupyter",           # To run the tutorial notebooks
+]
+
+doc = [
+    "mkdocs",                                    # Documentation generator
+    "mkdocs-material",                           # Theme for mkdocs
+    "mkdocstrings",                              # Plugin to generate documentation from docstrings
+    "mkdocstrings-python",                       # Python language handler for mkdocstrings
+    "mkdocs-gen-files",                          # Plugin to move python files to documentation automatically
+    "mkdocs-literate-nav",                       # Plugin to add navigation for API reference
+    "mkdocs-section-index",                      # For better navigation in API reference
+    "mkdocs-jupyter",                            # Plugin to include Jupyter notebooks in documentation
+    "mkdocs-git-revision-date-localized-plugin", # Plugin to add date of last update to documentation
+    # "mike"                                     # Tool for versioning the documentation
 ]
 
 [project.urls]

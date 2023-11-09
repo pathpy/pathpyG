@@ -1,0 +1,139 @@
+# Project information
+site_name: pathpyG
+site_url: https://pathpyG.github.io/
+site_author: pathpy developers
+site_description: >-
+  Documentation for pathpyG - An Open Source package providing higher-order analytics and learning for time series data on graphs.
+
+# Repository
+# TODO: Check the number of stars and forks once repo is public
+# Currently displays wrong numbes
+repo_name: pathpy/pathpyG
+repo_url: https://github.com/pathpy/pathpyG
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  # - Getting Started: getting_started.md
+  - Tutorial:
+    - tutorial.md
+    - Simple Graphs: tutorial/01_simple_graphs.ipynb
+    - Visualisation: tutorial/02_visualisation.ipynb
+    - Temporal Graphs: tutorial/03_temporal_graphs.ipynb
+    - Accessing Netzschleuder: tutorial/04_netzschleuder.ipynb
+    - Path Data: tutorial/05_path_data.ipynb
+    - Higher-Order Scalability: tutorial/06_higher_order_scalability.ipynb
+    - De Bruijn GNN: tutorial/07_dbgnn.ipynb
+  - Code Reference: reference/ # The rest is done automatically by literate-nav
+  - Contributing: contributing.md
+  - About: about.md
+
+# Copyright
+# TODO: Is this still up to date?
+# copyright: Copyright &copy 2016-2021 Pathpy Developers
+
+# Plugins
+plugins:
+  - search
+  - gen-files:
+      scripts:
+      - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - mkdocstrings
+  - mkdocs-jupyter:
+      ignore_h1_titles: True
+      ignore: ["tutorial/new_paths.ipynb", "tutorial/xx_test.ipynb"]
+      execute: False # TODO: Set to True once all notebooks are executable
+      allow_errors: False
+      include_source: True
+  - git-revision-date-localized
+  # - mike # TODO: Set up versioning
+
+# extra:
+  # TODO: Set up versioning
+  # version:
+  #   default: stable
+  #   provider: mike
+
+# Theme
+theme:
+  name: material
+  logo: img/pathpy_logo.png
+  favicon: img/favicon.ico
+  custom_dir: docs/overrides
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    # Render top level sections as headers in the navigation bar
+    - navigation.tabs
+    - navigation.tabs.sticky # Keeps the left and right navigation tabs visible when scrolling
+    # Speed up loading times
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    # Update the URL when scrolling through the page
+    - navigation.tracking
+    # Back to top button
+    - navigation.top
+
+    # Integrate table of contents in left navigation bar
+    - toc.integrate
+
+    # Search functionality
+    - search.suggest
+    - search.highlight
+
+    # Hide header after scrolling down
+    - header.autohide
+
+    # Add button to show Github edit link
+    - content.action.view
+
+    # Code copy button
+    - content.code.copy
+    - content.code.annotate
+
+
+  palette:
+
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+      primary: teal
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+      primary: teal
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+      primary: teal
+
+# Enable cool markdown features
+# See https://squidfunk.github.io/mkdocs-material/reference/
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html

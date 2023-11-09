@@ -39,5 +39,5 @@
 		"all"
 	],
 	// Install pathpyG as editable python package
-	"postCreateCommand": "pip install -e '.[dev,test]' && git config --global --add safe.directory /workspaces/pathpyG && pre-commit install"
+	"postCreateCommand": "pip install -e '.[dev,test,doc]' && git config --global --add safe.directory /workspaces/pathpyG && pre-commit install"
 }
