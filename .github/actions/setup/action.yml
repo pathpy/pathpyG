@@ -9,7 +9,7 @@ inputs: # defaults are set to the version used in the dev container
     description: "The Python version to use."
   torch-version:
     required: false
-    default: "2.0.1"
+    default: "2.1.0"
     description: "The PyTorch version to use."
   cuda-version:
     required: false
