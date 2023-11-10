@@ -13,21 +13,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4.3.0
+      # Only run workflow if certain files have been changed.
+      - name: Get changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v34
         with:
-          python-version: "3.10.13" # As in docker image (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime) used as dev container
+          files: |
+            .github/workflows/docs-dev.yml
+            src/**
+            docs/**
+            pyproject.toml
+
+      - name: Setup packages
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
           pip install -e .[doc]
 
       - name: Get current package version
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
         id: get_version
         run: |
           python -c "import pathpyG; print(pathpyG.__version__)"
 
       - name: Print package version
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
           echo ${{ steps.get_version.outputs.stdout }}
       # - name: Build docs
