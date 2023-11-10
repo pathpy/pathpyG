@@ -53,7 +53,9 @@ plugins:
 
 extra:
   version:
-    default: dev  # TODO: set to stable version once released
+    default:
+      - dev
+      - stable
     provider: mike
 
 # Theme

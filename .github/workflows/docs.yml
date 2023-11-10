@@ -1,1 +1,0 @@
-# export pathpyG_version=$(python -c "import pathpyG \n print(pathpyG.__version__)" $1)

@@ -1,0 +1,35 @@
+name: Deploy Dev Docs
+
+on:
+  push:
+    branches:
+      - main
+      - feat/documentation
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4.3.0
+        with:
+          python-version: "3.10.13" # As in docker image (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime) used as dev container
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[doc]
+
+      - name: Get current package version
+        id: get_version
+        run: |
+          python -c "import pathpyG; print(pathpyG.__version__)"
+
+      - name: Print package version
+        run: |
+          echo ${{ steps.get_version.outputs.stdout }}
+      # - name: Build docs
+      #   run: |
+      #     mike deploy --push --update-aliases ${{ steps.get_version.outputs.stdout }}
