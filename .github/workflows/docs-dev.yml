@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Only run workflow if certain files have been changed.
       - name: Get changed files
@@ -36,18 +38,17 @@ jobs:
       - name: Get variables
         if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
-          python -c "import pathpyG; print(pathpyG.__version__)" >> "$GITHUB_ENV"
+          python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
           echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
-      - name: Print package version
-        if: steps.changed-files-specific.outputs.any_changed == 'true'
-        run: |
-          echo ${{ env.sha_short }}
-          echo ${{ env.package_version }}
-
       - name: Publish docs
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        # First configure git correctly
+        # Then use the alias of the current dev version to delete it based on its identifier
+        # Then deploy the new version so that there is only one dev version at a time
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git fetch origin gh-pages --depth=1
+          mike delete --push $(mike list | grep dev | awk '{print $1}")
           mike deploy --push --update-aliases "${{ env.package_version }}-dev${{ env.sha_short}}" dev
