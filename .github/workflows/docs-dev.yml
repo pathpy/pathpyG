@@ -1,4 +1,4 @@
-name: Deploy Dev Docs
+name: Publish Dev Docs
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - feat/documentation
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -36,7 +36,7 @@ jobs:
       - name: Get variables
         if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
-          python -c "import pathpyG; print(pathpyG.__version__)"
+          python -c "import pathpyG; print(pathpyG.__version__)" >> "$GITHUB_ENV"
           echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Print package version

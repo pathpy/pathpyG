@@ -1,4 +1,4 @@
-name: Deploy Stable Docs
+name: Publish Stable Docs
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
