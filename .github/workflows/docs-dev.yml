@@ -44,6 +44,10 @@ jobs:
         run: |
           echo ${{ env.sha_short }}
           echo ${{ env.package_version }}
-      # - name: Build docs
-      #   run: |
-      #     mike deploy --push --update-aliases ${{ steps.get_version.outputs.stdout }}
+
+      - name: Publish docs
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git fetch origin gh-pages --depth=1
+          mike deploy --push --update-aliases "${{ env.package_version }}-dev${{ env.sha_short}}" dev

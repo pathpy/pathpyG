@@ -24,9 +24,10 @@ jobs:
         run: |
           python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
 
-      - name: Print package version
+      - name: Publish docs
         run: |
-          echo "${{ env.package_version }}"
-      # - name: Build docs
-      #   run: |
-      #     mike deploy --push --update-aliases ${{ steps.get_version.outputs.stdout }}
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git fetch origin gh-pages --depth=1
+          mike deploy --push --update-aliases "${{ env.package_version }}" stable
+          mike set-default stable
