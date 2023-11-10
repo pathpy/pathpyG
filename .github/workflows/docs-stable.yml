@@ -20,14 +20,13 @@ jobs:
         run: |
           pip install -e .[doc]
 
-      - name: Get current package version
-        id: get_version
+      - name: Get package version
         run: |
-          python -c "import pathpyG; print(pathpyG.__version__)"
+          python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
 
       - name: Print package version
         run: |
-          echo ${{ steps.get_version.outputs.stdout }}
+          echo "${{ env.package_version }}"
       # - name: Build docs
       #   run: |
       #     mike deploy --push --update-aliases ${{ steps.get_version.outputs.stdout }}

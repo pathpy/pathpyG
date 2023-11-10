@@ -33,16 +33,17 @@ jobs:
         run: |
           pip install -e .[doc]
 
-      - name: Get current package version
+      - name: Get variables
         if: steps.changed-files-specific.outputs.any_changed == 'true'
-        id: get_version
         run: |
           python -c "import pathpyG; print(pathpyG.__version__)"
+          echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Print package version
         if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
-          echo ${{ steps.get_version.outputs.stdout }}
+          echo ${{ env.sha_short }}
+          echo ${{ env.package_version }}
       # - name: Build docs
       #   run: |
       #     mike deploy --push --update-aliases ${{ steps.get_version.outputs.stdout }}
