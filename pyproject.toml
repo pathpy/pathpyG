@@ -62,7 +62,7 @@ doc = [
     "mkdocs-section-index",                      # For better navigation in API reference
     "mkdocs-jupyter",                            # Plugin to include Jupyter notebooks in documentation
     "mkdocs-git-revision-date-localized-plugin", # Plugin to add date of last update to documentation
-    # "mike"                                     # Tool for versioning the documentation
+    "mike"                                       # Tool for versioning the documentation
 ]
 
 [project.urls]

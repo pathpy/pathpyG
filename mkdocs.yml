@@ -49,13 +49,12 @@ plugins:
       allow_errors: False
       include_source: True
   - git-revision-date-localized
-  # - mike # TODO: Set up versioning
+  - mike # Versioning
 
-# extra:
-  # TODO: Set up versioning
-  # version:
-  #   default: stable
-  #   provider: mike
+extra:
+  version:
+    default: dev  # TODO: set to stable version once released
+    provider: mike
 
 # Theme
 theme:
@@ -90,6 +89,7 @@ theme:
 
     # Add button to show Github edit link
     - content.action.view
+    - content.action.edit
 
     # Code copy button
     - content.code.copy
