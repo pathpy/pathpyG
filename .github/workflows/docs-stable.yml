@@ -1,9 +1,6 @@
 name: Publish Stable Docs
 
 on:
-  push:
-    branches:
-      - feat/documentation
   workflow_dispatch:
 
 jobs:
