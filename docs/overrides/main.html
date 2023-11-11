@@ -1,16 +1,21 @@
 {% extends "base.html" %}
 
-{% block content %}
+<!-- Announcement bar -->
+{% block announce %}
+  Check it out! We now have a fully functioning documentation and can even make announcements like this one! 🎉
+{% endblock %}
+
 <!-- Includes a download button in the Jupyter tutorials -->
+{% block content %}
 {% if page.nb_url %}
     <a href="{{ page.nb_url }}" title="Download Notebook" class="md-content__button md-icon">
         {% include ".icons/material/download.svg" %}
     </a>
 {% endif %}
-
 {{ super() }}
 {% endblock content %}
 
+<!-- Adds a warning to the top of the page if the page is not the dev or the stable version -->
 {% block outdated %}
   You're not viewing the latest version.
   <a href="{{ '../' ~ base_url }}">

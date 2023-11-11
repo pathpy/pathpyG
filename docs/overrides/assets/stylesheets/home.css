@@ -1,0 +1,172 @@
+.parallax::after {
+    height: 100vh;
+    margin-top: -2.4rem;
+    width: 100vw;
+}
+
+.parallax__group {
+    height: 110vh;
+}
+
+.parallax__layer {
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    width: 100vw;
+}
+
+.parallax__image {
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    width: 100%;
+    z-index: 0;
+}
+
+.md-header_opaque,
+.md-tabs_opaque {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.parallax__group-dark {
+    background-color: var(--md-primary-fg-color--light);
+    z-index: -10;
+}
+
+.scrollwrap {
+    height: calc(100vh - 4.8rem);
+    margin-bottom: -100vh;
+    position: sticky;
+}
+
+@media (max-width: 1220px) {
+    .scrollwrap {
+        height: calc(100vh - 2.4rem);
+    }
+}
+
+.hero_box {
+    position: absolute;
+    bottom: 0rem;
+    width: 100%;
+}
+
+.down-arrow-icon {
+    position: absolute;
+    left: 50%;
+    height: 1.2rem;
+    width: 1.2rem;
+    bottom: 0rem;
+    text-align: center;
+    fill: var(--md-primary-bg-color);
+}
+
+.copyright-box {
+    position: absolute;
+    color: var(--md-primary-fg-color);
+    background-color: var(--md-primary-bg-color--light);
+    border-radius: .2rem;
+    bottom: .5rem;
+    font-size: .4rem;
+    padding: .1rem .2rem;
+    right: .5rem;
+}
+
+.hero_text {
+    color: var(--md-primary-bg-color) !important;
+    max-width: 28%;
+    margin-left: 10%;
+    margin-bottom: 10%;
+}
+
+.hero_button {
+    width: 8rem;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.hero_text h1 {
+    font-weight: 700;
+    margin-bottom: 0;
+    color: inherit;
+}
+
+.vanish {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.landing_second {
+    margin-bottom: 5rem;
+}
+
+.landing_second__list {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 2rem;
+}
+
+.landing_second__item {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    flex: 1 0 45%;
+}
+
+@media (max-width: 960px) {
+    .landing_second__item {
+        flex: 1 0 100%;
+    }
+
+    .parallax__group_second {
+        height: 250vh;
+    }
+}
+
+@media (max-width: 1220px) {
+    .parallax__group_second {
+        height: 150vh;
+    }
+}
+
+.landing_second__icon {
+    fill: currentcolor;
+    background-color: var(--md-default-fg-color--lightest);
+    border-radius: 100%;
+    flex-shrink: 0;
+    height: 2rem;
+    font-size: 1rem;
+    width: 2rem;
+    margin-right: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.landing_second__description h2 {
+    margin-top: 0;
+}
+
+@keyframes flyInLeft {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes flyInRight {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

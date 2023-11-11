@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="{{ 'assets/stylesheets/home.css' | url }}" />
+<script src="{{ 'assets/scripts/home.js' | url }}"></script>
+{% endblock %}
+
+{% block tabs %}
+<!-- landing page -->
+<div class="parallax">
+    <section class="parallax__group parallax__group-dark" id="firstSection">
+        <picture class="parallax__layer">
+            <img class="parallax__image" src="assets/images/network.jpg" alt="A network in space theme">
+        </picture>
+        {{ super() }}
+        <div class="scrollwrap">
+            <div class="hero_box">
+                <div class="hero_text md-typeset">
+                    <h1>pathpyG</h1>
+                    <p>
+                        {{ config.site_description }}
+                        <a href="https://pytorch-geometric.readthedocs.io/" target="_blank">
+                            <img src="assets/images/pyg_logo.svg" alt="PyG Logo" style="height: 0.8rem; width: 0.8rem;">
+                        </a>
+                    </p>
+                    <a href="{{ page.next_page.url | url }}" title="{{ page.next_page.title | e }}"
+                        class="md-button md-button--primary hero_button" style="margin-right: 1rem;">
+                        Get Started
+                    </a>
+                    <a href="{{ 'insiders/' | url }}" title="Material for MkDocs Insiders"
+                        class="md-button hero_button">
+                        More Info
+                    </a>
+                </div>
+                <a href="https://www.colourbox.de/vektor/vernetzung-abstrakt-hintergrunde-vektor-56927539"
+                    class="copyright-box" tabindex="-1"> <strong>&copy; #321341 / Colourbox.de</strong> </a>
+                <div class="down-arrow-icon">
+                    <span class="twemoji">
+                        {% include ".icons/material/arrow-down.svg" %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="parallax__group parallax__group-dark parallax__group_second">
+        <div class="md-content md-grid" data-md-component="content">
+            <div class="md-content__inner">
+                <header class="md-typeset">
+                    <h1 id="the-new-pathpy">
+                        The new pathpy
+                        <a href="#the-new-pathpy" class="headerlink" title="Permanent link"> ¶ </a>
+                    </h1>
+                </header>
+                <div class="landing_second">
+                    <ul class="landing_second__list">
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/octicons/check-circle-16.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>Easy to use</h2>
+                                <p> You can directly get started using pathpyG since it adapts the interfaces from
+                                    commonly used frameworks. The graphs are based on the <a
+                                        href="https://pytorch-geometric.readthedocs.io/" target="_blank">PyG</a> graph
+                                    representation and plotting works similar as in <a
+                                        href="https://pandas.pydata.org/pandas-docs/stable/" target="_blank">pandas</a>.
+                                </p>
+                            </div>
+                        </li>
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/simple/jupyter.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>Great with Jupyter Notebooks</h2>
+                                <p> This package is built with excellent support for Jupyter Notebooks. It offers
+                                    interactive HTML visualizations that enhance data analysis and exploration via <a
+                                        href="https://d3js.org/" target="_blank">D3.js</a>. </p>
+                            </div>
+                        </li>
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/octicons/stopwatch-24.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>GPU accelerated</h2>
+                                <p> Since it is based on <a href="https://pytorch.org/docs/stable/index.html"
+                                        target="_blank">Torch</a>, you can run many of the computations on the GPU. Even
+                                    the computations that are not supported on the GPU utilize are parallelized for
+                                    optimal performance. </p>
+                            </div>
+                        </li>
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/material/book-edit.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>Optimal for scientific writing</h2>
+                                <p> This package is ideal for scientific writing as it supports <a
+                                        href="https://www.latex-project.org/help/documentation/"
+                                        target="_blank">LaTeX</a> as an export option. This allows for seamless
+                                    integration of the network visualizations via <a href="https://tikz.dev/"
+                                        target="_blank">PGF/TikZ</a> in your documents. </p>
+                            </div>
+                        </li>
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/octicons/check-circle-16.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>Netzschleuder support</h2>
+                                <p> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl nec
+                                    aliquet dapibus, magna libero viverra tortor, nec porttitor sapien justo ut
+                                    lectus. </p>
+                            </div>
+                        </li>
+                        <li class="landing_second__item md-typeset">
+                            <div class="landing_second__icon">
+                                <span class="twemoji">
+                                    {% include ".icons/octicons/check-circle-16.svg" %}
+                                </span>
+                            </div>
+                            <div class="landing_second__description">
+                                <h2>Open Source</h2>
+                                <p> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl nec
+                                    aliquet dapibus, magna libero viverra tortor, nec porttitor sapien justo ut
+                                    lectus. </p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+<!-- Remove unused blocks -->
+{% block container%}{% endblock %}
+{% block site_nav%}{% endblock %}

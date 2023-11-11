@@ -3,7 +3,7 @@ site_name: pathpyG
 site_url: https://pathpyG.github.io/
 site_author: pathpy developers
 site_description: >-
-  Documentation for pathpyG - An Open Source package providing higher-order analytics and learning for time series data on graphs.
+  An Open Source package providing higher-order analytics and machine learning for time series data on graphs using PyG.
 
 # Repository
 # TODO: Check the number of stars and forks once repo is public
@@ -15,16 +15,16 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   # - Getting Started: getting_started.md
-  - Tutorial:
-    - tutorial.md
-    - Simple Graphs: tutorial/01_simple_graphs.ipynb
-    - Visualisation: tutorial/02_visualisation.ipynb
-    - Temporal Graphs: tutorial/03_temporal_graphs.ipynb
-    - Accessing Netzschleuder: tutorial/04_netzschleuder.ipynb
-    - Path Data: tutorial/05_path_data.ipynb
-    - Higher-Order Scalability: tutorial/06_higher_order_scalability.ipynb
-    - De Bruijn GNN: tutorial/07_dbgnn.ipynb
-  - Code Reference: reference/ # The rest is done automatically by literate-nav
+  # - Tutorial:
+  #   - tutorial.md
+  #   - Simple Graphs: tutorial/01_simple_graphs.ipynb
+  #   - Visualisation: tutorial/02_visualisation.ipynb
+  #   - Temporal Graphs: tutorial/03_temporal_graphs.ipynb
+  #   - Accessing Netzschleuder: tutorial/04_netzschleuder.ipynb
+  #   - Path Data: tutorial/05_path_data.ipynb
+  #   - Higher-Order Scalability: tutorial/06_higher_order_scalability.ipynb
+  #   - De Bruijn GNN: tutorial/07_dbgnn.ipynb
+  # - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: contributing.md
   - About: about.md
 
@@ -35,19 +35,19 @@ nav:
 # Plugins
 plugins:
   - search
-  - gen-files:
-      scripts:
-      - docs/gen_ref_pages.py
-  - literate-nav:
-      nav_file: SUMMARY.md
-  - section-index
-  - mkdocstrings
-  - mkdocs-jupyter:
-      ignore_h1_titles: True
-      ignore: ["tutorial/new_paths.ipynb", "tutorial/xx_test.ipynb"]
-      execute: False # TODO: Set to True once all notebooks are executable
-      allow_errors: False
-      include_source: True
+  # - gen-files:
+  #     scripts:
+  #     - docs/gen_ref_pages.py
+  # - literate-nav:
+  #     nav_file: SUMMARY.md
+  # - section-index
+  # - mkdocstrings
+  # - mkdocs-jupyter:
+  #     ignore_h1_titles: True
+  #     ignore: ["tutorial/new_paths.ipynb", "tutorial/xx_test.ipynb"]
+  #     execute: False # TODO: Set to True once all notebooks are executable
+  #     allow_errors: False
+  #     include_source: True
   - git-revision-date-localized
   - mike # Versioning
 
@@ -67,9 +67,9 @@ theme:
   icon:
     repo: fontawesome/brands/github
   features:
+    # - announce.dismiss
     # Render top level sections as headers in the navigation bar
     - navigation.tabs
-    - navigation.tabs.sticky # Keeps the left and right navigation tabs visible when scrolling
     # Speed up loading times
     - navigation.instant
     - navigation.instant.prefetch
@@ -78,25 +78,23 @@ theme:
     - navigation.tracking
     # Back to top button
     - navigation.top
-
+    # Add breadcrumbs to the navigation bar
+    - navigation.path
     # Integrate table of contents in left navigation bar
     - toc.integrate
-
     # Search functionality
     - search.suggest
     - search.highlight
-
-    # Hide header after scrolling down
-    - header.autohide
-
     # Add button to show Github edit link
     - content.action.view
     - content.action.edit
-
     # Code copy button
     - content.code.copy
     - content.code.annotate
-
+    # Tooltips
+    - content.tooltips
+    # Scroll toc sidebar with the page
+    - toc.follow
 
   palette:
 
@@ -105,7 +103,8 @@ theme:
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
-      primary: teal
+      primary: blue grey
+      accent: cyan
 
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -113,7 +112,8 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-      primary: teal
+      primary: blue grey
+      accent: cyan
 
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
@@ -121,21 +121,56 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
-      primary: teal
+      primary: blue grey
+      accent: cyan
 
 # Enable cool markdown features
 # See https://squidfunk.github.io/mkdocs-material/reference/
 markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: "!!python/name:material.extensions.emoji.to_svg"
+      emoji_index: "!!python/name:material.extensions.emoji.twemoji"
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - admonition
-  - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
-  - attr_list
-  - md_in_html
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde

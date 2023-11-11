@@ -1,3 +1,6 @@
-# pathpyG
+---
+template: home.html
+title: pathpyG
+---
 
-This will show a Home page in the future. Maybe with some installation and getting started instructions.
+This is the index page of the pathpyG documentation.
