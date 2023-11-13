@@ -7,6 +7,7 @@ repos:
       - id: check-merge-conflict # Check for files that contain merge conflict strings
       - id: check-toml # Check all toml files are valid
       - id: check-yaml # Check that all yaml files are valid
+        exclude: mkdocs.yml
       - id: debug-statements # Check for debugger imports and py37+ breakpoint
       - id: end-of-file-fixer # Makes sure files end in a newline and only a newline
       - id: mixed-line-ending # Replaces end of line characters with the most frequently used one
@@ -35,6 +36,8 @@ repos:
     rev: v2.2.4
     hooks:
       - id: codespell
+        # Exclude home.html because there is a spelling error recognized by codespell but it is correct (a German word)
+        exclude: docs/overrides/home.html
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0

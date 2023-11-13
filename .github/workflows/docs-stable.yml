@@ -1,0 +1,32 @@
+name: Publish Stable Docs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup packages
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[doc]
+
+      - name: Get package version
+        run: |
+          python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
+
+      - name: Publish docs
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git fetch origin gh-pages --depth=1
+          mike deploy --push --update-aliases "${{ env.package_version }}" stable
+          mike set-default --push stable

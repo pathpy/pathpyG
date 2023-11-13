@@ -1,0 +1,53 @@
+name: Publish Dev Docs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Only run workflow if certain files have been changed.
+      - name: Get changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v34
+        with:
+          files: |
+            .github/workflows/docs-dev.yml
+            src/**
+            docs/**
+            pyproject.toml
+
+      - name: Setup packages
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          pip install -e .[doc]
+
+      - name: Get variables
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
+          echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
+
+      - name: Publish docs
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        # First configure git correctly
+        # Then use the alias of the current dev version to delete it based on its identifier
+        # Then deploy the new version so that there is only one dev version at a time
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git fetch origin gh-pages --depth=1
+          mike delete --push $(mike list | grep dev | awk '{print $2}' | tr -d '()')
+          mike deploy --push --update-aliases "${{ env.package_version }}-dev+${{ env.sha_short}}" dev -t ${{ env.package_version }}-dev
