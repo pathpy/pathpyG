@@ -1,0 +1,1 @@
+::: pathpyG.core._PathData
