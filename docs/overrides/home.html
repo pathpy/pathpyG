@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 
-{% block extrahead %}
-<link rel="stylesheet" href="{{ 'assets/stylesheets/home.css' | url }}" />
-<script src="{{ 'assets/scripts/home.js' | url }}"></script>
-{% endblock %}
-
 {% block tabs %}
-<!-- landing page -->
+<style>
+    .md-tabs, .md-header {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+</style>
+
 <div class="parallax">
-    <section class="parallax__group parallax__group-dark" id="firstSection">
+    <section class="parallax__group" id="firstSection">
         <picture class="parallax__layer">
             <img class="parallax__image" src="assets/images/network.jpg" alt="A network in space theme">
         </picture>
         {{ super() }}
-        <div class="scrollwrap">
+        <div class="scrollwrap" id="hero-content">
             <div class="hero_box">
                 <div class="hero_text md-typeset">
-                    <h1>pathpyG</h1>
+                    <h1>PathpyG</h1>
                     <p>
                         {{ config.site_description }}
                         <a href="https://pytorch-geometric.readthedocs.io/" target="_blank">
-                            <img src="assets/images/pyg_logo.svg" alt="PyG Logo" style="height: 0.8rem; width: 0.8rem;">
+                            <img src="assets/icons/pyg_logo.svg" alt="PyG Logo" style="height: 0.8rem; width: 0.8rem;">
                         </a>
                     </p>
-                    <a href="{{ page.next_page.url | url }}" title="{{ page.next_page.title | e }}"
+                    <a href="{{ 'getting_started/' | url }}" title="{{ page.next_page.title | e }}"
                         class="md-button md-button--primary hero_button" style="margin-right: 1rem;">
                         Get Started
                     </a>
-                    <a href="{{ 'insiders/' | url }}" title="Material for MkDocs Insiders"
+                    <a href="{{ 'reference/pathpyG/' | url }}" title="Material for MkDocs Insiders"
                         class="md-button hero_button">
                         More Info
                     </a>
@@ -45,9 +45,9 @@
     <section class="parallax__group parallax__group-dark parallax__group_second">
         <div class="md-content md-grid" data-md-component="content">
             <div class="md-content__inner">
-                <header class="md-typeset">
+                <header class="md-typeset", style="margin-left: 2.5%; margin-top: 2rem;">
                     <h1 id="the-new-pathpy">
-                        The new pathpy
+                        The New Pathpy
                         <a href="#the-new-pathpy" class="headerlink" title="Permanent link"> ¶ </a>
                     </h1>
                 </header>
@@ -114,27 +114,23 @@
                         <li class="landing_second__item md-typeset">
                             <div class="landing_second__icon">
                                 <span class="twemoji">
-                                    {% include ".icons/octicons/check-circle-16.svg" %}
+                                    {% include ".icons/material/graph.svg" %}
                                 </span>
                             </div>
                             <div class="landing_second__description">
                                 <h2>Netzschleuder support</h2>
-                                <p> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl nec
-                                    aliquet dapibus, magna libero viverra tortor, nec porttitor sapien justo ut
-                                    lectus. </p>
+                                <p> We provide easy access to over 250 real world datasets via <a href="https://networks.skewed.de/" target="_blank">Netzschleuder</a> - a catalogue and repository of network datasets with the aim of aiding scientific research. </p>
                             </div>
                         </li>
                         <li class="landing_second__item md-typeset">
                             <div class="landing_second__icon">
                                 <span class="twemoji">
-                                    {% include ".icons/octicons/check-circle-16.svg" %}
+                                    {% include ".icons/fontawesome/brands/git-alt.svg" %}
                                 </span>
                             </div>
                             <div class="landing_second__description">
                                 <h2>Open Source</h2>
-                                <p> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl nec
-                                    aliquet dapibus, magna libero viverra tortor, nec porttitor sapien justo ut
-                                    lectus. </p>
+                                <p> Our package is open source, promoting collaborative development and transparency. This allows anyone to contribute, modify, and distribute the software, fostering innovation and rapid improvement. </p>
                             </div>
                         </li>
                     </ul>
@@ -145,6 +141,25 @@
 </div>
 {% endblock %}
 
-<!-- Remove unused blocks -->
-{% block container%}{% endblock %}
-{% block site_nav%}{% endblock %}
+{% block content %}
+<div class="md-content md-grid" style="display: flex; justify-content: space-between;">
+    <div class="md-content__inner md-typeset" style="width: 50%; margin-left: 5%;">
+        <h1> You Want To Help? </h1>
+        <p> We are always looking for contributors to help us improve the package. If you are interested in contributing,
+            please check us out on GitHub or read more about how to contribute on our contributing page. </p>
+        <a href="https://github.com/pathpy/pathpyG" title="GitHub" class="md-button md-button--primary hero_button" style="margin-right: 1rem;">
+            GitHub
+        </a>
+        <a href="{{ 'contributing/' | url }}" title="Read More" class="md-button md-button--primary hero_button">
+            Read More
+        </a>
+    </div>
+    <div class="logo-container">
+        <img src="img/pathpy_logo.png" alt="Pathpy Logo" class="pathpy-logo">
+    </div>
+</div>
+{% endblock %}
+
+{% block site_nav %}
+    {{ super() }}
+{% endblock %}

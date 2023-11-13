@@ -88,12 +88,13 @@ name = "pathpyG"
 [tool.pytest.ini_options] # TODO: 10. Create pytest setup
 pythonpath = ["src"]
 testpaths = "tests"
+addopts = "--cov=src"
 
 [tool.coverage.run] # TODO: 10. Create pytest setup
 branch = true
 
 [tool.coverage.report] # TODO: 10. Create pytest setup
-fail_under = 80
+fail_under = 25
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

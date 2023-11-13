@@ -5,7 +5,7 @@
 }
 
 .parallax__group {
-    height: 110vh;
+    height: calc(100vh - 2.4rem);
 }
 
 .parallax__layer {
@@ -16,21 +16,20 @@
 }
 
 .parallax__image {
-    height: 100%;
+    height: 105%;
     object-fit: cover;
     position: absolute;
     width: 100%;
-    z-index: 0;
+    z-index: -1;
 }
 
-.md-header_opaque,
-.md-tabs_opaque {
-    background-color: rgba(255, 255, 255, 0.1);
+.md-bg-color {
+    background-color: var(--md-primary-fg-color) !important;
 }
 
 .parallax__group-dark {
     background-color: var(--md-primary-fg-color--light);
-    z-index: -10;
+    z-index: 1;
 }
 
 .scrollwrap {
@@ -43,6 +42,7 @@
     .scrollwrap {
         height: calc(100vh - 2.4rem);
     }
+
 }
 
 .hero_box {
@@ -74,7 +74,7 @@
 
 .hero_text {
     color: var(--md-primary-bg-color) !important;
-    max-width: 28%;
+    max-width: 35%;
     margin-left: 10%;
     margin-bottom: 10%;
 }
@@ -97,7 +97,7 @@
 }
 
 .landing_second {
-    margin-bottom: 5rem;
+    padding: 1rem 0;
 }
 
 .landing_second__list {
@@ -113,19 +113,14 @@
     flex: 1 0 45%;
 }
 
+.parallax__group_second {
+    height: auto;
+    padding: 2.4rem 0;
+}
+
 @media (max-width: 960px) {
     .landing_second__item {
         flex: 1 0 100%;
-    }
-
-    .parallax__group_second {
-        height: 250vh;
-    }
-}
-
-@media (max-width: 1220px) {
-    .parallax__group_second {
-        height: 150vh;
     }
 }
 
@@ -145,6 +140,19 @@
 
 .landing_second__description h2 {
     margin-top: 0;
+}
+
+.logo-container {
+    width: 30%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+}
+
+.pathpy-logo {
+    max-width: 100%;
+    height: auto;
 }
 
 @keyframes flyInLeft {
@@ -168,5 +176,27 @@
     100% {
         transform: translateX(0);
         opacity: 1;
+    }
+}
+
+@keyframes fadeOutUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes fadeInDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
