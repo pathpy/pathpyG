@@ -12,11 +12,6 @@ repo_name: pathpy/pathpyG
 repo_url: https://github.com/pathpy/pathpyG
 edit_uri: edit/main/docs/
 
-# Exclude overrides since the necessary files will be generated from the files inside but the sources are not needed
-exclude_docs: |
-  overrides/
-  data/
-
 nav:
   - Home: index.md
   - Getting Started:
