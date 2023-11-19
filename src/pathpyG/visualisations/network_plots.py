@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Mon 2023-11-06 15:41 juergen>
+# Time-stamp: <Sun 2023-11-19 10:35 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -199,11 +199,36 @@ class NetworkPlot(PathPyPlot):
         attr: defaultdict = defaultdict(dict)
 
         # get attributes categories from pathpyg
-        categories = {
+        categories: set = {
             a.replace("edge_", "") for a in self.network.edge_attrs()
         }.intersection(attributes)
 
         # add edge data to data dict
+        self._get_edge_data(edges, attributes, attr, categories)
+
+        # convert needed attributes to useful values
+        attr["weight"] = self._convert_weight(attr["weight"], mode="edge")
+        attr["color"] = self._convert_color(attr["color"], mode="edge")
+        attr["opacity"] = self._convert_opacity(attr["opacity"], mode="edge")
+        attr["size"] = self._convert_size(attr["size"], mode="edge")
+
+        # update data dict with converted attributes
+        for attribute in attr:
+            for key, value in attr[attribute].items():
+                edges[key][attribute] = value
+
+        print(edges)
+        # save edge data
+        self.data["edges"] = edges
+
+    def _get_edge_data(
+        self,
+        edges: dict,
+        attributes: set,
+        attr: defaultdict,
+        categories: set,
+    ) -> None:
+        """Extract edge data from network."""
         for u, v in self.network.edges:
             uid = f"{u}-{v}"
             edges[uid] = {
@@ -218,20 +243,6 @@ class NetworkPlot(PathPyPlot):
                     if attribute in categories
                     else None
                 )
-
-        # convert needed attributes to useful values
-        attr["weight"] = self._convert_weight(attr["weight"], mode="edge")
-        attr["color"] = self._convert_color(attr["color"], mode="edge")
-        attr["opacity"] = self._convert_opacity(attr["opacity"], mode="edge")
-        attr["size"] = self._convert_size(attr["size"], mode="edge")
-
-        # update data dict with converted attributes
-        for attribute in attr:
-            for key, value in attr[attribute].items():
-                edges[key][attribute] = value
-
-        # save edge data
-        self.data["edges"] = edges
 
     def _convert_weight(self, weight: dict, mode: str = "node") -> dict:
         """Convert weight to float."""
@@ -351,7 +362,43 @@ class NetworkPlot(PathPyPlot):
 
 def temporal_plot(network: TemporalGraph, **kwargs: Any) -> NetworkPlot:
     """Plot a temporal network."""
-    return NetworkPlot(network, **kwargs)
+    return TemporalNetworkPlot(network, **kwargs)
+
+
+class TemporalNetworkPlot(NetworkPlot):
+    """Network plot class for a temporal network."""
+
+    _kind = "temporal"
+
+    def __init__(self, network: TemporalGraph, **kwargs: Any) -> None:
+        """Initialize network plot class."""
+        super().__init__(network, **kwargs)
+
+    def _get_edge_data(
+        self,
+        edges: dict,
+        attributes: set,
+        attr: defaultdict,
+        categories: set,
+    ) -> None:
+        """Extract edge data from temporal network."""
+        # TODO: Fix typing issue with temporal graphs
+        for u, v, t in self.network.temporal_edges:  # type: ignore
+            uid = f"{u}-{v}"
+            edges[uid] = {
+                "uid": uid,
+                "source": str(u),
+                "target": str(v),
+                "start": int(t),
+                "end": int(t),
+            }
+            # add edge attributes if needed
+            for attribute in attributes:
+                attr[attribute][uid] = (
+                    self.network[f"edge_{attribute}", u, v].item()
+                    if attribute in categories
+                    else None
+                )
 
 
 # =============================================================================

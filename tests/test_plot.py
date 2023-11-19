@@ -6,7 +6,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
-from pathpyG.visualisations.network_plots import network_plot
+from pathpyG.visualisations.network_plots import network_plot, temporal_plot
 from pathpyG.visualisations import plot
 
 
@@ -99,9 +99,18 @@ def test_temporal_plot() -> None:
             ("b", "c", 5),
             ("c", "d", 9),
             ("c", "e", 9),
+            ("a", "b", 10),
+            ("b", "c", 10),
         ]
     )
+    net.data["edge_size"] = torch.tensor([[3], [4], [5], [1], [2], [3]])
     print(net)
 
     for u, v, t in net.temporal_edges:
         print(u, v, t)
+
+    for u, v in net.edges:
+        print(u, v)
+
+    plot = temporal_plot(net)
+    plot.save("temp.html")
