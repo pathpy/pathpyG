@@ -6,7 +6,11 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend
-from pathpyG.visualisations.network_plots import network_plot, temporal_plot
+from pathpyG.visualisations.network_plots import (
+    network_plot,
+    temporal_plot,
+    static_plot,
+)
 from pathpyG.visualisations import plot
 
 
@@ -116,5 +120,7 @@ def test_temporal_plot() -> None:
         print(u)
 
     color = {"a": "blue", "b": "red", "c": "green", "d": "yellow"}
-    plot = temporal_plot(net, node_color=color, start=3, end=25, delta=1000)
+    plot = temporal_plot(
+        net, node_color=color, start=3, end=25, delta=1000, layout="fr"
+    )
     plot.save("temp.html")

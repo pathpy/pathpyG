@@ -2,7 +2,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with matplotlib
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Tue 2023-10-24 18:17 juergen>
+# Time-stamp: <Sun 2023-11-19 15:39 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -103,6 +103,22 @@ class NetworkPlot(MatplotlibPlot):
             zorder=2,
         )
         return plt
+
+
+class StaticNetworkPlot(NetworkPlot):
+    """Network plot class for a static network."""
+
+    _kind = "static"
+
+
+class TemporalNetworkPlot(NetworkPlot):
+    """Network plot class for a static network."""
+
+    _kind = "temporal"
+
+    def __init__(self, data: dict, **kwargs: Any) -> None:
+        """Initialize network plot class."""
+        raise NotImplementedError
 
 
 # =============================================================================

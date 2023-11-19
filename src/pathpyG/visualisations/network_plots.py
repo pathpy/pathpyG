@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:12 juergen>
+# Time-stamp: <Sun 2023-11-19 15:27 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -368,6 +368,17 @@ class NetworkPlot(PathPyPlot):
         """Clean up final data structure."""
         self.data["nodes"] = list(self.data["nodes"].values())
         self.data["edges"] = list(self.data["edges"].values())
+
+
+def static_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
+    """Plot a static network."""
+    return StaticNetworkPlot(network, **kwargs)
+
+
+class StaticNetworkPlot(NetworkPlot):
+    """Network plot class for a static network."""
+
+    _kind = "static"
 
 
 def temporal_plot(network: TemporalGraph, **kwargs: Any) -> NetworkPlot:

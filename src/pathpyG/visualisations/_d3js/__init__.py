@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : __init__.py -- d3js plotting cunctions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 10:41 juergen>
+# Time-stamp: <Sun 2023-11-19 15:16 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -12,10 +12,12 @@
 # pylint: disable=unused-import
 from typing import Any
 from pathpyG.visualisations._d3js.network_plots import NetworkPlot
+from pathpyG.visualisations._d3js.network_plots import StaticNetworkPlot
 from pathpyG.visualisations._d3js.network_plots import TemporalNetworkPlot
 
 PLOT_CLASSES: dict = {
     "network": NetworkPlot,
+    "static": StaticNetworkPlot,
     "temporal": TemporalNetworkPlot,
 }
 

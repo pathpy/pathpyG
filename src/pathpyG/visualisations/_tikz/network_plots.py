@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with tikz
 # Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Wed 2023-10-25 10:00 juergen>
+# Time-stamp: <Sun 2023-11-19 15:36 juergen>
 #
 # Copyright (c) 2016-2021 Pathpy Developers
 # =============================================================================
@@ -187,6 +187,22 @@ class NetworkPlot(TikzPlot):
             string += "]({})({})\n".format(source, target)
             tikz += string
         return tikz
+
+
+class StaticNetworkPlot(NetworkPlot):
+    """Network plot class for a static network."""
+
+    _kind = "static"
+
+
+class TemporalNetworkPlot(NetworkPlot):
+    """Network plot class for a static network."""
+
+    _kind = "temporal"
+
+    def __init__(self, data: dict, **kwargs: Any) -> None:
+        """Initialize network plot class."""
+        raise NotImplementedError
 
 
 # =============================================================================
