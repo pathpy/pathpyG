@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 13:53 juergen>
+# Time-stamp: <Sun 2023-11-19 15:12 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -228,7 +228,6 @@ class NetworkPlot(PathPyPlot):
             for key, value in attr[attribute].items():
                 edges[key][attribute] = value
 
-        print(edges)
         # save edge data
         self.data["edges"] = edges
 
@@ -372,7 +371,19 @@ class NetworkPlot(PathPyPlot):
 
 
 def temporal_plot(network: TemporalGraph, **kwargs: Any) -> NetworkPlot:
-    """Plot a temporal network."""
+    """Plot a temporal network.
+
+    **Temporal properties:**
+
+    - ``start`` : start time of the simulation
+
+    - ``end`` : end time of the simulation
+
+    - ``delta`` : time needed for progressing one time step
+
+    - ``intervals`` : number of numeric intervals
+
+    """
     return TemporalNetworkPlot(network, **kwargs)
 
 

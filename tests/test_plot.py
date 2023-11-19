@@ -114,5 +114,7 @@ def test_temporal_plot() -> None:
 
     for u in net.nodes:
         print(u)
-    plot = temporal_plot(net, node_color="green", start=3, end=25, delta=1000)
+
+    color = {"a": "blue", "b": "red", "c": "green", "d": "yellow"}
+    plot = temporal_plot(net, node_color=color, start=3, end=25, delta=1000)
     plot.save("temp.html")
