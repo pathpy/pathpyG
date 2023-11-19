@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 10:35 juergen>
+# Time-stamp: <Sun 2023-11-19 13:53 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -167,16 +167,8 @@ class NetworkPlot(PathPyPlot):
             a.replace("node_", "") for a in self.network.node_attrs()
         }.intersection(attributes)
 
-        for uid in self.network.nodes:
-            nodes[uid] = {"uid": uid}
-
-            # add edge attributes if needed
-            for attribute in attributes:
-                attr[attribute][uid] = (
-                    self.network[f"node_{attribute}", uid].item()
-                    if attribute in categories
-                    else None
-                )
+        # add node data to data dict
+        self._get_node_data(nodes, attributes, attr, categories)
 
         # convert needed attributes to useful values
         attr["color"] = self._convert_color(attr["color"], mode="node")
@@ -190,6 +182,25 @@ class NetworkPlot(PathPyPlot):
 
         # save node data
         self.data["nodes"] = nodes
+
+    def _get_node_data(
+        self,
+        nodes: dict,
+        attributes: set,
+        attr: defaultdict,
+        categories: set,
+    ) -> None:
+        """Extract node data from network."""
+        for uid in self.network.nodes:
+            nodes[uid] = {"uid": uid}
+
+            # add edge attributes if needed
+            for attribute in attributes:
+                attr[attribute][uid] = (
+                    self.network[f"node_{attribute}", uid].item()
+                    if attribute in categories
+                    else None
+                )
 
     def _compute_edge_data(self) -> None:
         """Generate the data structure for the edges."""
@@ -375,27 +386,42 @@ class TemporalNetworkPlot(NetworkPlot):
         super().__init__(network, **kwargs)
 
     def _get_edge_data(
-        self,
-        edges: dict,
-        attributes: set,
-        attr: defaultdict,
-        categories: set,
+        self, edges: dict, attributes: set, attr: defaultdict, categories: set
     ) -> None:
         """Extract edge data from temporal network."""
         # TODO: Fix typing issue with temporal graphs
         for u, v, t in self.network.temporal_edges:  # type: ignore
-            uid = f"{u}-{v}"
+            uid = f"{u}-{v}-{t}"
             edges[uid] = {
                 "uid": uid,
                 "source": str(u),
                 "target": str(v),
                 "start": int(t),
-                "end": int(t),
+                "end": int(t) + 1,
             }
             # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
                     self.network[f"edge_{attribute}", u, v].item()
+                    if attribute in categories
+                    else None
+                )
+
+    def _get_node_data(
+        self, nodes: dict, attributes: set, attr: defaultdict, categories: set
+    ) -> None:
+        """Extract node data from temporal network."""
+        for uid in self.network.nodes:
+            nodes[uid] = {
+                "uid": uid,
+                "start": int(0),
+                "end": int(20),
+            }
+
+            # add edge attributes if needed
+            for attribute in attributes:
+                attr[attribute][uid] = (
+                    self.network[f"node_{attribute}", uid].item()
                     if attribute in categories
                     else None
                 )

@@ -1,100 +1,160 @@
 require(['d3'], function(d3){ //START
-  console.log("Network Template Loaded");
+  console.log("Temporal Network Template Loaded");
   /* Resources
-
     https://bl.ocks.org/mapio/53fed7d84cd1812d6a6639ed7aa83868
     https://codepen.io/smlo/pen/JdMOej
+    https://observablehq.com/@d3/temporal-force-directed-graph
   */
+
+  // console.log(data);
 
   // variables from the config file
   const selector = config.selector;
   const width = config.width || 400;
   const height = config.height || 400;
+  const delta = config.delta || 300;
+
+  // variables for the temporal components
+  const startTime = config.start || 0;
+  const endTime = config.end || 20;
+  const targetValue = config.intervals || 300;
+  const duration = config.delta || 300;  
+
 
   /* Create a svg element to display the network */
-  var svg = d3.select(selector)
+  let svg = d3.select(selector)
       .append('svg')
       .attr('width', width)
-      .attr('height', height)
+      .attr('height', height);
 
-  // add container to store the elements
-  var container = svg.append("g");
+  /*Container to store d3js objects */
+  let container = svg.append("g");
+
+  /*Link creation template */
+  let edges = container.append("g").attr("class", "edges")
+      .selectAll(".edge");
+
+  /*Node creation template */
+  let nodes = container.append("g").attr("class", "nodes")
+      .selectAll("circle.node");
+
+  /*Assign data to variable*/
+  let network = data
+
+  /*Render function to show dynamic networks*/
+  function render(){
+
+    // get network data
+    let nodeData = network.nodes;
+    let edgeData = network.edges;
+
+    // render network objects
+    renderNodes(nodeData);
+    renderEdges(edgeData);
+
+    // run simulation
+    simulation.nodes(nodeData);
+    simulation.force("links").links(edgeData);
+    simulation.alpha(1).restart();
+  }
+
+  /*Render node objects*/
+  function renderNodes(data){
+    // console.log("render Nodes")
+
+    nodes = container.select('.nodes').selectAll('circle.node').data(data,d=>d.uid);
+
+    let new_nodes = nodes.enter().append("circle")
+        .attr("class", "node")
+        .style("r", d => d.size)
+        .style("fill", d => d.color)
+        .style("opacity", d => d.opacity)
+        .call(drag);
+
+    nodes.exit()
+      .transition() // transition to shrink node
+      .duration(delta)
+      .style("r", "0px")
+      .remove();
+
+    nodes = nodes.merge(new_nodes);
+
+    nodes.transition() // transition to change size and color
+      .duration(delta)
+      .style("r", d => d.size)
+      .style("fill", d => d.color)
+      .style("opacity", d => d.opacity);
+  };
+
+  /*Render edge objects*/
+  function renderEdges(data){
+    // console.log("render Edges")
+    edges = container.select(".edges").selectAll(".edge").data(data, d=> d.uid);
+
+    let new_edges =  edges.enter().append("line")
+        .attr("class", "edge")
+        .style("stroke", d => d.color)
+        .style("stroke-opacity", d => d.opacity)
+        .style("stroke-width", d => d.size);
+
+    edges.exit().remove();
+
+    edges = edges.merge(new_edges);
+
+    edges.transition() // transition to change size and color
+      .duration(delta)
+      .style("stroke", d => d.color)
+      .style("stroke-opacity", d => d.opacity)
+      .style("stroke-width", d => d.size);
+  };
 
   /*Add zoom function to the container */
   svg.call(
     d3.zoom()
       .scaleExtent([.1, 4])
       .on("zoom", function() { container.attr("transform", d3.event.transform); })
-  );
-
-  /*Load nodes and links from the data */
-  var nodes = data.nodes
-  var links = data.edges
-
-  /*Link creation template */
-  var link = container.append("g").attr("class", "links")
-      .selectAll(".link")
-      .data(links)
-      .enter()
-      .append("line")
-      .attr("class", "link")
-      .style("stroke", function(d) { return d.color; })
-      .style("stroke-opacity", function(d) { return d.opacity; })
-      .style("stroke-width", function(d){  return d.size });
-
-  /*Node creation template */
-  var node = container.append("g").attr("class", "nodes")
-      .selectAll("circle.node")
-      .data(nodes)
-      .enter().append("circle")
-      .attr("class", "node")
-      .attr("x", function(d) { return d.x; })
-      .attr("y", function(d) { return d.y; })
-      .style("r", function(d){  return d.size; })
-      .style("fill", function(d) { return d.color; })
-      .style("opacity", function(d) { return d.opacity; });
+  ).on("dblclick.zoom", null);
 
 
   /*Simulation of the forces*/
-  var simulation = d3.forceSimulation(nodes)
+  const simulation = d3.forceSimulation()
       .force("charge", d3.forceManyBody().strength(-3000))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("x", d3.forceX(width / 2).strength(1))
       .force("y", d3.forceY(height / 2).strength(1))
-      .force("links", d3.forceLink(links)
-             .id(function(d) {return d.uid; })
+      .force("links", d3.forceLink()
+             .id( d => d.uid)
              .distance(50).strength(1))
       .on("tick", ticked);
 
+
   /*Update of the node and edge objects*/
   function ticked() {
-    node.call(updateNode);
-    link.call(updateLink);
+    nodes.call(updateNodePositions);
+    edges.call(updateEdgePositions);
   };
 
   /*Update link positions */
-  function updateLink(link) {
-    link
-      .attr("x1", function(d) { return d.source.x; })
-      .attr("y1", function(d) { return d.source.y; })
-      .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
+  function updateEdgePositions(edges) {
+    edges
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
   };
 
   /*Update node positions */
-  function updateNode(node) {
-    node.attr("transform", function(d) {
-      return "translate(" + d.x + "," + d.y + ")";
-    });
+  function updateNodePositions(nodes) {
+    nodes
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
   };
 
   /*Add drag functionality to the node objects*/
-  node.call(
-    d3.drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended)
-  );
+  const drag = d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
 
   function dragstarted(d) {
     d3.event.sourceEvent.stopPropagation();
@@ -113,5 +173,49 @@ require(['d3'], function(d3){ //START
     d.fx = null;
     d.fy = null;
   };
+
+
+  /*Temporal components*/
+  let currentValue = 0;
+  let time = startTime;
+
+  var x = d3.scaleLinear()
+      .domain([startTime,endTime])
+      .range([0,targetValue])
+      .clamp(true);
+
+  let step = function () {
+    // increase time value
+    currentValue = currentValue + (targetValue/endTime);
+    // convert time value to time step
+    time = x.invert(currentValue);
+    // update the network
+    update();
+    // stop the timer
+    if (currentValue >= targetValue) {
+        timer.stop();
+        console.log("End of the timer");
+    };
+  };
+
+  contains = ({start, end}, time) => start <= time && time < end
+
+  function update(){
+      console.log("update Network");
+      console.log(time);
+
+      // Make copy to don't lose the data
+      let copy = {...data};
+      // TODO Instead of copy make a map to keep object properties
+      network=copy;
+      network.nodes = copy.nodes.filter(d => contains(d,time));
+      network.edges = copy.edges.filter(d => contains(d,time));
+
+      render();
+  };
+
+    
+  // initialize timer
+  let timer = d3.interval(step,duration);
 
 }); //END

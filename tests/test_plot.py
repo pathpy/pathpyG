@@ -98,7 +98,7 @@ def test_temporal_plot() -> None:
             ("a", "b", 1),
             ("b", "c", 5),
             ("c", "d", 9),
-            ("c", "e", 9),
+            ("d", "a", 9),
             ("a", "b", 10),
             ("b", "c", 10),
         ]
@@ -112,5 +112,7 @@ def test_temporal_plot() -> None:
     for u, v in net.edges:
         print(u, v)
 
-    plot = temporal_plot(net)
+    for u in net.nodes:
+        print(u)
+    plot = temporal_plot(net, node_color="green", start=3, end=25, delta=1000)
     plot.save("temp.html")
