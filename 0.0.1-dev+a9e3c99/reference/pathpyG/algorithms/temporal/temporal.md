@@ -1,0 +1,1 @@
+::: pathpyG.algorithms.temporal
