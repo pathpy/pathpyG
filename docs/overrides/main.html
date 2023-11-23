@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
-<!-- Announcement bar -->
-{% block announce %}
-  <!-- Check it out! We now have a fully functioning documentation and can even make announcements like this one! 🎉 -->
-{% endblock %}
+<!-- You can include an announcement bar with the block "announce" -->
 
 <!-- Includes a download button in the Jupyter tutorials -->
 {% block content %}
@@ -13,7 +10,7 @@
     </a>
 {% endif %}
 {{ super() }}
-{% endblock content %}
+{% endblock %}
 
 <!-- Adds a warning to the top of the page if the page is not the dev or the stable version -->
 {% block outdated %}

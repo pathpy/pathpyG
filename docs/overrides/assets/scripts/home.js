@@ -31,7 +31,8 @@ var hasScrolledPast = false;
 
 window.addEventListener('scroll', function() {
     var heroContent = document.getElementById('hero-content');
-    var imageHeight = document.querySelector('.parallax__image').offsetHeight;
+    var imageElement = document.querySelector('.parallax__image');
+    var imageHeight = imageElement ? imageElement.offsetHeight : 0;
     var scrollPosition = window.scrollY;
 
     if (scrollPosition > imageHeight / 2) {
@@ -40,4 +41,20 @@ window.addEventListener('scroll', function() {
     } else if (hasScrolledPast) {
         heroContent.style.animation = "fadeInDown 1s forwards";
     }
+});
+
+/* Affiliations */
+
+$(document).ready(function(){
+    $("#affiliation-slider").owlCarousel({
+        items: 3,
+        itemsDesktop: [1220, 3],
+        itemsDesktopSmall: [960, 2],
+        itemsTablet: [768, 1],
+        loop:true,
+        nav: true,
+        autoplay:true,
+        autoplayHoverPause:true,
+        dotsEach: 1,
+    });
 });
