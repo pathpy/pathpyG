@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
 {% block tabs %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
 <style>
     .md-tabs, .md-header {
         background-color: rgba(255, 255, 255, 0.1);
@@ -42,7 +46,7 @@
             </div>
         </div>
     </section>
-    <section class="parallax__group parallax__group-dark parallax__group_second">
+    <section class="parallax__group parallax__group_second">
         <div class="md-content md-grid" data-md-component="content">
             <div class="md-content__inner">
                 <header class="md-typeset", style="margin-left: 2.5%; margin-top: 2rem;">
@@ -60,11 +64,10 @@
                                 </span>
                             </div>
                             <div class="landing_second__description">
-                                <h2>Easy to use</h2>
-                                <p> You can directly get started using pathpyG since it adapts the interfaces from
-                                    commonly used frameworks. The graphs are based on the <a
-                                        href="https://pytorch-geometric.readthedocs.io/" target="_blank">PyG</a> graph
-                                    representation and plotting works similar as in <a
+                                <h2>Easy to Use</h2>
+                                <p> You can directly get started using PathpyG since it adapts the interfaces from
+                                    commonly used frameworks. The graphs are based <a
+                                        href="https://pytorch-geometric.readthedocs.io/" target="_blank">PyG</a> and plotting works similar as in <a
                                         href="https://pandas.pydata.org/pandas-docs/stable/" target="_blank">pandas</a>.
                                 </p>
                             </div>
@@ -89,10 +92,9 @@
                                 </span>
                             </div>
                             <div class="landing_second__description">
-                                <h2>GPU accelerated</h2>
-                                <p> Since it is based on <a href="https://pytorch.org/docs/stable/index.html"
-                                        target="_blank">Torch</a>, you can run many of the computations on the GPU. Even
-                                    the computations that are not supported on the GPU utilize are parallelized for
+                                <h2>GPU Accelerated</h2>
+                                <p> Since PathpyG is based on <a href="https://pytorch.org/docs/stable/index.html"
+                                        target="_blank">Torch</a>, you can run your computations on the GPU. Even computations that cannot run on the GPU are parallelized for
                                     optimal performance. </p>
                             </div>
                         </li>
@@ -103,7 +105,7 @@
                                 </span>
                             </div>
                             <div class="landing_second__description">
-                                <h2>Optimal for scientific writing</h2>
+                                <h2>Optimal for Scientific Writing</h2>
                                 <p> This package is ideal for scientific writing as it supports <a
                                         href="https://www.latex-project.org/help/documentation/"
                                         target="_blank">LaTeX</a> as an export option. This allows for seamless
@@ -118,8 +120,8 @@
                                 </span>
                             </div>
                             <div class="landing_second__description">
-                                <h2>Netzschleuder support</h2>
-                                <p> We provide easy access to over 250 real world datasets via <a href="https://networks.skewed.de/" target="_blank">Netzschleuder</a> - a catalogue and repository of network datasets with the aim of aiding scientific research. </p>
+                                <h2>Netzschleuder Support</h2>
+                                <p> We provide easy access to over 250 real world datasets via <a href="https://networks.skewed.de/" target="_blank">Netzschleuder</a> - a catalogue and repository of network datasets with the goal of aiding scientific research. </p>
                             </div>
                         </li>
                         <li class="landing_second__item md-typeset">
@@ -138,15 +140,69 @@
             </div>
         </div>
     </section>
+    <section class="parallax__group parallax__group_third">
+        <div class="md-content md-grid" style="width: 80%;">
+            <header class="md-typeset md-grid", style="margin-top: 1rem;">
+                <h1 id="partners">
+                    Our Partners
+                    <a href="#partners" class="headerlink" title="Permanent link"> ¶ </a>
+                </h1>
+                <h3 style="margin-bottom: 2rem;"> Working on PathpyG is an international team of researchers. Our main contributors are affiliated with: </h3>
+            </header>
+            <div id="affiliation-slider" class="owl-carousel" style="display: flex; justify-content: space-between;">
+                <div class="md-content__inner md-typeset affiliation-item">
+                    <div class="affiliation-item__logo">
+                        <img src="assets/images/JMU_logo.png" alt="Logo of the Julius Maximilian University">
+                    </div>
+                    <div class="affiliation-item__description">
+                        <h2>Julius Maximilian University</h2>
+                        <h3>Würzburg, Germany</h3>
+                    </div>
+                </div>
+
+                <div class="md-content__inner md-typeset affiliation-item">
+                    <div class="affiliation-item__logo">
+                        <img src="assets/images/Princeton_logo.png" alt="Princeton University Logo">
+                    </div>
+                    <div class="affiliation-item__description">
+                        <h2>Princeton University</h2>
+                        <h3>Princeton, USA</h3>
+                    </div>
+                </div>
+
+                <div class="md-content__inner md-typeset affiliation-item">
+                    <div class="affiliation-item__logo">
+                        <img src="assets/images/UZH_logo.png" alt="Logo of the University of Zurich">
+                    </div>
+                    <div class="affiliation-item__description">
+                        <h2>University of Zurich</h2>
+                        <h3>Zurich, Switzerland</h3>
+                    </div>
+                </div>
+
+                <div class="md-content__inner md-typeset affiliation-item">
+                    <div class="affiliation-item__logo">
+                        <img src="assets/images/CAIDAS_logo.png" alt="Logo of CAIDAS">
+                    </div>
+                    <div class="affiliation-item__description">
+                        <h2>Center for AI and Data Science</h2>
+                        <h3>Würzburg, Germany</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block content %}
 <div class="md-content md-grid" style="display: flex; justify-content: space-between;">
     <div class="md-content__inner md-typeset" style="width: 50%; margin-left: 5%;">
-        <h1> You Want To Help? </h1>
-        <p> We are always looking for contributors to help us improve the package. If you are interested in contributing,
-            please check us out on GitHub or read more about how to contribute on our contributing page. </p>
+        <h1 id="want-to-help">
+            You Want To Help?
+            <a href="#want-to-help" class="headerlink" title="Permanent link"> ¶ </a>
+        </h1>
+        <p> We are always looking for contributors to help us improve the package. If you are interested, please check us out on GitHub or read more about how to contribute on our contributing page. </p>
         <a href="https://github.com/pathpy/pathpyG" title="GitHub" class="md-button md-button--primary hero_button" style="margin-right: 1rem;">
             GitHub
         </a>
