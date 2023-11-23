@@ -111,7 +111,7 @@
 .parallax__group_second {
     height: auto;
     padding: 2.4rem 0;
-    background-color: var(--md-primary-fg-color--light);
+    background-color: var(--md-primary-fg-color);
     z-index: 1;
 }
 
@@ -223,8 +223,13 @@
 
 .affiliation-item__logo {
     border-radius: 50%;
-    background-color: var(--md-default-fg-color--light);
+    background-color: rgba(255, 255, 255, 0.7);
     padding: 2rem;
+    width: 16rem;
+    height: 9rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .affiliation-item__description {

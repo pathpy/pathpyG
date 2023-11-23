@@ -47,14 +47,21 @@ window.addEventListener('scroll', function() {
 
 $(document).ready(function(){
     $("#affiliation-slider").owlCarousel({
-        items: 3,
-        itemsDesktop: [1220, 3],
-        itemsDesktopSmall: [960, 2],
-        itemsTablet: [768, 1],
         loop:true,
         nav: true,
         autoplay:true,
         autoplayHoverPause:true,
         dotsEach: 1,
+        responsive:{
+            0:{
+                items:1
+            },
+            768:{
+                items:2
+            },
+            1220:{
+                items:3
+            }
+        }
     });
 });
