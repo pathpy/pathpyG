@@ -108,6 +108,8 @@ class HistogramPlot(PathPyPlot):
         super().__init__()
         self.network = network
         self.config = kwargs
+        self.config['bins'] = bins
+        self.config['key'] = key
         self.generate()
 
     def generate(self) -> None:
@@ -150,4 +152,54 @@ Note: If you only want to run this function and not all other test you can use:
 
 ```
 pytest -s -k 'test_hist_plot'
+```
+
+## Generating the plot data
+
+To plot our histogram we first have to generate the required data from our graph.
+
+In the future we might want to add more options for histograms, hence we use the `match`-`case` function form python.
+ 
+```python
+    def generate(self) -> None:
+        """Generate the plot."""
+        logger.debug("Generate histogram.")
+
+        data: dict = {}
+
+        match self.config["key"]:
+            case "indegrees":
+                logger.debug("Generate data for in-degrees")
+                data["values"] = list(self.network.degrees(mode="in").values())
+            case "outdegrees":
+                logger.debug("Generate data for out-degrees")
+                data["values"] = list(self.network.degrees(mode="out").values())
+            case _:
+                logger.error(
+                    f"The <{self.config['key']}> property",
+                    "is currently not supported for hist plots.",
+                )
+                raise KeyError
+
+        data["title"] = self.config["key"]
+        self.data["data"] = data
+```
+
+First we initialize a dictionary `data` to store our values. In this case we are interested in the in and out-degrees of our graph, which are already implemented in `pathpyG` (state 2023-11-26). 
+
+If the keyword is not supported the function will raise a `KeyError`.
+
+To provide a default title for our plot we also store the keyword in the data dict. If further data is required for the plot it can be stored here.
+
+Finally, we add the data dict to our `self.data` variable of the plotting class. This variable will be used later in the backend classes.
+
+With this our basic histogram plot function is finished. We are now able to call the plot function, get the data from our graph and create a data-set which can be passed down to the backend for visualization.
+
+## The matplotlib backend
+
+Let's open the `_matplotlib` folder located under `/src/pathpyG/visualisation/_matplotlib`, where all matplotlib functions are stored.
+
+```
+_matplotlib
+
 ```
