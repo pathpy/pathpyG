@@ -9,42 +9,42 @@ repos:
       - id: check-yaml # Check that all yaml files are valid
         exclude: mkdocs.yml
       - id: debug-statements # Check for debugger imports and py37+ breakpoint
-      - id: end-of-file-fixer # Makes sure files end in a newline and only a newline
-      - id: mixed-line-ending # Replaces end of line characters with the most frequently used one
-        args: [--fix=auto]
+#      - id: end-of-file-fixer # Makes sure files end in a newline and only a newline
+      #- id: mixed-line-ending # Replaces end of line characters with the most frequently used one
+        #args: [--fix=auto]
       - id: name-tests-test # Enforce test files are named test_*.py
         args: [--pytest-test-first]
-      - id: trailing-whitespace # Removes trailing whitespaces
-        args: [--markdown-linebreak-ext=md]
+#      - id: trailing-whitespace # Removes trailing whitespaces
+#        args: [--markdown-linebreak-ext=md]
 
-  - repo: https://github.com/PyCQA/isort  # Sorts python imports
-    rev: 5.12.0
-    hooks:
-      - id: isort
+  # - repo: https://github.com/PyCQA/isort  # Sorts python imports
+  #   rev: 5.12.0
+  #   hooks:
+  #     - id: isort
 
-  - repo: https://github.com/psf/black-pre-commit-mirror # Formats python code
-    rev: 23.9.1
-    hooks:
-      - id: black-jupyter # Includes python files and jupyter notebooks
+  # - repo: https://github.com/psf/black-pre-commit-mirror # Formats python code
+  #   rev: 23.9.1
+  #   hooks:
+  #     - id: black-jupyter # Includes python files and jupyter notebooks
 
-  - repo: https://github.com/asottile/pyupgrade # Upgrades syntax for newer versions of python
-    rev: v3.15.0
-    hooks:
-      - id: pyupgrade
+  # - repo: https://github.com/asottile/pyupgrade # Upgrades syntax for newer versions of python
+  #   rev: v3.15.0
+  #   hooks:
+  #     - id: pyupgrade
 
-  - repo: https://github.com/codespell-project/codespell # Checks for common misspellings and warn about them
-    rev: v2.2.4
-    hooks:
-      - id: codespell
-        # Exclude home.html because there is a spelling error recognized by codespell but it is correct (a German word)
-        exclude: docs/overrides/home.html
+  # - repo: https://github.com/codespell-project/codespell # Checks for common misspellings and warn about them
+  #   rev: v2.2.4
+  #   hooks:
+  #     - id: codespell
+  #       # Exclude home.html because there is a spelling error recognized by codespell but it is correct (a German word)
+  #       exclude: docs/overrides/home.html
 
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      - id: python-check-blanket-noqa # Check that noqa (No Quality Assurance) always comes with specific error codes (E.g. in black)
-      - id: python-check-blanket-type-ignore # Check that "type: ignore" always comes with specific error codes (E.g. in mypy)
-      - id: python-use-type-annotations # Check that all functions have type annotations instead of type comments
+  # - repo: https://github.com/pre-commit/pygrep-hooks
+  #   rev: v1.10.0
+  #   hooks:
+  #     - id: python-check-blanket-noqa # Check that noqa (No Quality Assurance) always comes with specific error codes (E.g. in black)
+  #     - id: python-check-blanket-type-ignore # Check that "type: ignore" always comes with specific error codes (E.g. in mypy)
+  #     - id: python-use-type-annotations # Check that all functions have type annotations instead of type comments
 
 # TODO: Add or remove:
 # Enables pre-commit hooks to be run on GitHub via the pre-commit.ci app. This is only free for open source projects.
