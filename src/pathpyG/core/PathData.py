@@ -41,7 +41,7 @@ class PathData:
 
     def __init__(self) -> None:
         """
-        Create empty PathData object.
+        Create an empty PathData object.
         """
         self.paths: Dict = {}
         self.path_types: Dict = {}
