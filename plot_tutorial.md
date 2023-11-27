@@ -201,5 +201,38 @@ Let's open the `_matplotlib` folder located under `/src/pathpyG/visualisation/_m
 
 ```
 _matplotlib
+├── __init__.py
+├── core.py
+└── network_plots.py
+```
+
+The `_init_.py` holds the configuration for the plot function, which we will modify later. The `core.py` file contains the generic `MatplotlibPlot` class, which provides `save` and `show` functionalities for our plots. We do not need to modify these functions. Instead, we have to generate a translation function from our generic data dict (see above) to a histogram in matplotlib. To do so, lets create first a new python file named `hist_plots.py`
+
+```
+cd _matplotlib
+touch hist_plots.py
+```
+
+Here we will add our missing piece for a functional matplotlib plot.
+
+```python
+"""Histogram plot classes."""
+from __future__ import annotations
+
+import logging
+
+from typing import TYPE_CHECKING, Any
+
+# pseudo load class for type checking
+if TYPE_CHECKING:
+    from pathpyG.core.Graph import Graph
+
+# create logger
+logger = logging.getLogger("pathpyG")
+
+
+def hist(network: Graph, key: str = 'degree', bins: int = 10, **kwargs: Any) -> HistogramPlot:
+    """Plot a histogram."""
+    return HistogramPlot(network, key, bins, **kwargs)
 
 ```

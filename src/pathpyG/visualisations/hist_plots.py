@@ -21,7 +21,7 @@ def hist(
 
 
 class HistogramPlot(PathPyPlot):
-    """Histogram plot class for a network properties."""
+    """Histogram plot class for a network property."""
 
     _kind = "hist"
 

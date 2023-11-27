@@ -91,7 +91,8 @@ def test_network_plot_tex() -> None:
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
 
     plot = network_plot(net, layout="fr")
-    plot.save("test.pdf")
+    # PDF probably not supported at github
+    # plot.save("test.pdf")
     plot.save("test.tex")
 
 
@@ -108,16 +109,6 @@ def test_temporal_plot() -> None:
         ]
     )
     net.data["edge_size"] = torch.tensor([[3], [4], [5], [1], [2], [3]])
-    print(net)
-
-    for u, v, t in net.temporal_edges:
-        print(u, v, t)
-
-    for u, v in net.edges:
-        print(u, v)
-
-    for u in net.nodes:
-        print(u)
 
     color = {"a": "blue", "b": "red", "c": "green", "d": "yellow"}
     plot = temporal_plot(
