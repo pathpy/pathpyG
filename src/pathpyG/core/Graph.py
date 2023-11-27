@@ -15,7 +15,7 @@ import torch
 
 import torch_geometric
 import torch_geometric.utils
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
 
 from scipy.sparse import csr_array

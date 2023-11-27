@@ -7,7 +7,7 @@ import torch_geometric.utils
 from torch_geometric.data import Data
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.Paths import PathData
+from pathpyG.core.PathData import PathData
 
 from pathpyG.utils.config import config
 

@@ -9,7 +9,7 @@ from pathpyG.visualisations import plot, layout
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
-from pathpyG.core.Paths import PathData
+from pathpyG.core.PathData import PathData
 from pathpyG import io
 from pathpyG import nn
 from pathpyG import algorithms
