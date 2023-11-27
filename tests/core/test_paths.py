@@ -4,10 +4,9 @@ from torch import IntTensor, equal, tensor
 
 from pathpyG import config
 from pathpyG.algorithms.temporal import (
-    extract_causal_trees,
     temporal_graph_to_event_dag,
 )
-from pathpyG.core.Paths import PathData
+from pathpyG.core.PathData import PathData
 
 
 def test_constructor():
