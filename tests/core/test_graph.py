@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import torch
 
-from pathpyG.core.Graph import Graph
-
-
 def test_N(simple_graph):
     assert simple_graph.N == 3
 

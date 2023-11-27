@@ -1,74 +1,86 @@
+"""Manages data on paths in graphs."""
 
 from __future__ import annotations
 import copy
 from typing import (
     Any,
     Dict,
+    List,
     Set,
     Optional,
     Tuple,
     Union,
 )
 
-import numpy as np
 from enum import Enum
+from collections import defaultdict
 
 import torch
 from torch import Tensor, IntTensor, cat, sum
-from torch.nested import nested_tensor
 from torch_geometric.utils import to_scipy_sparse_matrix, degree
+from scipy.sparse import coo_matrix
 
-from torch_geometric.data.data import BaseData, size_repr
-from torch_geometric.data.storage import BaseStorage, NodeStorage
-
-from collections import defaultdict
 
 from pathpyG import config
 from pathpyG.algorithms.temporal import extract_causal_trees
 from pathpyG.core.Graph import Graph
 
+
 class PathType(Enum):
+    """Used to distinguish observations of walks from observations of DAGs."""
     WALK = 0
     DAG = 1
 
-class PathData:
 
-    def __init__(self):
-        self.paths = dict()
-        self.path_types = dict()
-        self.path_freq = dict()
-        self.node_id = []
-        self.mapping ={}
+class PathData:
+    """
+    PathData stores observations of walks and/or directed acyclic graphs and provides
+    methods to generate edge indices of weighted higher-order De Bruijn graph models of
+    paths and walks.
+    """
+
+    def __init__(self) -> None:
+        """
+        Create empty PathData object.
+        """
+        self.paths: Dict = {}
+        self.path_types: Dict = {}
+        self.path_freq: Dict = {}
+        self.node_id: List = []
+        self.mapping: Dict= {}
 
     @property
     def num_paths(self) -> int:
+        """Return the number of stored paths."""
         return len(self.paths)
 
     @property
     def num_nodes(self) -> int:
+        """Return the number of nodes in the underlying graph."""
         index = self.edge_index
         return len(index.reshape(-1).unique(dim=0))
 
     @property
     def num_edges(self) -> int:
+        """Return the number of edges in the underlying graph."""
         return self.edge_index.size(dim=1)
 
-    def add_edge(self, p: Tensor, freq = 1):
+    def add_edge(self, p: Tensor, freq: int = 1) -> None:
         self.add_walk(p, freq)
 
-    def add_dag(self, p: Tensor, freq = 1):
+    def add_dag(self, p: Tensor, freq: int = 1) -> None:
         i = len(self.paths)
         self.paths[i] = p
         self.path_types[i] = PathType.DAG
         self.path_freq[i] = freq
 
-    def add_walk(self, p: Tensor, freq=1):
+    def add_walk(self, p: Tensor, freq: int = 1) -> None:
         i = len(self.paths)
         self.paths[i] = p
         self.path_types[i] = PathType.WALK
         self.path_freq[i] = freq
 
-    def to_scipy_sparse_matrix(self):
+    def to_scipy_sparse_matrix(self) -> coo_matrix:
         """ Returns a sparse adjacency matrix of the underlying graph """
         return to_scipy_sparse_matrix(self.edge_index)
 
@@ -82,9 +94,9 @@ class PathData:
         """ Returns edge index and edge weights of a first-order graph representation of all paths """
         return self.edge_index_k_weighted(k=1)
 
-    def edge_index_k_weighted(self, k=1) -> Tuple[Tensor, Tensor]:
+    def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
         """ Computes edge index and edge weights of k-th order graph model of all paths """
-        freq = []
+        freq: Tensor = torch.Tensor([])
 
         if k == 1:
             # TODO: Wrong edge statistics for non-sparse DAGs!
@@ -117,9 +129,12 @@ class PathData:
             i = cat(l_p, dim=1)
             freq = cat(l_f, dim=0)
 
-        # make edge index unique and keep reverse index, that maps each element in i to the corresponding element in edge_index
+        # make edge index unique and keep reverse index, 
+        # that maps each element in i to the corresponding element in edge_index
         edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
-        # for each edge in edge_index, the elements of x contain all indices in i that correspond to that edge
+
+        # for each edge in edge_index, the elements of x
+        # contain all indices in i that correspond to that edge
         x = list((reverse_index == idx).nonzero() for idx in range(edge_index.size()[1]))
 
         # for each edge, sum the weights of all occurences
@@ -130,7 +145,7 @@ class PathData:
     # WALK METHODS
 
     @staticmethod
-    def edge_index_kth_order_walk(edge_index, k=1):
+    def edge_index_kth_order_walk(edge_index, k: int=1) -> Tensor:
         """ Compute edge index of k-th order graph for a specific walk given by edge_index
 
             The resulting k-th order edge_index naturally generalized first-order edge indices, i.e.
@@ -154,14 +169,14 @@ class PathData:
             return IntTensor([]).to(config['torch']['device'])
 
     @staticmethod
-    def walk_to_node_seq(walk):
+    def walk_to_node_seq(walk: Tensor) -> Tensor:
         """ Turns an edge index for a walk into a node sequence """
         return cat([walk[:,0], walk[1,1:]])
 
     # DAG METHODS
 
     @staticmethod
-    def edge_index_kth_order_dag(edge_index, k):
+    def edge_index_kth_order_dag(edge_index, k: int) -> Tensor:
         """ Calculates the k-th order representation for the edge index of a single dag"""
         x = edge_index
         for i in range(1, k):
@@ -169,7 +184,7 @@ class PathData:
         return x
 
     @staticmethod
-    def map_nodes(edge_index, mapping):
+    def map_nodes(edge_index: Tensor, mapping) -> Tensor:
 
         # From `https://stackoverflow.com/questions/13572448`.
         palette, key = zip(*mapping.items())
@@ -181,7 +196,7 @@ class PathData:
         return remapped
 
     @staticmethod
-    def lift_order_dag(edge_index):
+    def lift_order_dag(edge_index: Tensor) -> Tensor:
         """Fast conversion of edge index of k-th order model to k+1-th order model"""
 
         a = edge_index[0].unique(dim=0)
@@ -213,24 +228,26 @@ class PathData:
             return torch.tensor([]).to(config['torch']['device'])
 
     @staticmethod
-    def from_temporal_dag(dag: Graph, detect_walks=True) -> PathData:
+    def from_temporal_dag(dag: Graph, detect_walks: bool = True) -> PathData:
         ds = PathData()
         dags = extract_causal_trees(dag)
         for d in dags:
             #src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
             #dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
-            src = [ s for s in dags[d][0]]
-            dst = [ t for t in dags[d][1]]
+            src = [ s for s in dags[d][0] ]
+            dst = [ t for t in dags[d][1] ]
             # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
             edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
-            if detect_walks and degree(edge_index[1]).max()==1 and degree(edge_index[0]).max()==1:
+            if detect_walks and degree(edge_index[1]).max() == 1 and degree(edge_index[0]).max() == 1:
                 ds.add_walk(edge_index)
             else:
                 ds.add_dag(edge_index)
-        ds.mapping = { i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id }
+        ds.mapping = { 
+            i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+            }
         return ds
 
-    def __str__(self):
+    def __str__(self) -> str:
         num_walks = 0
         num_dags = 0
         for p in self.paths:
@@ -242,10 +259,9 @@ class PathData:
         return s
 
     @staticmethod
-    def from_csv(file) -> PathData:
+    def from_csv(file: str) -> PathData:
         p = PathData()
-        name_map = defaultdict(lambda: len(name_map))
-        freq = []
+        name_map: Dict = defaultdict(lambda: len(name_map))
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
                 path = []
@@ -254,6 +270,6 @@ class PathData:
                     path.append(name_map[v])
                 w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
                 p.add_walk(w, int(float(fields[-1])))
-        reverse_map = {k:i for i,k in name_map.items()}
+        reverse_map = {k: i for i, k in name_map.items()}
         p.node_id = [reverse_map[i] for i in range(len(name_map))]
         return p
