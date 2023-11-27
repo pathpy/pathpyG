@@ -12,26 +12,63 @@ from typing import (
 )
 
 import torch
+
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data, HeteroData
-from scipy.sparse import csr_array
 from torch_geometric.transforms.to_undirected import ToUndirected
+
+from scipy.sparse import csr_array
 from pathpyG.utils.config import config
 
 
 class Graph:
-    """Graph based on torch_geometric.Data"""
+    """
+    A graph object storing nodes, edges, and attributes.
 
-    def __init__(self, edge_index: torch.Tensor, node_id: List = [], **kwargs):
-        """
-        Generates a Graph instance based on torch.Tensor containing edge_index with
-        optional node_id mapping node indices to node ids
+    An object than be be used to store directed or undirected graphs with node
+    and edge attributes. Data on nodes and edges are stored in an underlying instance of
+    `torch_geometric.Data`.
+    """
 
-        Example:
-        >>> g = Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
+    def __init__(self, edge_index: torch.Tensor,
+                 node_id: Optional[List[str]] = None,
+                 **kwargs: Optional[torch.Tensor]):
+        """Generate graph instance from an edge index.
+
+        Generate a Graph instance from a `torch.Tensor` that contains an `edge_index`
+        with optional `node_id` list that maps integer node indices to string node ids.
+
+        Args:
+            edge_index: edge_index containing source and target
+            index of all edges
+
+            node_id:    Optional list of node identifiers
+
+            **kwargs:   Optional keyword arguments that are passed to constructor
+            of torch_geometric.Data. Keyword arguments starting with `node_` will be
+            mapped to node attributes, keywords arguments starting with `edge_` will
+            be mapped to edge attributes. Other keyword arguments will be mapped to
+            graph attributes.
+        
+        Usage example:
+        
+        ```
+        import pathpyG as pp
+
+        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+
+        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
                                 node_id=['a', 'b', 'c'])
+
+        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
+                                node_id=['a', 'b', 'c'],
+                                node_age=torch.LongTensor([12, 42, 17]),
+                                edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
+        ```
         """
+        if node_id is None:
+            node_id = []
 
         assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
 
@@ -58,23 +95,40 @@ class Graph:
             torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
         )
 
-    def add_node_id(self, node_id):
+    def add_node_id(self, node_id: List[str]) -> None:
         assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
 
         self.node_index_to_id = dict(enumerate(node_id))
         self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
         self.data["node_id"] = node_id
 
-    def to_undirected(self):
-        """Transforms a graph into an undirected graph, by adding all directed edges in opposite direction.
-        Applies a ToUndirected transform to the underlying torch_geometric.Data object, which will
-        automatically duplicate edge attributes for newly created directed edges.
+    def to_undirected(self) -> None:
+        """
+        Transform graph into undirected graph.
+
+        This method transforms the current graph instance into an undirected graph by
+        adding all directed edges in opposite direction. It applies `ToUndirected`
+        transform to the underlying `torch_geometric.Data` object, which automatically
+        duplicates edge attributes for newly created directed edges.
+
+        Usage example:
+        ```
+        import pathpyG as pp
+        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+        g.to_undirected()
+        ```
         """
         tf = ToUndirected()
         self.data = tf(self.data)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
+        """
+        Return name, type, and size of all node, edge, and graph attributes.
+
+        This method returns a dictionary that contains the name (key), as well as
+        the type and size of all attributes.
+        """
         a = {}
         for k in attr:
             t = type(attr[k])
@@ -85,6 +139,12 @@ class Graph:
         return a
 
     def node_attrs(self) -> List:
+        """
+        Return a list of node attributes.
+
+        This method returns a list containing the names of all node-level attributes,
+        ignoring the special `node_id` attribute.
+        """
         attrs = []
         for k in self.data.keys():
             if k != "node_id" and k.startswith("node_"):
@@ -92,6 +152,12 @@ class Graph:
         return attrs
 
     def edge_attrs(self) -> List:
+        """
+        Return a list of edge attributes.
+
+        This method returns a list containing the names of all edge-level attributes,
+        ignoring the special `edge_index` attribute.
+        """
         attrs = []
         for k in self.data.keys():
             if k != "edge_index" and k.startswith("edge_"):
@@ -100,6 +166,14 @@ class Graph:
 
     @property
     def nodes(self) -> Generator[Union[int, str], None, None]:
+        """
+        Return indices or IDs of all nodes in the graph.
+
+        This method returns a generator object that yields all nodes.
+        If `node_id` is used to map node indices to string IDs, nodes
+        are returned as str IDs. If no mapping to IDs is used, nodes
+        are returned as integer indices.
+        """
         if len(self.node_id_to_index) > 0:
             for v in self.node_id_to_index:
                 yield v
@@ -109,6 +183,14 @@ class Graph:
 
     @property
     def edges(self) -> Generator[Union[Tuple[int, int], Tuple[str, str]], None, None]:
+        """
+        Return all edges in the graph.
+        
+        This method returns a generator object that yields all edges.
+        If `node_id` is used to map node indices to string IDs, edges
+        are returned as tuples of str IDs. If no mapping to IDs is used, nodes
+        are returned as tuples of integer indices.
+        """
         if len(self.node_index_to_id) > 0:
             for e in self.data.edge_index.t():
                 yield self.node_index_to_id[e[0].item()], self.node_index_to_id[
@@ -118,7 +200,18 @@ class Graph:
             for e in self.data.edge_index.t():
                 yield e[0].item(), e[1].item()
 
-    def successors(self, node) -> Generator[Union[int, str], None, None]:
+    def successors(self, node: Union[int, str]) -> Generator[
+            Union[int, str], None, None]:
+        """
+        Return the successors of a given node.
+
+        This method returns a generator object that yields all successors of a
+        given node. If a `node_id` mapping is used, successors will be returned
+        as string IDs. If no mapping is used, successors are returned as indices.
+
+        Args:
+            node:   Index or string ID of node for which successors shall be returned.
+        """       
         if len(self.node_index_to_id) > 0:
             for i in self._sparse_adj_matrix.getrow(self.node_id_to_index[node]).indices:  # type: ignore
                 yield self.node_index_to_id[i]
@@ -127,6 +220,16 @@ class Graph:
                 yield i
 
     def predecessors(self, node) -> Generator[Union[int, str], None, None]:
+        """
+        Return the predecessors of a given node.
+
+        This method returns a generator object that yields all predecessors of a
+        given node. If a `node_id` mapping is used, predecessors will be returned
+        as string IDs. If no mapping is used, predecessors are returned as indices.
+
+        Args:
+            node:   Index or string ID of node for which predecessors shall be returned.
+        """       
         if len(self.node_index_to_id) > 0:
             for i in self._sparse_adj_matrix.getcol(self.node_id_to_index[node]).indices:  # type: ignore
                 yield self.node_index_to_id[i]
@@ -134,7 +237,17 @@ class Graph:
             for i in self._sparse_adj_matrix.getcol(node).indices:  # type: ignore
                 yield i
 
-    def is_edge(self, v, w):
+    def is_edge(self, v, w) -> bool:
+        """
+        Return whether edge (v,w) exists in the graph.
+        
+        If an index to ID mapping is used, nodes are assumed to be string IDs. If no
+        mapping is used, nodes are assumed to be integer indices.
+
+        Args:
+            v: source node of edge as integer index or string ID
+            w: target node of edge as integer index or string ID       
+        """
         if len(self.node_index_to_id) > 0:
             return self.node_id_to_index[w] in self._sparse_adj_matrix.getrow(self.node_id_to_index[v]).indices  # type: ignore
         else:
@@ -150,13 +263,26 @@ class Graph:
 
     @property
     def in_degrees(self) -> Dict:
+        """
+        Return in-degrees of nodes in directed network.
+        """
         return self.degrees(mode="in")
 
     @property
     def out_degrees(self) -> Dict:
+        """
+        Return out-degrees of nodes in directed network.
+        """
         return self.degrees(mode="out")
 
-    def degrees(self, mode="in") -> Dict:
+    def degrees(self, mode: str = "in") -> Dict:
+        """
+        Return degrees of nodes.
+
+        Args:
+            mode:   `in` or `out` to calculate the in- or out-degree for
+                directed networks.
+        """
         if mode == "in":
             d = torch_geometric.utils.degree(
                 self.data.edge_index[1], num_nodes=self.N, dtype=torch.int
@@ -173,6 +299,17 @@ class Graph:
             return {i: d[i].item() for i in range(self.N)}
 
     def get_laplacian(self, normalization=None, edge_attr=None):
+        """
+        Return Laplacian matrix for a given graph.
+
+        This wrapper method will use `torch_geometric.utils.get_laplacian`
+        to return a Laplcian matrix representation of a given graph.
+
+        Args:
+            normalization:  normalization parameter passed to pyG `get_laplacian` function
+            edge_attr:      optinal name of numerical edge attribute that shall be passed to 
+                pyG `get_laplacian` function as edge weight
+        """
         if edge_attr == None:
             return torch_geometric.utils.get_laplacian(
                 self.data.edge_index, normalization=normalization
@@ -223,7 +360,7 @@ class Graph:
         else:
             print(key[0], "is not a node or edge attribute")
 
-    def __setitem__(self, key, val):
+    def __setitem__(self, key, val):        
         if type(key) != tuple:
             if key in self.data.keys():
                 self.data[key] = val
@@ -248,14 +385,31 @@ class Graph:
 
     @property
     def N(self) -> int:
+        """
+        Return number of nodes.
+
+        Returns the number of nodes in the graph.
+        """
         return self.data.num_nodes  # type: ignore
 
     @property
     def M(self) -> int:
-        return self.data.num_edges
+        """
+        Return number of edges.
+
+        Returns the number of edges in the graph.
+        """
+        return self.data.num_edges # type: ignore
 
     @staticmethod
-    def from_pyg_data(d: Data):
+    def from_pyg_data(d: Data) -> Graph:
+        """
+        Construct a graph from a `pytorch_geometric.Data` object.
+
+        Args:
+            d:  `pytorch_geoemtric.Data` object containing an edge_index as well as 
+                arbitrary node, edge, and graph-level attributes
+        """
         x = d.to_dict()
 
         del x["edge_index"]
@@ -267,29 +421,46 @@ class Graph:
             g = Graph(d.edge_index, node_id=[], **x)
         return g
 
-    def to_pyg_data(self) -> Data | HeteroData:
+    def to_pyg_data(self) -> Data:
         """
-        Returns an instance of torch_geometric.data.Data containing the
-        edge_index as well as node, edge, and graph attributes
+        Return instance of torch_geometric.Data representing the graph
+        as well as its attributes.
         """
         return self.data
 
-    def is_directed(self):
+    def is_directed(self) -> bool:
+        """
+        Return whether graph is directed.
+        """
         return self.data.is_directed()
 
-    def is_undirected(self):
+    def is_undirected(self) -> bool:
+        """
+        Return whether graph is undirected.
+        """
         return self.data.is_undirected()
 
-    def has_self_loops(self):
+    def has_self_loops(self) -> bool:
+        """
+        Return whether graph contains self-loops.
+        """
         return self.data.has_self_loops()
 
     @staticmethod
-    def from_edge_list(edge_list) -> Graph:
+    def from_edge_list(edge_list: List[List[str]]) -> Graph:
         """
         Generates a Graph instance based on an edge list.
 
-        Example:
-        >>> Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+        Args:
+            edge_list: List of iterables
+
+        Usage example:
+        ```
+        import pathpyG as pp
+        
+        l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
+        g = pp.Graph.from_edge_list(l)
+        ```
         """
         sources = []
         targets = []
@@ -342,3 +513,15 @@ class Graph:
                 if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
+
+
+    def __getattr__(self, name):
+        """
+        Maps any unknown method with name `name` to the corresponding method of the `Graph` class 
+        of the networkx object.
+        """
+        def wrapper(*args, **kwargs):
+            print('unknown method {0} was called, delegating call to networkx object'.format(name))
+            g = torch_geometric.utils.to_networkx(self.data)
+            return getattr(g, name)(*args, **kwargs)
+        return wrapper

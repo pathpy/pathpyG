@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathpyG.core.Paths import PathData
 from pathpyG.algorithms.temporal import temporal_graph_to_event_dag
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+from pathpyG.core.Paths import PathData
 
 
 def test_higher_order_from_temporal_graph(simple_temporal_graph):
