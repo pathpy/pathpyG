@@ -537,7 +537,7 @@ class Graph:
     def __getattr__(self, name: str) -> Any:
         """Map unknown method to corresponding method of networkx `Graph` object."""
         def wrapper(*args, **kwargs) -> Any:
-            print('unknown method {0} was called, delegating call to networkx object'.format(name))
+            # print('unknown method {0} was called, delegating call to networkx object'.format(name))
             g = torch_geometric.utils.to_networkx(self.data)
             return getattr(g, name)(*args, **kwargs)
         return wrapper
