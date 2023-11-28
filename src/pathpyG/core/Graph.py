@@ -200,8 +200,8 @@ class Graph:
             for e in self.data.edge_index.t():
                 yield e[0].item(), e[1].item()
 
-    def successors(self, node: Union[int, str]) -> Generator[
-            Union[int, str], None, None]:
+    def successors(self, node: Union[int, str] | tuple) \
+            -> Generator[Union[int, str] | tuple, None, None]:
         """
         Return the successors of a given node.
 
@@ -211,15 +211,20 @@ class Graph:
 
         Args:
             node:   Index or string ID of node for which successors shall be returned.
-        """       
+        """ 
+        coo_matrix = self._sparse_adj_matrix.tocoo()      
         if len(self.node_index_to_id) > 0:
-            for i in self._sparse_adj_matrix.getrow(self.node_id_to_index[node]).indices:  # type: ignore
+            # Get array of col indices for which entries in row are non-zero
+            non_zero_cols = coo_matrix.col[coo_matrix.row == self.node_id_to_index[node]]
+            for i in non_zero_cols:  # type: ignore
                 yield self.node_index_to_id[i]
         else:
-            for i in self._sparse_adj_matrix.getrow(node).indices:  # type: ignore
+            non_zero_cols = coo_matrix.row[coo_matrix.col == node]
+            for i in non_zero_cols:  # type: ignore
                 yield i
 
-    def predecessors(self, node: Union[str, int]) -> Generator[Union[int, str], None, None]:
+    def predecessors(self, node: Union[str, int] | tuple) \
+            -> Generator[Union[int, str] | tuple, None, None]:
         """Return the predecessors of a given node.
 
         This method returns a generator object that yields all predecessors of a
@@ -229,11 +234,15 @@ class Graph:
         Args:
             node:   Index or string ID of node for which predecessors shall be returned.
         """
+        coo_matrix = self._sparse_adj_matrix.tocoo()      
         if len(self.node_index_to_id) > 0:
-            for i in self._sparse_adj_matrix.getcol(self.node_id_to_index[node]).indices:  # type: ignore
+            # Get array of col indices for which entries in row are non-zero
+            non_zero_rows = coo_matrix.row[coo_matrix.col == self.node_id_to_index[node]]
+            for i in non_zero_rows:  # type: ignore
                 yield self.node_index_to_id[i]
         else:
-            for i in self._sparse_adj_matrix.getcol(node).indices:  # type: ignore
+            non_zero_rows = coo_matrix.row[coo_matrix.col == node]
+            for i in non_zero_rows:  # type: ignore
                 yield i
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:

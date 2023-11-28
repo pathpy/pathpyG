@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from pathpyG.core.Graph import Graph
+from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.PathData import PathData
 

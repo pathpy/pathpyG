@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, Generator
 
 import torch
 import torch_geometric
@@ -11,16 +11,28 @@ from pathpyG.core.PathData import PathData
 
 from pathpyG.utils.config import config
 
+
 class HigherOrderGraph(Graph):
-    """ HigherOrderGraph based on torch_geometric.Data"""
+    """HigherOrderGraph based on torch_geometric.Data."""
 
-    def __init__(self, paths: PathData, order=1, node_id=[], **kwargs):
-        """
-        Generates a Graph instance based on PathStorage
+    def __init__(self, paths: PathData, order: int = 1, node_id: Any = None, **kwargs):
+        """Generate HigherOrderGraph based on a given PathData instance.
 
-        Example:
-        >>> g = Graph(paths, k=2, node_id=['a', 'b', 'c'])
+        Args:
+            paths: xxx
+            order: xxx
+            node_id: xxx
+            **kwargs: xxx
+
+        Usage Example:
+            import pathpyG as pp
+
+            paths = pp.PathData()
+            paths.add_walk(torch.Tensor([[0, 1, 2], [1, 2, 3]]))
+            g2 = Graph(paths, k=2, node_id=['a', 'b', 'c', 'd'])
         """
+        if node_id is None:
+            node_id = []
 
         assert len(node_id) == len(set(node_id)), 'node_id entries must be unique'
 
@@ -29,23 +41,26 @@ class HigherOrderGraph(Graph):
 
         index, edge_weights = paths.edge_index_k_weighted(k=order)
 
-        if self.order>1:
+        if self.order > 1:
             # get tensor of unique higher-order nodes
             self._nodes = index.reshape(-1, index.size(dim=2)).unique(dim=0)
 
             # create mapping to first-order node indices
-            ho_nodes_to_index = {tuple(j.tolist()):i for i,j in enumerate(self._nodes)}
+            ho_nodes_to_index = {tuple(j.tolist()): i for i, j in enumerate(self._nodes)}
 
             # create new tensor with node indices mapped to indices of higher-order nodes
-            edge_index = torch.tensor( ([ho_nodes_to_index[tuple(x.tolist())] for x in index[0,:]], [ho_nodes_to_index[tuple(x.tolist())] for x in index[1,:]])).to(config['torch']['device'])
+            edge_index = torch.tensor( (
+                [ho_nodes_to_index[tuple(x.tolist())] for x in index[0,:]],
+                [ho_nodes_to_index[tuple(x.tolist())] for x in index[1,:]])
+                ).to(config['torch']['device'])
 
             # create mappings between higher-order nodes (with ids) and node indices
             if len(node_id)>0:
-                self.node_index_to_id = { i:tuple([node_id[v] for v in j.tolist()]) for i,j in enumerate(self._nodes)}
-                self.node_id_to_index = {j:i for i,j in self.node_index_to_id.items()}
+                self.node_index_to_id = { i: tuple([node_id[v] for v in j.tolist()]) for i, j in enumerate(self._nodes)}
+                self.node_id_to_index = { j: i for i, j in self.node_index_to_id.items()}
             else:
-                self.node_index_to_id = { i:tuple([v for v in j.tolist()]) for i,j in enumerate(self._nodes)}
-                self.node_id_to_index = {j:i for i,j in self.node_index_to_id.items()}
+                self.node_index_to_id = { i:tuple([v for v in j.tolist()]) for i, j in enumerate(self._nodes)}
+                self.node_id_to_index = { j:i for i, j in self.node_index_to_id.items()}
 
         else:
             self._nodes = index.reshape(-1).unique(dim=0)
@@ -65,8 +80,9 @@ class HigherOrderGraph(Graph):
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
 
         # initialize adjacency matrix
-        self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
-
+        self._sparse_adj_matrix: Any = (
+            torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
+        )
 
     # @Graph.nodes.getter
     # def nodes(self):
@@ -89,10 +105,8 @@ class HigherOrderGraph(Graph):
 
 
 
-    def __str__(self):
-        """
-        Returns a string representation of the graph
-        """
+    def __str__(self) -> str:
+        """Return a string representation of the higher-order graph."""
 
         attr_types = Graph.attr_types(self.data.to_dict())
 
