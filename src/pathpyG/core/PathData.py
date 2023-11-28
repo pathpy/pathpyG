@@ -351,10 +351,10 @@ class PathData:
         # create edges of order k+1
         for v in center_nodes:
             # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
-            src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten() # type: ignore
+            src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten()  # type: ignore
             srcs = edge_index[0][src_index]
             # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
-            dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten() # type: ignore
+            dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten()  # type: ignore
             dsts = edge_index[1][dst_index]
             for s in srcs:
                 for d in dsts:
