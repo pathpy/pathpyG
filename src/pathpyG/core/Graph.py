@@ -7,7 +7,6 @@ from typing import (
     Union,
     Any,
     Optional,
-    AnyStr,
     Generator,
 )
 
@@ -51,20 +50,18 @@ class Graph:
             graph attributes.
         
         Usage example:
-        
-        ```
-        import pathpyG as pp
 
-        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+            import pathpyG as pp
 
-        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-                                node_id=['a', 'b', 'c'])
+            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
 
-        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-                                node_id=['a', 'b', 'c'],
-                                node_age=torch.LongTensor([12, 42, 17]),
-                                edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
-        ```
+            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
+                                    node_id=['a', 'b', 'c'])
+
+            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
+                                    node_id=['a', 'b', 'c'],
+                                    node_age=torch.LongTensor([12, 42, 17]),
+                                    edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
         """
         if node_id is None:
             node_id = []
@@ -95,6 +92,11 @@ class Graph:
         )
 
     def add_node_id(self, node_id: List[str]) -> None:
+        """Add a mapping of node indices to node IDs.
+
+        Args:
+            node_id: list of string IDs, corresponding to node indices
+        """
         assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
 
         self.node_index_to_id = dict(enumerate(node_id))
@@ -111,11 +113,10 @@ class Graph:
         duplicates edge attributes for newly created directed edges.
 
         Usage example:
-        ```
-        import pathpyG as pp
-        g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
-        g.to_undirected()
-        ```
+
+            import pathpyG as pp
+            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+            g.to_undirected()
         """
         tf = ToUndirected()
         self.data = tf(self.data)
@@ -345,17 +346,18 @@ class Graph:
             config["torch"]["device"]
         )[: self.M]
 
-    def __getitem__(self, key: str) -> torch.Tensor:
+    def __getitem__(self, key: Union[tuple, str]) -> Any:
         """Return node, edge, or graph attribute.
 
         Args:
             key: name of attribute to be returned
         """
-        if type(key) != tuple:
+        if isinstance(key, tuple):
             if key in self.data.keys():
                 return self.data[key]
             else:
                 print(key, "is not a graph attribute")
+                return None
         elif key[0] in self.node_attrs():
             if len(self.node_id_to_index) > 0:
                 return self.data[key[0]][self.node_id_to_index[key[1]]]
@@ -374,15 +376,16 @@ class Graph:
             return self.data[key[0]]
         else:
             print(key[0], "is not a node or edge attribute")
+            return None
 
-    def __setitem__(self, key: str, val: torch.Tensor):
+    def __setitem__(self, key: str, val: torch.Tensor) -> None:
         """Store node, edge, or graph attribute.
 
         Args:
             key: name of attribute to be stored
             val: value of attribute
         """
-        if type(key) != tuple:
+        if isinstance(key, tuple):
             if key in self.data.keys():
                 self.data[key] = val
             else:
@@ -522,9 +525,9 @@ class Graph:
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
 
-    def __getattr__(self, name):
-        """Map any unknown method `name` to corresponding method of networkx `Graph` object."""
-        def wrapper(*args, **kwargs):
+    def __getattr__(self, name: str) -> Any:
+        """Map unknown method to corresponding method of networkx `Graph` object."""
+        def wrapper(*args, **kwargs) -> Any:
             print('unknown method {0} was called, delegating call to networkx object'.format(name))
             g = torch_geometric.utils.to_networkx(self.data)
             return getattr(g, name)(*args, **kwargs)
