@@ -345,7 +345,7 @@ class Graph:
             config["torch"]["device"]
         )[: self.M]
 
-    def __getitem__(self, key: str) -> Tensor:
+    def __getitem__(self, key: str) -> torch.Tensor:
         """Return node, edge, or graph attribute.
 
         Args:
@@ -375,7 +375,7 @@ class Graph:
         else:
             print(key[0], "is not a node or edge attribute")
 
-    def __setitem__(self, key: str, val: Tensor):
+    def __setitem__(self, key: str, val: torch.Tensor):
         """Store node, edge, or graph attribute.
 
         Args:
