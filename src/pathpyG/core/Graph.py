@@ -361,7 +361,7 @@ class Graph:
         Args:
             key: name of attribute to be returned
         """
-        if isinstance(key, tuple):
+        if not isinstance(key, tuple):
             if key in self.data.keys():
                 return self.data[key]
             else:
@@ -394,7 +394,7 @@ class Graph:
             key: name of attribute to be stored
             val: value of attribute
         """
-        if isinstance(key, tuple):
+        if not isinstance(key, tuple):
             if key in self.data.keys():
                 self.data[key] = val
             else:
