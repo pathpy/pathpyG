@@ -26,3 +26,17 @@ def test_higher_order_from_temporal_graph(simple_temporal_graph):
     assert g3.N == 3
     assert g3.M == 2
     assert g3.data.edge_weight.sum() == 2.0
+
+def test_successors(simple_paths):
+    g2 = HigherOrderGraph(simple_paths, order=2,
+                          node_id=['A', 'B', 'C', 'D', 'E'])
+
+    assert ('C', 'D') in list(g2.successors(('A', 'C')))
+    assert ('C', 'E') in list(g2.successors(('B', 'C')))
+
+def test_predecessors(simple_paths):
+    g2 = HigherOrderGraph(simple_paths, order=2,
+                          node_id=['A', 'B', 'C', 'D', 'E'])
+
+    assert ('A', 'C') in list(g2.predecessors(('C', 'D')))
+    assert ('B', 'C') in list(g2.predecessors(('C', 'E')))
