@@ -18,7 +18,6 @@ import torch_geometric.utils
 from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
 
-from scipy.sparse import csr_array
 from pathpyG.utils.config import config
 
 
@@ -91,7 +90,7 @@ class Graph:
         }
 
         # initialize adjacency matrix
-        self._sparse_adj_matrix: csr_array = (
+        self._sparse_adj_matrix: Any = (
             torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
         )
 
@@ -219,9 +218,8 @@ class Graph:
             for i in self._sparse_adj_matrix.getrow(node).indices:  # type: ignore
                 yield i
 
-    def predecessors(self, node) -> Generator[Union[int, str], None, None]:
-        """
-        Return the predecessors of a given node.
+    def predecessors(self, node: Union[str, int]) -> Generator[Union[int, str], None, None]:
+        """Return the predecessors of a given node.
 
         This method returns a generator object that yields all predecessors of a
         given node. If a `node_id` mapping is used, predecessors will be returned
@@ -229,7 +227,7 @@ class Graph:
 
         Args:
             node:   Index or string ID of node for which predecessors shall be returned.
-        """       
+        """
         if len(self.node_index_to_id) > 0:
             for i in self._sparse_adj_matrix.getcol(self.node_id_to_index[node]).indices:  # type: ignore
                 yield self.node_index_to_id[i]
@@ -237,9 +235,8 @@ class Graph:
             for i in self._sparse_adj_matrix.getcol(node).indices:  # type: ignore
                 yield i
 
-    def is_edge(self, v, w) -> bool:
-        """
-        Return whether edge (v,w) exists in the graph.
+    def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
+        """Return whether edge (v,w) exists in the graph.
         
         If an index to ID mapping is used, nodes are assumed to be string IDs. If no
         mapping is used, nodes are assumed to be integer indices.
@@ -253,8 +250,13 @@ class Graph:
         else:
             return w in self._sparse_adj_matrix.getrow(v).indices  # type: ignore
 
-    def get_sparse_adj_matrix(self, edge_attr=None):
-        if edge_attr == None:
+    def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
+        """Return sparse adjacency matrix representation of (weighted) graph.
+
+        Args:
+            edge_attr: the edge attribute that shall be used as edge weight
+        """
+        if edge_attr is None:
             return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index)
         else:
             return torch_geometric.utils.to_scipy_sparse_matrix(
@@ -263,16 +265,12 @@ class Graph:
 
     @property
     def in_degrees(self) -> Dict:
-        """
-        Return in-degrees of nodes in directed network.
-        """
+        """Return in-degrees of nodes in directed network."""
         return self.degrees(mode="in")
 
     @property
     def out_degrees(self) -> Dict:
-        """
-        Return out-degrees of nodes in directed network.
-        """
+        """Return out-degrees of nodes in directed network."""
         return self.degrees(mode="out")
 
     def degrees(self, mode: str = "in") -> Dict:
@@ -298,19 +296,19 @@ class Graph:
         else:
             return {i: d[i].item() for i in range(self.N)}
 
-    def get_laplacian(self, normalization=None, edge_attr=None):
-        """
-        Return Laplacian matrix for a given graph.
+    def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
+        """Return Laplacian matrix for a given graph.
 
         This wrapper method will use `torch_geometric.utils.get_laplacian`
         to return a Laplcian matrix representation of a given graph.
 
         Args:
-            normalization:  normalization parameter passed to pyG `get_laplacian` function
-            edge_attr:      optinal name of numerical edge attribute that shall be passed to 
-                pyG `get_laplacian` function as edge weight
+            normalization:  normalization parameter passed to pyG `get_laplacian`
+                            function
+            edge_attr:      optinal name of numerical edge attribute that shall
+                            be passed to pyG `get_laplacian` function as edge weight
         """
-        if edge_attr == None:
+        if edge_attr is None:
             return torch_geometric.utils.get_laplacian(
                 self.data.edge_index, normalization=normalization
             )
@@ -321,21 +319,38 @@ class Graph:
                 edge_weight=self.data[edge_attr],
             )
 
-    def add_node_ohe(self, attr_name, dim=0):
+    def add_node_ohe(self, attr_name: str, dim: int = 0) -> None:
+        """Add one-hot encoding of nodes to node attribute.
+
+        Args:
+            attr_name: attribute name used to store one-hot encoding
+            dim: dimension of one-hot encoding
+        """
         if dim == 0:
             dim = self.N
         self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(
             config["torch"]["device"]
         )[: self.N]
 
-    def add_edge_ohe(self, attr_name, dim=0):
+    def add_edge_ohe(self, attr_name: str, dim: int = 0) -> None:
+        """Add one-hot encoding of edges to edge attribute.
+
+        Args:
+            attr_name: attribute name used to store one-hot encoding
+            dim: dimension of one-hot encoding
+        """
         if dim == 0:
             dim = self.M
         self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(
             config["torch"]["device"]
         )[: self.M]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> torch.Tensor:
+        """Return node, edge, or graph attribute.
+
+        Args:
+            key: name of attribute to be returned
+        """
         if type(key) != tuple:
             if key in self.data.keys():
                 return self.data[key]
@@ -360,7 +375,13 @@ class Graph:
         else:
             print(key[0], "is not a node or edge attribute")
 
-    def __setitem__(self, key, val):        
+    def __setitem__(self, key: str, val: torch.Tensor):
+        """Store node, edge, or graph attribute.
+
+        Args:
+            key: name of attribute to be stored
+            val: value of attribute
+        """
         if type(key) != tuple:
             if key in self.data.keys():
                 self.data[key] = val
@@ -399,15 +420,15 @@ class Graph:
 
         Returns the number of edges in the graph.
         """
-        return self.data.num_edges # type: ignore
+        return self.data.num_edges  # type: ignore
 
     @staticmethod
-    def from_pyg_data(d: Data) -> Graph:
+    def from_pyg_data(d: Any) -> Graph:
         """
         Construct a graph from a `pytorch_geometric.Data` object.
 
         Args:
-            d:  `pytorch_geoemtric.Data` object containing an edge_index as well as 
+            d:  `pytorch_geometric.Data` object containing an edge_index as well as 
                 arbitrary node, edge, and graph-level attributes
         """
         x = d.to_dict()
@@ -421,46 +442,35 @@ class Graph:
             g = Graph(d.edge_index, node_id=[], **x)
         return g
 
-    def to_pyg_data(self) -> Data:
-        """
-        Return instance of torch_geometric.Data representing the graph
-        as well as its attributes.
-        """
+    def to_pyg_data(self) -> Any:
+        """Return torch_geometric.Data representing the graph with its attributes."""
         return self.data
 
-    def is_directed(self) -> bool:
-        """
-        Return whether graph is directed.
-        """
+    def is_directed(self) -> Any:
+        """Return whether graph is directed."""
         return self.data.is_directed()
 
-    def is_undirected(self) -> bool:
-        """
-        Return whether graph is undirected.
-        """
+    def is_undirected(self) -> Any:
+        """Return whether graph is undirected."""
         return self.data.is_undirected()
 
-    def has_self_loops(self) -> bool:
-        """
-        Return whether graph contains self-loops.
-        """
+    def has_self_loops(self) -> Any:
+        """Return whether graph contains self-loops."""
         return self.data.has_self_loops()
 
     @staticmethod
     def from_edge_list(edge_list: List[List[str]]) -> Graph:
-        """
-        Generates a Graph instance based on an edge list.
+        """Generate a Graph instance based on an edge list.
 
         Args:
             edge_list: List of iterables
 
         Usage example:
-        ```
-        import pathpyG as pp
         
-        l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
-        g = pp.Graph.from_edge_list(l)
-        ```
+            import pathpyG as pp
+            
+            l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
+            g = pp.Graph.from_edge_list(l)    
         """
         sources = []
         targets = []
@@ -489,9 +499,7 @@ class Graph:
         )
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the graph
-        """
+        """Return a string representation of the graph."""
 
         attr_types = Graph.attr_types(self.data.to_dict())
 
@@ -514,12 +522,8 @@ class Graph:
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
 
-
     def __getattr__(self, name):
-        """
-        Maps any unknown method with name `name` to the corresponding method of the `Graph` class 
-        of the networkx object.
-        """
+        """Map any unknown method `name` to corresponding method of networkx `Graph` object."""
         def wrapper(*args, **kwargs):
             print('unknown method {0} was called, delegating call to networkx object'.format(name))
             g = torch_geometric.utils.to_networkx(self.data)
