@@ -40,3 +40,11 @@ def test_predecessors(simple_paths):
 
     assert ('A', 'C') in list(g2.predecessors(('C', 'D')))
     assert ('B', 'C') in list(g2.predecessors(('C', 'E')))
+
+def test_higher_order_graph(simple_paths):
+    g2 = HigherOrderGraph(simple_paths, order=2,
+                        node_id=['A', 'B', 'C', 'D', 'E'])
+    assert g2.N == 4
+    assert g2.M == 4
+    assert set(g2.nodes) == set([('A', 'C'), ('C', 'D'), ('B', 'C'), ('C', 'E')])
+    assert set(g2.edges) == set([(('A', 'C'), ('C', 'D')), (('B', 'C'), ('C', 'E'))])
