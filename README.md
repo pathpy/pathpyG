@@ -10,7 +10,7 @@ pathpyG
 [![Testing Status][testing-image]][testing-url]
 [![Linting Status][linting-image]][linting-url]
 
-An Open Source package providing higher-order analytics and learning for time series data on graphs.
+GPU-accelerated Next-Generation Network Analytics and Graph Learning for Time Series Data on Complex Networks.
 
 Documentation
 -------------
@@ -39,7 +39,7 @@ The development version can be installed from Github:
 Testing
 -------
 
-To test pathpy, run `make test` in the source directory.
+To test pathpy, run `pytest` in the root directory.
 
 This will exercise both the unit tests and docstring examples (using `pytest`).
 
