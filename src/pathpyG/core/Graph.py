@@ -274,16 +274,16 @@ class Graph:
             )
 
     @property
-    def in_degrees(self) -> Dict:
+    def in_degrees(self) -> Dict[str, float]:
         """Return in-degrees of nodes in directed network."""
         return self.degrees(mode="in")
 
     @property
-    def out_degrees(self) -> Dict:
+    def out_degrees(self) -> Dict[str, float]:
         """Return out-degrees of nodes in directed network."""
         return self.degrees(mode="out")
 
-    def degrees(self, mode: str = "in") -> Dict:
+    def degrees(self, mode: str = "in") -> Dict[str, float]:
         """
         Return degrees of nodes.
 
