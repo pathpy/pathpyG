@@ -25,9 +25,9 @@ Usage Example:
     # Calculate path statistics
     paths = pp.PathData.from_temporal_dag(dag)
 
-    # Generate weighted (first-order) time-aggregated graph
-    g = pp.HigherOrderGraph(paths, order=1)
-    
+    # Generate time-aggregated static representation of temporal graph
+    s = g.to_static_graph(g)
+
     c = pp.algorithms.centralities.closeness_centrality(g)
 """
 
