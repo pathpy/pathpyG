@@ -132,6 +132,12 @@ class TemporalGraph(Graph):
         )
 
         return g
+    
+    def to_static_graph(self) -> Graph:
+        """Return instance of Graph that represents the static, time-aggregated network.
+        """
+        node_id = [self.node_index_to_id[i] for i in range(self.N)]
+        return Graph(self.data.edge_index, node_id)
 
     def to_pyg_data(self) -> TemporalData:
         """
