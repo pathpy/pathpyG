@@ -11,7 +11,7 @@
 
     RUN pip install torch==2.1.0+cu121 --index-url https://download.pytorch.org/whl/cu121
 
-    RUN pip install torch_geometric
+    RUN pip install torch_geometric>=2.4.0
     RUN pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.1.0+cu121.html
     RUN pip install git+https://github.com/pathpy/pathpyG.git
     ```
@@ -24,7 +24,7 @@
 
     RUN pip install torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu # CPU only
 
-    RUN pip install torch_geometric
+    RUN pip install torch_geometric>=2.4.0
     RUN pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.1.0+cpu.html # CPU only
     RUN pip install git+https://github.com/pathpy/pathpyG.git
     ```
