@@ -112,6 +112,12 @@ def test_temporal_plot() -> None:
 
     color = {"a": "blue", "b": "red", "c": "green", "d": "yellow"}
     plot = temporal_plot(
-        net, node_color=color, start=3, end=25, delta=1000, layout="fr"
+        net,
+        node_color=color,
+        start=3,
+        end=25,
+        delta=1000,
+        layout="fr",
+        d3js_local=False,
     )
     plot.save("temp.html")

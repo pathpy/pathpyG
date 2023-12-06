@@ -3,7 +3,7 @@
 # =============================================================================
 # File      : core.py -- Plots with d3js
 # Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Wed 2023-10-25 08:22 juergen>
+# Time-stamp: <Wed 2023-12-06 17:07 juergen>
 #
 # Copyright (c) 2016-2021 Pathpy Developers
 # =============================================================================
@@ -17,6 +17,7 @@ import tempfile
 import webbrowser
 
 from typing import Any
+from string import Template
 
 from pathpyG.utils.config import config
 from pathpyG.visualisations.plot import PathPyPlot
@@ -40,7 +41,7 @@ class D3jsPlot(PathPyPlot):
     def show(self, **kwargs: Any) -> None:
         """Show the plot on the device."""
         if config["environment"]["interactive"]:
-            from IPython.core.display import display, HTML
+            from IPython.display import display, HTML
 
             display(HTML(self.to_html()))
         else:
@@ -58,7 +59,7 @@ class D3jsPlot(PathPyPlot):
     def to_html(self) -> str:
         """Convert data to html."""
         # generate unique dom uids
-        network_id = "#x" + uuid.uuid4().hex
+        dom_id = "#x" + uuid.uuid4().hex
 
         # get path to the pathpy templates
         template_dir = os.path.join(
@@ -66,11 +67,18 @@ class D3jsPlot(PathPyPlot):
             os.path.normpath("_d3js/templates"),
         )
 
+        # get d3js version
+        local = self.config.get("d3js_local", False)
+        if local:
+            d3js = os.path.join(template_dir, "d3.v5.min.js")
+        else:
+            d3js = "https://d3js.org/d3.v5.min.js"
+
         # get template files
         with open(os.path.join(template_dir, f"{self._kind}.js")) as template:
             js_template = template.read()
 
-        with open(os.path.join(template_dir, "setup.html")) as template:
+        with open(os.path.join(template_dir, "setup.js")) as template:
             setup_template = template.read()
 
         with open(os.path.join(template_dir, "styles.css")) as template:
@@ -89,21 +97,26 @@ class D3jsPlot(PathPyPlot):
                 css_template += template.read()
 
         # update config
-        self.config["selector"] = network_id
-
+        self.config["selector"] = dom_id
         data = self.to_json()
 
         # generate html file
         html = "<style>\n" + css_template + "\n</style>\n"
 
         # div environment for the plot object
-        html += f'\n<div id = "{network_id[1:]}"> </div>\n'
+        html += f'\n<div id = "{dom_id[1:]}"> </div>\n'
 
-        # add setup code
-        html += setup_template
+        # add d3js library
+        html += f'<script charset="utf-8" src="{d3js}"></script>\n'
 
-        # add JavaScript
+        # start JavaScript
         html += '<script charset="utf-8">\n'
+
+        # add setup code to run d3js in multiple environments
+        html += Template(setup_template).substitute(d3js=d3js)
+
+        # start d3 environment
+        html += "require(['d3'], function(d3){ //START\n"
 
         # add data and config
         html += f"const data = {data}\n"
@@ -111,6 +124,11 @@ class D3jsPlot(PathPyPlot):
 
         # add JavaScript
         html += js_template
+
+        # end d3 environment
+        html += "\n}); //END\n"
+
+        # end JavaScript
         html += "\n</script>"
 
         return html

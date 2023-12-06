@@ -4,13 +4,17 @@
 # =============================================================================
 # File      : __init__.py -- plotting functions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:21 juergen>
+# Time-stamp: <Wed 2023-12-06 17:06 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 # flake8: noqa
 # pylint: disable=unused-import
-from typing import Any
+from typing import Optional, Any
+
+from pathpyG.core.Graph import Graph
+from pathpyG.core.TemporalGraph import TemporalGraph
+
 from pathpyG.visualisations.network_plots import NetworkPlot
 from pathpyG.visualisations.network_plots import StaticNetworkPlot
 from pathpyG.visualisations.network_plots import TemporalNetworkPlot
@@ -22,9 +26,19 @@ PLOT_CLASSES: dict = {
 }
 
 
-def plot(data: dict, kind: str = "network", **kwargs: Any) -> Any:
+def plot(data: dict, kind: Optional[str] = None, **kwargs: Any) -> Any:
     """Plot function."""
-    return PLOT_CLASSES[kind](data, **kwargs)
+    if kind is None:
+        if isinstance(data, TemporalGraph):
+            kind = "temporal"
+        elif isinstance(data, Graph):
+            kind = "static"
+        else:
+            raise NotImplementedError
+
+    plt = PLOT_CLASSES[kind](data, **kwargs)
+    plt.show(**kwargs)
+    return plt
 
 
 # =============================================================================

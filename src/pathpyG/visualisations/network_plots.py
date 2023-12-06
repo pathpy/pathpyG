@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:27 juergen>
+# Time-stamp: <Wed 2023-12-06 17:08 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -149,7 +149,6 @@ class NetworkPlot(PathPyPlot):
 
     def generate(self) -> None:
         """Generate the plot."""
-        print("Generate network plot.")
         self._compute_edge_data()
         self._compute_node_data()
         self._compute_layout()
