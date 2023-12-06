@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with d3js
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:27 juergen>
+# Time-stamp: <Wed 2023-12-06 17:24 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================

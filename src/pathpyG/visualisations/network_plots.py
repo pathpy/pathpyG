@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-12-06 17:08 juergen>
+# Time-stamp: <Wed 2023-12-06 17:22 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -15,7 +15,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
-from pathpyG.visualisations.xutils import rgb_to_hex, Colormap
+from pathpyG.visualisations.utils import rgb_to_hex, Colormap
 from pathpyG.visualisations.layout import layout as network_layout
 
 # pseudo load class for type checking

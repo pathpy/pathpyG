@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with tikz
 # Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Sun 2023-11-19 15:36 juergen>
+# Time-stamp: <Wed 2023-12-06 17:23 juergen>
 #
 # Copyright (c) 2016-2021 Pathpy Developers
 # =============================================================================
@@ -14,7 +14,7 @@ from typing import Any
 
 # import logging
 
-from pathpyG.visualisations.xutils import hex_to_rgb
+from pathpyG.visualisations.utils import hex_to_rgb
 from pathpyG.visualisations._tikz.core import TikzPlot
 
 # create logger

@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : plot.py -- Module to plot pathpyG networks
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-10-25 09:38 juergen>
+# Time-stamp: <Wed 2023-12-06 17:28 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -29,10 +29,6 @@ FORMATS: dict = {
     ".pdf": "tikz",
     ".png": "matplotlib",
 }
-
-
-# def plot(data: Any, filename: str, kind: Optinal[str] = None, **kwargs: Any) -> None:
-#     pass
 
 
 def _get_plot_backend(
