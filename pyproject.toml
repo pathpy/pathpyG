@@ -12,13 +12,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Environment :: GPU :: NVIDIA CUDA :: 11.7",
     "Environment :: GPU :: NVIDIA CUDA :: 11.8",
 ]
-requires-python = ">=3.8" # PyTorch Geometric requires Python 3.8 or higher
+requires-python = ">=3.10" # We are using `match` statements
 dynamic = ["version"]
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
