@@ -1,1 +1,0 @@
-::: pathpyG.visualisations.html_plot
