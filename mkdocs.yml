@@ -3,7 +3,7 @@ site_name: pathpyG
 site_url: https://pathpyG.github.io/
 site_author: pathpy developers
 site_description: >-
-  An Open Source package providing higher-order analytics and machine learning for time series data on graphs using PyG.
+  An Open Source package facilitating next-generation network analytics and graph learning for time series data on graphs.
 
 # Repository
 # TODO: Check the number of stars and forks once repo is public
