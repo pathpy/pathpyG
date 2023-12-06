@@ -5,12 +5,5 @@
     "aliases": [
       "stable"
     ]
-  },
-  {
-    "version": "0.0.1-dev+5692c0f",
-    "title": "0.0.1-dev",
-    "aliases": [
-      "dev"
-    ]
   }
 ]
