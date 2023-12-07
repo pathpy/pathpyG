@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-12-06 17:22 juergen>
+# Time-stamp: <Wed 2023-12-06 21:16 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -191,7 +191,7 @@ class NetworkPlot(PathPyPlot):
     ) -> None:
         """Extract node data from network."""
         for uid in self.network.nodes:
-            nodes[uid] = {"uid": uid}
+            nodes[uid] = {"uid": str(uid)}
 
             # add edge attributes if needed
             for attribute in attributes:
@@ -345,7 +345,7 @@ class NetworkPlot(PathPyPlot):
     def _compute_layout(self) -> None:
         """Create layout."""
         # get layout form the config
-        layout = self.config.get("layout", None)
+        layout = self.config.get("layout", "rand")
 
         # if no layout is considered stop this process
         if layout is None:
@@ -432,11 +432,13 @@ class TemporalNetworkPlot(NetworkPlot):
         self, nodes: dict, attributes: set, attr: defaultdict, categories: set
     ) -> None:
         """Extract node data from temporal network."""
+
+        time = {e[2] for e in self.network.temporal_edges}
         for uid in self.network.nodes:
             nodes[uid] = {
                 "uid": uid,
-                "start": int(0),
-                "end": int(20),
+                "start": int(min(time) - 1),
+                "end": int(max(time) + 1),
             }
 
             # add edge attributes if needed

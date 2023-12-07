@@ -25,6 +25,7 @@ svg.call(
         .on("zoom", function() { container.attr("transform", d3.event.transform); })
 );
 
+
 /*Load nodes and links from the data */
 var nodes = data.nodes
 var links = data.edges
@@ -48,7 +49,7 @@ var node = container.append("g").attr("class", "nodes")
     .attr("class", "node")
     .attr("x", function(d) { return d.x; })
     .attr("y", function(d) { return d.y; })
-    .style("r", function(d){  return d.size; })
+    .style("r", function(d){  return d.size+"px"; })
     .style("fill", function(d) { return d.color; })
     .style("opacity", function(d) { return d.opacity; });
 
@@ -61,7 +62,7 @@ var simulation = d3.forceSimulation(nodes)
     .force("y", d3.forceY(height / 2).strength(1))
     .force("links", d3.forceLink(links)
            .id(function(d) {return d.uid; })
-           .distance(50).strength(1))
+           .distance(50).strength(function(d){return d.weight;}))
     .on("tick", ticked);
 
 /*Update of the node and edge objects*/

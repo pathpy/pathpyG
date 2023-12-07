@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : __init__.py -- plotting functions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-12-06 17:06 juergen>
+# Time-stamp: <Wed 2023-12-06 19:32 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -18,6 +18,8 @@ from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.visualisations.network_plots import NetworkPlot
 from pathpyG.visualisations.network_plots import StaticNetworkPlot
 from pathpyG.visualisations.network_plots import TemporalNetworkPlot
+
+from pathpyG.visualisations.layout import layout
 
 PLOT_CLASSES: dict = {
     "network": NetworkPlot,
@@ -36,8 +38,13 @@ def plot(data: dict, kind: Optional[str] = None, **kwargs: Any) -> Any:
         else:
             raise NotImplementedError
 
+    filename = kwargs.pop("filename", None)
+
     plt = PLOT_CLASSES[kind](data, **kwargs)
-    plt.show(**kwargs)
+    if filename:
+        plt.save(filename, **kwargs)
+    else:
+        plt.show(**kwargs)
     return plt
 
 

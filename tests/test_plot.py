@@ -74,7 +74,7 @@ def test_network_plot_png() -> None:
 def test_network_plot_html() -> None:
     """Test to plot a static network as html file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-
+    net.data["node_size"] = torch.tensor([[90], [8], [7]])
     plot = network_plot(net)
     plot.save("test.html")
 

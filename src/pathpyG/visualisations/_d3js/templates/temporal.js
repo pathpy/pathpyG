@@ -37,6 +37,17 @@ let edges = container.append("g").attr("class", "edges")
 let nodes = container.append("g").attr("class", "nodes")
     .selectAll("circle.node");
 
+/*Time counter */
+let text = svg.append("text")
+    .text("T="+startTime)
+    .attr("x", 20)
+    .attr("y", 20);
+
+let bttn = svg.append("text")
+    .attr("x",70)
+    .attr("y", 20)
+    .text("Play");
+
 /*Assign data to variable*/
 let network = data
 
@@ -177,6 +188,7 @@ function dragended(d) {
 /*Temporal components*/
 let currentValue = 0;
 let time = startTime;
+var timer = null;
 
 var x = d3.scaleLinear()
     .domain([startTime,endTime])
@@ -193,6 +205,9 @@ let step = function () {
     // stop the timer
     if (currentValue >= targetValue) {
         timer.stop();
+        currentValue = 0;
+        bttn.text("Play")
+        text.text(d => "T="+startTime);
         console.log("End of the timer");
     };
 };
@@ -209,10 +224,26 @@ function update(){
     network=copy;
     network.nodes = copy.nodes.filter(d => contains(d,time));
     network.edges = copy.edges.filter(d => contains(d,time));
-
+    text.text(d => "T="+Math.round(time));
     render();
 };
 
-    
+bttn.on('click', function() {
+    if (bttn.text() == "Pause") {
+        timer.stop();
+        bttn.text("Play");
+    }else{
+        runTimer();
+    };
+  
+});
+
+function runTimer(){
+    timer = d3.interval(step,duration);
+    bttn.text("Pause");
+}
+
+runTimer();
+
 // initialize timer
-let timer = d3.interval(step,duration);
+//let timer = d3.interval(step,duration);
