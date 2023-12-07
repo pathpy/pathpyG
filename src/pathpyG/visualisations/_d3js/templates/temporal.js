@@ -14,8 +14,8 @@ const height = config.height || 400;
 const delta = config.delta || 300;
 
 // variables for the temporal components
-const startTime = config.start || 0;
-const endTime = config.end || 20;
+const startTime = config.start;
+const endTime = config.end;
 const targetValue = config.intervals || 300;
 const duration = config.delta || 300;  
 

@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Thu 2023-12-07 09:33 juergen>
+# Time-stamp: <Thu 2023-12-07 12:49 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -410,6 +410,13 @@ class TemporalNetworkPlot(NetworkPlot):
         """Extract node data from temporal network."""
 
         time = {e[2] for e in self.network.temporal_edges}
+
+        if self.config.get("end", None) is None:
+            self.config["end"] = int(max(time) + 1)
+
+        if self.config.get("start", None) is None:
+            self.config["start"] = int(min(time) - 1)
+
         for uid in self.network.nodes:
             nodes[uid] = {
                 "uid": uid,
