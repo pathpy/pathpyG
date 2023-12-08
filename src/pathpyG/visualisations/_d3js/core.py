@@ -41,9 +41,9 @@ class D3jsPlot(PathPyPlot):
     def show(self, **kwargs: Any) -> None:
         """Show the plot on the device."""
         if config["environment"]["interactive"]:
-            from IPython.display import display, HTML
+            from IPython.display import display_html, HTML
 
-            display(HTML(self.to_html()))
+            display_html(HTML(self.to_html()))
         else:
             # create temporal file
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
