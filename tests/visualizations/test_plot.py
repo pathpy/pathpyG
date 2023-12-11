@@ -60,7 +60,8 @@ def test_get_plot_backend() -> None:
     assert tikz == tex
 
 
-def test_network_plot_png() -> None:
+# Uses a default pytest fixture: see https://docs.pytest.org/en/6.2.x/tmpdir.html
+def test_network_plot_png(tmp_path) -> None:
     """Test to plot a static network as png file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
     net.data["edge_weight"] = torch.tensor([[1], [1], [2]])
@@ -68,35 +69,39 @@ def test_network_plot_png() -> None:
     net.data["node_size"] = torch.tensor([[90], [8], [7]])
 
     plot = network_plot(net, edge_color="green", layout="fr")
-    plot.save("test.png")
+    plot.save(tmp_path / "test.png")
+    assert (tmp_path / "test.png").exists()
 
 
-def test_network_plot_html() -> None:
+def test_network_plot_html(tmp_path) -> None:
     """Test to plot a static network as html file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
     net.data["node_size"] = torch.tensor([[90], [8], [7]])
     plot = network_plot(net)
-    plot.save("test.html")
+    plot.save(tmp_path / "test.html")
+    assert (tmp_path / "test.html").exists()
 
 
-def test_plot_function() -> None:
+def test_plot_function(tmp_path) -> None:
     """Test generic plot function."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
     fig = plot(net)
-    fig.save("generic.html")
+    fig.save(tmp_path / "generic.html")
+    assert (tmp_path / "generic.html").exists()
 
 
-def test_network_plot_tex() -> None:
+def test_network_plot_tex(tmp_path) -> None:
     """Test to plot a static network as tex file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
 
     plot = network_plot(net, layout="fr")
     # PDF probably not supported at github
     # plot.save("test.pdf")
-    plot.save("test.tex")
+    plot.save(tmp_path / "test.tex")
+    assert (tmp_path / "test.tex").exists()
 
 
-def test_temporal_plot() -> None:
+def test_temporal_plot(tmp_path) -> None:
     """Test to plot a temporal network."""
     net = TemporalGraph.from_edge_list(
         [
@@ -120,4 +125,5 @@ def test_temporal_plot() -> None:
         layout="fr",
         d3js_local=False,
     )
-    plot.save("temp.html")
+    plot.save(tmp_path / "temp.html")
+    assert (tmp_path / "temp.html").exists()
