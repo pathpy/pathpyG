@@ -27,7 +27,9 @@ nav:
     - Higher-Order Scalability: tutorial/06_higher_order_scalability.ipynb
     - De Bruijn GNN: tutorial/07_dbgnn.ipynb
   - Code Reference: reference/ # The rest is done automatically by literate-nav
-  - Contributing: contributing.md
+  - Contributing: 
+    - contributing.md
+    - Develop your own plot Functions: plot_tutorial.md
   - About: about.md
 
 # Copyright
@@ -37,13 +39,21 @@ nav:
 # Plugins
 plugins:
   - search
+  - autorefs
   - gen-files:
       scripts:
       - docs/gen_ref_pages.py
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+          python:
+            # load_external_modules: true  # TODO: This could be a way to add the networkx docs
+            options:
+              annotations_path: full
+              show_bases: True
+              show_signature: False
   - mkdocs-jupyter:
       ignore_h1_titles: True
       ignore: ["tutorial/new_paths.ipynb", "tutorial/xx_test.ipynb"]
@@ -62,9 +72,17 @@ extra:
 
 extra_css:
   - overrides/assets/stylesheets/home.css
+  - overrides/assets/stylesheets/code_select.css
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
 
 extra_javascript:
   - overrides/assets/scripts/home.js
+  - overrides/assets/scripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - overrides/assets/scripts/katex.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js  
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js
 
 # Theme
 theme:
@@ -89,7 +107,7 @@ theme:
     # Add breadcrumbs to the navigation bar
     - navigation.path
     # Integrate table of contents in left navigation bar
-    - toc.integrate
+    # - toc.integrate
     # Search functionality
     - search.suggest
     - search.highlight
@@ -136,47 +154,42 @@ theme:
 # See https://squidfunk.github.io/mkdocs-material/reference/
 markdown_extensions:
   - abbr
-  - admonition
+  - admonition  # blocks like !!! note
   - attr_list
   - def_list
   - footnotes
   - md_in_html
-  - toc:
+  - toc:  # Add a link that leads to each section
       permalink: true
-  - pymdownx.arithmatex:
+  - pymdownx.arithmatex:  # Math with $...$ and $$...$$
       generic: true
-  - pymdownx.betterem:
+  - pymdownx.betterem:  # Improves emphasis for **bold** and *italic*
       smart_enable: all
-  - pymdownx.caret
-  - pymdownx.details
+  - pymdownx.caret  # Superscript with ^this^
+  - pymdownx.details  # Collapsible admonitions with ???
   - pymdownx.emoji:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       options:
         custom_icons:
           - docs/overrides/assets/icons
-  - pymdownx.highlight:
+  - pymdownx.highlight:  # Code highlighting with that starts with ```python
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.keys
-  - pymdownx.magiclink:
-      normalize_issue_symbols: true
-      repo_url_shorthand: true
-      user: squidfunk
-      repo: mkdocs-material
-  - pymdownx.mark
-  - pymdownx.smartsymbols
-  - pymdownx.snippets:
+  - pymdownx.inlinehilite  # Code highlighting in text with `:::python print("Hello World")`
+  - pymdownx.keys  # Add keys by sorround them with ++key++
+  - pymdownx.mark  # Highlight text with ==highlight==
+  - pymdownx.smartsymbols  # Symbols like (c) and (r) (see https://facelessuser.github.io/pymdown-extensions/extensions/smartsymbols/)
+  - pymdownx.snippets:  # Include files with --8<-- "filename:1:20" from line 1 to 20
       auto_append:
         - includes/mkdocs.md
-  - pymdownx.superfences:
+  - pymdownx.superfences:  # Nested fences or with a title ```{.python title="Title"}
       custom_fences:
-        - name: mermaid
+        - name: mermaid  # Mermaid diagrams with ```mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.tabbed:
+  - pymdownx.tabbed:  # Tabs with === "Tab 1"
       alternate_style: true
       combine_header_slug: true
       slugify: !!python/object/apply:pymdownx.slugs.slugify
@@ -184,4 +197,4 @@ markdown_extensions:
           case: lower
   - pymdownx.tasklist:
       custom_checkbox: true
-  - pymdownx.tilde
+  - pymdownx.tilde  # Strikethrough with ~~this~~

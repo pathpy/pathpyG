@@ -5,8 +5,8 @@ preprocess time-stamped network data, do inference and model selection of higher
 De Bruijn graph models and address temporal graph learning tasks based on time-aware
 graph neural networks.
 
-Usage Example:
-
+Example:
+    ```py
     import pathpyG as pp
     pp.config['torch']['device'] = 'cuda'
 
@@ -29,4 +29,5 @@ Usage Example:
     # Compute first- and second-order De Bruijn graph model
     g1 = pp.HigherOrderGraph(paths, order=1, node_id=dag.node_id)
     g2 = pp.HigherOrderGraph(paths, order=2, node_id=dag.node_id)
+    ```
 """

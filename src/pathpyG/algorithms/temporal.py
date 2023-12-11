@@ -8,8 +8,8 @@ from collections import defaultdict
 import numpy as np
 import torch
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG import Graph
+from pathpyG import TemporalGraph
 from pathpyG import config
 
 
