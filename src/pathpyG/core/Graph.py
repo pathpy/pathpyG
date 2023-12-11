@@ -26,7 +26,7 @@ class Graph:
 
     An object than be be used to store directed or undirected graphs with node
     and edge attributes. Data on nodes and edges are stored in an underlying instance of
-    `torch_geometric.Data`.
+    [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data).
     """
 
     def __init__(self, edge_index: torch.Tensor,
@@ -38,19 +38,17 @@ class Graph:
         with optional `node_id` list that maps integer node indices to string node ids.
 
         Args:
-            edge_index: edge_index containing source and target
-            index of all edges
+            edge_index: edge_index containing source and target index of all edges
+            node_id: Optional list of node identifiers
+            **kwargs: Optional keyword arguments that are passed to constructor 
+                of [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data). 
+                Keyword arguments starting with `node_` will be
+                mapped to node attributes, keywords arguments starting with `edge_` will
+                be mapped to edge attributes. Other keyword arguments will be mapped to
+                graph attributes.
 
-            node_id:    Optional list of node identifiers
-
-            **kwargs:   Optional keyword arguments that are passed to constructor
-            of torch_geometric.Data. Keyword arguments starting with `node_` will be
-            mapped to node attributes, keywords arguments starting with `edge_` will
-            be mapped to edge attributes. Other keyword arguments will be mapped to
-            graph attributes.
-        
-        Usage example:
-
+        Example:
+            ```py
             import pathpyG as pp
 
             g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
@@ -62,6 +60,7 @@ class Graph:
                                     node_id=['a', 'b', 'c'],
                                     node_age=torch.LongTensor([12, 42, 17]),
                                     edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
+            ```
         """
         if node_id is None:
             node_id = []
@@ -108,15 +107,16 @@ class Graph:
         Transform graph into undirected graph.
 
         This method transforms the current graph instance into an undirected graph by
-        adding all directed edges in opposite direction. It applies `ToUndirected`
-        transform to the underlying `torch_geometric.Data` object, which automatically
+        adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
+        transform to the underlying [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object, which automatically
         duplicates edge attributes for newly created directed edges.
 
-        Usage example:
-
+        Example:
+            ```py
             import pathpyG as pp
             g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
             g.to_undirected()
+            ```
         """
         tf = ToUndirected()
         self.data = tf(self.data)
@@ -246,7 +246,7 @@ class Graph:
                 yield i
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
-        """Return whether edge (v,w) exists in the graph.
+        """Return whether edge $(v,w)$ exists in the graph.
         
         If an index to ID mapping is used, nodes are assumed to be string IDs. If no
         mapping is used, nodes are assumed to be integer indices.
@@ -309,7 +309,7 @@ class Graph:
     def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
         """Return Laplacian matrix for a given graph.
 
-        This wrapper method will use `torch_geometric.utils.get_laplacian`
+        This wrapper method will use [`torch_geometric.utils.get_laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.get_laplacian)
         to return a Laplcian matrix representation of a given graph.
 
         Args:
@@ -437,10 +437,10 @@ class Graph:
     @staticmethod
     def from_pyg_data(d: Any) -> Graph:
         """
-        Construct a graph from a `pytorch_geometric.Data` object.
+        Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
 
         Args:
-            d:  `pytorch_geometric.Data` object containing an edge_index as well as 
+            d:  [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object containing an edge_index as well as 
                 arbitrary node, edge, and graph-level attributes
         """
         x = d.to_dict()
@@ -455,7 +455,7 @@ class Graph:
         return g
 
     def to_pyg_data(self) -> Any:
-        """Return torch_geometric.Data representing the graph with its attributes."""
+        """Return [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) representing the graph with its attributes."""
         return self.data
 
     def is_directed(self) -> Any:
@@ -477,12 +477,13 @@ class Graph:
         Args:
             edge_list: List of iterables
 
-        Usage example:
-        
+        Example:
+            ```py
             import pathpyG as pp
-            
+
             l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
-            g = pp.Graph.from_edge_list(l)    
+            g = pp.Graph.from_edge_list(l)
+            ```
         """
         sources = []
         targets = []
@@ -535,7 +536,7 @@ class Graph:
         return s
 
     def __getattr__(self, name: str) -> Any:
-        """Map unknown method to corresponding method of networkx `Graph` object."""
+        """Map unknown method to corresponding method of networkx [`Graph`](https://networkx.org/documentation/stable/reference/classes/graph.html#networkx.Graph) object."""
         def wrapper(*args, **kwargs) -> Any:
             # print('unknown method {0} was called, delegating call to networkx object'.format(name))
             g = torch_geometric.utils.to_networkx(self.data)

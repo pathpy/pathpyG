@@ -6,30 +6,33 @@ import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.PathData import PathData
+from pathpyG import Graph
+from pathpyG import PathData
 
 from pathpyG.utils.config import config
 
 
+# TODO: Add description for arguments
 class HigherOrderGraph(Graph):
     """HigherOrderGraph based on torch_geometric.Data."""
 
-    def __init__(self, paths: PathData, order: int = 1, node_id: Any = None, **kwargs):
+    def __init__(self, paths: PathData, order: int = 1, node_id: Any = None, **kwargs: Any):
         """Generate HigherOrderGraph based on a given PathData instance.
 
         Args:
-            paths: xxx
-            order: xxx
-            node_id: xxx
-            **kwargs: xxx
+            paths:
+            order:
+            node_id:
+            **kwargs:
 
-        Usage Example:
+        Example:
+            ```py
             import pathpyG as pp
 
             paths = pp.PathData()
             paths.add_walk(torch.Tensor([[0, 1, 2], [1, 2, 3]]))
             g2 = Graph(paths, k=2, node_id=['a', 'b', 'c', 'd'])
+            ```
         """
         if node_id is None:
             node_id = []

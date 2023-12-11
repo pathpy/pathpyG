@@ -27,6 +27,7 @@ dependencies = [
     'pandas',               # Data analysis library
     'matplotlib',           # Plotting library
     'seaborn',              # High-level plotting library
+    "jupyter",           # To run the tutorial notebooks
 ]
 
 [project.optional-dependencies]
@@ -47,7 +48,6 @@ dev = [
     "pathpy2",           # Old pathpy version for comparisons
     "pyright",           # Static type checker
     "mypy",              # Static type checker
-    "jupyter",           # To run the tutorial notebooks
 ]
 
 doc = [
@@ -121,7 +121,6 @@ max-line-length = 88
 include = ["src"]
 
 [tool.mypy] # Static type checker
-modules = ["pathpyG"]
 disallow_untyped_defs = true
 disallow_any_unimported = true
 no_implicit_optional = true
@@ -130,6 +129,10 @@ warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]] # Disable mypy for the dir `tests/`
+module = "tests.*"
+ignore_errors = true
 
 ########################################################################################
 ############################# Formatting configuration #################################

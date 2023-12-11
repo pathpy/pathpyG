@@ -41,12 +41,14 @@ let nodes = container.append("g").attr("class", "nodes")
 let text = svg.append("text")
     .text("T="+startTime)
     .attr("x", 20)
-    .attr("y", 20);
+    .attr("y", 20)
+    .attr("class", "labelText");
 
 let bttn = svg.append("text")
     .attr("x",70)
     .attr("y", 20)
-    .text("Play");
+    .text("Play")
+    .attr("class", "labelText");
 
 /*Assign data to variable*/
 let network = data

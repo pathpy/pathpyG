@@ -15,9 +15,9 @@ import torch
 from torch import Tensor, IntTensor, cat, sum
 from torch_geometric.utils import to_scipy_sparse_matrix, degree
 
+from pathpyG import Graph
 from pathpyG import config
 from pathpyG.algorithms.temporal import extract_causal_trees
-from pathpyG.core.Graph import Graph
 
 
 class PathType(Enum):
@@ -65,17 +65,17 @@ class PathData:
         This method adds an observation of a traversed edge.
 
         Args:
-            p: edge_index 
+            p: edge_index
 
-        Usage Example:
+        Example:
+            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
+            stores two observations of edge `A` --> `C`:
+                ```py
+                import pathpyG as pp
 
-        Assuming a `node_id` mapping of ['A', 'B', 'C', 'D'] the following snippet
-        stores two observations of edge A -> C:
-        
-            import pathpyG as pp
-
-            paths = pp.PathData()
-            paths.add_edge(torch.tensor([[0],[2]]), freq=2)
+                paths = pp.PathData()
+                paths.add_edge(torch.tensor([[0],[2]]), freq=2)
+                ```
         """
         self.add_walk(p, freq)
 
@@ -96,16 +96,15 @@ class PathData:
             p: topologically sorted edge_index of DAG
             freq: The number of times this DAG has been observed.
 
-        Usage Example:
+        Example:
+            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following code snippet
+            stores three observations of the DAG with edges `A` --> `B`, `B` --> `C`, `B` --> `D`
+                ```py
+                import pathpyG as pp
 
-        Assuming a `node_id` mapping of ['A', 'B', 'C', 'D'] the following code snippet
-        stores three observations of the DAG with edges A -> B, B -> C, B -> D
-        
-            import pathpyG as pp
-
-            paths = pp.PathData()
-            paths.add_dag(torch.tensor([[0,1], [1, 2], [1, 3]]))
-        
+                paths = pp.PathData()
+                paths.add_dag(torch.tensor([[0,1], [1, 2], [1, 3]]))
+                ```
         """
         i = len(self.paths)
         self.paths[i] = p
@@ -134,15 +133,15 @@ class PathData:
                 in which a walk or path traverses the nodes of a graph.
             freq:   The number of times this walk has been observed.
 
-        Usage example:
+        Example:
+            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
+            stores three observations of the walk `A` --> `C` --> `D`:
+                ```py
+                import pathpyG as pp
 
-        Assuming a `node_id` mapping of ['A', 'B', 'C', 'D'] the following snippet
-        stores three observations of the walk A -> C -> D:
-
-            import pathpyG as pp
-
-            paths = pp.PathData()
-            paths.add_walk(torch.tensor([[0, 2],[2, 3]]), freq=5)
+                paths = pp.PathData()
+                paths.add_walk(torch.tensor([[0, 2],[2, 3]]), freq=5)
+                ```
         """
         i = len(self.paths)
         self.paths[i] = p
@@ -165,10 +164,10 @@ class PathData:
         return self.edge_index_k_weighted(k=1)
 
     def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
-        """Compute edge index and edge weights of k-th order De Bruijn graph model.
+        """Compute edge index and edge weights of $k$-th order De Bruijn graph model.
         
         Args:
-            k: order of the k-th order De Bruijn graph model
+            k: order of the $k$-th order De Bruijn graph model
         """
         freq: Tensor = torch.Tensor([])
 
@@ -223,31 +222,31 @@ class PathData:
 
     @staticmethod
     def edge_index_kth_order_walk(edge_index: Tensor, k: int = 1) -> Tensor:
-        """Compute edge index of k-th order graph for a given walk.
+        """Compute edge index of $k$-th order graph for a given walk.
 
-        The returned k-th order edge_index has size (2, l-1, k) and naturally 
+        The returned $k$-th order `edge_index` has size `(2, l-1, k)` and naturally 
         generalizes first-order edge indices, i.e. for a walk `(0,1,2,3,4,5)`
-        represented by the following ordered `edge_index` with size (2, 5)
+        represented by the following ordered `edge_index` with size `(2, 5)`
 
-        ```
+        ```py
         [
             [0, 1, 2, 3, 4],
             [1, 2, 3, 4, 5]
         ]
         ```
 
-        we obtain the following second-order `edge_index` with size (2, 4, 2)
+        we obtain the following second-order `edge_index` with size `(2, 4, 2)`
 
-        ```
+        ```py
         [
             [[0, 1], [1, 2], [2, 3], [3, 4]],
             [[1, 2], [2, 3], [3, 4], [4, 5]]
         ]
         ```
 
-        while for the third-order `edge_index` we get a tensor with size (2, 3, 3)
+        while for the third-order `edge_index` we get a tensor with size `(2, 3, 3)`
 
-        ```
+        ```py
         [
             [[0, 1, 2], [1, 2, 3], [2, 3, 4]],
             [[1, 2, 3], [2, 3, 4], [3, 4, 5]]
@@ -255,11 +254,11 @@ class PathData:
         ```
 
         Note that for reasons of consistency with edge_index tensors in pyG,
-        first-order edge_indices of walks of length l have size (2,l) rather
-        than size (2, l, 1).
+        first-order `edge_indices` of walks of length $l$ have size `(2,l)` rather
+        than size `(2, l, 1)`.
 
         Args:
-            k: order of the k-th order model.
+            k: order of the $k$-th order model.
         """
         if k <= edge_index.size(dim=1):
             return edge_index.unfold(1, k, 1)
@@ -273,12 +272,13 @@ class PathData:
         Args:
             walk: ordered `edge_index` of a given walk in a graph
 
-        Usage example:
-        
-            import pathpyG as pp
-            s = pp.PathData.walk_to_node_seq(torch.tensor([[0,2],[2,3]]))
-            print(s)
+        Example:
+            ```pycon
+            >>> import pathpyG as pp
+            >>> s = pp.PathData.walk_to_node_seq(torch.tensor([[0,2],[2,3]]))
+            >>> print(s)
             [0,2,3]
+            ```
         """
         return cat([walk[:, 0], walk[1, 1:]])
 
@@ -286,10 +286,10 @@ class PathData:
 
     @staticmethod
     def edge_index_kth_order_dag(edge_index: Tensor, k: int) -> Tensor:
-        """Calculate k-th order edge_index for a single dag.
+        """Calculate $k$-th order edge_index for a single dag.
 
         Args:
-            k: order of k-th order model
+            k: order of $k$-th order model
         """
         x = edge_index
         for _ in range(1, k):
@@ -304,8 +304,8 @@ class PathData:
             edge_index: the tensor for which indices shall be mapped
             mapping: dictionary mapping incides in original tensor to new values
 
-        Usage example:
-        
+        Example:
+            ```py
             import pathpyG as pp
             edge_index = IntTensor([[0,1,2], [1,2,3]])
 
@@ -318,7 +318,8 @@ class PathData:
 
             print(mapped)
             tensor([[1, 0, 3],
-                    [0, 3, 2]]) 
+                    [0, 3, 2]])
+            ```
         """
         # Inspired by `https://stackoverflow.com/questions/13572448`.
         palette, key = zip(*mapping.items())
@@ -331,11 +332,11 @@ class PathData:
 
     @staticmethod
     def lift_order_dag(edge_index: Tensor) -> Tensor:
-        """Efficiently lift edge index of k-th order model to (k+1)-th order model.
+        """Efficiently lift edge index of $k$-th order model to $(k+1)$-th order model.
 
         Args:
-            edge_index: edge_index of k-th order model that will be
-                lifted to (k+1)-th order
+            edge_index: edge_index of $k$-th order model that will be
+                lifted to $(k+1)$-th order
         """
         a = edge_index[0].unique(dim=0)
         b = edge_index[1].unique(dim=0)
