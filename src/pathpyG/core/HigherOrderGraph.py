@@ -124,9 +124,9 @@ class HigherOrderGraph(Graph):
             for a in self.data.edge_attrs():
                 if a != 'edge_index':
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.keys) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
+        if len(self.data.keys()) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
             s += "\nGraph attributes\n"
-            for a in self.data.keys:
+            for a in self.data.keys():
                 if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s

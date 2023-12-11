@@ -69,7 +69,8 @@ class Graph:
 
         # Create pyG Data object
         if len(node_id) == 0:
-            self.data = Data(edge_index=edge_index, node_id=node_id, **kwargs)
+            num_nodes = max(max(edge_index[0]).item(), max(edge_index[1]).item())+1
+            self.data = Data(edge_index=edge_index, node_id=node_id, num_nodes = num_nodes, **kwargs)
         else:
             self.data = Data(
                 edge_index=edge_index, node_id=node_id, num_nodes=len(node_id), **kwargs
@@ -534,11 +535,3 @@ class Graph:
                 if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
-
-    def __getattr__(self, name: str) -> Any:
-        """Map unknown method to corresponding method of networkx [`Graph`](https://networkx.org/documentation/stable/reference/classes/graph.html#networkx.Graph) object."""
-        def wrapper(*args, **kwargs) -> Any:
-            # print('unknown method {0} was called, delegating call to networkx object'.format(name))
-            g = torch_geometric.utils.to_networkx(self.data)
-            return getattr(g, name)(*args, **kwargs)
-        return wrapper
