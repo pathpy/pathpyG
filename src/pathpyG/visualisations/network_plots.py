@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:27 juergen>
+# Time-stamp: <Thu 2023-12-07 12:49 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -15,7 +15,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 from pathpyG.visualisations.plot import PathPyPlot
-from pathpyG.visualisations.xutils import rgb_to_hex, Colormap
+from pathpyG.visualisations.utils import rgb_to_hex, Colormap
 from pathpyG.visualisations.layout import layout as network_layout
 
 # pseudo load class for type checking
@@ -31,37 +31,18 @@ logger = logging.getLogger("root")
 def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
     """Plot a static network.
 
-    This function generates a static plot of the network, thereby different
-    output can be chosen, including
+    This function generates a static plot of the network with various output
+    formats including interactive HTML with d3js, tex file with tikz code, PDF
+    from the tex source, and PNG based on matplotlib. The appearance of the
+    plot can be modified using keyword arguments.
 
-    - interactive html with d3js
-    - tex file with tikz code
-    - pdf from the tex source
-    - png based on matplotlib
+    Args:
+        network (Graph): A `Graph` object to be plotted.
+        **kwargs (Any): Keyword arguments to modify the appearance of the
+            plot. Defaults to no attributes. For details see below.
 
-    The appearance of the plot can be modified by keyword arguments which will
-    be explained in more detail below.
-
-    Parameters
-    ----------
-    network : Graph
-
-        A :py:class`Graph` object
-
-    kwargs : keyword arguments, optional (default = no attributes)
-
-        Attributes used to modify the appearance of the plot.
-        For details see below.
-
-    Keyword arguments used for the plotting:
-
-    filename : str optional (default = None)
-
-        Filename to save. The file ending specifies the output. i.e. is the
-        file ending with '.tex' a tex file will be created; if the file ends
-        with '.pdf' a pdf is created; if the file ends with '.html', a html
-        file is generated generated. If no ending is defined a temporary html
-        file is compiled and shown.
+    Returns:
+        A plot object, the type of which depends on the output format chosen.
 
 
     **Nodes:**
@@ -70,17 +51,16 @@ def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
 
     - ``node_color`` : The fill color of the node. Possible values are:
 
-            - A single color string referred to by name, RGB or RGBA code, for
-              instance 'red' or '#a98d19' or (12,34,102).
+        - A single color string referred to by name, RGB or RGBA code, for
+          instance 'red' or '#a98d19' or (12,34,102).
 
-            - A sequence of color strings referred to by name, RGB or RGBA
-              code, which will be used for each point's color recursively. For
-              instance ['green','yellow'] all points will be filled in green or
-              yellow, alternatively.
+        - A sequence of color strings referred to by name, RGB or RGBA code,
+          which will be used for each point's color recursively. For
+          instance ['green','yellow'] all points will be filled in green or
+          yellow, alternatively.
 
-            - A column name or position whose values will be used to color the
-              marker points according to a colormap.
-
+        - A column name or position whose values will be used to color the
+          marker points according to a colormap.
 
     - ``node_cmap`` : Colormap for node colors. If node colors are given as int
       or float values the color will be assigned based on a colormap. Per
@@ -98,17 +78,16 @@ def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
 
     - ``edge_color`` : The line color of the edge. Possible values are:
 
-            - A single color string referred to by name, RGB or RGBA code, for
-              instance 'red' or '#a98d19' or (12,34,102).
+        - A single color string referred to by name, RGB or RGBA code, for
+          instance 'red' or '#a98d19' or (12,34,102).
 
-            - A sequence of color strings referred to by name, RGB or RGBA
-              code, which will be used for each point's color recursively. For
-              instance ['green','yellow'] all points will be filled in green or
-              yellow, alternatively.
+        - A sequence of color strings referred to by name, RGB or RGBA
+          code, which will be used for each point's color recursively. For
+          instance ['green','yellow'] all points will be filled in green or
+          yellow, alternatively.
 
-            - A column name or position whose values will be used to color the
-              marker points according to a colormap.
-
+        - A column name or position whose values will be used to color the
+          marker points according to a colormap.
 
     - ``edge_cmap`` : Colormap for edge colors. If node colors are given as int
       or float values the color will be assigned based on a colormap. Per
@@ -119,6 +98,7 @@ def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
       of the number lies between 0 and 1. Where 0 represents a fully
       transparent fill and 1 a solid fill.
 
+
     **General**
 
     - ``keep_aspect_ratio``
@@ -126,10 +106,6 @@ def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
     - ``margin``
 
     - ``layout``
-
-    References
-    ----------
-    .. [tn] https://github.com/hackl/tikz-network
 
     """
     return NetworkPlot(network, **kwargs)
@@ -149,7 +125,6 @@ class NetworkPlot(PathPyPlot):
 
     def generate(self) -> None:
         """Generate the plot."""
-        print("Generate network plot.")
         self._compute_edge_data()
         self._compute_node_data()
         self._compute_layout()
@@ -192,7 +167,7 @@ class NetworkPlot(PathPyPlot):
     ) -> None:
         """Extract node data from network."""
         for uid in self.network.nodes:
-            nodes[uid] = {"uid": uid}
+            nodes[uid] = {"uid": str(uid)}
 
             # add edge attributes if needed
             for attribute in attributes:
@@ -346,7 +321,7 @@ class NetworkPlot(PathPyPlot):
     def _compute_layout(self) -> None:
         """Create layout."""
         # get layout form the config
-        layout = self.config.get("layout", None)
+        layout = self.config.get("layout", "rand")
 
         # if no layout is considered stop this process
         if layout is None:
@@ -433,11 +408,20 @@ class TemporalNetworkPlot(NetworkPlot):
         self, nodes: dict, attributes: set, attr: defaultdict, categories: set
     ) -> None:
         """Extract node data from temporal network."""
+
+        time = {e[2] for e in self.network.temporal_edges}
+
+        if self.config.get("end", None) is None:
+            self.config["end"] = int(max(time) + 1)
+
+        if self.config.get("start", None) is None:
+            self.config["start"] = int(min(time) - 1)
+
         for uid in self.network.nodes:
             nodes[uid] = {
                 "uid": uid,
-                "start": int(0),
-                "end": int(20),
+                "start": int(min(time) - 1),
+                "end": int(max(time) + 1),
             }
 
             # add edge attributes if needed
