@@ -27,7 +27,7 @@ Example:
     paths = pp.PathData.from_temporal_dag(dag)
 
     # Compute first- and second-order De Bruijn graph model
-    g1 = pp.HigherOrderGraph(paths, order=1, node_id=dag.data.node_id)
-    g2 = pp.HigherOrderGraph(paths, order=2, node_id=dag.data.node_id)
+    g1 = pp.HigherOrderGraph(paths, order=1, node_id=g.data["node_id"])
+    g2 = pp.HigherOrderGraph(paths, order=2, node_id=g.data["node_id"])
     ```
 """
