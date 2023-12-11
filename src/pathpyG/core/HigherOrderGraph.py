@@ -8,8 +8,10 @@ from torch_geometric.data import Data
 
 from pathpyG import Graph
 from pathpyG import PathData
+from pathpyG import TemporalGraph
 
 from pathpyG.utils.config import config
+from pathpyG.algorithms.temporal import temporal_graph_to_event_dag
 
 
 # TODO: Add description for arguments
@@ -131,3 +133,9 @@ class HigherOrderGraph(Graph):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
 
+    @staticmethod
+    def from_temporal_graph(g, delta, order=1):
+        """Creates a higher-order De Bruijn graph model for paths in a temporal graph."""
+        dag = temporal_graph_to_event_dag(g, delta=1)
+        paths = PathData.from_temporal_dag(dag)
+        return HigherOrderGraph(paths, order=order, node_id=g.data["node_id"])
