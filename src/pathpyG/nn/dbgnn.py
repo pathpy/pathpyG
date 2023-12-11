@@ -17,22 +17,21 @@ class BipartiteGraphOperator(MessagePassing):
         return self.propagate(bipartite_index, size=(N, M), x=x)
 
 class DBGNN(Module):
-    """Implementation of time-aware graph neural network DBGNN
-    Reference paper: https://openreview.net/pdf?id=Dbkqs1EhTr
+    """Implementation of time-aware graph neural network DBGNN ([Reference paper](https://openreview.net/pdf?id=Dbkqs1EhTr)).
 
     Args:
-        num_classes: int - number of classes
-        num_features: list - number of features for first order and higher order nodes, e.g. [first_order_num_features, second_order_num_features]
-        hidden_dims: list - number of hidden dimensions per each layer in the first/higher order network
-        p_dropout: float - drop-out probability
+        num_classes: number of classes
+        num_features: number of features for first order and higher order nodes, e.g. [first_order_num_features, second_order_num_features]
+        hidden_dims: number of hidden dimensions per each layer in the first/higher order network
+        p_dropout: drop-out probability
     """
     def __init__(
         self,
-        num_classes,
-        num_features,
-        hidden_dims,
-        p_dropout=0.0
-        ):
+        num_classes: int,
+        num_features: list[int],
+        hidden_dims: list[int],
+        p_dropout: float = 0.0
+    ):
         super().__init__()
 
         self.num_features = num_features

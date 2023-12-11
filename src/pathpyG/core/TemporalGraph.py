@@ -7,7 +7,7 @@ import torch_geometric.utils
 from torch_geometric.data import TemporalData
 from torch import IntTensor
 
-from pathpyG.core.Graph import Graph
+from pathpyG import Graph
 from pathpyG.utils.config import config
 
 
@@ -134,15 +134,15 @@ class TemporalGraph(Graph):
         return g
     
     def to_static_graph(self) -> Graph:
-        """Return instance of Graph that represents the static, time-aggregated network.
+        """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
         """
         node_id = [self.node_index_to_id[i] for i in range(self.N)]
         return Graph(self.data.edge_index, node_id)
 
     def to_pyg_data(self) -> TemporalData:
         """
-        Returns an instance of torch_geometric.data.Data containing the
-        edge_index as well as node, edge, and graph attributes
+        Returns an instance of [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) containing the
+        `edge_index` as well as node, edge, and graph attributes
         """
         return self.data
 
