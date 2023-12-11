@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG import Graph
+from pathpyG import TemporalGraph
 
 
 @pytest.fixture

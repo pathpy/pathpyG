@@ -15,9 +15,9 @@ import torch
 from torch import Tensor, IntTensor, cat, sum
 from torch_geometric.utils import to_scipy_sparse_matrix, degree
 
+from pathpyG import Graph
 from pathpyG import config
 from pathpyG.algorithms.temporal import extract_causal_trees
-from pathpyG import Graph
 
 
 class PathType(Enum):
