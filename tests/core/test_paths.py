@@ -127,3 +127,18 @@ def test_path_mapping():
         m_e2,
         IntTensor([[[1, 1], [0, 0]], [[1, 0], [0, 2]]]).to(config["torch"]["device"]),
     )
+
+
+def test_lift_order_dag():
+    e1 = tensor([[[0], [1], [1], [3]], [[1], [2], [3], [4]]])
+    x = PathData.lift_order_dag(e1)
+    assert equal(x, IntTensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]]))
+
+    e2 = tensor([[[0, 1], [0, 1], [1, 3]],
+                 [[1, 2], [1, 3], [3, 4]]])
+    x = PathData.lift_order_dag(e2)
+    assert equal(x, IntTensor([[[0, 1, 3]], [[1, 3, 4]]]))
+
+    e3 = tensor([[[0, 1, 3]], [[1, 3, 4]]])
+    x = PathData.lift_order_dag(e3)
+    assert equal(x, IntTensor([]))
