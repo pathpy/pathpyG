@@ -1,6 +1,6 @@
-# Develop your own plot Functions
+# Develop Custom Plot Functions
 
-This tutorial guides you through the process of creating your own plotting functions in pathpyg.
+This tutorial guides you through the process of creating your own plotting functions in pathpyG.
 
 The visualization framework of pathpyg is designed in such a way that is easy to extend it according your own needs.
 
@@ -9,7 +9,7 @@ For this tutorial we want to implement capabilities to plot histograms.
 You will learn:
 
 - How to set up a generic plot function
-- How to convert `pathpyg` data to plot data
+- How to convert `pathpyG` data to plot data
 - How to plot with `d3js` 
 - How to plot with `tikz`
 - How to plot with `matplotlib`
@@ -18,35 +18,35 @@ You will learn:
 
 Plotting commands and functions are located under `/src/pathpyG/visualisation/`
 
-```
-visualisation
-├── __init__.py
-├── _d3js
-│   ├── ...
-├── _matplotlib
-│   ├── ...
-├── _tikz
-│   ├── ...
-├── layout.py
-├── network_plots.py
-├── plot.py
-└── utils.py
+```tree
+visualisation/
+    __init__.py
+    _d3js/
+        ...
+    _matplotlib/
+        ...
+    _tikz/
+        ...
+    layout.py
+    network_plots.py
+    plot.py
+    utils.py
 ```
 
 Folders with `_...` indicate the supported backends. We will have a look at them later.
 
 The `layout.py` file includes algorithms to calculate the positions of the nodes.
 
-In the `utils.py` file are useful helper functions collected. E.g. among others a function that converts `hex_to_rgb`, `rgb_to_hex`, or a simple `Colormap` class. If your plot needs generic functions which might be helpful for other plots as well, this would be a good place to store them.
+In the `utils.py` file are useful helper functions collected. E.g. among others a function that converts `hex_to_rgb`, `rgb_to_hex`, or a simple [`Colormap`][pathpyG.visualisations.utils.Colormap] class. If your plot needs generic functions which might be helpful for other plots as well, this would be a good place to store them.
 
 The `network_plots.py` file includes all plots related to network visualization. We will create in this tutorial a similar collection for histograms.
 
-Finally, the `plot.py` file contains our generic `PathPyPlot` class which we will use to build our own class. 
+Finally, the `plot.py` file contains our generic [`PathPyPlot`][pathpyG.visualisations.plot.PathPyPlot] class which we will use to build our own class. 
 
 This abstract class has a property `_kind` which will specify the type of plot for the generic plot function. Similar to `pandas` we should be able to call:
 
 ```python
-pp.plot(graph,kind="hist")
+pp.plot(graph, kind="hist")
 ```
 
 This abstract class has two dict variables `self.data` and `self.config`. The `self.data` variable is used to store the data needed for the plot, while the `self.config` stores all the configurations passed to the plot.
@@ -199,11 +199,11 @@ With this our basic histogram plot function is finished. We are now able to call
 
 Let's open the `_matplotlib` folder located under `/src/pathpyG/visualisation/_matplotlib`, where all matplotlib functions are stored.
 
-```
+```tree
 _matplotlib
-├── __init__.py
-├── core.py
-└── network_plots.py
+    __init__.py
+    core.py
+    network_plots.py
 ```
 
 The `_init_.py` holds the configuration for the plot function, which we will modify later. The `core.py` file contains the generic `MatplotlibPlot` class, which provides `save` and `show` functionalities for our plots. We do not need to modify these functions. Instead, we have to generate a translation function from our generic data dict (see above) to a histogram in matplotlib. To do so, lets create first a new python file named `hist_plots.py`
