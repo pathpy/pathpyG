@@ -26,10 +26,9 @@ nav:
     - Path Data: tutorial/05_path_data.ipynb
     - Higher-Order Scalability: tutorial/06_higher_order_scalability.ipynb
     - De Bruijn GNN: tutorial/07_dbgnn.ipynb
+    - Custom Plot Functions: plot_tutorial.md
   - Code Reference: reference/ # The rest is done automatically by literate-nav
-  - Contributing: 
-    - contributing.md
-    - Develop your own plot Functions: plot_tutorial.md
+  - Contributing: contributing.md
   - About: about.md
 
 # Copyright
@@ -62,6 +61,7 @@ plugins:
       include_source: True
   - git-revision-date-localized
   - mike # Versioning
+  - markdown-exec # Execute code blocks to show the output; Also for rendering of directory trees
 
 extra:
   version:

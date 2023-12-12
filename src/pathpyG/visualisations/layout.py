@@ -28,7 +28,7 @@ from pathpyG import tqdm
 def layout(network, **kwds):
     """Function to generate a layout for the network.
 
-    This function genearates a layout configuration for the nodes in the
+    This function generates a layout configuration for the nodes in the
     network. Thereby, different layouts and options can be chosen. The layout
     function is directly included in the plot function or can be separately
     called.
@@ -36,172 +36,135 @@ def layout(network, **kwds):
     The layout function supports different network types and layout algorithm.
     Currently supported networks are:
 
-    * 'cnet',
-    * 'networkx',
-    * 'igraph',
-    * 'pathpyG'
-    * node/edge list
+    - `cnet`,
+    - `networkx`,
+    - `igraph`,
+    - `pathpyG`
+    - node/edge list
 
-   Currently supported algorithms are:
+    Currently supported algorithms are:
 
-    * Fruchterman-Reingold force-directed algorithm
-    * Uniformly at random node positions
+    - Fruchterman-Reingold force-directed algorithm
+    - Uniformly at random node positions
 
     The appearance of the layout can be modified by keyword arguments which will
     be explained in more detail below.
 
-    Parameters
-    ----------
+    Args:
+        network (network object): Network to be drawn. The network can be a `cnet`, `networkx`, `igraph`, `pathpy` object, or a tuple of a node list and edge list.
+        **kwds (Optional dict): Attributes used to modify the appearance of the layout. For details see below.
 
-    network : network object
-        Network to be drawn. The network can be a 'cnet', 'networkx', 'igraph',
-        'pathpy' object, or a tuple of a node list and edge list.
+    # Layout:
 
-    kwds : keyword arguments, optional (default= no attributes)
-        Attributes used to modify the appearance of the layout.
-        For details see below.
+    The layout can be modified by the following keyword arguments:
+    Note: 
+        All layout arguments can be entered with or without `layout_` at the beginning, e.g. `layout_iterations` is equal to `iterations`
 
+    Keyword Args:
+        layout (Optional dict or string): A dictionary with the node positions on a 2-dimensional plane. The
+            key value of the dict represents the node id while the value
+            represents a tuple of coordinates (e.g. $n = (x,y)$). The initial
+            layout can be placed anywhere on the 2-dimensional plane.
 
-    Keyword arguments used for the layout:
+            Instead of a dictionary, the algorithm used for the layout can be defined
+            via a string value. Currently, supported are:
 
-    **Layout:**
+            - **Random layout**, where the nodes are uniformly at random placed in the
+                unit square. 
+            - **Fruchterman-Reingold force-directed algorithm**. In this algorithm, the
+                nodes are represented by steel rings and the edges are springs between
+                them. The attractive force is analogous to the spring force and the
+                repulsive force is analogous to the electrical force. The basic idea is
+                to minimize the energy of the system by moving the nodes and changing
+                the forces between them. 
 
-    NOTE: All layout arguments can be entered with or without 'layout_' at the
-    beginning, e.g. 'layout_iterations' is equal to 'iterations'
+            The algorithm can be enabled with the keywords:
+            | Algorithms | Keywords |
+            | ---------- | -------- |
+            | Random | `Random`, `random`, `rand`, `None` |
+            |Fruchterman-Reingold | `Fruchterman-Reingold`, `fruchterman_reingold`, `fr spring_layout`, `spring layout`, `FR` |
 
-    - ``layout`` : dict or string , optional (default = None)
-      A dictionary with the node positions on a 2-dimensional plane. The
-      key value of the dict represents the node id while the value
-      represents a tuple of coordinates (e.g. n = (x,y)). The initial
-      layout can be placed anywhere on the 2-dimensional plane.
-
-      Instead of a dictionary, the algorithm used for the layout can be defined
-      via a string value. Currently, supported are:
-
-      * Random layout, where the nodes are uniformly at random placed in the
-        unit square. This algorithm can be enabled with the keywords: 'Random',
-        'random', 'rand', or None
-
-      * Fruchterman-Reingold force-directed algorithm. In this algorithm, the
-        nodes are represented by steel rings and the edges are springs between
-        them. The attractive force is analogous to the spring force and the
-        repulsive force is analogous to the electrical force. The basic idea is
-        to minimize the energy of the system by moving the nodes and changing
-        the forces between them. This algorithm can be enabled with the
-        keywords: 'Fruchterman-Reingold', 'fruchterman_reingold', 'fr',
-        'spring_layout', 'spring layout', 'FR'
-
-        ==================== ==================================================
-        Algorithms           Keywords
-        ==================== ==================================================
-        Random               Random, random, rand, None
-        Fruchterman-Reingold Fruchterman-Reingold, fruchterman_reingold, fr
-                             spring_layout, spring layout, FR
-        ==================== ==================================================
-
-    - ``force`` : float, optional (default = None)
-      Optimal distance between nodes.  If None the distance is set to
-      1/sqrt(n) where n is the number of nodes.  Increase this value to move
-      nodes farther apart.
-
-    - ``positions`` : dict or None  optional (default = None)
-      Initial positions for nodes as a dictionary with node as keys and values
-      as a coordinate list or tuple.  If None, then use random initial
-      positions.
-
-    - ``fixed`` : list or None, optional (default = None)
-      Nodes to keep fixed at initial position.
-
-    - ``iterations`` : int, optional (default = 50)
-      Maximum number of iterations taken
-
-    - ``threshold``: float, optional (default = 1e-4)
-      Threshold for relative error in node position changes.  The iteration
-      stops if the error is below this threshold.
-
-    - ``weight`` : string or None, optional (default = None)
-      The edge attribute that holds the numerical value used for the edge
-      weight.  If None, then all edge weights are 1.
-
-    - ``dimension`` : int, optional (default = 2)
-      Dimension of layout. Currently, only plots in 2 dimension are supported.
-
-    - ``seed`` : int or None, optional (default = None)
-      Set the random state for deterministic node layouts. If int, `seed` is
-      the seed used by the random number generator, if None, the a random seed
-      by created by the numpy random number generator is used.
+        force (float): Optimal distance between nodes.  If None the distance is set to
+            1/sqrt(n) where n is the number of nodes.  Increase this value to move
+            nodes farther apart.
+        positions (dict): Initial positions for nodes as a dictionary with node as keys and values
+            as a coordinate list or tuple.  If None, then use random initial
+            positions.
+        fixed (list): Nodes to keep fixed at initial position.
+        iterations (int): Maximum number of iterations taken. Defaults to 50.
+        threshold (float): Threshold for relative error in node position changes.  The iteration
+            stops if the error is below this threshold. Defaults to 1e-4.
+        weight (string):  or None, optional (default = None)
+            The edge attribute that holds the numerical value used for the edge
+            weight. If None, then all edge weights are 1.
+        dimension (int): Dimension of layout. Currently, only plots in 2 dimension are supported. Defaults to 2.
+        seed (int): Set the random state for deterministic node layouts. If int, `seed` is
+            the seed used by the random number generator, if None, the a random seed
+            by created by the numpy random number generator is used.
 
     In the layout style dictionary multiple keywords can be used to address
     attributes. These keywords will be converted to an unique key word,
     used in the remaining code.
 
-    ========= =================================
-    keys      other valid keys
-    ========= =================================
-    fixed     fixed_nodes, fixed_vertices,
-              fixed_n, fixed_v
-    positions initial_positions, node_positions
-              vertex_positions, n_positions,
-              v_positions
-    ========= =================================
+    | keys | other valid keys |
+    | ---- | ---------------- |
+    | fixed | `fixed_nodes`, `fixed_vertices`, `fixed_n`, `fixed_v` |
+    | positions| `initial_positions`, `node_positions`, `vertex_positions`, `n_positions`, `v_positions` |
 
-    Examples
-    --------
+    Examples:
+        For illustration purpose a similar network as in the `python-igraph` tutorial
+        is used. Instead of `igraph`, the `cnet` module is used for creating the
+        network.
 
-    For illustration purpose a similar network as in the python-igrap tutorial
-    is used. Instead of igraph, the cnet module is used for creating the
-    network.
+        Create an empty network object, and add some edges.
 
-    Create an empty network object, and add some edges.
+        >>> net = Network(name = 'my tikz test network',directed=True)
+        >>> net.add_edges_from([('ab','a','b'), ('ac','a','c'), ('cd','c','d'),
+        ...                     ('de','d','e'), ('ec','e','c'), ('cf','c','f'),
+        ...                     ('fa','f','a'), ('fg','f','g'),('gg','g','g'),
+        ...                     ('gd','g','d')])
 
-    >>> net = Network(name = 'my tikz test network',directed=True)
-    >>> net.add_edges_from([('ab','a','b'), ('ac','a','c'), ('cd','c','d'),
-    >>>                     ('de','d','e'), ('ec','e','c'), ('cf','c','f'),
-    >>>                     ('fa','f','a'), ('fg','f','g'),('gg','g','g'),
-    >>>                     ('gd','g','d')])
+        Now a layout can be generated:
 
-    Now a layout can be generated:
+        >>> layout(net)
+        {'b': array([0.88878309, 0.15685131]), 'd': array([0.4659341 , 0.79839535]),
+        'c': array([0.60386662, 0.40727962]), 'e': array([0.71073353, 0.65608203]),
+        'g': array([0.42663927, 0.47412449]), 'f': array([0.48759769, 0.86787594]),
+        'a': array([0.84154488, 0.1633732 ])}
 
-    >>> layout(net)
-    {'b': array([0.88878309, 0.15685131]), 'd': array([0.4659341 , 0.79839535]),
-    'c': array([0.60386662, 0.40727962]), 'e': array([0.71073353, 0.65608203]),
-    'g': array([0.42663927, 0.47412449]), 'f': array([0.48759769, 0.86787594]),
-    'a': array([0.84154488, 0.1633732 ])}
+        Per default, the node positions are assigned uniform random. In order to
+        create a layout, the layout methods of the packages can be used, or the
+        position of the nodes can be directly assigned, in form of a dictionary,
+        where the key is the `node_id` and the value is a tuple of the node position
+        in $x$ and $y$.
 
-    Per default, the node positions are assigned uniform random. In order to
-    create a layout, the layout methods of the packages can be used, or the
-    position of the nodes can be directly assigned, in form of a dictionary,
-    where the key is the node id and the value is a tuple of the node position
-    in x and y.
+        Let us generate a force directed layout (e.g. Fruchterman-Reingold):
 
-    Let us generate a force directed layout (e.g. Fruchterman-Reingold):
+        >>> layout(net, layout='fr')
+        {'g': array([-0.77646408,  1.71291126]), 'c': array([-0.18639655,0.96232326]),
+        'f': array([0.33394308, 0.93778681]), 'e': array([0.09740098, 1.28511973]),
+        'a': array([1.37933158, 0.23171857]), 'b': array([ 2.93561876,-0.46183461]),
+        'd': array([-0.29329793,  1.48971303])}
 
-    >>> layout(net, layout='fr')
-    {'g': array([-0.77646408,  1.71291126]), 'c': array([-0.18639655,0.96232326]),
-    'f': array([0.33394308, 0.93778681]), 'e': array([0.09740098, 1.28511973]),
-    'a': array([1.37933158, 0.23171857]), 'b': array([ 2.93561876,-0.46183461]),
-    'd': array([-0.29329793,  1.48971303])}
+        Note, instead of the command `fr` also the command
+        `Fruchterman-Reingold` or any other command mentioned above can be
+        used. For more information see table above.
 
-    Note, instead of the command ``fr`` also the command
-    ``Fruchterman-Reingold`` or any other command mentioned above can be
-    used. For more information see table above.
+        In order to keep the properties of the layout for your network separate from
+        the network itself, you can simply set up a Python dictionary containing the
+        keyword arguments you would pass to [`layout`][pathpyG.visualisations.layout.layout] and then use the
+        double asterisk (**) operator to pass your specific layout attributes to
+        [`layout`][pathpyG.visualisations.layout.layout]:
 
-    In order to keep the properties of the layout for your network separate from
-    the network itself, you can simply set up a Python dictionary containing the
-    keyword arguments you would pass to :py:meth:`layout` and then use the
-    double asterisk (**) operator to pass your specific layout attributes to
-    :py:meth:`layout`:
-
-    >>> layout_style = {}
-    >>> layout_style['layout'] = 'Fruchterman-Reingold'
-    >>> layout_style['seed'] = 1
-    >>> layout_style['iterations'] = 100
-    >>> layout(net,**layout_style)
-    {'d': array([-0.31778276, 1.78246882]), 'f': array([-0.8603259, 0.82328291]),
-    'c': array([-0.4423771 , 1.21203895]), 'e': array([-0.79934355, 1.49000119]),
-    'g': array([0.43694799, 1.51428788]), 'a': array([-2.15517293, 0.23948823]),
-    'b': array([-3.84803812, -0.71628417])}
-
+        >>> layout_style = {}
+        >>> layout_style['layout'] = 'Fruchterman-Reingold'
+        >>> layout_style['seed'] = 1
+        >>> layout_style['iterations'] = 100
+        >>> layout(net,**layout_style)
+        {'d': array([-0.31778276, 1.78246882]), 'f': array([-0.8603259, 0.82328291]),
+        'c': array([-0.4423771 , 1.21203895]), 'e': array([-0.79934355, 1.49000119]),
+        'g': array([0.43694799, 1.51428788]), 'a': array([-2.15517293, 0.23948823]),
+        'b': array([-3.84803812, -0.71628417])}
     """
     # initialize variables
     _weight = kwds.get('weight', None)
@@ -256,43 +219,34 @@ def layout(network, **kwds):
 class Layout(object):
     """Default class to create layouts
 
-    The :py:class:`Layout` class is used to generate node a layout drawer and
+    The [`Layout`][pathpyG.visualisations.layout.Layout] class is used to generate node a layout drawer and
     return the calculated node positions as a dictionary, where the keywords
     represents the node ids and the values represents a two dimensional tuple
     with the x and y coordinates for the associated nodes.
 
-    Parameters
-    ----------
-    nodes : list with node ids
-        The list contain a list of unique node ids.
+    Args:
+        nodes (list): list with node ids.
+            The list contain a list of unique node ids.
+        **attr (dict): Attributes to add to node as key=value pairs.
+            See also [`layout`][pathpyG.visualisations.layout.layout]
 
-    attr : keyword arguments, optional (default = no attributes)
-        Attributes to add to node as key=value pairs.
-        See also :py:meth:`layout`
-
-    See Also
-    --------
-    layout
-
+    Note: See also
+        [`layout`][pathpyG.visualisations.layout.layout]
     """
 
     def __init__(self, nodes, adjacency_matrix, **attr):
         """Initialize the Layout class
 
-        The :py:class:`Layout` class is used to generate node a layout drawer
-        and return the calculated node positions as a dictionary, where the
-        keywords represents the node ids and the values represents a two
-        dimensional tuple with the x and y coordinates for the associated nodes.
+        The [`Layout`][pathpyG.visualisations.layout.Layout] class is used to generate node a layout drawer and
+        return the calculated node positions as a dictionary, where the keywords
+        represents the node ids and the values represents a two dimensional tuple
+        with the x and y coordinates for the associated nodes.
 
-        Parameters
-        ----------
-        nodes : list with node ids
-            The list contain a list of unique node ids.
-
-        attr : keyword arguments, optional (default = no attributes)
-            Attributes to add to node as key=value pairs.
-            See also :py:meth:`layout`
-
+        Args:
+            nodes (list): list with node ids.
+                The list contain a list of unique node ids.
+            **attr (dict): Attributes to add to node as key=value pairs.
+                See also [`layout`][pathpyG.visualisations.layout.layout]
         """
 
         # initialize variables
@@ -329,16 +283,10 @@ class Layout(object):
         attributes. These keywords will be converted to an unique key word,
         used in the remaining code.
 
-        ========= =================================
-        keys      other valid keys
-        ========= =================================
-        fixed     fixed_nodes, fixed_vertices,
-                  fixed_n, fixed_v
-        positions initial_positions, node_positions
-                  vertex_positions, n_positions,
-                  v_positions
-        ========= =================================
-
+        | keys | other valid keys |
+        | ---- | ---------------- |
+        | fixed | `fixed_nodes`, `fixed_vertices`, `fixed_n`, `fixed_v` |
+        | positions | `initial_positions`, `node_positions` `vertex_positions`, `n_positions`, `v_positions` |
         """
         names = {'fixed': ['fixed_nodes', 'fixed_vertices',
                            'fixed_v', 'fixed_n'],
@@ -389,28 +337,19 @@ class Layout(object):
         """Position nodes uniformly at random in the unit square.
 
         For every node, a position is generated by choosing each of dimension
-        coordinates uniformly at random on the interval [0.0, 1.0).
+        coordinates uniformly at random on the interval $[0.0, 1.0)$.
 
-        This algorithm can be enabled with the keywords: 'Random',
-        'random', 'rand', or None
+        This algorithm can be enabled with the keywords: `Random`,
+        `random`, `rand`, or `None`
 
-        NumPy (http://scipy.org) is required for this function.
+        Keyword Args:
+            dimension (int): Dimension of layout. Currently, only plots in 2 dimension are supported. Defaults to 2.
+            seed (int): Set the random state for deterministic node layouts. If int, `seed` is
+                the seed used by the random number generator, if None, the a random
+                seed by created by the numpy random number generator is used.
 
-        **Keyword arguments used for the layout:**
-
-        - ``dimension`` : int, optional (default = 2)
-          Dimension of layout. Currently, only plots in 2 dimension are supported.
-
-        - ``seed`` : int or None, optional (default = None)
-          Set the random state for deterministic node layouts. If int, `seed` is
-          the seed used by the random number generator, if None, the a random
-          seed by created by the numpy random number generator is used.
-
-        Returns
-        -------
-        layout : dict
-            A dictionary of positions keyed by node
-
+        Returns:
+            layout (dict): A dictionary of positions keyed by node
         """
         np.random.seed(self.seed)
         layout = np.random.rand(len(self.nodes), self.dimension)
@@ -425,48 +364,29 @@ class Layout(object):
         force. The basic idea is to minimize the energy of the system by moving
         the nodes and changing the forces between them.
 
-        This algorithm can be enabled with the keywords: 'Fruchterman-Reingold',
-        'fruchterman_reingold', 'fr', 'spring_layout', 'spring layout', 'FR'
+        This algorithm can be enabled with the keywords: `Fruchterman-Reingold`,
+        `fruchterman_reingold`, `fr`, `spring_layout`, `spring layout`, `FR`
 
-        **Keyword arguments used for the layout:**
+        Keyword Args:
+            force (float): Optimal distance between nodes. If None the distance is set to
+                1/sqrt(n) where n is the number of nodes.  Increase this value to move
+                nodes farther apart.
+            positions (dict): Initial positions for nodes as a dictionary with node as keys and values
+                as a coordinate list or tuple.  If None, then use random initial
+                positions.
+            fixed (list): Nodes to keep fixed at initial position.
+            iterations (int): Maximum number of iterations taken. Defaults to 50.
+            threshold (float): Threshold for relative error in node position changes.  The iteration
+                stops if the error is below this threshold. Defaults to 1e-4.
+            weight (string): The edge attribute that holds the numerical value used for the edge
+                weight.  If None, then all edge weights are 1.
+            dimension (int): Dimension of layout. Currently, only plots in 2 dimension are supported. Defaults to 2.
+            seed (int): Set the random state for deterministic node layouts. If int, `seed` is
+                the seed used by the random number generator, if None, the a random seed
+                by created by the numpy random number generator is used.
 
-        - ``force`` : float, optional (default = None)
-          Optimal distance between nodes.  If None the distance is set to
-          1/sqrt(n) where n is the number of nodes.  Increase this value to move
-          nodes farther apart.
-
-        - ``positions`` : dict or None  optional (default = None)
-          Initial positions for nodes as a dictionary with node as keys and values
-          as a coordinate list or tuple.  If None, then use random initial
-          positions.
-
-        - ``fixed`` : list or None, optional (default = None)
-          Nodes to keep fixed at initial position.
-
-        - ``iterations`` : int, optional (default = 50)
-          Maximum number of iterations taken
-
-        - ``threshold``: float, optional (default = 1e-4)
-          Threshold for relative error in node position changes.  The iteration
-          stops if the error is below this threshold.
-
-        - ``weight`` : string or None, optional (default = None)
-          The edge attribute that holds the numerical value used for the edge
-          weight.  If None, then all edge weights are 1.
-
-        - ``dimension`` : int, optional (default = 2)
-          Dimension of layout. Currently, only plots in 2 dimension are supported.
-
-        - ``seed`` : int or None, optional (default = None)
-          Set the random state for deterministic node layouts. If int, `seed` is
-          the seed used by the random number generator, if None, the a random seed
-          by created by the numpy random number generator is used.
-
-        Returns
-        -------
-        layout : dict
-            A dictionary of positions keyed by node
-
+        Returns:
+            layout (dict): A dictionary of positions keyed by node
         """
 
         # convert adjacency matrix
@@ -511,7 +431,7 @@ class Layout(object):
         """Fruchterman-Reingold algorithm for dense matrices.
 
         This algorithm is based on the Fruchterman-Reingold algorithm provided
-        by networkx. (Copyright (C) 2004-2018 by Aric Hagberg <hagberg@lanl.gov>
+        by `networkx`. (Copyright (C) 2004-2018 by Aric Hagberg <hagberg@lanl.gov>
         Dan Schult <dschult@colgate.edu> Pieter Swart <swart@lanl.gov> Richard
         Penney <rwpenney@users.sourceforge.net> All rights reserved. BSD
         license.)
@@ -668,27 +588,18 @@ class Layout(object):
     def circular(self):
         """Position nodes on a circle with given radius.
 
-        This algorithm can be enabled with the keywords: 'circular', 'circle', 'ring', 'lattice-1d', '1d-lattice', 'lattice'
+        This algorithm can be enabled with the keywords: `circular`, `circle`, `ring`, `lattice-1d`, `1d-lattice`, `lattice`
 
-        **Keyword arguments used for the layout:**
+        Keyword Args:
+            radius (float): Sets the radius of the circle on which nodes
+                are positioned. Defaults to 1.0.
+            direction (float): Sets the direction in which nodes are placed on the circle. 1.0 for clockwise (default)
+                and -1.0 for counter-clockwise direction. Defaults to 1.0.
+            start_angle (float): Sets the angle of the first node relative to the 3pm position on a clock.
+                and -1.0 for counter-clockwise direction. Defaults to 90.0.
 
-        - ``radius`` : float, optional (default = 1.0)
-          Sets the radius of the circle on which nodes
-          are positioned
-
-        - ``direction`` : float, optional (default = 1.0)
-          Sets the direction in which nodes are placed on the circle. 1.0 for clockwise (default)
-          and -1.0 for counter-clockwise direction.
-
-        - ``start_angle`` : float, optional (default = 90.0)
-          Sets the angle of the first node relative to the 3pm position on a clock.
-          and -1.0 for counter-clockwise direction.
-
-        Returns
-        -------
-        layout : dict
-            A dictionary of positions keyed by node
-
+        Returns:
+            layout (dict): A dictionary of positions keyed by node
         """
 
         n = len(self.nodes)
@@ -707,13 +618,10 @@ class Layout(object):
     def grid(self):
         """Position nodes on a two-dimensional grid
 
-        This algorithm can be enabled with the keywords: 'grid', 'lattice-2d', '2d-lattice', 'lattice'
+        This algorithm can be enabled with the keywords: `grid`, `lattice-2d`, `2d-lattice`, `lattice`
 
-        Returns
-        -------
-        layout : dict
-            A dictionary of positions keyed by node
-
+        Returns:
+            layout (dict): A dictionary of positions keyed by node
         """
 
         n = len(self.nodes)
