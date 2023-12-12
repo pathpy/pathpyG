@@ -19,13 +19,13 @@ You will learn:
 Plotting commands and functions are located under `/src/pathpyG/visualisation/`
 
 ```tree
-visualisation/
+visualisation
     __init__.py
-    _d3js/
+    _d3js
         ...
-    _matplotlib/
+    _matplotlib
         ...
-    _tikz/
+    _tikz
         ...
     layout.py
     network_plots.py
