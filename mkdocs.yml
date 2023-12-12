@@ -62,6 +62,7 @@ plugins:
       include_source: True
   - git-revision-date-localized
   - mike # Versioning
+  - markdown-exec # Execute code blocks to show the output; Also for rendering of directory trees
 
 extra:
   version:

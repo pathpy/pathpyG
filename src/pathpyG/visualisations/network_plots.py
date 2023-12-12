@@ -45,67 +45,68 @@ def network_plot(network: Graph, **kwargs: Any) -> NetworkPlot:
         A plot object, the type of which depends on the output format chosen.
 
 
+    # Keyword Arguments to modify the appearance of the plot
     **Nodes:**
 
-    - ``node_size`` : diameter of the node
+    - `node_size` : diameter of the node
 
-    - ``node_color`` : The fill color of the node. Possible values are:
+    - `node_color` : The fill color of the node. Possible values are:
 
         - A single color string referred to by name, RGB or RGBA code, for
-          instance 'red' or '#a98d19' or (12,34,102).
+          instance `red` or `#a98d19` or `(12,34,102)`.
 
         - A sequence of color strings referred to by name, RGB or RGBA code,
           which will be used for each point's color recursively. For
-          instance ['green','yellow'] all points will be filled in green or
+          instance `['green', 'yellow']` all points will be filled in green or
           yellow, alternatively.
 
         - A column name or position whose values will be used to color the
           marker points according to a colormap.
 
-    - ``node_cmap`` : Colormap for node colors. If node colors are given as int
+    - `node_cmap` : Colormap for node colors. If node colors are given as int
       or float values the color will be assigned based on a colormap. Per
       default the color map goes from red to green. Matplotlib colormaps or
       seaborn color palettes can be used to style the node colors.
 
-    - ``node_opacity`` : fill opacity of the node. The default is 1. The range
+    - `node_opacity` : fill opacity of the node. The default is 1. The range
       of the number lies between 0 and 1. Where 0 represents a fully
       transparent fill and 1 a solid fill.
 
 
     **Edges**
 
-    - ``edge_size`` : width of the edge
+    - `edge_size` : width of the edge
 
-    - ``edge_color`` : The line color of the edge. Possible values are:
+    - `edge_color` : The line color of the edge. Possible values are:
 
         - A single color string referred to by name, RGB or RGBA code, for
-          instance 'red' or '#a98d19' or (12,34,102).
+          instance `red` or `#a98d19` or `(12,34,102)`.
 
         - A sequence of color strings referred to by name, RGB or RGBA
           code, which will be used for each point's color recursively. For
-          instance ['green','yellow'] all points will be filled in green or
+          instance `['green','yellow']` all points will be filled in green or
           yellow, alternatively.
 
         - A column name or position whose values will be used to color the
           marker points according to a colormap.
 
-    - ``edge_cmap`` : Colormap for edge colors. If node colors are given as int
+    - `edge_cmap` : Colormap for edge colors. If node colors are given as int
       or float values the color will be assigned based on a colormap. Per
       default the color map goes from red to green. Matplotlib colormaps or
       seaborn color palettes can be used to style the edge colors.
 
-    - ``edge_opacity`` : line opacity of the edge. The default is 1. The range
+    - `edge_opacity` : line opacity of the edge. The default is 1. The range
       of the number lies between 0 and 1. Where 0 represents a fully
       transparent fill and 1 a solid fill.
 
 
     **General**
 
-    - ``keep_aspect_ratio``
+    - `keep_aspect_ratio`
 
-    - ``margin``
+    - `margin`
 
-    - ``layout``
+    - `layout`
 
     """
     return NetworkPlot(network, **kwargs)
