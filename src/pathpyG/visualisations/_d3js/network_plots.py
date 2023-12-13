@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with d3js
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-12-06 17:24 juergen>
+# Time-stamp: <Wed 2023-12-13 10:12 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -38,6 +38,9 @@ class NetworkPlot(D3jsPlot):
         """Clen up data."""
         self.config.pop("node_cmap", None)
         self.config.pop("edge_cmap", None)
+        for node in self.data["nodes"]:
+            node.pop("x", None)
+            node.pop("y", None)
 
     def to_json(self) -> Any:
         """Convert data to json."""
