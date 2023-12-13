@@ -8,6 +8,9 @@ console.log("Static Network Template");
 const selector = config.selector;
 const width = config.width || 400;
 const height = config.height || 400;
+const charge_distance = config.charge_distance || 400;
+const charge_force = config.charge_force || -3000;
+// const weight = false;
 
 /* Create a svg element to display the network */
 var svg = d3.select(selector)
@@ -53,16 +56,23 @@ var node = container.append("g").attr("class", "nodes")
     .style("fill", function(d) { return d.color; })
     .style("opacity", function(d) { return d.opacity; });
 
+/*Scale weight for d3js */
+var weightScale = d3.scaleLinear()
+    .domain(d3.extent(links, function (d) { return d.weight }))
+    .range([.1, 1]);
 
 /*Simulation of the forces*/
 var simulation = d3.forceSimulation(nodes)
-    .force("charge", d3.forceManyBody().strength(-3000))
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("x", d3.forceX(width / 2).strength(1))
-    .force("y", d3.forceY(height / 2).strength(1))
     .force("links", d3.forceLink(links)
            .id(function(d) {return d.uid; })
-           .distance(50).strength(function(d){return d.weight;}))
+           .distance(50)
+           .strength(function(d){return weightScale(d.weight);})
+          )
+    .force("charge", d3.forceManyBody()
+           .strength(charge_force)
+           .distanceMax(charge_distance)
+          )
+    .force("center", d3.forceCenter(width / 2, height / 2))
     .on("tick", ticked);
 
 /*Update of the node and edge objects*/
