@@ -402,12 +402,14 @@ class PathData:
         """Return string representation of PathData object."""
         num_walks = 0
         num_dags = 0
+        total = 0
         for p in self.paths:
             if self.path_types[p] == PathType.DAG:
                 num_dags += 1
             else:
                 num_walks += 1
-        s = 'PathData with {0} walks and {1} dags'.format(num_walks, num_dags)
+            total += self.path_freq[p]
+        s = f"PathData with {num_walks} walks and {num_dags} dags and total weight {total}"
         return s
 
     @staticmethod
