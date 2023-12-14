@@ -380,22 +380,66 @@ class PathData:
                         to true, the PathData object may contain both DAGs and walks.
         """
         ds = PathData()
-        dags = extract_causal_trees(dag)
-        for d in dags:
-            # src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
-            # dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
-            src = [s for s in dags[d][0]]
-            dst = [t for t in dags[d][1]]
-            # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
-            edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
-            if detect_walks and degree(edge_index[1]).max() == 1 and \
-                    degree(edge_index[0]).max() == 1:
-                ds.add_walk(edge_index)
-            else:
-                ds.add_dag(edge_index)
-        ds.mapping = {
-            i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+
+        out_deg = degree(dag.data.edge_index[0])
+        in_deg = degree(dag.data.edge_index[1])
+
+        # check if dag exclusively consists of simple walks and apply fast method
+        if torch.max(out_deg).item() == 1.0 and torch.max(in_deg).item() == 1.0:
+
+            zero_outdegs = (out_deg==0).nonzero().squeeze()
+            zero_indegs = (in_deg==0).nonzero().squeeze()
+
+            # find indices of those elements in src where in-deg = 0, i.e. elements are in zero_indegs
+            start_segs = torch.where(torch.isin(dag.data.edge_index[0], zero_indegs))[0]
+            end_segs = torch.cat((start_segs[1:], torch.tensor([len(dag.data.edge_index[0])], device=config['torch']['device'])))
+            segments = end_segs - start_segs
+            mapping = {
+                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
             }
+
+            # Map node-time events to node IDs
+            # Convert the tensor to a flattened 1D tensor
+            flat_tensor = dag.data.edge_index.flatten()
+
+            # Create a mask tensor to mark indices to be replaced
+            mask = torch.zeros_like(flat_tensor, device=config['torch']['device'])
+
+            for key, value in mapping.items():
+                # Find indices where the values match the keys in the mapping
+                indices = (flat_tensor == key).nonzero(as_tuple=True)
+                
+                # Set the corresponding indices in the mask tensor to 1
+                mask[indices] = 1
+                
+                # Replace values in the flattened tensor according to the mapping
+                flat_tensor[indices] = value
+
+            # Reshape the flattened tensor back to the original shape
+            dag.data['edge_index'] = flat_tensor.reshape(dag.data.edge_index.shape)
+
+            # split edge index into multiple independent sections: 
+            # sections are limited by indices in src where in-deg = 0 and indices in tgt where out-deg = 0 
+            for t in torch.split(dag.data.edge_index, segments.tolist(), dim=1):
+                ds.add_walk(t)
+
+        else:
+            dags = extract_causal_trees(dag)
+            for d in dags:
+                # src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
+                # dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
+                src = [s for s in dags[d][0]]
+                dst = [t for t in dags[d][1]]
+                # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
+                edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
+                if detect_walks and degree(edge_index[1]).max() == 1 and \
+                        degree(edge_index[0]).max() == 1:
+                    ds.add_walk(edge_index)
+                else:
+                    ds.add_dag(edge_index)
+            ds.mapping = {
+                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+                }
         return ds
 
     def __str__(self) -> str:
