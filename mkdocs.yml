@@ -20,13 +20,12 @@ nav:
   - Tutorial:
     - tutorial.md
     - Basic Concepts: tutorial/basic_concepts.ipynb
-#    - Accessing Netzschleuder: tutorial/netzschleuder.ipynb
+    - Accessing Netzschleuder: tutorial/netzschleuder.ipynb
     - Paths and Higher-Order Models: tutorial/paths_higher_order.ipynb
     - Temporal Graphs: tutorial/temporal_graphs.ipynb
-#    - Higher-Order Scalability: tutorial/higher_order_scalability.ipynb
-    - Visualisation: tutorial/visualisation.ipynb
+    - Causality-Aware GNNs: tutorial/dbgnn.ipynb
+    - Interactive Graph Visualisation: tutorial/visualisation.ipynb
     - Develop your own plot Functions: plot_tutorial.md
-    - De Bruijn GNN: tutorial/dbgnn.ipynb
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
     - contributing.md
