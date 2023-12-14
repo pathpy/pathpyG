@@ -320,15 +320,17 @@ class Graph:
                             be passed to pyG `get_laplacian` function as edge weight
         """
         if edge_attr is None:
-            return torch_geometric.utils.get_laplacian(
+            index, weight =torch_geometric.utils.get_laplacian(
                 self.data.edge_index, normalization=normalization
             )
+            return torch_geometric.utils.to_scipy_sparse_matrix(index, weight)
         else:
-            return torch_geometric.utils.get_laplacian(
+            index, weight = torch_geometric.utils.get_laplacian(
                 self.data.edge_index,
                 normalization=normalization,
                 edge_weight=self.data[edge_attr],
             )
+            return torch_geometric.utils.to_scipy_sparse_matrix(index, weight)
 
     def add_node_ohe(self, attr_name: str, dim: int = 0) -> None:
         """Add one-hot encoding of nodes to node attribute.
