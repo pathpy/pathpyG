@@ -2,16 +2,16 @@ svg circle.node {
   fill: #3b5998;
   stroke: #1b3978;
   stroke-width: 2.5px;
-  r: 10px;
+  r: 15px;
   opacity: 1;
 }
 
 .link {
-  stroke: #4e4d4d;
-  stroke-opacity: .6;
-  stroke-width: 1px;
+  stroke: #969595;
+  stroke-opacity: .5;
+  stroke-width: 2.5px;
 }
 
 .labelText {
-  fill: #4e4d4d;
+  fill: #817e7e;
 }
