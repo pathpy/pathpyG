@@ -20,7 +20,7 @@ nav:
   - Tutorial:
     - tutorial.md
     - Basic Concepts: tutorial/basic_concepts.ipynb
-#    - Accessing Netzschleuder: tutorial/netzschleuder.ipynb
+    - Accessing Netzschleuder: tutorial/netzschleuder.ipynb
     - Paths and Higher-Order Models: tutorial/paths_higher_order.ipynb
     - Temporal Graphs: tutorial/temporal_graphs.ipynb
 #    - Higher-Order Scalability: tutorial/higher_order_scalability.ipynb
