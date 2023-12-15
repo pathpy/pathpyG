@@ -133,6 +133,14 @@ class TemporalGraph(Graph):
 
         return g
     
+    def shuffle_time(self) -> None:
+        """Randomly shuffles the temporal order of edges by randomly permuting the time stamps."""
+        self.data['t'] = self.data['t'][torch.randperm(len(self.data['t']))]
+        # t_sorted, indices = torch.sort(torch.tensor(t).to(config["torch"]["device"]))
+        # self.data['src'] = self.data['src']
+        # self.data['dst'] = self.data['dst']
+        # self.data['t'] = t_sorted
+
     def to_static_graph(self) -> Graph:
         """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
         """
