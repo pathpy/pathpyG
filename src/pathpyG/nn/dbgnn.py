@@ -6,6 +6,8 @@ from torch.nn import Linear, ModuleList, Module
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GCNConv
 
+from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+
 class BipartiteGraphOperator(MessagePassing):
     def __init__(self, in_ch, out_ch):
         super(BipartiteGraphOperator, self).__init__('add')
@@ -85,3 +87,21 @@ class DBGNN(Module):
         x = self.lin(x)
 
         return x
+    
+    @staticmethod
+    def generate_bipartite_edge_index(g2: pp.HigherOrderGraph, mapping = 'last') -> torch.Tensor:
+
+        if mapping == 'last':
+            bipartide_edge_index = torch.tensor(
+                [list(g2.node_index_to_id.keys()),
+                [int(i[1]) for i in g2.node_index_to_id.values()]]
+                )
+
+        elif mapping == 'first':
+            bipartide_edge_index = torch.tensor([list(g2.node_index_to_id.keys()),
+                                    [i[0] for i in g2.node_index_to_id.values()]])
+        else:
+            bipartide_edge_index = torch.tensor([list(g2.node_index_to_id.keys()) + list(g2.node_index_to_id.keys()),
+                                    [i[0] for i in g2.node_index_to_id.values()] + [i[1] for i in g2.node_index_to_id.values()]])
+
+        return bipartide_edge_index

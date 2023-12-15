@@ -107,9 +107,6 @@ class HigherOrderGraph(Graph):
     #         for e in self.data.edge_index.t():
     #             yield e[0].item(), e[1].item()
 
-
-
-
     def __str__(self) -> str:
         """Return a string representation of the higher-order graph."""
 
