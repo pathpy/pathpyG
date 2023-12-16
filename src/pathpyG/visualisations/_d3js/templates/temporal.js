@@ -9,8 +9,8 @@ console.log("Temporal Network Template");
 
 // variables from the config file
 const selector = config.selector;
-const width = config.width || 400;
-const height = config.height || 400;
+const width = config.width || 800;
+const height = config.height || 600;
 const delta = config.delta || 300;
 
 // variables for the temporal components

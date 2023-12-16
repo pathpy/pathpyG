@@ -8,7 +8,7 @@ svg circle.node {
 
 .link {
   stroke: #969595;
-  stroke-opacity: .5;
+  stroke-opacity: .75;
   stroke-width: 2.5px;
 }
 

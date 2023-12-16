@@ -6,8 +6,8 @@ console.log("Static Network Template");
 
 // variables from the config file
 const selector = config.selector;
-const width = config.width || 400;
-const height = config.height || 400;
+const width = config.width || 800;
+const height = config.height || 600;
 const charge_distance = config.charge_distance || 400;
 const charge_force = config.charge_force || -3000;
 // const weight = false;
