@@ -154,6 +154,22 @@ class TemporalGraph(Graph):
         """
         return self.data
 
+
+    def get_window(self, start, end):
+        """Returns an instance of the TemporalGraph that captures all time-stamped 
+        edges in a given window defined by start and (non-inclusive) end, where start
+        and end refer to the number of events"""
+
+        idx = torch.tensor([self.data['src'][start:end].numpy(), self.data['dst'][start:end].numpy()]).to(config["torch"]["device"])
+        max_idx = torch.max(idx).item()
+
+        return TemporalGraph(
+            edge_index = idx,
+            t = self.data.t[start:end],
+            node_id = self.data.node_id[:max_idx]
+        )
+
+
     def __str__(self):
         """
         Returns a string representation of the graph
