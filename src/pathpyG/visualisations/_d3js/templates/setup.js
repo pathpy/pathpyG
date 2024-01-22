@@ -16,7 +16,7 @@ catch(err){
 
         // Helper function that waits for d3js to be loaded
         require = function require(symbols, callback) {
-            var ms = 5;
+            var ms = 10;
             window.setTimeout(function(t) {
                 if (window[symbols[0]])
                     callback(window[symbols[0]]);
