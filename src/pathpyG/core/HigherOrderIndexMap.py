@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Union
+from typing import TYPE_CHECKING, Dict, List, Union, Tuple
 
 
 class HigherOrderIndexMap:
@@ -19,14 +19,14 @@ class HigherOrderIndexMap:
             self.id_to_idx = {}
             self.has_ids = False
 
-    def to_id(self, idx: int) -> Union[int, str]:
+    def to_id(self, idx: Tuple[int]) -> Union[Tuple[int], Tuple[str]]:
         """Map index to ID if mapping is defined, return index otherwise."""
         if self.has_ids:
             return self.idx_to_id[idx]
         else:
             return idx
 
-    def to_idx(self, node: Union[str, int]) -> int:
+    def to_idx(self, node: Union[Tuple[str], Tuple[int]]) -> Tuple[int]:
         """Map argument (ID or index) to index if mapping is defined, return argument otherwise."""
         if self.has_ids:
             return self.id_to_idx[node]
