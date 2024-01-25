@@ -94,7 +94,7 @@ class TemporalGraph(Graph):
     def to_static_graph(self) -> Graph:
         """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
         """
-        return Graph(self.data.edge_index, self.mapping.node_ids)
+        return Graph(self.data.edge_index, self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
