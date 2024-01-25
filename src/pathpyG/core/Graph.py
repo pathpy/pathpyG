@@ -70,7 +70,7 @@ class Graph:
 
 
         # Create pyG Data object
-        num_nodes = max(max(edge_index[0]).item(), max(edge_index[1]).item())+1
+        num_nodes = int(max(max(edge_index[0]).item(), max(edge_index[1]).item())+1)
         self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
 
         # create mapping between edge tuples and edge indices
