@@ -31,9 +31,8 @@ def test_to_pyg_data(long_temporal_graph):
     data = long_temporal_graph.to_pyg_data()
     assert data.src.size() == Size([long_temporal_graph.M])
     assert data.dst.size() == Size([long_temporal_graph.M])
-    assert len(data.node_id) == long_temporal_graph.N
     assert data.num_nodes == long_temporal_graph.N
-    assert data.edge_index.size() == Size([2,20])
+    assert data.edge_index.size() == Size([2, 20])
 
 def test_get_window(long_temporal_graph):
     t_1 = long_temporal_graph.get_window(1, 9)

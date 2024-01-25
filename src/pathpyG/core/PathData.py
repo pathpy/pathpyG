@@ -395,7 +395,7 @@ class PathData:
             end_segs = torch.cat((start_segs[1:], torch.tensor([len(dag.data.edge_index[0])], device=config['torch']['device'])))
             segments = end_segs - start_segs
             mapping = {
-                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
             }
 
             # Map node-time events to node IDs
@@ -438,7 +438,7 @@ class PathData:
                 else:
                     ds.add_dag(edge_index)
             ds.mapping = {
-                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
                 }
         return ds
 

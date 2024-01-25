@@ -64,8 +64,8 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta: float = np.infty,
             edge_times.append(t)
 
     dag = Graph.from_edge_list(edge_list)
-    dag.data['node_name'] = [node_names[dag.node_index_to_id[v]] for v in range(dag.N)]
-    dag.data['node_idx'] = [g.node_id_to_index[v] for v in dag.data['node_name']]
+    dag.data['node_name'] = [node_names[dag.mapping.to_id(i)] for i in range(dag.N)]
+    dag.data['node_idx'] = [g.mapping.to_idx(v) for v in dag.data['node_name']]
     dag.data['edge_ts'] = torch.tensor(edge_times)
     return dag
 
@@ -99,12 +99,8 @@ def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
                     if w not in visited:
                         visited.add(w)
                         queue.append(w)
-                        if len(dag.node_id_to_index) > 0:
-                            src.append(dag.node_id_to_index[x])
-                            dst.append(dag.node_id_to_index[w])
-                        else:
-                            src.append(x)
-                            dst.append(w)
+                        src.append(dag.mapping.to_idx(x))
+                        dst.append(dag.mapping.to_idx(w))
             # TODO: Remove redundant zero-degree neighbors of all nodes
             causal_trees[v] = torch.IntTensor([src, dst]).to(config['torch']['device'])
     return causal_trees

@@ -18,6 +18,7 @@ from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
 
 from pathpyG.utils.config import config
+from pathpyG.core.IndexMap import IndexMap
 
 
 class Graph:
@@ -30,7 +31,7 @@ class Graph:
     """
 
     def __init__(self, edge_index: torch.Tensor,
-                 node_id: Optional[List[str]] = None,
+                 node_ids: Optional[List[str]] = None,
                  **kwargs: Optional[torch.Tensor]):
         """Generate graph instance from an edge index.
 
@@ -62,23 +63,12 @@ class Graph:
                                     edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
             ```
         """
-        if node_id is None:
-            node_id = []
+        self.mapping = IndexMap(node_ids)
 
-        assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
 
         # Create pyG Data object
-        if len(node_id) == 0:
-            num_nodes = max(max(edge_index[0]).item(), max(edge_index[1]).item())+1
-            self.data = Data(edge_index=edge_index, node_id=node_id, num_nodes = num_nodes, **kwargs)
-        else:
-            self.data = Data(
-                edge_index=edge_index, node_id=node_id, num_nodes=len(node_id), **kwargs
-            )
-
-        # create mappings between node ids and node indices
-        self.node_index_to_id = dict(enumerate(node_id))
-        self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
+        num_nodes = max(max(edge_index[0]).item(), max(edge_index[1]).item())+1
+        self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
@@ -90,18 +80,6 @@ class Graph:
         self._sparse_adj_matrix: Any = (
             torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
         )
-
-    def add_node_id(self, node_id: List[str]) -> None:
-        """Add a mapping of node indices to node IDs.
-
-        Args:
-            node_id: list of string IDs, corresponding to node indices
-        """
-        assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
-
-        self.node_index_to_id = dict(enumerate(node_id))
-        self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
-        self.data["node_id"] = node_id
 
     def to_undirected(self) -> None:
         """
@@ -171,16 +149,12 @@ class Graph:
         Return indices or IDs of all nodes in the graph.
 
         This method returns a generator object that yields all nodes.
-        If `node_id` is used to map node indices to string IDs, nodes
-        are returned as str IDs. If no mapping to IDs is used, nodes
+        If an IndexMap is used, nodes
+        are returned as str IDs. If no IndexMap is used, nodes
         are returned as integer indices.
         """
-        if len(self.node_id_to_index) > 0:
-            for v in self.node_id_to_index:
-                yield v
-        else:
-            for v in range(self.N):
-                yield v
+        for i in range(self.N):
+            yield self.mapping.to_id(i)
 
     @property
     def edges(self) -> Generator[Union[Tuple[int, int], Tuple[str, str]], None, None]:
@@ -188,18 +162,12 @@ class Graph:
         Return all edges in the graph.
         
         This method returns a generator object that yields all edges.
-        If `node_id` is used to map node indices to string IDs, edges
-        are returned as tuples of str IDs. If no mapping to IDs is used, nodes
+        If an IndexMap is used to map node indices to string IDs, edges
+        are returned as tuples of str IDs. If no mapping is used, nodes
         are returned as tuples of integer indices.
         """
-        if len(self.node_index_to_id) > 0:
-            for e in self.data.edge_index.t():
-                yield self.node_index_to_id[e[0].item()], self.node_index_to_id[
-                    e[1].item()
-                ]
-        else:
-            for e in self.data.edge_index.t():
-                yield e[0].item(), e[1].item()
+        for e in self.data.edge_index.t():
+            yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item())
 
     def successors(self, node: Union[int, str] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:
@@ -207,22 +175,17 @@ class Graph:
         Return the successors of a given node.
 
         This method returns a generator object that yields all successors of a
-        given node. If a `node_id` mapping is used, successors will be returned
+        given node. If an Index mapping is used, successors will be returned
         as string IDs. If no mapping is used, successors are returned as indices.
 
         Args:
             node:   Index or string ID of node for which successors shall be returned.
         """ 
         coo_matrix = self._sparse_adj_matrix.tocoo()      
-        if len(self.node_index_to_id) > 0:
-            # Get array of col indices for which entries in row are non-zero
-            non_zero_cols = coo_matrix.col[coo_matrix.row == self.node_id_to_index[node]]
-            for i in non_zero_cols:  # type: ignore
-                yield self.node_index_to_id[i]
-        else:
-            non_zero_cols = coo_matrix.row[coo_matrix.col == node]
-            for i in non_zero_cols:  # type: ignore
-                yield i
+        # Get array of col indices for which entries in row are non-zero
+        non_zero_cols = coo_matrix.col[coo_matrix.row == self.mapping.to_idx(node)]
+        for i in non_zero_cols:  # type: ignore
+            yield self.mapping.to_id(i)
 
     def predecessors(self, node: Union[str, int] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:
@@ -235,16 +198,11 @@ class Graph:
         Args:
             node:   Index or string ID of node for which predecessors shall be returned.
         """
-        coo_matrix = self._sparse_adj_matrix.tocoo()      
-        if len(self.node_index_to_id) > 0:
-            # Get array of col indices for which entries in row are non-zero
-            non_zero_rows = coo_matrix.row[coo_matrix.col == self.node_id_to_index[node]]
-            for i in non_zero_rows:  # type: ignore
-                yield self.node_index_to_id[i]
-        else:
-            non_zero_rows = coo_matrix.row[coo_matrix.col == node]
-            for i in non_zero_rows:  # type: ignore
-                yield i
+        coo_matrix = self._sparse_adj_matrix.tocoo()
+        # Get array of col indices for which entries in row are non-zero
+        non_zero_rows = coo_matrix.row[coo_matrix.col == self.mapping.to_idx(node)]
+        for i in non_zero_rows:  # type: ignore
+            yield self.mapping.to_id(i)
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
         """Return whether edge $(v,w)$ exists in the graph.
@@ -256,10 +214,7 @@ class Graph:
             v: source node of edge as integer index or string ID
             w: target node of edge as integer index or string ID       
         """
-        if len(self.node_index_to_id) > 0:
-            return self.node_id_to_index[w] in self._sparse_adj_matrix.getrow(self.node_id_to_index[v]).indices  # type: ignore
-        else:
-            return w in self._sparse_adj_matrix.getrow(v).indices  # type: ignore
+        return self.mapping.to_idx(w) in self._sparse_adj_matrix.getrow(self.mapping.to_idx(v)).indices  # type: ignore
 
     def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
         """Return sparse adjacency matrix representation of (weighted) graph.
@@ -300,12 +255,7 @@ class Graph:
             d = torch_geometric.utils.degree(
                 self.data.edge_index[0], num_nodes=self.N, dtype=torch.int
             )
-        if len(self.node_id_to_index) > 0:
-            return {
-                v: d[self.node_id_to_index[v]].item() for v in self.node_id_to_index
-            }
-        else:
-            return {i: d[i].item() for i in range(self.N)}
+        return {self.mapping.to_id(i): d[i].item() for i in range(self.N)}
 
     def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
         """Return Laplacian matrix for a given graph.
@@ -371,19 +321,9 @@ class Graph:
                 print(key, "is not a graph attribute")
                 return None
         elif key[0] in self.node_attrs():
-            if len(self.node_id_to_index) > 0:
-                return self.data[key[0]][self.node_id_to_index[key[1]]]
-            else:
-                return self.data[key[0]][key[1]]
+            return self.data[key[0]][self.mapping.to_idx(key[1])]
         elif key[0] in self.edge_attrs():
-            if len(self.node_id_to_index) > 0:
-                return self.data[key[0]][
-                    self.edge_to_index[
-                        self.node_id_to_index[key[1]], self.node_id_to_index[key[2]]
-                    ]
-                ]
-            else:
-                return self.data[key[0]][self.edge_to_index[key[1], key[2]]]
+            return self.data[key[0]][self.edge_to_index[self.mapping.to_idx(key[1]), self.mapping.to_idx(key[2])]]
         elif key in self.data.keys():
             return self.data[key[0]]
         else:
@@ -403,19 +343,9 @@ class Graph:
             else:
                 print(key, "is not a graph attribute")
         elif self.key[0].starts_with("node_"):  # type: ignore
-            if len(self.node_id_to_index) > 0:
-                self.data[key[0]][self.node_id_to_index[key[1]]] = val
-            else:
-                self.data[key[0]][key[1]] = val
+            self.data[key[0]][self.mapping.to_idx(key[1])] = val
         elif self.key[0].starts_with("edge_"):  # type: ignore
-            if len(self.node_id_to_index) > 0:
-                self.data[key[0]][
-                    self.edge_to_index[
-                        self.node_id_to_index[key[1]], self.node_id_to_index[key[2]]
-                    ]
-                ] = val
-            else:
-                self.data[key[0]][self.edge_to_index[key[1], key[2]]] = val
+            self.data[key[0]][self.edge_to_index[self.mapping.to_idx(key[1]), self.mapping.to_idx(key[2])]] = val
         else:
             print(key[0], "is not a node or edge attribute")
 
@@ -450,12 +380,7 @@ class Graph:
 
         del x["edge_index"]
 
-        if d.is_node_attr("node_id"):
-            del x["node_id"]
-            g = Graph(d.edge_index, node_id=d["node_id"], **x)
-        else:
-            g = Graph(d.edge_index, node_id=[], **x)
-        return g
+        return Graph(d.edge_index, node_ids=[], **x)
 
     def to_pyg_data(self) -> Any:
         """Return [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) representing the graph with its attributes."""
@@ -491,27 +416,19 @@ class Graph:
         sources = []
         targets = []
 
-        nodes_index = dict()
-        index_nodes = dict()
+        mapping = IndexMap()
 
-        n = 0
         for v, w in edge_list:
-            if v not in nodes_index:
-                nodes_index[v] = n
-                index_nodes[n] = v
-                n += 1
-            if w not in nodes_index:
-                nodes_index[w] = n
-                index_nodes[n] = w
-                n += 1
-            sources.append(nodes_index[v])
-            targets.append(nodes_index[w])
+            mapping.add_id(v)
+            mapping.add_id(w)
+            sources.append(mapping.to_idx(v))
+            targets.append(mapping.to_idx(w))
 
         return Graph(
             edge_index=torch.LongTensor([sources, targets]).to(
                 config["torch"]["device"]
             ),
-            node_id=[index_nodes[i] for i in range(n)],
+            node_ids=mapping.node_ids,
         )
 
     def __str__(self) -> str:

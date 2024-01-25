@@ -88,8 +88,7 @@ def map_to_nodes(g: Graph, c: Dict) -> Dict:
         {'a': 0.5, 'b': 2.7, 'c': 0.3}
         ```
     """
-    if len(g.node_index_to_id) > 0:
-        return {g.node_index_to_id[i]: c[i] for i in c}
+    return {g.mapping.to_id(i): c[i] for i in c}
 
     return c
 

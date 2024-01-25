@@ -8,41 +8,27 @@ from torch_geometric.data import TemporalData
 from torch import IntTensor
 
 from pathpyG import Graph
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.config import config
 
 
 class TemporalGraph(Graph):
-    def __init__(self, edge_index, t, node_id=[], **kwargs):
-        """Creates an instance of a temporal graph with given edge index and timestamps of edges"""
-
-        assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
+    def __init__(self, edge_index, t, node_ids: Optional[List[str]] = None, **kwargs) -> None:
+        """Creates an instance of a temporal graph with given edge index and timestamps"""
 
         # sort edges by timestamp and reorder edge_index accordingly
         t_sorted, indices = torch.sort(torch.tensor(t).to(config["torch"]["device"]))
 
-        if len(node_id) == 0:
-            self.data = TemporalData(
-                src=edge_index[0][indices],
-                dst=edge_index[1][indices],
-                t=t_sorted,
-                node_id=[],
-                **kwargs,
-            )
-        else:
-            self.data = TemporalData(
-                src=edge_index[0][indices],
-                dst=edge_index[1][indices],
-                t=t_sorted,
-                node_id=node_id,
-                num_nodes=len(node_id),
-                **kwargs,
-            )
+        self.data = TemporalData(
+            src=edge_index[0][indices],
+            dst=edge_index[1][indices],
+            t=t_sorted,
+            **kwargs,
+        )
+
+        self.mapping = IndexMap(node_ids)
 
         self.data["edge_index"] = edge_index[:, indices]
-
-        # create mappings between node ids and node indices
-        self.node_index_to_id = dict(enumerate(node_id))
-        self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
 
         # create mapping between edge index and edge tuples
         self.edge_to_index = {
@@ -59,26 +45,18 @@ class TemporalGraph(Graph):
         ).tocsr()
 
     @staticmethod
-    def from_edge_list(edge_list):
+    def from_edge_list(edge_list) -> TemporalGraph:
         sources = []
         targets = []
         ts = []
 
-        nodes_index = dict()
-        index_nodes = dict()
+        index_map = IndexMap()
 
-        n = 0
         for v, w, t in edge_list:
-            if v not in nodes_index:
-                nodes_index[v] = n
-                index_nodes[n] = v
-                n += 1
-            if w not in nodes_index:
-                nodes_index[w] = n
-                index_nodes[n] = w
-                n += 1
-            sources.append(nodes_index[v])
-            targets.append(nodes_index[w])
+            index_map.add_id(v)
+            index_map.add_id(w)
+            sources.append(index_map.to_idx(v))
+            targets.append(index_map.to_idx(w))
             ts.append(t)
 
         return TemporalGraph(
@@ -86,7 +64,7 @@ class TemporalGraph(Graph):
                 config["torch"]["device"]
             ),
             t=ts,
-            node_id=[index_nodes[i] for i in range(n)],
+            node_ids=index_map.node_ids,
         )
 
     @staticmethod
@@ -94,26 +72,19 @@ class TemporalGraph(Graph):
         tedges = []
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
-                path = []
                 fields = line.strip().split(",")
                 tedges.append((fields[0], fields[1], int(fields[2])))
         return TemporalGraph.from_edge_list(tedges)
 
     @property
     def temporal_edges(self):
-        if len(self.node_index_to_id) > 0:
-            i = 0
-            for e in self.data.edge_index.t():
-                yield self.node_index_to_id[e[0].item()], self.node_index_to_id[e[1].item()], self.data.t[i].item()  # type: ignore
-                i += 1
-        else:
-            i = 0
-            for e in self.data.edge_index.t():
-                yield e[0].item(), e[1].item(), self.data.t[i].item()  # type: ignore
-                i += 1
+        i = 0
+        for e in self.data.edge_index.t():
+            yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item()), self.data.t[i].item()  # type: ignore
+            i += 1
 
     @staticmethod
-    def from_pyg_data(d: TemporalData, node_id=[]):
+    def from_pyg_data(d: TemporalData, node_ids=None) -> TemporalGraph:
         x = d.to_dict()
 
         del x["src"]
@@ -121,20 +92,18 @@ class TemporalGraph(Graph):
         del x["t"]
         if "edge_index" in d:
             del x["edge_index"]
-        if "node_index" in d:
-            del x["node_id"]
 
         g = TemporalGraph(
             edge_index=torch.tensor([d["src"], d["dst"]]).to(config["torch"]["device"]),
             t=d["t"],
-            node_id=node_id,
+            node_ids=node_ids,
             **x,
         )
 
         return g
     
     def shuffle_time(self) -> None:
-        """Randomly shuffles the temporal order of edges by randomly permuting the time stamps."""
+        """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""
         self.data['t'] = self.data['t'][torch.randperm(len(self.data['t']))]
         # t_sorted, indices = torch.sort(torch.tensor(t).to(config["torch"]["device"]))
         # self.data['src'] = self.data['src']
@@ -144,8 +113,7 @@ class TemporalGraph(Graph):
     def to_static_graph(self) -> Graph:
         """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
         """
-        node_id = [self.node_index_to_id[i] for i in range(self.N)]
-        return Graph(self.data.edge_index, node_id)
+        return Graph(self.data.edge_index, self.mapping.node_ids)
 
     def to_pyg_data(self) -> TemporalData:
         """
@@ -155,7 +123,7 @@ class TemporalGraph(Graph):
         return self.data
 
 
-    def get_window(self, start, end):
+    def get_window(self, start, end) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
         edges in a given window defined by start and (non-inclusive) end, where start
         and end refer to the number of events"""
@@ -166,11 +134,11 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             edge_index = idx,
             t = self.data.t[start:end],
-            node_id = self.data.node_id[:max_idx]
+            node_ids = self.mapping.node_ids[:max_idx]
         )
 
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns a string representation of the graph
         """
