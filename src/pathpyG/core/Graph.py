@@ -31,7 +31,7 @@ class Graph:
     """
 
     def __init__(self, edge_index: torch.Tensor,
-                 node_ids: Optional[List[str]] = None,
+                 mapping: Optional[IndexMap] = None,
                  **kwargs: Optional[torch.Tensor]):
         """Generate graph instance from an edge index.
 
@@ -63,7 +63,10 @@ class Graph:
                                     edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
             ```
         """
-        self.mapping = IndexMap(node_ids)
+        if mapping is None:
+            self.mapping = IndexMap()
+        else:
+            self.mapping = mapping
 
 
         # Create pyG Data object
@@ -380,7 +383,7 @@ class Graph:
 
         del x["edge_index"]
 
-        return Graph(d.edge_index, node_ids=[], **x)
+        return Graph(d.edge_index, **x)
 
     def to_pyg_data(self) -> Any:
         """Return [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) representing the graph with its attributes."""
@@ -428,7 +431,7 @@ class Graph:
             edge_index=torch.LongTensor([sources, targets]).to(
                 config["torch"]["device"]
             ),
-            node_ids=mapping.node_ids,
+            mapping=mapping,
         )
 
     def __str__(self) -> str:
