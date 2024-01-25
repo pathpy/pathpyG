@@ -34,11 +34,6 @@ def test_index_mapping():
     assert mapping.node_ids == ['a', 'c']
 
 def test_higher_order_index_mapping(simple_paths):
-    g2 = HigherOrderGraph(simple_paths, order=2,
-                          node_ids=['A', 'B', 'C', 'D', 'E'])
+    g2 = HigherOrderGraph(simple_paths, order=2)
     assert g2.mapping.to_idx(('A', 'C')) == 0
     assert g2.mapping.to_id(1) == ('B', 'C')
-
-    g2 = HigherOrderGraph(simple_paths, order=2)
-    assert g2.mapping.to_idx(0) == 0
-    assert g2.mapping.to_id(1) == 1

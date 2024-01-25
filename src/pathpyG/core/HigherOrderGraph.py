@@ -19,13 +19,12 @@ from pathpyG.core.HigherOrderIndexMap import HigherOrderIndexMap
 class HigherOrderGraph(Graph):
     """HigherOrderGraph based on torch_geometric.Data."""
 
-    def __init__(self, paths: PathData, order: int = 1, node_ids: Optional[List[str]] = None, **kwargs: Any):
+    def __init__(self, paths: PathData, order: int = 1, **kwargs: Any):
         """Generate HigherOrderGraph based on a given PathData instance.
 
         Args:
             paths:
             order:
-            node_id:
             **kwargs:
 
         Example:
@@ -33,8 +32,9 @@ class HigherOrderGraph(Graph):
             import pathpyG as pp
 
             paths = pp.PathData()
+            paths.mapping = pp.IndexMap(['a', 'b', 'c', 'd'])
             paths.add_walk(torch.Tensor([[0, 1, 2], [1, 2, 3]]))
-            g2 = Graph(paths, k=2, node_id=['a', 'b', 'c', 'd'])
+            g2 = Graph(paths, k=2)
             ```
         """
 
@@ -46,7 +46,7 @@ class HigherOrderGraph(Graph):
         if self.order > 1:
             # get tensor of unique higher-order nodes
             self._nodes = index.reshape(-1, index.size(dim=2)).unique(dim=0)
-            self.mapping = HigherOrderIndexMap(self._nodes, node_ids)
+            self.mapping = HigherOrderIndexMap(self._nodes, paths.mapping.node_ids)
 
             # create mapping to first-order node indices
             ho_nodes_to_index = {tuple(j.tolist()): i for i, j in enumerate(self._nodes)}
@@ -62,7 +62,7 @@ class HigherOrderGraph(Graph):
             edge_index = index
 
             # create mappings between node ids and node indices
-            self.mapping = IndexMap(node_ids)
+            self.mapping = paths.mapping
 
         # Create pyG Data object
         self.data = Data(edge_index=edge_index, num_nodes=len(self._nodes), **kwargs)

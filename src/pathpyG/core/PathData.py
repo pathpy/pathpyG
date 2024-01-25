@@ -444,6 +444,7 @@ class PathData:
             ds.index_translation = {
                 i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
                 }
+        ds.mapping = IndexMap(dag.data['temporal_graph_index_map'])
         return ds
 
     def __str__(self) -> str:

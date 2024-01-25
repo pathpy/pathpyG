@@ -67,6 +67,7 @@ def temporal_graph_to_event_dag(g: TemporalGraph, delta: float = np.infty,
     dag.data['node_name'] = [node_names[dag.mapping.to_id(i)] for i in range(dag.N)]
     dag.data['node_idx'] = [g.mapping.to_idx(v) for v in dag.data['node_name']]
     dag.data['edge_ts'] = torch.tensor(edge_times)
+    dag.data['temporal_graph_index_map'] = g.mapping.node_ids
     return dag
 
 
