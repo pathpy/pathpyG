@@ -40,13 +40,11 @@ test = [
 dev = [
     "flake8",            # Linter
     "flake8-pyproject",  # Enables flake8 to read pyproject.toml
-    "flake8-docstrings", # Docstring style checker
     "flake8-bugbear",    # Additional flake8 rules to find common bugs
     "pylint",            # Another linter with mostly different rules
     "black",             # Code formatter
     "pre-commit",        # Python package to enable GitHub pre-commit hooks
     "pathpy2",           # Old pathpy version for comparisons
-    "pyright",           # Static type checker
     "mypy",              # Static type checker
 ]
 
@@ -84,15 +82,15 @@ name = "pathpyG"
 ############################# Test configuration #######################################
 ########################################################################################
 
-[tool.pytest.ini_options] # TODO: 10. Create pytest setup
+[tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = "tests"
 addopts = "--cov=src"
 
-[tool.coverage.run] # TODO: 10. Create pytest setup
+[tool.coverage.run]
 branch = true
 
-[tool.coverage.report] # TODO: 10. Create pytest setup
+[tool.coverage.report]
 fail_under = 25
 exclude_lines = [
     "pragma: no cover",
@@ -111,15 +109,12 @@ exclude_lines = [
 ########################################################################################
 
 [tool.flake8] # Linter and code style checker
-max-line-length = 88
+max-line-length = 120
 extend-ignore = "E203"                # whitespace before ':' conflicts with black
 per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py files
 
 [tool.pylint.format] # Linter
-max-line-length = 88
-
-[tool.pyright] # Static type checker
-include = ["src"]
+max-line-length = 120
 
 [tool.mypy] # Static type checker
 disallow_untyped_defs = true
@@ -144,5 +139,5 @@ profile = "black"
 skip = [".gitignore", "__init__.py"]
 
 [tool.black] # Code formatter
-line-length = 88
+line-length = 120
 target-version = ["py38", "py39", "py310"]

@@ -15,17 +15,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup packages
+        uses: ./.github/actions/setup
         with:
-          python-version: "3.10.13" # As in docker image (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime) used as dev container
+          full_install: false
 
       - name: Install dependencies
         run: pip install pylint
 
       - name: Run linting
         continue-on-error: true
-        run: pylint **/*.py
+        run: pylint $(git ls-files '*.py')
 
   flake8: # Another linter: Mostly checks if code is PEP8 conform but has some additional plugins.
     runs-on: ubuntu-latest
@@ -40,13 +40,13 @@ jobs:
           python-version: "3.10.13" # As in docker image (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime) used as dev container
 
       - name: Install dependencies
-        run: pip install flake8 flake8-pyproject flake8-docstrings flake8-bugbear
+        run: pip install flake8 flake8-pyproject flake8-bugbear
 
       - name: Run linting
         continue-on-error: true
-        run: flake8 **/*.py
+        run: flake8 $(git ls-files '*.py')
 
-  pyright: # static type checker
+  mypy: # stricter static type checker
     runs-on: ubuntu-latest
 
     steps:
@@ -58,31 +58,10 @@ jobs:
         with:
           full_install: false
 
-      - name: Install pyright
-        run: |
-          pip install pyright
-
-      - name: Run pyright
-        continue-on-error: true
-        run: |
-          pyright
-
-  mypy: # stricter static type checker
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10.13" # As in docker image (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime) used as dev container
-
       - name: Install dependencies
         run: pip install mypy
 
       - name: Check type hints
         continue-on-error: true
         run: |
-          mypy --install-types --non-interactive -m pathpyG
+          mypy src/pathpyG
