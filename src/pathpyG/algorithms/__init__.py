@@ -37,3 +37,4 @@ Example:
 
 from pathpyG.algorithms.temporal import *
 from pathpyG.algorithms import centrality
+from pathpyG.algorithms.RollingTimeWindow import RollingTimeWindow
