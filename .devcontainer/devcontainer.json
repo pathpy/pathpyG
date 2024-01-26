@@ -7,7 +7,6 @@
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
-				"ms-python.vscode-pylance",
 				"ms-python.black-formatter",
 				"ms-python.isort",
 				"ms-python.pylint",
@@ -23,7 +22,6 @@
 		// Add IDs of extensions you want to be installed when container is created.
 		"extensions": [
 			"ms-python.python",
-			"ms-python.vscode-pylance",
 			"ms-python.black-formatter",
 			"ms-python.isort",
 			"ms-python.pylint",
