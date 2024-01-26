@@ -70,7 +70,7 @@ class Graph:
 
 
         # Create pyG Data object
-        num_nodes = int(max(max(edge_index[0]).item(), max(edge_index[1]).item())+1)
+        num_nodes = int(edge_index.max().item()) + 1
         self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
 
         # create mapping between edge tuples and edge indices
@@ -102,6 +102,11 @@ class Graph:
         """
         tf = ToUndirected()
         self.data = tf(self.data)
+
+    def to_weighted_graph(self) -> Graph:
+        """Coalesces multi-edges to single-edges with an additional weight attribute"""
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
+        return Graph(i, self.mapping, edge_weight=w)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:

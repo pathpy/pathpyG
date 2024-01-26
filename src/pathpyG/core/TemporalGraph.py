@@ -92,15 +92,19 @@ class TemporalGraph(Graph):
         # self.data['dst'] = self.data['dst']
         # self.data['t'] = t_sorted
 
-    def to_static_graph(self, time_window: Optional[Tuple[int,int]]=None) -> Graph:
-        """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
+    def to_static_graph(self, weighted=False, time_window: Optional[Tuple[int,int]]=None) -> Graph:
+        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph.
         """
         if time_window is not None:
             index = (self.data.t >= time_window[0]).logical_and(self.data.t < time_window[1]).nonzero().ravel()
             edge_index = torch.stack((self.data.src[index], self.data.dst[index]))
         else:
             edge_index = self.data.edge_index
-        return Graph(edge_index, self.mapping)
+        if weighted:
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(self.M))
+            return Graph(i, self.mapping, edge_weight=w)
+        else:
+            return Graph(edge_index, self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 

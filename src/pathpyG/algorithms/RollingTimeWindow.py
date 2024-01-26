@@ -58,7 +58,7 @@ class RollingTimeWindow:
     def __next__(self):
         if self.current_time <= self.g.end_time:
             time_window = (self.current_time, self.current_time+self.window_size)
-            s = self.g.to_static_graph(time_window)
+            s = self.g.to_static_graph(weighted=True, time_window=time_window)
             self.current_time += self.step_size
             if self.return_window:
                 return s, time_window

@@ -5,6 +5,13 @@ import torch
 def test_N(simple_graph):
     assert simple_graph.N == 3
 
+def test_weighted_graph(simple_graph_multi_edges):
+    assert simple_graph_multi_edges.M == 4
+    weighted_graph = simple_graph_multi_edges.to_weighted_graph()
+    assert weighted_graph.M == 3
+    assert weighted_graph.N == 3
+    assert weighted_graph['edge_weight', 'a', 'b'] == 2
+
 
 def test_M(simple_graph):
     assert simple_graph.M == 3
