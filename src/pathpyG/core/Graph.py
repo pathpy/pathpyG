@@ -84,7 +84,7 @@ class Graph:
             torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
         )
 
-    def to_undirected(self) -> None:
+    def to_undirected(self) -> Graph:
         """
         Transform graph into undirected graph.
 
@@ -97,11 +97,11 @@ class Graph:
             ```py
             import pathpyG as pp
             g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
-            g.to_undirected()
+            g_u = g.to_undirected()
             ```
         """
         tf = ToUndirected()
-        self.data = tf(self.data)
+        return Graph.from_pyg_data(tf(self.data), self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
@@ -376,7 +376,7 @@ class Graph:
         return self.data.num_edges  # type: ignore
 
     @staticmethod
-    def from_pyg_data(d: Any) -> Graph:
+    def from_pyg_data(d: torch_geometric.Data, mapping: Optional[IndexMap] = None) -> Graph:
         """
         Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
 
@@ -387,8 +387,9 @@ class Graph:
         x = d.to_dict()
 
         del x["edge_index"]
+        del x["num_nodes"]
 
-        return Graph(d.edge_index, **x)
+        return Graph(d.edge_index, mapping=mapping, **x)
 
     def to_pyg_data(self) -> Any:
         """Return [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) representing the graph with its attributes."""
