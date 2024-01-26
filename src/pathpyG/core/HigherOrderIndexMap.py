@@ -32,3 +32,9 @@ class HigherOrderIndexMap:
             return self.id_to_idx[node]
         else:
             return node
+
+    def __str__(self) -> str:
+        s = ''
+        for v in self.id_to_idx:
+            s += str(v) + ' -> ' + str(self.to_idx(v)) + '\n'
+        return s
