@@ -30,9 +30,7 @@ class Graph:
     [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data).
     """
 
-    def __init__(self, edge_index: torch.Tensor,
-                 mapping: Optional[IndexMap] = None,
-                 **kwargs: Optional[torch.Tensor]):
+    def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from an edge index.
 
         Generate a Graph instance from a `torch.Tensor` that contains an `edge_index`
@@ -69,19 +67,69 @@ class Graph:
             self.mapping = mapping
 
 
+        self.data = data
         # Create pyG Data object
-        num_nodes = int(edge_index.max().item()) + 1
-        self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
+        # num_nodes = int(edge_index.max().item()) + 1
+        # self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
             (e[0].item(), e[1].item()): i
-            for i, e in enumerate([e for e in edge_index.t()])
+            for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
 
         # initialize adjacency matrix
         self._sparse_adj_matrix: Any = (
             torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
+        )
+
+    @staticmethod
+    def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
+        """
+        Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
+
+        Args:
+            d:  [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object containing an edge_index as well as 
+                arbitrary node, edge, and graph-level attributes
+        """       
+
+        return Graph(
+            Data(edge_index=edge_index, 
+                 num_nodes=int(edge_index.max().item())+1),
+            mapping=mapping)
+
+
+    @staticmethod
+    def from_edge_list(edge_list: List[List[str]]) -> Graph:
+        """Generate a Graph instance based on an edge list.
+
+        Args:
+            edge_list: List of iterables
+
+        Example:
+            ```py
+            import pathpyG as pp
+
+            l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
+            g = pp.Graph.from_edge_list(l)
+            ```
+        """
+        sources = []
+        targets = []
+
+        mapping = IndexMap()
+
+        for v, w in edge_list:
+            mapping.add_id(v)
+            mapping.add_id(w)
+            sources.append(mapping.to_idx(v))
+            targets.append(mapping.to_idx(w))
+
+        idx = torch.LongTensor([sources, targets]).to(config["torch"]["device"])
+        return Graph(Data(
+            edge_index=idx,
+            num_nodes=int(idx.max().item()+1)),
+            mapping=mapping,
         )
 
     def to_undirected(self) -> Graph:
@@ -101,12 +149,12 @@ class Graph:
             ```
         """
         tf = ToUndirected()
-        return Graph.from_pyg_data(tf(self.data), self.mapping)
+        return Graph(tf(self.data), self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
         i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
-        return Graph(i, self.mapping, edge_weight=w)
+        return Graph(Data(edge_index=i, edge_weight=w, num_nodes=int(i.max().item()+1)), self.mapping)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
@@ -375,25 +423,7 @@ class Graph:
         """
         return self.data.num_edges  # type: ignore
 
-    @staticmethod
-    def from_pyg_data(d: torch_geometric.Data, mapping: Optional[IndexMap] = None) -> Graph:
-        """
-        Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
-
-        Args:
-            d:  [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object containing an edge_index as well as 
-                arbitrary node, edge, and graph-level attributes
-        """
-        x = d.to_dict()
-
-        del x["edge_index"]
-        del x["num_nodes"]
-
-        return Graph(d.edge_index, mapping=mapping, **x)
-
-    def to_pyg_data(self) -> Any:
-        """Return [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) representing the graph with its attributes."""
-        return self.data
+    
 
     def is_directed(self) -> Any:
         """Return whether graph is directed."""
@@ -406,39 +436,6 @@ class Graph:
     def has_self_loops(self) -> Any:
         """Return whether graph contains self-loops."""
         return self.data.has_self_loops()
-
-    @staticmethod
-    def from_edge_list(edge_list: List[List[str]]) -> Graph:
-        """Generate a Graph instance based on an edge list.
-
-        Args:
-            edge_list: List of iterables
-
-        Example:
-            ```py
-            import pathpyG as pp
-
-            l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
-            g = pp.Graph.from_edge_list(l)
-            ```
-        """
-        sources = []
-        targets = []
-
-        mapping = IndexMap()
-
-        for v, w in edge_list:
-            mapping.add_id(v)
-            mapping.add_id(w)
-            sources.append(mapping.to_idx(v))
-            targets.append(mapping.to_idx(w))
-
-        return Graph(
-            edge_index=torch.LongTensor([sources, targets]).to(
-                config["torch"]["device"]
-            ),
-            mapping=mapping,
-        )
 
     def __str__(self) -> str:
         """Return a string representation of the graph."""

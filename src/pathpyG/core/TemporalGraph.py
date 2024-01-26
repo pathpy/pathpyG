@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional
 import torch
 import torch_geometric
 import torch_geometric.utils
-from torch_geometric.data import TemporalData
+from torch_geometric.data import TemporalData, Data
 from torch import IntTensor
 
 from pathpyG import Graph
@@ -102,9 +102,9 @@ class TemporalGraph(Graph):
             edge_index = self.data.edge_index
         if weighted:
             i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(self.M))
-            return Graph(i, self.mapping, edge_weight=w)
+            return Graph(Data(edge_index=i, edge_weight=w), self.mapping)
         else:
-            return Graph(edge_index, self.mapping)
+            return Graph.from_edge_index(edge_index, self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
