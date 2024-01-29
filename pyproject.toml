@@ -85,7 +85,10 @@ name = "pathpyG"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = "tests"
-addopts = "--cov=src"
+markers = [
+    "benchmark: marks tests as benchmarking tests (deselect with '-m \"not benchmark\"')"
+]
+addopts = "--cov=src -m \"not benchmark\""
 
 [tool.coverage.run]
 branch = true
