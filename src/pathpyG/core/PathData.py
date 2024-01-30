@@ -5,7 +5,8 @@ from typing import (
     Dict,
     Any,
     List,
-    Tuple
+    Tuple,
+    Optional
 )
 
 from enum import Enum
@@ -36,15 +37,15 @@ class PathData:
     graph models of paths and walks.
     """
 
-    def __init__(self, mapping: IndexMap = None) -> None:
+    def __init__(self, mapping: Optional[IndexMap] = None) -> None:
         """Create an empty PathData object."""
         self.paths: Dict = {}
         self.path_types: Dict = {}
         self.path_freq: Dict = {}
         if mapping is None:
-            self.mapping = IndexMap()
+            self.mapping: IndexMap = IndexMap()
         else:
-            self.mapping = mapping
+            self.mapping: IndexMap = mapping
         self.index_translation: Dict = {}
 
     @property
@@ -483,6 +484,9 @@ class PathData:
                 for v in fields[:-1]:
                     mapping.add_id(v)
                     path.append(mapping.to_idx(v))
+                # Performance bottleneck: we need a better solution that a large dictionary 
+                # with many tensors, each individually copied to the GPU
+                # Possible solution: nested tensors
                 w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
                 p.add_walk(w, int(float(fields[-1])))
         p.mapping = mapping

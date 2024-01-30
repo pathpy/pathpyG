@@ -17,10 +17,10 @@ def construct_higher_order(max_order):
 def test_higher_order_gpu(benchmark):
 
     config['torch']['device'] = 'cuda'
-    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 5}, iterations=1, rounds=2)
+    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 8}, iterations=1, rounds=2)
 
 @pytest.mark.benchmark
 def test_higher_order_cpu(benchmark):
 
     config['torch']['device'] = 'cpu'
-    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 5}, iterations=1, rounds=2)
+    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 8}, iterations=1, rounds=2)
