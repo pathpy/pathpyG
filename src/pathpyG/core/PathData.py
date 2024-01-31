@@ -14,6 +14,7 @@ from collections import defaultdict
 
 import torch
 from torch import Tensor, IntTensor, cat, sum
+from torch.nested import nested_tensor
 from torch_geometric.utils import to_scipy_sparse_matrix, degree
 
 from pathpyG import Graph
@@ -37,11 +38,11 @@ class PathData:
     graph models of paths and walks.
     """
 
-    def __init__(self, mapping: Optional[IndexMap] = None) -> None:
+    def __init__(self, paths: nested_tensor, path_types: List[PathType], path_freq: tensor, mapping: Optional[IndexMap] = None) -> None:
         """Create an empty PathData object."""
-        self.paths: Dict = {}
-        self.path_types: Dict = {}
-        self.path_freq: Dict = {}
+        self.paths = paths
+        self.path_types = path_types
+        self.path_freq = path_freq
         if mapping is None:
             self.mapping: IndexMap = IndexMap()
         else:
@@ -64,94 +65,94 @@ class PathData:
         """Return the number of edges in the underlying graph."""
         return self.edge_index.size(dim=1)
 
-    def add_edge(self, p: Tensor, freq: int = 1) -> None:
-        """Add an observation of an edge traversal.
+    # def add_edge(self, p: Tensor, freq: int = 1) -> None:
+    #     """Add an observation of an edge traversal.
 
-        This method adds an observation of a traversed edge.
+    #     This method adds an observation of a traversed edge.
 
-        Args:
-            p: edge_index
+    #     Args:
+    #         p: edge_index
 
-        Example:
-            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
-            stores two observations of edge `A` --> `C`:
-                ```py
-                import pathpyG as pp
+    #     Example:
+    #         Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
+    #         stores two observations of edge `A` --> `C`:
+    #             ```py
+    #             import pathpyG as pp
 
-                paths = pp.PathData()
-                paths.add_edge(torch.tensor([[0],[2]]), freq=2)
-                ```
-        """
-        self.add_walk(p, freq)
+    #             paths = pp.PathData()
+    #             paths.add_edge(torch.tensor([[0],[2]]), freq=2)
+    #             ```
+    #     """
+    #     self.add_walk(p, freq)
 
-    def add_dag(self, p: Tensor, freq: int = 1) -> None:
-        """Add an observation of a directed acyclic graph.
+    # def add_dag(self, p: Tensor, freq: int = 1) -> None:
+    #     """Add an observation of a directed acyclic graph.
         
-        This method adds an observation of a directed acyclic graph,
-        i.e. a topologically sorted sequence of not necessarily
-        unique nodes in a graph. Like a walk, a DAG is represented
-        as an ordered edge index tensor. DAGs can be associated with an
-        integer that captures the observation frequency.
+    #     This method adds an observation of a directed acyclic graph,
+    #     i.e. a topologically sorted sequence of not necessarily
+    #     unique nodes in a graph. Like a walk, a DAG is represented
+    #     as an ordered edge index tensor. DAGs can be associated with an
+    #     integer that captures the observation frequency.
 
-        Path data that can be represented as a collection of directed
-        acyclic graphs naturally arise in the analysis of time-respecting
-        paths in temporal graphs.
+    #     Path data that can be represented as a collection of directed
+    #     acyclic graphs naturally arise in the analysis of time-respecting
+    #     paths in temporal graphs.
 
-        Args:
-            p: topologically sorted edge_index of DAG
-            freq: The number of times this DAG has been observed.
+    #     Args:
+    #         p: topologically sorted edge_index of DAG
+    #         freq: The number of times this DAG has been observed.
 
-        Example:
-            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following code snippet
-            stores three observations of the DAG with edges `A` --> `B`, `B` --> `C`, `B` --> `D`
-                ```py
-                import pathpyG as pp
+    #     Example:
+    #         Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following code snippet
+    #         stores three observations of the DAG with edges `A` --> `B`, `B` --> `C`, `B` --> `D`
+    #             ```py
+    #             import pathpyG as pp
 
-                paths = pp.PathData()
-                paths.add_dag(torch.tensor([[0,1], [1, 2], [1, 3]]))
-                ```
-        """
-        i = len(self.paths)
-        self.paths[i] = p
-        self.path_types[i] = PathType.DAG
-        self.path_freq[i] = freq
+    #             paths = pp.PathData()
+    #             paths.add_dag(torch.tensor([[0,1], [1, 2], [1, 3]]))
+    #             ```
+    #     """
+    #     i = len(self.paths)
+    #     self.paths[i] = p
+    #     self.path_types[i] = PathType.DAG
+    #     self.path_freq[i] = freq
 
-    def add_walk(self, p: Tensor, freq: int = 1) -> None:
-        """
-        Add an observation of a path or a walk in a graph.
+    # def add_walk(self, p: Tensor, freq: int = 1) -> None:
+    #     """
+    #     Add an observation of a path or a walk in a graph.
 
-        This method adds an observation of a walk, i.e. a sequence of not necessarily
-        unique nodes traversed in a graph. A walk of length l is represented as ordered
-        edge index tensor of size (2,l) where l is the number of traversed edges.
-        Walks can be associated with an integer that captures the observation frequency.
+    #     This method adds an observation of a walk, i.e. a sequence of not necessarily
+    #     unique nodes traversed in a graph. A walk of length l is represented as ordered
+    #     edge index tensor of size (2,l) where l is the number of traversed edges.
+    #     Walks can be associated with an integer that captures the observation frequency.
 
-        Since walks are a generalization of paths that allows for multiple traversals of
-        nodes, walks can be naturally used to store paths in a graph.
+    #     Since walks are a generalization of paths that allows for multiple traversals of
+    #     nodes, walks can be naturally used to store paths in a graph.
 
-        Walks can be seen as a special case of DAGs where the in- and out-degree of all
-        nodes is one. However, for a walk a higher-order model can be computed much more
-        efficiently using a GPU-based 1D convolution operation. It is thus advisable to
-        represent path data as walks whenever possible.
+    #     Walks can be seen as a special case of DAGs where the in- and out-degree of all
+    #     nodes is one. However, for a walk a higher-order model can be computed much more
+    #     efficiently using a GPU-based 1D convolution operation. It is thus advisable to
+    #     represent path data as walks whenever possible.
 
-        Args:
-            p:  An ordered edge index with size (2,l) that represents the sequence
-                in which a walk or path traverses the nodes of a graph.
-            freq:   The number of times this walk has been observed.
+    #     Args:
+    #         p:  An ordered edge index with size (2,l) that represents the sequence
+    #             in which a walk or path traverses the nodes of a graph.
+    #         freq:   The number of times this walk has been observed.
 
-        Example:
-            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
-            stores three observations of the walk `A` --> `C` --> `D`:
-                ```py
-                import pathpyG as pp
+    #     Example:
+    #         Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
+    #         stores three observations of the walk `A` --> `C` --> `D`:
+    #             ```py
+    #             import pathpyG as pp
 
-                paths = pp.PathData()
-                paths.add_walk(torch.tensor([[0, 2],[2, 3]]), freq=5)
-                ```
-        """
-        i = len(self.paths)
-        self.paths[i] = p
-        self.path_types[i] = PathType.WALK
-        self.path_freq[i] = freq
+    #             paths = pp.PathData()
+    #             paths.add_walk(torch.tensor([[0, 2],[2, 3]]), freq=5)
+    #             ```
+    #     """
+    #     i = len(self.paths)
+    #     self.paths[i] = p
+    #     self.path_types[i] = PathType.WALK
+    #     self.path_freq[i] = freq
 
     def to_scipy_sparse_matrix(self) -> Any:
         """Return sparse adjacency matrix of underlying graph."""
@@ -188,22 +189,24 @@ class PathData:
         else:
             l_p = []
             l_f = []
-            for idx in self.paths:
+            for idx in range(self.paths.size(dim=0)):                
                 if self.path_types[idx] == PathType.WALK:
                     p = PathData.edge_index_kth_order_walk(self.paths[idx], k)
+                    #print(p)
                     if self.index_translation:
                         p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
                     l_p.append(p)
                     l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
-                else:
-                    # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
-                    x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
-                    p = PathData.edge_index_kth_order_dag(x, k)
-                    if self.index_translation:
-                        p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
-                    if len(p) > 0:
-                        l_p.append(p)
-                        l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
+                # else:
+                #     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
+                #     x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
+                #     p = PathData.edge_index_kth_order_dag(x, k)
+                #     if self.index_translation:
+                #         p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
+                #     if len(p) > 0:
+                #         l_p.append(p)
+                #         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
+            print(l_p)
             i = cat(l_p, dim=1)
             freq = cat(l_f, dim=0)
 
@@ -289,17 +292,17 @@ class PathData:
 
     # DAG METHODS
 
-    @staticmethod
-    def edge_index_kth_order_dag(edge_index: Tensor, k: int) -> Tensor:
-        """Calculate $k$-th order edge_index for a single dag.
+    # @staticmethod
+    # def edge_index_kth_order_dag(edge_index: Tensor, k: int) -> Tensor:
+    #     """Calculate $k$-th order edge_index for a single dag.
 
-        Args:
-            k: order of $k$-th order model
-        """
-        x = edge_index
-        for _ in range(1, k):
-            x = PathData.lift_order_dag(x)
-        return x
+    #     Args:
+    #         k: order of $k$-th order model
+    #     """
+    #     x = edge_index
+    #     for _ in range(1, k):
+    #         x = PathData.lift_order_dag(x)
+    #     return x
 
     @staticmethod
     def map_nodes(edge_index: Tensor, index_translation: Dict) -> Tensor:
@@ -335,130 +338,130 @@ class PathData:
         remapped = key[index].reshape(edge_index.shape)
         return remapped
 
-    @staticmethod
-    def lift_order_dag(edge_index: Tensor) -> Tensor:
-        """Efficiently lift edge index of $k$-th order model to $(k+1)$-th order model.
+    # @staticmethod
+    # def lift_order_dag(edge_index: Tensor) -> Tensor:
+    #     """Efficiently lift edge index of $k$-th order model to $(k+1)$-th order model.
 
-        Args:
-            edge_index: edge_index of $k$-th order model that will be
-                lifted to $(k+1)$-th order
-        """
-        a = edge_index[0].unique(dim=0)
-        b = edge_index[1].unique(dim=0)
-        # intersection of a and b corresponds to all center nodes, which have 
-        # at least one incoming and one outgoing edge
-        combined = torch.cat((a, b))
-        uniques, counts = combined.unique(dim=0, return_counts=True)
-        center_nodes = uniques[counts > 1]
+    #     Args:
+    #         edge_index: edge_index of $k$-th order model that will be
+    #             lifted to $(k+1)$-th order
+    #     """
+    #     a = edge_index[0].unique(dim=0)
+    #     b = edge_index[1].unique(dim=0)
+    #     # intersection of a and b corresponds to all center nodes, which have 
+    #     # at least one incoming and one outgoing edge
+    #     combined = torch.cat((a, b))
+    #     uniques, counts = combined.unique(dim=0, return_counts=True)
+    #     center_nodes = uniques[counts > 1]
 
-        src = []
-        dst = []
+    #     src = []
+    #     dst = []
 
-        # create edges of order k+1
-        for v in center_nodes:
-            # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
-            src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten()  # type: ignore
-            srcs = edge_index[0][src_index]
-            # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
-            dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten()  # type: ignore
-            dsts = edge_index[1][dst_index]
-            for s in srcs:
-                for d in dsts:
-                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0]).to(config['torch']['device'])), v)))
-                    dst.append(torch.cat((v, torch.gather(d, 0, torch.tensor([d.size()[0]-1]).to(config['torch']['device'])))))
+    #     # create edges of order k+1
+    #     for v in center_nodes:
+    #         # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
+    #         src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten()  # type: ignore
+    #         srcs = edge_index[0][src_index]
+    #         # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
+    #         dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten()  # type: ignore
+    #         dsts = edge_index[1][dst_index]
+    #         for s in srcs:
+    #             for d in dsts:
+    #                 src.append(torch.cat((torch.gather(s, 0, torch.tensor([0]).to(config['torch']['device'])), v)))
+    #                 dst.append(torch.cat((v, torch.gather(d, 0, torch.tensor([d.size()[0]-1]).to(config['torch']['device'])))))
 
-        if len(src) > 0:
-            return torch.stack((torch.stack(src), torch.stack(dst)))
+    #     if len(src) > 0:
+    #         return torch.stack((torch.stack(src), torch.stack(dst)))
         
-        return torch.tensor([]).to(config['torch']['device'])
+    #     return torch.tensor([]).to(config['torch']['device'])
 
-    @staticmethod
-    def from_temporal_dag(dag: Graph, detect_walks: bool = True) -> PathData:
-        """Generate PathData object from temporal DAG where nodes are node-time events.
+    # @staticmethod
+    # def from_temporal_dag(dag: Graph, detect_walks: bool = True) -> PathData:
+    #     """Generate PathData object from temporal DAG where nodes are node-time events.
 
-        Args:
-            dag: A directed acyclic graph representation of a temporal network, where
-                nodes are time-node events.
-            detect_walks: whether or not directed acyclic graphs that just correspond
-                        to walks will be automatically added as walks. If set to false
-                        the resulting `PathData` object will only contain DAGs. If set
-                        to true, the PathData object may contain both DAGs and walks.
-        """
-        ds = PathData()
+    #     Args:
+    #         dag: A directed acyclic graph representation of a temporal network, where
+    #             nodes are time-node events.
+    #         detect_walks: whether or not directed acyclic graphs that just correspond
+    #                     to walks will be automatically added as walks. If set to false
+    #                     the resulting `PathData` object will only contain DAGs. If set
+    #                     to true, the PathData object may contain both DAGs and walks.
+    #     """
+    #     ds = PathData()
 
-        out_deg = degree(dag.data.edge_index[0])
-        in_deg = degree(dag.data.edge_index[1])
+    #     out_deg = degree(dag.data.edge_index[0])
+    #     in_deg = degree(dag.data.edge_index[1])
 
-        # check if dag exclusively consists of simple walks and apply fast method
-        if torch.max(out_deg).item() == 1.0 and torch.max(in_deg).item() == 1.0:
+    #     # check if dag exclusively consists of simple walks and apply fast method
+    #     if torch.max(out_deg).item() == 1.0 and torch.max(in_deg).item() == 1.0:
 
-            zero_outdegs = (out_deg==0).nonzero().squeeze()
-            zero_indegs = (in_deg==0).nonzero().squeeze()
+    #         zero_outdegs = (out_deg==0).nonzero().squeeze()
+    #         zero_indegs = (in_deg==0).nonzero().squeeze()
 
-            # find indices of those elements in src where in-deg = 0, i.e. elements are in zero_indegs
-            start_segs = torch.where(torch.isin(dag.data.edge_index[0], zero_indegs))[0]
-            end_segs = torch.cat((start_segs[1:], torch.tensor([len(dag.data.edge_index[0])], device=config['torch']['device'])))
-            segments = end_segs - start_segs
-            index_translation = {
-                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
-            }
+    #         # find indices of those elements in src where in-deg = 0, i.e. elements are in zero_indegs
+    #         start_segs = torch.where(torch.isin(dag.data.edge_index[0], zero_indegs))[0]
+    #         end_segs = torch.cat((start_segs[1:], torch.tensor([len(dag.data.edge_index[0])], device=config['torch']['device'])))
+    #         segments = end_segs - start_segs
+    #         index_translation = {
+    #             i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
+    #         }
 
-            # Map node-time events to node IDs
-            # Convert the tensor to a flattened 1D tensor
-            flat_tensor = dag.data.edge_index.flatten()
+    #         # Map node-time events to node IDs
+    #         # Convert the tensor to a flattened 1D tensor
+    #         flat_tensor = dag.data.edge_index.flatten()
 
-            # Create a mask tensor to mark indices to be replaced
-            mask = torch.zeros_like(flat_tensor, device=config['torch']['device'])
+    #         # Create a mask tensor to mark indices to be replaced
+    #         mask = torch.zeros_like(flat_tensor, device=config['torch']['device'])
 
-            for key, value in index_translation.items():
-                # Find indices where the values match the keys in the mapping
-                indices = (flat_tensor == key).nonzero(as_tuple=True)
+    #         for key, value in index_translation.items():
+    #             # Find indices where the values match the keys in the mapping
+    #             indices = (flat_tensor == key).nonzero(as_tuple=True)
                 
-                # Set the corresponding indices in the mask tensor to 1
-                mask[indices] = 1
+    #             # Set the corresponding indices in the mask tensor to 1
+    #             mask[indices] = 1
                 
-                # Replace values in the flattened tensor according to the mapping
-                flat_tensor[indices] = value
+    #             # Replace values in the flattened tensor according to the mapping
+    #             flat_tensor[indices] = value
 
-            # Reshape the flattened tensor back to the original shape
-            dag.data['edge_index'] = flat_tensor.reshape(dag.data.edge_index.shape)
+    #         # Reshape the flattened tensor back to the original shape
+    #         dag.data['edge_index'] = flat_tensor.reshape(dag.data.edge_index.shape)
 
-            # split edge index into multiple independent sections: 
-            # sections are limited by indices in src where in-deg = 0 and indices in tgt where out-deg = 0 
-            for t in torch.split(dag.data.edge_index, segments.tolist(), dim=1):
-                ds.add_walk(t)
+    #         # split edge index into multiple independent sections: 
+    #         # sections are limited by indices in src where in-deg = 0 and indices in tgt where out-deg = 0 
+    #         for t in torch.split(dag.data.edge_index, segments.tolist(), dim=1):
+    #             ds.add_walk(t)
 
-        else:
-            dags = extract_causal_trees(dag)
-            for d in dags:
-                # src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
-                # dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
-                src = [s for s in dags[d][0]]
-                dst = [t for t in dags[d][1]]
-                # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
-                edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
-                if detect_walks and degree(edge_index[1]).max() == 1 and \
-                        degree(edge_index[0]).max() == 1:
-                    ds.add_walk(edge_index)
-                else:
-                    ds.add_dag(edge_index)
-            ds.index_translation = {
-                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
-                }
-        ds.mapping = IndexMap(dag.data['temporal_graph_index_map'])
-        return ds
+    #     else:
+    #         dags = extract_causal_trees(dag)
+    #         for d in dags:
+    #             # src = [ dag['node_idx', dag.node_index_to_id[s.item()]] for s in dags[d][0]] # type: ignore
+    #             # dst = [ dag['node_idx', dag.node_index_to_id[t.item()]] for t in dags[d][1]] # type: ignore
+    #             src = [s for s in dags[d][0]]
+    #             dst = [t for t in dags[d][1]]
+    #             # ds.add_dag(IntTensor([src, dst]).unique_consecutive(dim=1))
+    #             edge_index = torch.LongTensor([src, dst]).to(config['torch']['device'])
+    #             if detect_walks and degree(edge_index[1]).max() == 1 and \
+    #                     degree(edge_index[0]).max() == 1:
+    #                 ds.add_walk(edge_index)
+    #             else:
+    #                 ds.add_dag(edge_index)
+    #         ds.index_translation = {
+    #             i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
+    #             }
+    #     ds.mapping = IndexMap(dag.data['temporal_graph_index_map'])
+    #     return ds
 
     def __str__(self) -> str:
         """Return string representation of PathData object."""
         num_walks = 0
         num_dags = 0
         total = 0
-        for p in self.paths:
-            if self.path_types[p] == PathType.DAG:
+        for i in range(self.paths.size(dim=0)):
+            if self.path_types[i] == PathType.DAG:
                 num_dags += 1
             else:
                 num_walks += 1
-            total += self.path_freq[p]
+            total += self.path_freq[i]
         s = f"PathData with {num_walks} walks and {num_dags} dags and total weight {total}"
         return s
 
@@ -475,7 +478,9 @@ class PathData:
             file: filename of csv file containing paths or walks
             sep: character used to separate nodes and integer observation count
         """
-        p = PathData()
+        p = []
+        w = []
+        path_types = []
         mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
@@ -487,7 +492,9 @@ class PathData:
                 # Performance bottleneck: we need a better solution that a large dictionary 
                 # with many tensors, each individually copied to the GPU
                 # Possible solution: nested tensors
-                w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
-                p.add_walk(w, int(float(fields[-1])))
-        p.mapping = mapping
-        return p
+                p.append([[path[:-1], path[1:]]])
+                w.append(int(float(fields[-1])))
+                path_types.append(PathType.WALK)
+        paths = nested_tensor(p).to(config['torch']['device'])
+        path_freq = torch.tensor(w).to(config['torch']['device'])
+        return PathData(paths, path_types, path_freq, mapping)
