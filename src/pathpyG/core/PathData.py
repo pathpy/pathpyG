@@ -14,20 +14,14 @@ from collections import defaultdict
 
 import torch
 from torch import Tensor, IntTensor, cat, sum
-from torch.nested import nested_tensor
-from torch_geometric.utils import to_scipy_sparse_matrix, degree
+from torch.nested import as_nested_tensor, nested_tensor
+from torch_geometric.utils import to_scipy_sparse_matrix, degree, coalesce
 
 from pathpyG import Graph
 from pathpyG import config
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.algorithms.temporal import extract_causal_trees
 
-
-class PathType(Enum):
-    """An enum used to distinguish observations of walks and DAGs."""
-
-    WALK = 0
-    DAG = 1
 
 
 class PathData:
@@ -38,10 +32,9 @@ class PathData:
     graph models of paths and walks.
     """
 
-    def __init__(self, paths: nested_tensor, path_types: List[PathType], path_freq: tensor, mapping: Optional[IndexMap] = None) -> None:
+    def __init__(self, paths: nested_tensor, path_freq: Tensor, mapping: Optional[IndexMap] = None) -> None:
         """Create an empty PathData object."""
         self.paths = paths
-        self.path_types = path_types
         self.path_freq = path_freq
         if mapping is None:
             self.mapping: IndexMap = IndexMap()
@@ -52,7 +45,7 @@ class PathData:
     @property
     def num_paths(self) -> int:
         """Return the number of stored paths."""
-        return len(self.paths)
+        return self.paths.size(dim=0)
 
     @property
     def num_nodes(self) -> int:
@@ -165,9 +158,19 @@ class PathData:
 
     @property
     def edge_index_weighted(self) -> Tuple[Tensor, Tensor]:
-        """Return edge index and edge weights of a first-order graph 
-        model of all walks or DAGs."""
+        """Return edge index and edge weights of a first-order graph
+        model of all walks."""
         return self.edge_index_k_weighted(k=1)
+
+    @staticmethod
+    def nested_unfold(n: nested_tensor, k: int=1):
+        a = []
+        for t in n:
+            if k < t.size(dim=1):
+                a.append(t.unfold(1, k, 1))
+            else:
+                a.append(torch.tensor([], dtype=int, device=config['torch']['device']))    
+        return torch.cat(a, dim=1)
 
     def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
         """Compute edge index and edge weights of $k$-th order De Bruijn graph model.
@@ -175,54 +178,33 @@ class PathData:
         Args:
             k: order of the $k$-th order De Bruijn graph model
         """
-        freq: Tensor = torch.Tensor([])
 
         if k == 1:
-            # TODO: Wrong edge statistics for non-sparse DAGs!
-            i = cat(list(self.paths.values()), dim=1)
-            if self.index_translation:
-                i = PathData.map_nodes(i, self.index_translation)
-            l_f = []
-            for idx in self.paths:
-                l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
-            freq = cat(l_f, dim=0)
+            # here we simply concatenate all paths to obtain an edge_index
+            i = torch.cat([t for t in self.paths], dim=1)
+
+            # we assume that all edges in a path occured multiple times according to path_freq
+            f = torch.cat([self.path_freq[i].repeat(t.size(dim=1)) for i, t in enumerate(self.paths)])
+
+            # we coalesce the edge_index, which is just a regular torch_geometric edge index
+            return coalesce(i, f)
         else:
-            l_p = []
-            l_f = []
-            for idx in range(self.paths.size(dim=0)):                
-                if self.path_types[idx] == PathType.WALK:
-                    p = PathData.edge_index_kth_order_walk(self.paths[idx], k)
-                    #print(p)
-                    if self.index_translation:
-                        p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
-                    l_p.append(p)
-                    l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
-                # else:
-                #     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
-                #     x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
-                #     p = PathData.edge_index_kth_order_dag(x, k)
-                #     if self.index_translation:
-                #         p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
-                #     if len(p) > 0:
-                #         l_p.append(p)
-                #         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
-            print(l_p)
-            i = cat(l_p, dim=1)
-            freq = cat(l_f, dim=0)
+            i = PathData.nested_unfold(self.paths, k)
 
-        # make edge index unique and keep reverse index, 
-        # that maps each element in i to the corresponding element in edge_index
-        edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
+            # here we cannot use the coalesce function as the edge_index will be dimension 2, l, k
 
-        # for each edge in edge_index, the elements of x
-        # contain all indices in i that correspond to that edge
-        x = list((reverse_index == idx).nonzero() 
-                 for idx in range(edge_index.size()[1]))
+            # we again assume that all higher-order edges occur multiple times according to path_freq
+            f = torch.cat([self.path_freq[i].repeat(t.size(dim=1)-2+1 if t.size(dim=1)-2+1 > 0 else 0) for i, t in enumerate(self.paths)])
+            
 
-        # for each edge, sum the weights of all occurences
-        edge_weights = Tensor([
-            sum(freq[x[idx]]) for idx in
-            range(edge_index.size()[1])]).to(config['torch']['device'])
+            # we make the edge index unique and keep a reverse index that maps each element in i 
+            # to the corresponding element in edge_index
+            edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
+
+            # for each edge, we now count all occurences
+            edge_weights = torch.bincount(reverse_index, weights=f[reverse_index])
+
+            # TODO: check whether weights are correct
 
         return edge_index, edge_weights
 
@@ -480,7 +462,6 @@ class PathData:
         """
         p = []
         w = []
-        path_types = []
         mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
@@ -492,9 +473,8 @@ class PathData:
                 # Performance bottleneck: we need a better solution that a large dictionary 
                 # with many tensors, each individually copied to the GPU
                 # Possible solution: nested tensors
-                p.append([[path[:-1], path[1:]]])
+                p.append(torch.tensor([path[:-1], path[1:]], device=config['torch']['device']))
                 w.append(int(float(fields[-1])))
-                path_types.append(PathType.WALK)
-        paths = nested_tensor(p).to(config['torch']['device'])
-        path_freq = torch.tensor(w).to(config['torch']['device'])
-        return PathData(paths, path_types, path_freq, mapping)
+        paths = as_nested_tensor(p, device=config['torch']['device'])
+        path_freq = torch.tensor(w, device=config['torch']['device'])
+        return PathData(paths, path_freq, mapping)
