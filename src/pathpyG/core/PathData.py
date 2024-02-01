@@ -436,15 +436,12 @@ class PathData:
     def __str__(self) -> str:
         """Return string representation of PathData object."""
         num_walks = 0
-        num_dags = 0
+        #num_dags = 0
         total = 0
-        for i in range(self.paths.size(dim=0)):
-            if self.path_types[i] == PathType.DAG:
-                num_dags += 1
-            else:
-                num_walks += 1
+        for i, _ in enumerate(self.paths):
+            num_walks += 1
             total += self.path_freq[i]
-        s = f"PathData with {num_walks} walks and {num_dags} dags and total weight {total}"
+        s = f"PathData with {num_walks} walks and total weight {total}"
         return s
 
     @staticmethod
