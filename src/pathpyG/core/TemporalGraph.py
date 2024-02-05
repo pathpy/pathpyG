@@ -7,6 +7,9 @@ import torch_geometric.utils
 from torch_geometric.data import TemporalData
 from torch import IntTensor
 
+import datetime
+from time import mktime
+
 from pathpyG import Graph
 from pathpyG.utils.config import config
 
@@ -90,13 +93,20 @@ class TemporalGraph(Graph):
         )
 
     @staticmethod
-    def from_csv(file) -> TemporalGraph:
+    def from_csv(file, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
         tedges = []
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
-                path = []
                 fields = line.strip().split(",")
-                tedges.append((fields[0], fields[1], int(fields[2])))
+                timestamp = fields[2]
+                if timestamp.isdigit():
+                    t = int(timestamp)
+                else:
+                    # if it is a string, we use the timestamp format to convert
+                    # it to a UNIX timestamp
+                    x = datetime.datetime.strptime(timestamp, timestamp_format)
+                    t = int(mktime(x.timetuple()))
+                tedges.append((fields[0], fields[1], int(t/time_rescale)))
         return TemporalGraph.from_edge_list(tedges)
 
     @property
