@@ -176,7 +176,7 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             edge_index = idx,
             t = self.data.t[start:end],
-            node_id = self.data.node_id[:max_idx]
+            node_id = self.data.node_id[:max_idx+1]
         )
 
 
