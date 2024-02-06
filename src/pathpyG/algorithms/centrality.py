@@ -242,7 +242,7 @@ def path_distance_matrix(paths):
                     dist[s][d] = p_length
             p_length += 1
         except IndexError:
-            print(f"IndexError occurred. Reached maximum path length of {p_length}")
+            #print(f"IndexError occurred. Reached maximum path length of {p_length}")
             break
     return dist
 
