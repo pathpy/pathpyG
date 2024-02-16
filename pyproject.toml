@@ -35,6 +35,7 @@ test = [
     "pytest",      # Testing framework
     "pytest-cov",  # Code coverage plugin for pytest
     "pytest-mock", # Mocking plugin for pytest
+    "pytest-benchmark", # Benchmarking plugin for pytest
 ]
 
 dev = [
