@@ -157,7 +157,7 @@ class TemporalGraph(Graph):
             mapping = self.mapping
         )
 
-
+      
     def __str__(self) -> str:
         """
         Returns a string representation of the graph
