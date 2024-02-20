@@ -115,9 +115,11 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
+        e = EdgeIndex([sources, targets], sort_order='row', device=config['torch']['device'])
+
         return Graph(Data(
-            edge_index=EdgeIndex([sources, targets], device=config['torch']['device'])
-            #num_nodes=int(idx.max().item()+1)
+            edge_index=e,
+            num_nodes=int(e.max().item()+1)
             ),
             mapping=mapping
         )
