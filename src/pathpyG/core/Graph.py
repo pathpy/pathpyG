@@ -14,6 +14,7 @@ import torch
 
 import torch_geometric
 import torch_geometric.utils
+from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
 
@@ -33,18 +34,12 @@ class Graph:
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from an edge index.
 
-        Generate a Graph instance from a `torch.Tensor` that contains an `edge_index`
-        with optional `node_id` list that maps integer node indices to string node ids.
+        Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex
+        with an optional mapping of node IDs to indices.
 
         Args:
-            edge_index: edge_index containing source and target index of all edges
-            node_id: Optional list of node identifiers
-            **kwargs: Optional keyword arguments that are passed to constructor 
-                of [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data). 
-                Keyword arguments starting with `node_` will be
-                mapped to node attributes, keywords arguments starting with `edge_` will
-                be mapped to edge attributes. Other keyword arguments will be mapped to
-                graph attributes.
+            data: Data object containing EdgeIndex and meta-data
+            mapping: Optional object that maps node indices to IDs
 
         Example:
             ```py
@@ -78,13 +73,8 @@ class Graph:
             for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
 
-        # initialize adjacency matrix
-        self._sparse_adj_matrix: Any = (
-            torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
-        )
-
     @staticmethod
-    def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
+    def from_edge_index(edge_index: EdgeIndex, mapping: Optional[IndexMap] = None) -> Graph:
         """
         Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
 
@@ -94,7 +84,7 @@ class Graph:
         """       
 
         return Graph(
-            Data(edge_index=edge_index, 
+            Data(edge_index=edge_index,
                  num_nodes=int(edge_index.max().item())+1),
             mapping=mapping)
 
@@ -125,11 +115,11 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
-        idx = torch.LongTensor([sources, targets]).to(config["torch"]["device"])
         return Graph(Data(
-            edge_index=idx,
-            num_nodes=int(idx.max().item()+1)),
-            mapping=mapping,
+            edge_index=EdgeIndex([sources, targets], device=config['torch']['device'])
+            #num_nodes=int(idx.max().item()+1)
+            ),
+            mapping=mapping
         )
 
     def to_undirected(self) -> Graph:
@@ -225,6 +215,22 @@ class Graph:
         for e in self.data.edge_index.t():
             yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item())
 
+    def get_successors(self, row_idx: int):
+        """
+        """
+        ((row_ptr, col), perm) = self.data.edge_index.get_csr()
+        row_start = row_ptr[row_idx]
+        row_end = row_ptr[row_idx + 1]
+        return col[row_start:row_end]
+
+    def get_predecessors(self, col_idx: int):
+        """
+        """
+        ((col_ptr, row), perm) = self.data.edge_index.get_csc()
+        col_start = col_ptr[col_idx]
+        col_end = col_ptr[col_idx + 1]
+        return row[col_start:col_end]
+
     def successors(self, node: Union[int, str] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:
         """
@@ -237,11 +243,9 @@ class Graph:
         Args:
             node:   Index or string ID of node for which successors shall be returned.
         """ 
-        coo_matrix = self._sparse_adj_matrix.tocoo()      
-        # Get array of col indices for which entries in row are non-zero
-        non_zero_cols = coo_matrix.col[coo_matrix.row == self.mapping.to_idx(node)]
-        for i in non_zero_cols:  # type: ignore
-            yield self.mapping.to_id(i)
+
+        for j in self.get_successors(self.mapping.to_idx(node)):  # type: ignore
+            yield self.mapping.to_id(j.item())
 
     def predecessors(self, node: Union[str, int] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:
@@ -254,11 +258,8 @@ class Graph:
         Args:
             node:   Index or string ID of node for which predecessors shall be returned.
         """
-        coo_matrix = self._sparse_adj_matrix.tocoo()
-        # Get array of col indices for which entries in row are non-zero
-        non_zero_rows = coo_matrix.row[coo_matrix.col == self.mapping.to_idx(node)]
-        for i in non_zero_rows:  # type: ignore
-            yield self.mapping.to_id(i)
+        for i in self.get_predecessors(self.mapping.to_idx(node)):  # type: ignore
+            yield self.mapping.to_id(i.item())
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
         """Return whether edge $(v,w)$ exists in the graph.
@@ -270,7 +271,12 @@ class Graph:
             v: source node of edge as integer index or string ID
             w: target node of edge as integer index or string ID       
         """
-        return self.mapping.to_idx(w) in self._sparse_adj_matrix.getrow(self.mapping.to_idx(v)).indices  # type: ignore
+        row = self.mapping.to_idx(v)
+        ((row_ptr, col), perm) = self.data.edge_index.get_csr()
+        row_start = row_ptr[row]
+        row_end   = row_ptr[row + 1]
+
+        return self.mapping.to_idx(w) in col[row_start:row_end]
 
     def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
         """Return sparse adjacency matrix representation of (weighted) graph.
@@ -423,15 +429,14 @@ class Graph:
         """
         return self.data.num_edges  # type: ignore
 
-    
 
     def is_directed(self) -> Any:
         """Return whether graph is directed."""
-        return self.data.is_directed()
+        return not self.data.edge_index.is_undirected()
 
     def is_undirected(self) -> Any:
         """Return whether graph is undirected."""
-        return self.data.is_undirected()
+        return self.data.edge_index.is_undirected()
 
     def has_self_loops(self) -> Any:
         """Return whether graph contains self-loops."""
