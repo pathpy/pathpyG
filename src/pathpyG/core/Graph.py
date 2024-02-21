@@ -17,6 +17,7 @@ import torch_geometric.utils
 from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
+from torch_geometric.utils import is_undirected
 
 from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
@@ -455,12 +456,12 @@ class Graph:
 
 
     def is_directed(self) -> Any:
-        """Return whether graph is directed."""
-        return not self.data.edge_index.is_undirected()
+        """Return whether graph is directed."""        
+        return not is_undirected(self.data.edge_index)        
 
     def is_undirected(self) -> Any:
         """Return whether graph is undirected."""
-        return self.data.edge_index.is_undirected()
+        return is_undirected(self.data.edge_index)
 
     def has_self_loops(self) -> Any:
         """Return whether graph contains self-loops."""
