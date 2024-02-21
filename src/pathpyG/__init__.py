@@ -12,7 +12,7 @@ Swiss National Science Foundation via
 """
 import torch
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 from pathpyG.utils.config import config
 from pathpyG.utils.progress import tqdm
