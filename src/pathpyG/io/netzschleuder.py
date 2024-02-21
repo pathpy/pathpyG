@@ -262,11 +262,11 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
 
 
     if id_node_attr:
-        node_id = node_attr[id_node_attr]
+        mapping = pp.IndexMap(node_attr[id_node_attr])
     else:
-        node_id = []
+        mapping = None
 
-    g = Graph(edge_index=torch.tensor([sources, targets], dtype=torch.long).to(config['torch']['device']), node_id=node_id)
+    g = Graph.from_edge_index(torch.LongTensor([sources, targets]).to(config['torch']['device']), mapping=mapping)
     for a in node_attr:
         if not a.startswith('node_'):
             # print(node_attr[a])
