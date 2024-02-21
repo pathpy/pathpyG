@@ -91,7 +91,8 @@ class TemporalGraph(Graph):
         return TemporalGraph.from_edge_list(tedges)
 
     @property
-    def temporal_edges(self):
+    def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
+        """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
         i = 0
         for e in self.data.edge_index.t():
             yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item()), self.data.t[i].item()  # type: ignore
