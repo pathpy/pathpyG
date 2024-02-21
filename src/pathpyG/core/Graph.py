@@ -64,7 +64,7 @@ class Graph:
 
         # sort EdgeIndex and validate
         data.edge_index = data.edge_index.sort_by('row').values
-        data.edge_index.validate()        
+        data.edge_index.validate()
 
         # set num_nodes property
         data.num_nodes = data.edge_index.max().item()+1
@@ -240,18 +240,24 @@ class Graph:
     def get_successors(self, row_idx: int):
         """
         """
-        ((row_ptr, col), perm) = self.data.edge_index.get_csr()
-        row_start = row_ptr[row_idx]
-        row_end = row_ptr[row_idx + 1]
-        return col[row_start:row_end]
+        ((row_ptr, col), perm) = self.data.edge_index.get_csr()        
+        if row_idx + 1 < row_ptr.size(0):
+            row_start = row_ptr[row_idx]
+            row_end = row_ptr[row_idx + 1]
+            return col[row_start:row_end]
+        else:
+            return torch.tensor([])
 
     def get_predecessors(self, col_idx: int):
         """
         """
-        ((col_ptr, row), perm) = self.data.edge_index.get_csc()
-        col_start = col_ptr[col_idx]
-        col_end = col_ptr[col_idx + 1]
-        return row[col_start:col_end]
+        ((col_ptr, row), perm) = self.data.edge_index.get_csc()        
+        if col_idx + 1 < col_ptr.size(0):
+            col_start = col_ptr[col_idx]
+            col_end = col_ptr[col_idx + 1]
+            return row[col_start:col_end]
+        else:
+            return torch.tensor([])
 
     def successors(self, node: Union[int, str] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:

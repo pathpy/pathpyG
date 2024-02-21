@@ -5,6 +5,7 @@ import torch
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
+from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG import PathData
@@ -59,7 +60,8 @@ class HigherOrderGraph(Graph):
                 ).to(config['torch']['device'])
 
             # Create pyG Data object
-            self.data = Data(edge_index=edge_index, num_nodes=len(_nodes), **kwargs)
+            edge_index = edge_index.contiguous()
+            self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
             self.data['edge_weight'] = edge_weights
 
         else:
@@ -70,35 +72,17 @@ class HigherOrderGraph(Graph):
             self.mapping = paths.mapping
 
             # Create pyG Data object
-            self.data = Data(edge_index=edge_index, num_nodes=len(_nodes), **kwargs)
+            edge_index = edge_index.contiguous()
+            self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
             self.data['edge_weight'] = edge_weights
+
+        # sort EdgeIndex and validate
+        self.data.edge_index = self.data.edge_index.sort_by('row').values
+        self.data.edge_index.validate()
 
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
-
-        # initialize adjacency matrix
-        self._sparse_adj_matrix: Any = (
-            torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
-        )
-
-    # @Graph.nodes.getter
-    # def nodes(self):
-    #     if len(self.node_id_to_index) > 0:
-    #         for v in self.node_id_to_index:
-    #             yield v
-    #     else:
-    #         for v in self._nodes:
-    #             yield v
-
-    # @Graph.nodes.getter
-    # def edges(self):
-    #     if len(self.node_index_to_id) > 0:
-    #         for e in self.data.edge_index.t():
-    #             yield self.node_id_to_index[e[0].item()], self.node_id_to_index[e[1].item()]
-    #     else:
-    #         for e in self.data.edge_index.t():
-    #             yield e[0].item(), e[1].item()
 
     def __str__(self) -> str:
         """Return a string representation of the higher-order graph."""
