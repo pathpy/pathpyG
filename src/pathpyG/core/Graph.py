@@ -32,28 +32,25 @@ class Graph:
     """
 
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
-        """Generate graph instance from an edge index.
+        """Generate graph instance from a pyG `Data` object.
 
         Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex
         with an optional mapping of node IDs to indices.
 
         Args:
-            data: Data object containing EdgeIndex and meta-data
-            mapping: Optional object that maps node indices to IDs
+            data: A pyG Data object containing an EdgeIndex and meta-data
+            mapping: Optional `IndexMap` object that maps node IDs to indices
 
         Example:
             ```py
             import pathpyG as pp
+            from torch_geometric.data import Data
+            from torch_geometric import EdgeIndex
 
-            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+            data = Data(edge_index=EdgeIndex([[1,1,2],[0,2,1]]))
+            g = pp.Graph(data)
 
-            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-                                    node_id=['a', 'b', 'c'])
-
-            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-                                    node_id=['a', 'b', 'c'],
-                                    node_age=torch.LongTensor([12, 42, 17]),
-                                    edge_weight=torch.FloatTensor([1.0, 2.5, 0.7[]))
+            g = pp.Graph(data, mapping=pp.IndexMap(['a', 'b', 'c']))
             ```
         """
         if mapping is None:
@@ -61,11 +58,17 @@ class Graph:
         else:
             self.mapping = mapping
 
+        # turn edge index tensor into EdgeIndex object
+        if not isinstance(data.edge_index, EdgeIndex):
+            data.edge_index = EdgeIndex(data=data.edge_index)
 
+        # sort EdgeIndex and validate
+        data.edge_index = data.edge_index.sort_by('row').values
+        data.edge_index.validate()        
+
+        # set num_nodes property
+        data.num_nodes = data.edge_index.max().item()+1
         self.data = data
-        # Create pyG Data object
-        # num_nodes = int(edge_index.max().item()) + 1
-        # self.data = Data(edge_index=edge_index, num_nodes=num_nodes, **kwargs)
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
@@ -74,34 +77,45 @@ class Graph:
         }
 
     @staticmethod
-    def from_edge_index(edge_index: EdgeIndex, mapping: Optional[IndexMap] = None) -> Graph:
+    def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
         """
-        Construct a graph from a [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object.
+        Construct a graph from a torch Tensor containing and edge index.
 
         Args:
             d:  [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object containing an edge_index as well as 
                 arbitrary node, edge, and graph-level attributes
+        
+        Example:
+            import pathpyG as pp
+
+            g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+            print(g)
+
+            g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
+                                    mapping=pp.IndexMap(['a', 'b', 'c']))
+            print(g)
         """       
 
         return Graph(
-            Data(edge_index=edge_index,
-                 num_nodes=int(edge_index.max().item())+1),
-            mapping=mapping)
+            Data(edge_index=edge_index, mapping=mapping)
+        )
 
 
     @staticmethod
-    def from_edge_list(edge_list: List[List[str]]) -> Graph:
+    def from_edge_list(edge_list: List[List[str]], is_undirected=False) -> Graph:
         """Generate a Graph instance based on an edge list.
 
         Args:
             edge_list: List of iterables
 
         Example:
-            ```py
+            ```
             import pathpyG as pp
 
             l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
             g = pp.Graph.from_edge_list(l)
+            print(g.data)
+            print(g.mapping)
             ```
         """
         sources = []
@@ -115,7 +129,7 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
-        e = EdgeIndex([sources, targets], sort_order='row', device=config['torch']['device'])
+        e = EdgeIndex([sources, targets], is_undirected=is_undirected, device=config['torch']['device'])
 
         return Graph(Data(
             edge_index=e,
@@ -126,7 +140,7 @@ class Graph:
 
     def to_undirected(self) -> Graph:
         """
-        Transform graph into undirected graph.
+        Transform a directed graph into undirected graph.
 
         This method transforms the current graph instance into an undirected graph by
         adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
@@ -136,12 +150,18 @@ class Graph:
         Example:
             ```py
             import pathpyG as pp
-            g = pp.Graph(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
+            g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a')])
             g_u = g.to_undirected()
             ```
         """
         tf = ToUndirected()
-        return Graph(tf(self.data), self.mapping)
+        d = tf(self.data)
+        # unfortunately, the application of a transform creates a new edge_index of type tensor
+        # so we have to recreate the EdgeIndex tensor and sort it again
+
+        e = EdgeIndex(data=d.edge_index, is_undirected=True)
+        d.edge_index = e
+        return Graph(d, self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""

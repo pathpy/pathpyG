@@ -19,7 +19,7 @@ class RollingTimeWindow:
     analysis of temporal graphs.
     """
 
-    def __init__(self, temporal_graph, window_size, step_size=1, return_window=False):
+    def __init__(self, temporal_graph, window_size, step_size=1, return_window=False, weighted=True):
         r"""
         Initialises a RollingTimeWindow instance that can be used to
         iterate through a sequence of time-slice networks for a given
@@ -50,6 +50,7 @@ class RollingTimeWindow:
         self.step_size = step_size
         self.current_time = self.g.start_time
         self.return_window = return_window
+        self.weighted = weighted
 
     def __iter__(self):
         return self
@@ -58,7 +59,7 @@ class RollingTimeWindow:
     def __next__(self):
         if self.current_time <= self.g.end_time:
             time_window = (self.current_time, self.current_time+self.window_size)
-            s = self.g.to_static_graph(weighted=True, time_window=time_window)
+            s = self.g.to_static_graph(weighted=self.weighted, time_window=time_window)
             self.current_time += self.step_size
             if self.return_window:
                 return s, time_window

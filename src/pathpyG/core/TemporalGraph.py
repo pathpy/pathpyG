@@ -5,6 +5,7 @@ import torch
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import TemporalData, Data
+from torch_geometric import EdgeIndex
 from torch import IntTensor
 
 import datetime
@@ -20,7 +21,7 @@ class TemporalGraph(Graph):
         """Creates an instance of a temporal graph with given edge index and timestamps"""
 
         # sort edges by timestamp
-        # Note: function sort_by_time menmtioned in pyG documentation does not exist
+        # Note: function sort_by_time mentioned in pyG documentation does not exist
         t_sorted, sort_index = torch.sort(data.t)
 
         # reorder temporal data
@@ -44,10 +45,10 @@ class TemporalGraph(Graph):
         self.start_time = t_sorted.min().item()
         self.end_time = t_sorted.max().item()
 
-        # initialize adjacency matrix
-        self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
-            self.data.edge_index
-        ).tocsr()
+        # # initialize adjacency matrix
+        # self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
+        #     self.data.edge_index
+        # ).tocsr()
 
     @staticmethod
     def from_edge_list(edge_list) -> TemporalGraph:
@@ -65,10 +66,11 @@ class TemporalGraph(Graph):
             ts.append(t)
 
         return TemporalGraph(
-            data = TemporalData(src=torch.Tensor(sources).long(),
-                         dst = torch.Tensor(targets).long(),
-                         t = torch.Tensor(ts)),
-            mapping = index_map
+            data=TemporalData(
+                        src=torch.Tensor(sources).long(),
+                        dst=torch.Tensor(targets).long(),
+                        t=torch.Tensor(ts)),
+            mapping=index_map
         )
 
     @staticmethod
@@ -107,15 +109,16 @@ class TemporalGraph(Graph):
         """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph.
         """
         if time_window is not None:
-            index = (self.data.t >= time_window[0]).logical_and(self.data.t < time_window[1]).nonzero().ravel()
-            edge_index = torch.stack((self.data.src[index], self.data.dst[index]))
+            idx = (self.data.t >= time_window[0]).logical_and(self.data.t < time_window[1]).nonzero().ravel()
+            edge_index = torch.stack((self.data.src[idx], self.data.dst[idx]))
         else:
-            edge_index = self.data.edge_index
+            edge_index = torch.stack((self.data.src, self.data.dst))
+
         if weighted:
-            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(self.M))
-            return Graph(Data(edge_index=i, edge_weight=w), self.mapping)
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))
+            return Graph(Data(edge_index=EdgeIndex(data=i), edge_weight=w), self.mapping)
         else:
-            return Graph.from_edge_index(edge_index, self.mapping)
+            return Graph.from_edge_index(EdgeIndex(data=edge_index), self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
