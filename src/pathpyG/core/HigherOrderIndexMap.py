@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List, Union, Tuple
 
+from pathpyG.core.IndexMap import IndexMap
 
 class HigherOrderIndexMap:
     """Maps node indices to string ids"""
@@ -10,8 +11,8 @@ class HigherOrderIndexMap:
             assert len(fo_node_ids) == len(set(fo_node_ids)), "node_id entries must be unique"
             self.fo_node_ids = fo_node_ids
             # higher-order: nodes = tensors of integer indices
-            self.idx_to_id = { i: tuple([fo_node_ids[v] for v in j.tolist()]) for i, j in enumerate(ho_nodes)}
-            self.id_to_idx = { j: i for i, j in self.idx_to_id.items()}
+            self.idx_to_id = {i: tuple([fo_node_ids[v] for v in j.tolist()]) for i, j in enumerate(ho_nodes)}
+            self.id_to_idx = {j: i for i, j in self.idx_to_id.items()}
             self.has_ids = True
         else:
             self.node_ids = []

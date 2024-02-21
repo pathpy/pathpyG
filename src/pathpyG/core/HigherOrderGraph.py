@@ -5,6 +5,7 @@ import torch
 import torch_geometric
 import torch_geometric.utils
 from torch_geometric.data import Data
+from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG import PathData
@@ -34,7 +35,7 @@ class HigherOrderGraph(Graph):
             paths = pp.PathData()
             paths.mapping = pp.IndexMap(['a', 'b', 'c', 'd'])
             paths.add_walk(torch.Tensor([[0, 1, 2], [1, 2, 3]]))
-            g2 = Graph(paths, k=2)
+            g2 = HigherOrderGraph(paths, k=2)
             ```
         """
 
@@ -45,62 +46,50 @@ class HigherOrderGraph(Graph):
 
         if self.order > 1:
             # get tensor of unique higher-order nodes
-            self._nodes = index.reshape(-1, index.size(dim=2)).unique(dim=0)
-            self.mapping = HigherOrderIndexMap(self._nodes, paths.mapping.node_ids)
+            _nodes = index.reshape(-1, index.size(dim=2)).unique(dim=0)
+            self.mapping = HigherOrderIndexMap(_nodes, paths.mapping.node_ids)
 
-            # create mapping to first-order node indices
-            ho_nodes_to_index = {tuple(j.tolist()): i for i, j in enumerate(self._nodes)}
+            # create mapping from higher-order nodes (i.e. tensors) to node indices, i.e.
+            # assign consecutive indices 0, 1, 2 to higher-order nodes [0,1], [1,2], [2,3]
+            ho_nodes_to_index = {tuple(j.tolist()): i for i, j in enumerate(_nodes)}
 
             # create new tensor with node indices mapped to indices of higher-order nodes
-            edge_index = torch.tensor( (
-                [ho_nodes_to_index[tuple(x.tolist())] for x in index[0,:]],
-                [ho_nodes_to_index[tuple(x.tolist())] for x in index[1,:]])
+            edge_index = torch.tensor((
+                [ho_nodes_to_index[tuple(x.tolist())] for x in index[0, :]],
+                [ho_nodes_to_index[tuple(x.tolist())] for x in index[1, :]])
                 ).to(config['torch']['device'])
 
+            # Create pyG Data object
+            edge_index = edge_index.contiguous()
+            self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
+            self.data['edge_weight'] = edge_weights
+
         else:
-            self._nodes = index.reshape(-1).unique(dim=0)
+            _nodes = index.reshape(-1).unique(dim=0)
             edge_index = index
 
             # create mappings between node ids and node indices
             self.mapping = paths.mapping
 
-        # Create pyG Data object
-        self.data = Data(edge_index=edge_index, num_nodes=len(self._nodes), **kwargs)
-        self.data['edge_weight'] = edge_weights
+            # Create pyG Data object
+            edge_index = edge_index.contiguous()
+            self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
+            self.data['edge_weight'] = edge_weights
+
+        # sort EdgeIndex and validate
+        self.data.edge_index = self.data.edge_index.sort_by('row').values
+        self.data.edge_index.validate()
 
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
-
-        # initialize adjacency matrix
-        self._sparse_adj_matrix: Any = (
-            torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index).tocsr()
-        )
-
-    # @Graph.nodes.getter
-    # def nodes(self):
-    #     if len(self.node_id_to_index) > 0:
-    #         for v in self.node_id_to_index:
-    #             yield v
-    #     else:
-    #         for v in self._nodes:
-    #             yield v
-
-    # @Graph.nodes.getter
-    # def edges(self):
-    #     if len(self.node_index_to_id) > 0:
-    #         for e in self.data.edge_index.t():
-    #             yield self.node_id_to_index[e[0].item()], self.node_id_to_index[e[1].item()]
-    #     else:
-    #         for e in self.data.edge_index.t():
-    #             yield e[0].item(), e[1].item()
 
     def __str__(self) -> str:
         """Return a string representation of the higher-order graph."""
 
         attr_types = Graph.attr_types(self.data.to_dict())
 
-        s = "HigherOrderGraph (k={0}) with {1} nodes and {2} edges\n".format(self.order, len(self._nodes), self.M)
+        s = "HigherOrderGraph (k={0}) with {1} nodes and {2} edges\n".format(self.order, self.N, self.M)
         s += "\tTotal edge weight = {0}".format(self['edge_weight'].sum())
         if len(self.data.node_attrs()) > 0:
             s += "\nNode attributes\n"
