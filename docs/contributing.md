@@ -9,6 +9,7 @@ This project is open source and welcomes contributions. In the following section
 - [Code Style](#code-style)
 - [Formatting](#formatting)
 - [Testing](#testing)
+- [Benchmarking](#benchmarking)
 
 ## Setting up your environment
 
@@ -137,4 +138,28 @@ pytest
 The tests are located in the `tests/`-directory. We use `pytest-cov` to measure the test coverage and are aiming for 100% coverage with a hard limit of 80%. Tests will fail if the coverage drops below 80%.
 
 !!! todo "Add tests"
-    We are currently only at 29% coverage. So the lines above are currently pure fiction.
+    We are currently only at 60% coverage. So the lines above are currently pure fiction.
+
+## Benchmarking
+
+For optimal runtime, we continually measure the execution time of our core functions using pytest benchmarks. These benchmarks are located in `tests/benchmarks/` and are unit-tests that utilize the `benchmark` fixture from [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html). All of them are marked with the benchmark decorator (`@pytest.mark.benchmark`) to exclude them from the normal unit-tests. You can run all benchmarks in the command line using
+```bash
+pytest -m benchmark
+```
+If you are working on runtime improvements, you can compare the runtime of your changes to the runtime of the main branch by saving the results of each run with
+```bash
+pytest -m benchmark --benchmark-autosave
+```
+or with a custom name `<custom-name>`
+```bash
+pytest -m benchmark --benchmark-save=<custom-name>
+```
+After running the benchmarks both in your current branch and in the main branch, you can compare them as follows:
+```bash
+pytest-benchmark compare # (1)!
+```
+
+1. This will compare all runs that are currently saved in `.benchmarks/`. If you want to compare specific runs, you can add the number of the runs at the end of the command. The numbering usually starts with `0001`.
+
+!!! note
+    Since the runtime is strongly dependent on the underlying machine, we do not keep any up-to-date results on `git` and recommend to do any comparisons locally.
