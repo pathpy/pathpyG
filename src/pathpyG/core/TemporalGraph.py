@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, Generator
 
 import torch
 import torch_geometric
