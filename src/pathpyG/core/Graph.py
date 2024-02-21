@@ -132,17 +132,11 @@ class Graph:
             targets.append(mapping.to_idx(w))
 
         e = EdgeIndex([sources, targets], is_undirected=is_undirected, device=config['torch']['device'])
-
-        return Graph(Data(
-            edge_index=e,
-            num_nodes=int(e.max().item()+1)
-            ),
-            mapping=mapping
-        )
+        return Graph(Data(edge_index=e), mapping=mapping)
 
     def to_undirected(self) -> Graph:
         """
-        Transform a directed graph into undirected graph.
+        Returns an undirected version of a directed graph.
 
         This method transforms the current graph instance into an undirected graph by
         adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)

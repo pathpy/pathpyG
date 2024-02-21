@@ -14,36 +14,38 @@ from pathpyG import config
 
 
 class RollingTimeWindow:
-    r"""
-    An iterable rolling time window that can be used to perform time slice
-    analysis of temporal graphs.
+    """An iterable rolling time window that can be used to perform time slice analysis of temporal graphs.
     """
 
     def __init__(self, temporal_graph, window_size, step_size=1, return_window=False, weighted=True):
-        r"""
-        Initialises a RollingTimeWindow instance that can be used to
+        """Initialize a RollingTimeWindow instance that can be used to
         iterate through a sequence of time-slice networks for a given
         TemporalNetwork instance.
 
-        Parameters:
-        -----------
-        temporal_net:   TemporalNetwork
-            TemporalNetwork instance that will be used to generate the
-            sequence of time-slice networks.
-        window_size:    int
-            The width of the rolling time window used to create
-            time-slice networks.
-        step_size:      int
-            The step size in time units by which the starting time of the rolling
-            window will be incremented on each iteration. Default is 1.
-        return_window: bool
-            Whether or not the iterator shall return the current time window
-            as a second return value. Default is False.
+        Args:
+            temporal_graph: TemporalGraphinstance that will be used to generate the
+                sequence of time-slice networks.
+            window_size: The width of the rolling time window used to create time-slice networks.
+            step_size: The step size in time units by which the starting 
+                time of the rolling window will be incremented on each iteration.
+            return_window: Whether or not the iterator shall return the current time window as a second return value. Default is False.
+            weighted: Whether or not to return a weighted graph
 
-        Returns
-        -------
-        RollingTimeWindow
-            An iterable sequence of tuples Network, [window_start, window_end]
+        Example:
+            ```py
+            tedges = [('a', 'b', 1), ('b', 'c', 5), ('c', 'd', 9), ('c', 'e', 9),
+              ('c', 'f', 11), ('f', 'a', 13), ('a', 'g', 18), ('b', 'f', 21),
+              ('a', 'g', 26), ('c', 'f', 27), ('h', 'f', 27), ('g', 'h', 28),
+              ('a', 'c', 30), ('a', 'b', 31), ('c', 'h', 32), ('f', 'h', 33),
+              ('b', 'i', 42), ('i', 'b', 42), ('c', 'i', 47), ('h', 'i', 50)]
+            t = pp.TemporalGraph.from_edge_list(tedges)
+            r = pp.algorithms.RollingTimeWindow(t, 10, 10, return_window=True)
+            for g, w in r:
+                print('Time window ', w)
+                print(g)
+                print(g.data.edge_index)
+                print('---')
+            ```
         """
         self.g = temporal_graph
         self.window_size = window_size
@@ -54,7 +56,6 @@ class RollingTimeWindow:
 
     def __iter__(self):
         return self
-
 
     def __next__(self):
         if self.current_time <= self.g.end_time:
