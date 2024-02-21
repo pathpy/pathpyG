@@ -19,6 +19,9 @@ const endTime = config.end;
 const targetValue = config.intervals || 300;
 const duration = config.delta || 300;  
 
+// variables for the edge components
+const curved = config.curved || false;
+const directed = config.directed || false;
 
 /* Create a svg element to display the network */
 let svg = d3.select(selector)
@@ -37,6 +40,10 @@ let edges = container.append("g").attr("class", "edges")
 let nodes = container.append("g").attr("class", "nodes")
     .selectAll("circle.node");
 
+/*Label creation template */
+let labels = container.append("g").attr("class", "labels")
+    .selectAll(".label");
+
 /*Time counter */
 let text = svg.append("text")
     .text("T="+startTime)
@@ -51,16 +58,40 @@ let bttn = svg.append("text")
 /*Assign data to variable*/
 let network = data
 
+
+/*Create arrow head with same color as the edge */
+function marker (color) {
+       var reference;
+       svg.append("svg:defs").selectAll("marker")
+          .data([reference])
+          .enter().append("svg:marker")
+          .attr("id", "arrow"+color)
+          .attr("viewBox", "0 -5 10 10")
+          .attr("refX", 10)
+          .attr("refY", -0)
+          .attr("markerWidth", 6)
+          .attr("markerHeight", 6)
+          .attr("orient", "auto")
+          .append("svg:path")
+          .attr('class','.arrow')
+          .attr("d", "M0,-5L10,0L0,5")
+          .style('opacity',1)
+          .style("fill", color);
+       return "url(#" + "arrow"+color + ")";
+     };
+
 /*Render function to show dynamic networks*/
 function render(){
 
     // get network data
     let nodeData = network.nodes;
     let edgeData = network.edges;
+    // let labelData = network.nodes;
 
     // render network objects
     renderNodes(nodeData);
     renderEdges(edgeData);
+    renderLabels(nodeData);
 
     // run simulation
     simulation.nodes(nodeData);
@@ -76,24 +107,43 @@ function renderNodes(data){
 
     let new_nodes = nodes.enter().append("circle")
         .attr("class", "node")
-        .style("r", d => d.size)
+        .style("r", function(d){  return d.size+"px"; })
         .style("fill", d => d.color)
         .style("opacity", d => d.opacity)
         .call(drag);
-
+    
     nodes.exit()
         .transition() // transition to shrink node
         .duration(delta)
         .style("r", "0px")
         .remove();
-
+    
     nodes = nodes.merge(new_nodes);
 
     nodes.transition() // transition to change size and color
         .duration(delta)
-        .style("r", d => d.size)
+        .style("r", function(d){  return d.size+"px"; })
         .style("fill", d => d.color)
         .style("opacity", d => d.opacity);
+};
+
+/*Render label objects*/
+function renderLabels(data){
+    // console.log("render Nodes")
+    
+    labels = container.select('.nodes').selectAll('.label-text').data(data, d=> d.uid);
+
+    let new_labels = labels.enter().append("text")
+        .attr("class", "label-text")
+        .attr("x", function(d) {
+            var r = (d.size === undefined) ? 15 : d.size;
+            return 5 + r; })
+        .attr("dy", ".32em")
+        .text(d=>d.label);
+    
+    labels.exit().remove();
+
+    labels = labels.merge(new_labels);
 };
 
 /*Render edge objects*/
@@ -101,11 +151,13 @@ function renderEdges(data){
     // console.log("render Edges")
     edges = container.select(".edges").selectAll(".link").data(data, d=> d.uid);
 
-    let new_edges =  edges.enter().append("line")
+    let new_edges =  edges.enter().append("path")
         .attr("class", "link")
         .style("stroke", d => d.color)
         .style("stroke-opacity", d => d.opacity)
-        .style("stroke-width", d => d.size);
+        .style("stroke-width", d => d.size)
+        .style("fill","none")
+        .attr("marker-end", function (d) {if(directed){return marker(d.color)}else{return null}; });
 
     edges.exit().remove();
 
@@ -142,22 +194,60 @@ const simulation = d3.forceSimulation()
 function ticked() {
     nodes.call(updateNodePositions);
     edges.call(updateEdgePositions);
+    labels.call(updateLabelPositions);
 };
 
 /*Update link positions */
 function updateEdgePositions(edges) {
-    edges
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y);
+    // edges
+    //     .attr("x1", d => d.source.x)
+    //     .attr("y1", d => d.source.y)
+    //     .attr("x2", d => d.target.x)
+    //     .attr("y2", d => d.target.y);
+
+    edges.attr("d", function(d) {
+        var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+        if(!curved)dr=0;
+        return "M" +
+            d.source.x + "," +
+            d.source.y + "A" +
+            dr + "," + dr + " 0 0,1 " +
+            d.target.x + "," +
+            d.target.y;
+    });
+
+    // recalculate and back off the distance
+    edges.attr("d", function (d, i) {
+        var pl = this.getTotalLength();
+        var r = (d.target.size === undefined) ? 15 : d.target.size;
+        var m = this.getPointAtLength(pl - r);
+        var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+        if(!curved)dr=0;
+        var result = "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + m.x + "," + m.y;
+        return result;
+    });
 };
 
 /*Update node positions */
 function updateNodePositions(nodes) {
-    nodes
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y);
+    nodes.attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")";
+    });
+    // nodes
+    //     .attr("cx", d => d.x)
+    //     .attr("cy", d => d.y);
+};
+
+
+/*Update node positions */
+function updateLabelPositions(labels) {
+    labels.attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")";
+    });
 };
 
 /*Add drag functionality to the node objects*/
