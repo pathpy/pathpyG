@@ -18,7 +18,19 @@ from pathpyG.utils.config import config
 
 class TemporalGraph(Graph):
     def __init__(self, data: TemporalData, mapping: IndexMap = None) -> None:
-        """Creates an instance of a temporal graph with given edge index and timestamps"""
+        """Creates an instance of a temporal graph from a `TemporalData` object.
+        
+        
+        Example:
+            ```py
+            from pytorch_geometric.data import TemporalData
+            import pathpyG as pp
+
+            d = TemporalData(src=[0,0,1], dst=[1,2,2], t=[0,1,2])
+            t = pp.TemporalGraph(d, mapping)
+            print(t)
+            ```
+        """
 
         # sort edges by timestamp
         # Note: function sort_by_time mentioned in pyG documentation does not exist

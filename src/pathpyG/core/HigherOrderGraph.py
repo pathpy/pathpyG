@@ -35,7 +35,7 @@ class HigherOrderGraph(Graph):
             paths = pp.PathData()
             paths.mapping = pp.IndexMap(['a', 'b', 'c', 'd'])
             paths.add_walk(torch.Tensor([[0, 1, 2], [1, 2, 3]]))
-            g2 = Graph(paths, k=2)
+            g2 = HigherOrderGraph(paths, k=2)
             ```
         """
 

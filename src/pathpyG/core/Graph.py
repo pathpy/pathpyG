@@ -86,6 +86,7 @@ class Graph:
                 arbitrary node, edge, and graph-level attributes
         
         Example:
+            ```py
             import pathpyG as pp
 
             g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]))
@@ -94,6 +95,7 @@ class Graph:
             g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
                                     mapping=pp.IndexMap(['a', 'b', 'c']))
             print(g)
+            ```
         """       
 
         return Graph(
