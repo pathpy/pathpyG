@@ -6,6 +6,7 @@ import torch
 from pathpyG.core.Graph import Graph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.PathData import PathData
 
 
@@ -13,6 +14,11 @@ from pathpyG.core.PathData import PathData
 def simple_graph() -> Graph:
     """Return a simple directed graph."""
     return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+
+@pytest.fixture
+def simple_graph_multi_edges() -> Graph:
+    """Return a directed graph with multiple edges."""
+    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c'], ['a', 'b']])
 
 
 @pytest.fixture
@@ -23,6 +29,7 @@ def simple_paths() -> PathData:
     paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
     paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
     paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths.mapping = IndexMap(['A', 'B', 'C', 'D', 'E'])
     return paths
 
 

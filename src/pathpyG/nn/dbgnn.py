@@ -89,20 +89,21 @@ class DBGNN(Module):
         return x
     
     @staticmethod
-    def generate_bipartite_edge_index(g: HigherOrderGraph, g2: pp.HigherOrderGraph, mapping = 'last') -> torch.Tensor:
+    def generate_bipartite_edge_index(g: HigherOrderGraph, g2: HigherOrderGraph, mapping: str = 'last') -> torch.Tensor:
+        """Generate edge_index for bipartite graph connecting nodes of a second-order graph to first-order nodes."""
 
         if mapping == 'last':
             bipartide_edge_index = torch.tensor(
-                [list(g2.node_index_to_id.keys()),
-                [g.node_id_to_index[i[1]] for i in g2.node_index_to_id.values()]]
+                [list(range(g2.N)),
+                [g.mapping.to_idx(i[1]) for i in g2.mapping.idx_to_id.values()]]
                 )
 
         elif mapping == 'first':
-            bipartide_edge_index = torch.tensor([list(g2.node_index_to_id.keys()),
-                                    [g.node_id_to_index[i[0]] for i in g2.node_index_to_id.values()]])
+            bipartide_edge_index = torch.tensor([list(range(g2.N)),
+                                    [g.mapping.to_idx(i[0]) for i in g2.mapping.idx_to_id.values()]])
         else:
-            bipartide_edge_index = torch.tensor([list(g2.node_index_to_id.keys()) + list(g2.node_index_to_id.keys()),
-                                    [g.node_id_to_index[i[0]] for i in g2.node_index_to_id.values()] + [i[1] for i in g2.node_index_to_id.values()]])
+            bipartide_edge_index = torch.tensor([list(g2.mapping.idx_to_id.keys()) + list(g2.mapping.idx_to_id.keys()),
+                                    [g.mapping.to_idx(i[0]) for i in g2.mapping.idx_to_id.values()] + [i[1] for i in g2.mapping.idx_to_id.values()]])
 
         return bipartide_edge_index
 

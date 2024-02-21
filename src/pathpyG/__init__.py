@@ -18,6 +18,8 @@ from pathpyG.utils.config import config
 from pathpyG.utils.progress import tqdm
 
 from pathpyG.core.Graph import Graph
+from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.HigherOrderIndexMap import HigherOrderIndexMap
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.PathData import PathData
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph

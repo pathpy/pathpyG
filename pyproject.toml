@@ -35,6 +35,7 @@ test = [
     "pytest",      # Testing framework
     "pytest-cov",  # Code coverage plugin for pytest
     "pytest-mock", # Mocking plugin for pytest
+    "pytest-benchmark", # Benchmarking plugin for pytest
 ]
 
 dev = [
@@ -85,7 +86,10 @@ name = "pathpyG"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = "tests"
-addopts = "--cov=src"
+markers = [
+    "benchmark: marks tests as benchmarking tests (deselect with '-m \"not benchmark\"')"
+]
+addopts = "--cov=src -m \"not benchmark\""
 
 [tool.coverage.run]
 branch = true
@@ -103,6 +107,8 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+show_missing = true
+skip_covered = true
 
 ########################################################################################
 ############################# Linting configuration ####################################

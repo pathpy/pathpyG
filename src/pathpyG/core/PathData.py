@@ -5,7 +5,8 @@ from typing import (
     Dict,
     Any,
     List,
-    Tuple
+    Tuple,
+    Optional
 )
 
 from enum import Enum
@@ -17,6 +18,7 @@ from torch_geometric.utils import to_scipy_sparse_matrix, degree
 
 from pathpyG import Graph
 from pathpyG import config
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.algorithms.temporal import extract_causal_trees
 
 
@@ -35,13 +37,16 @@ class PathData:
     graph models of paths and walks.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, mapping: Optional[IndexMap] = None) -> None:
         """Create an empty PathData object."""
         self.paths: Dict = {}
         self.path_types: Dict = {}
         self.path_freq: Dict = {}
-        self.node_id: List = []
-        self.mapping: Dict = {}
+        if mapping is None:
+            self.mapping: IndexMap = IndexMap()
+        else:
+            self.mapping: IndexMap = mapping
+        self.index_translation: Dict = {}
 
     @property
     def num_paths(self) -> int:
@@ -174,8 +179,8 @@ class PathData:
         if k == 1:
             # TODO: Wrong edge statistics for non-sparse DAGs!
             i = cat(list(self.paths.values()), dim=1)
-            if self.mapping:
-                i = PathData.map_nodes(i, self.mapping)
+            if self.index_translation:
+                i = PathData.map_nodes(i, self.index_translation)
             l_f = []
             for idx in self.paths:
                 l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
@@ -186,16 +191,16 @@ class PathData:
             for idx in self.paths:
                 if self.path_types[idx] == PathType.WALK:
                     p = PathData.edge_index_kth_order_walk(self.paths[idx], k)
-                    if self.mapping:
-                        p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
+                    if self.index_translation:
+                        p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
                     l_p.append(p)
                     l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))
                 else:
                     # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
                     x = self.paths[idx].reshape(self.paths[idx].size()+(1,))
                     p = PathData.edge_index_kth_order_dag(x, k)
-                    if self.mapping:
-                        p = PathData.map_nodes(p, self.mapping).unique_consecutive(dim=0)
+                    if self.index_translation:
+                        p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
                     if len(p) > 0:
                         l_p.append(p)
                         l_f.append(Tensor([self.path_freq[idx]]*p.size()[1]).to(config['torch']['device']))
@@ -297,12 +302,12 @@ class PathData:
         return x
 
     @staticmethod
-    def map_nodes(edge_index: Tensor, mapping: Dict) -> Tensor:
+    def map_nodes(edge_index: Tensor, index_translation: Dict) -> Tensor:
         """Efficiently map node indices in edge_index tensor based on dictionary.
 
         Args:
             edge_index: the tensor for which indices shall be mapped
-            mapping: dictionary mapping incides in original tensor to new values
+            index_translation: dictionary mapping incides in original tensor to new indices
 
         Example:
             ```py
@@ -313,8 +318,8 @@ class PathData:
             tensor([[0, 1, 3],
                     [1, 2, 3]])
 
-            mapping = {0: 1, 1: 0, 2: 3, 3: 2}
-            mapped = pp.PathData.map_nodes(edge_index, mapping)
+            index_translation = {0: 1, 1: 0, 2: 3, 3: 2}
+            mapped = pp.PathData.map_nodes(edge_index, index_translation)
 
             print(mapped)
             tensor([[1, 0, 3],
@@ -322,7 +327,7 @@ class PathData:
             ```
         """
         # Inspired by `https://stackoverflow.com/questions/13572448`.
-        palette, key = zip(*mapping.items())
+        palette, key = zip(*index_translation.items())
         key = torch.tensor(key).to(config['torch']['device'])
         palette = torch.tensor(palette).to(config['torch']['device'])
 
@@ -394,8 +399,8 @@ class PathData:
             start_segs = torch.where(torch.isin(dag.data.edge_index[0], zero_indegs))[0]
             end_segs = torch.cat((start_segs[1:], torch.tensor([len(dag.data.edge_index[0])], device=config['torch']['device'])))
             segments = end_segs - start_segs
-            mapping = {
-                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+            index_translation = {
+                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
             }
 
             # Map node-time events to node IDs
@@ -405,7 +410,7 @@ class PathData:
             # Create a mask tensor to mark indices to be replaced
             mask = torch.zeros_like(flat_tensor, device=config['torch']['device'])
 
-            for key, value in mapping.items():
+            for key, value in index_translation.items():
                 # Find indices where the values match the keys in the mapping
                 indices = (flat_tensor == key).nonzero(as_tuple=True)
                 
@@ -437,9 +442,10 @@ class PathData:
                     ds.add_walk(edge_index)
                 else:
                     ds.add_dag(edge_index)
-            ds.mapping = {
-                i: dag['node_idx', dag.node_index_to_id[i]] for i in dag.node_index_to_id
+            ds.index_translation = {
+                i: dag['node_idx', dag.mapping.to_id(i)] for i in range(dag.N)
                 }
+        ds.mapping = IndexMap(dag.data['temporal_graph_index_map'])
         return ds
 
     def __str__(self) -> str:
@@ -470,15 +476,18 @@ class PathData:
             sep: character used to separate nodes and integer observation count
         """
         p = PathData()
-        name_map: Dict = defaultdict(lambda: len(name_map))
+        mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
                 path = []
                 fields = line.split(sep)
                 for v in fields[:-1]:
-                    path.append(name_map[v])
+                    mapping.add_id(v)
+                    path.append(mapping.to_idx(v))
+                # Performance bottleneck: we need a better solution that a large dictionary 
+                # with many tensors, each individually copied to the GPU
+                # Possible solution: nested tensors
                 w = IntTensor([path[:-1], path[1:]]).to(config['torch']['device'])
                 p.add_walk(w, int(float(fields[-1])))
-        reverse_map = {k: i for i, k in name_map.items()}
-        p.node_id = [reverse_map[i] for i in range(len(name_map))]
+        p.mapping = mapping
         return p

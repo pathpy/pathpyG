@@ -1,95 +1,88 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, Generator
 
 import torch
 import torch_geometric
 import torch_geometric.utils
-from torch_geometric.data import TemporalData
+from torch_geometric.data import TemporalData, Data
+from torch_geometric import EdgeIndex
 from torch import IntTensor
 
 import datetime
 from time import mktime
 
 from pathpyG import Graph
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.config import config
 
 
 class TemporalGraph(Graph):
-    def __init__(self, edge_index, t, node_id=[], **kwargs):
-        """Creates an instance of a temporal graph with given edge index and timestamps of edges"""
+    def __init__(self, data: TemporalData, mapping: IndexMap = None) -> None:
+        """Creates an instance of a temporal graph from a `TemporalData` object.
+        
+        
+        Example:
+            ```py
+            from pytorch_geometric.data import TemporalData
+            import pathpyG as pp
 
-        assert len(node_id) == len(set(node_id)), "node_id entries must be unique"
+            d = TemporalData(src=[0,0,1], dst=[1,2,2], t=[0,1,2])
+            t = pp.TemporalGraph(d, mapping)
+            print(t)
+            ```
+        """
 
-        # sort edges by timestamp and reorder edge_index accordingly
-        t_sorted, indices = torch.sort(torch.tensor(t).to(config["torch"]["device"]))
+        # sort edges by timestamp
+        # Note: function sort_by_time mentioned in pyG documentation does not exist
+        t_sorted, sort_index = torch.sort(data.t)
 
-        if len(node_id) == 0:
-            self.data = TemporalData(
-                src=edge_index[0][indices],
-                dst=edge_index[1][indices],
-                t=t_sorted,
-                node_id=[],
-                **kwargs,
-            )
+        # reorder temporal data
+        self.data = TemporalData(
+            src=data.src[sort_index],
+            dst=data.dst[sort_index],
+            t=t_sorted
+        )
+
+        if mapping is not None:
+            self.mapping = mapping
         else:
-            self.data = TemporalData(
-                src=edge_index[0][indices],
-                dst=edge_index[1][indices],
-                t=t_sorted,
-                node_id=node_id,
-                num_nodes=len(node_id),
-                **kwargs,
-            )
-
-        self.data["edge_index"] = edge_index[:, indices]
-
-        # create mappings between node ids and node indices
-        self.node_index_to_id = dict(enumerate(node_id))
-        self.node_id_to_index = {v: i for i, v in enumerate(node_id)}
+            self.mapping = IndexMap()
 
         # create mapping between edge index and edge tuples
         self.edge_to_index = {
             (e[0].item(), e[1].item()): i
-            for i, e in enumerate([e for e in edge_index.t()])
+            for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
 
-        self.start_time = t_sorted.min()
-        self.end_time = t_sorted.max()
+        self.start_time = t_sorted.min().item()
+        self.end_time = t_sorted.max().item()
 
-        # initialize adjacency matrix
-        self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
-            self.data.edge_index
-        ).tocsr()
+        # # initialize adjacency matrix
+        # self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
+        #     self.data.edge_index
+        # ).tocsr()
 
     @staticmethod
-    def from_edge_list(edge_list):
+    def from_edge_list(edge_list) -> TemporalGraph:
         sources = []
         targets = []
         ts = []
 
-        nodes_index = dict()
-        index_nodes = dict()
+        index_map = IndexMap()
 
-        n = 0
         for v, w, t in edge_list:
-            if v not in nodes_index:
-                nodes_index[v] = n
-                index_nodes[n] = v
-                n += 1
-            if w not in nodes_index:
-                nodes_index[w] = n
-                index_nodes[n] = w
-                n += 1
-            sources.append(nodes_index[v])
-            targets.append(nodes_index[w])
+            index_map.add_id(v)
+            index_map.add_id(w)
+            sources.append(index_map.to_idx(v))
+            targets.append(index_map.to_idx(w))
             ts.append(t)
 
         return TemporalGraph(
-            edge_index=torch.LongTensor([sources, targets]).to(
-                config["torch"]["device"]
-            ),
-            t=ts,
-            node_id=[index_nodes[i] for i in range(n)],
+            data=TemporalData(
+                        src=torch.Tensor(sources).long(),
+                        dst=torch.Tensor(targets).long(),
+                        t=torch.Tensor(ts)),
+            mapping=index_map
         )
 
     @staticmethod
@@ -110,83 +103,84 @@ class TemporalGraph(Graph):
         return TemporalGraph.from_edge_list(tedges)
 
     @property
-    def temporal_edges(self):
-        if len(self.node_index_to_id) > 0:
-            i = 0
-            for e in self.data.edge_index.t():
-                yield self.node_index_to_id[e[0].item()], self.node_index_to_id[e[1].item()], self.data.t[i].item()  # type: ignore
-                i += 1
-        else:
-            i = 0
-            for e in self.data.edge_index.t():
-                yield e[0].item(), e[1].item(), self.data.t[i].item()  # type: ignore
-                i += 1
-
-    @staticmethod
-    def from_pyg_data(d: TemporalData, node_id=[]):
-        x = d.to_dict()
-
-        del x["src"]
-        del x["dst"]
-        del x["t"]
-        if "edge_index" in d:
-            del x["edge_index"]
-        if "node_index" in d:
-            del x["node_id"]
-
-        g = TemporalGraph(
-            edge_index=torch.tensor([d["src"], d["dst"]]).to(config["torch"]["device"]),
-            t=d["t"],
-            node_id=node_id,
-            **x,
-        )
-
-        return g
+    def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
+        """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
+        i = 0
+        for e in self.data.edge_index.t():
+            yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item()), self.data.t[i].item()  # type: ignore
+            i += 1
     
     def shuffle_time(self) -> None:
-        """Randomly shuffles the temporal order of edges by randomly permuting the time stamps."""
+        """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""
         self.data['t'] = self.data['t'][torch.randperm(len(self.data['t']))]
         # t_sorted, indices = torch.sort(torch.tensor(t).to(config["torch"]["device"]))
         # self.data['src'] = self.data['src']
         # self.data['dst'] = self.data['dst']
         # self.data['t'] = t_sorted
 
-    def to_static_graph(self) -> Graph:
-        """Return instance of [`Graph`][pathpyG.Graph] that represents the static, time-aggregated network.
+    def to_static_graph(self, weighted=False, time_window: Optional[Tuple[int,int]]=None) -> Graph:
+        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph.
         """
-        node_id = [self.node_index_to_id[i] for i in range(self.N)]
-        return Graph(self.data.edge_index, node_id)
+        if time_window is not None:
+            idx = (self.data.t >= time_window[0]).logical_and(self.data.t < time_window[1]).nonzero().ravel()
+            edge_index = torch.stack((self.data.src[idx], self.data.dst[idx]))
+        else:
+            edge_index = torch.stack((self.data.src, self.data.dst))
 
-    def to_pyg_data(self) -> TemporalData:
-        """
-        Returns an instance of [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) containing the
-        `edge_index` as well as node, edge, and graph attributes
-        """
-        return self.data
+        if weighted:
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))
+            return Graph(Data(edge_index=EdgeIndex(data=i), edge_weight=w), self.mapping)
+        else:
+            return Graph.from_edge_index(EdgeIndex(data=edge_index), self.mapping)
 
-
-    def get_window(self, start, end):
+    def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
         edges in a given window defined by start and (non-inclusive) end, where start
         and end refer to the number of events"""
 
-        idx = torch.tensor([self.data['src'][start:end].numpy(), self.data['dst'][start:end].numpy()]).to(config["torch"]["device"])
-        max_idx = torch.max(idx).item()
+        #idx = torch.tensor([self.data['src'][start:end].numpy(), self.data['dst'][start:end].numpy()]).to(config["torch"]["device"])
+        #max_idx = torch.max(idx).item()
+
+        # return TemporalGraph(
+        #     edge_index = idx,
+        #     t = self.data.t[start:end],
+        #     node_id = self.data.node_id[:max_idx+1]
+        #     )
+        return TemporalGraph(
+            data = TemporalData(
+                src=self.data.src[start:end],
+                dst=self.data.dst[start:end],
+                t=self.data.t[start:end]
+            ),
+            mapping = self.mapping
+        )
+    
+
+    def get_snapshot(self, start: int, end: int) -> TemporalGraph:
+        """Returns an instance of the TemporalGraph that captures all time-stamped 
+        edges in a given time window defined by start and (non-inclusive) end, where start
+        and end refer to the time stamps"""
+
+        #idx = torch.tensor([self.data['src'][start:end].numpy(), self.data['dst'][start:end].numpy()]).to(config["torch"]["device"])
+        #max_idx = torch.max(idx).item()
 
         return TemporalGraph(
-            edge_index = idx,
-            t = self.data.t[start:end],
-            node_id = self.data.node_id[:max_idx+1]
+            data = TemporalData(
+                src=self.data.src[start:end],
+                dst=self.data.dst[start:end],
+                t=self.data.t[start:end]
+            ),
+            mapping = self.mapping
         )
 
-
-    def __str__(self):
+      
+    def __str__(self) -> str:
         """
         Returns a string representation of the graph
         """
-        s = "Temporal Graph with {0} nodes {1} edges and {2} time-stamped events in [{3}, {4}]\n".format(
+        s = "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]\n".format(
             self.data.num_nodes,
-            self.data["edge_index"].unique(dim=1).size(dim=1),
+            self.data.edge_index.unique(dim=1).size(dim=1),
             self.data.num_events,
             self.start_time,
             self.end_time,

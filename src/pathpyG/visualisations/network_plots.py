@@ -4,7 +4,7 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Thu 2023-12-07 12:49 juergen>
+# Time-stamp: <Sat 2024-02-17 15:49 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
@@ -129,19 +129,18 @@ class NetworkPlot(PathPyPlot):
         self._compute_edge_data()
         self._compute_node_data()
         self._compute_layout()
+        self._cleanup_config()
         self._cleanup_data()
 
     def _compute_node_data(self) -> None:
         """Generate the data structure for the nodes."""
         # initialize values
         nodes: dict = {}
-        attributes: set = {"color", "size", "opacity"}
+        attributes: set = {"color", "size", "opacity", "label"}
         attr: defaultdict = defaultdict(dict)
 
         # get attributes categories from pathpyg
-        categories = {
-            a.replace("node_", "") for a in self.network.node_attrs()
-        }.intersection(attributes)
+        categories = {a.replace("node_", "") for a in self.network.node_attrs()}.intersection(attributes)
 
         # add node data to data dict
         self._get_node_data(nodes, attributes, attr, categories)
@@ -150,6 +149,7 @@ class NetworkPlot(PathPyPlot):
         attr["color"] = self._convert_color(attr["color"], mode="node")
         attr["opacity"] = self._convert_opacity(attr["opacity"], mode="node")
         attr["size"] = self._convert_size(attr["size"], mode="node")
+        attr["label"] = self._convert_label(attr["label"], mode="node")
 
         # update data dict with converted attributes
         for attribute in attr:
@@ -173,9 +173,7 @@ class NetworkPlot(PathPyPlot):
             # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
-                    self.network[f"node_{attribute}", uid].item()
-                    if attribute in categories
-                    else None
+                    self.network[f"node_{attribute}", uid].item() if attribute in categories else None
                 )
 
     def _compute_edge_data(self) -> None:
@@ -186,9 +184,7 @@ class NetworkPlot(PathPyPlot):
         attr: defaultdict = defaultdict(dict)
 
         # get attributes categories from pathpyg
-        categories: set = {
-            a.replace("edge_", "") for a in self.network.edge_attrs()
-        }.intersection(attributes)
+        categories: set = {a.replace("edge_", "") for a in self.network.edge_attrs()}.intersection(attributes)
 
         # add edge data to data dict
         self._get_edge_data(edges, attributes, attr, categories)
@@ -225,9 +221,7 @@ class NetworkPlot(PathPyPlot):
             # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
-                    self.network[f"edge_{attribute}", u, v].item()
-                    if attribute in categories
-                    else None
+                    self.network[f"edge_{attribute}", u, v].item() if attribute in categories else None
                 )
 
     def _convert_weight(self, weight: dict, mode: str = "node") -> dict:
@@ -273,9 +267,7 @@ class NetworkPlot(PathPyPlot):
         if values:
             # load colormap to map numerical values to color
             cmap = self.config.get(f"{mode}_cmap", Colormap())
-            cdict = {
-                values[i]: tuple(c[:3]) for i, c in enumerate(cmap(values, bytes=True))
-            }
+            cdict = {values[i]: tuple(c[:3]) for i, c in enumerate(cmap(values, bytes=True))}
 
         # convert colors to hex if not already string
         for key, value in color.items():
@@ -319,6 +311,30 @@ class NetworkPlot(PathPyPlot):
         # return all colors wich are not None
         return {k: v for k, v in size.items() if v is not None}
 
+    def _convert_label(self, label: dict, mode: str = "node") -> dict:
+        """Convert label to string."""
+        # get style from the config
+        style = self.config.get(f"{mode}_label")
+
+        # check if new attribute is a single object
+        if isinstance(style, str):
+            label = {k: style for k in label}
+
+        # check if new attribute is a dict
+        elif isinstance(style, dict):
+            label.update(**{k: v for k, v in style.items() if k in label})
+
+        # check if new attribute is a list
+        elif isinstance(style, list):
+            for i, k in enumerate(label):
+                try:
+                    label[k] = style[i]
+                except IndexError:
+                    pass
+
+        # return all labels wich are not None
+        return {k: v for k, v in label.items() if v is not None}
+
     def _compute_layout(self) -> None:
         """Create layout."""
         # get layout form the config
@@ -339,6 +355,19 @@ class NetworkPlot(PathPyPlot):
         for uid, (_x, _y) in layout.items():
             self.data["nodes"][uid]["x"] = _x
             self.data["nodes"][uid]["y"] = _y
+
+    def _cleanup_config(self) -> None:
+        """Clean up final config file."""
+        try:
+            directed = self.network.is_directed()
+        except NotImplementedError:
+            directed = False
+
+        if not self.config.get("directed", None):
+            self.config["directed"] = directed
+
+        if not self.config.get("curved", None):
+            self.config["curved"] = directed
 
     def _cleanup_data(self) -> None:
         """Clean up final data structure."""
@@ -383,9 +412,7 @@ class TemporalNetworkPlot(NetworkPlot):
         """Initialize network plot class."""
         super().__init__(network, **kwargs)
 
-    def _get_edge_data(
-        self, edges: dict, attributes: set, attr: defaultdict, categories: set
-    ) -> None:
+    def _get_edge_data(self, edges: dict, attributes: set, attr: defaultdict, categories: set) -> None:
         """Extract edge data from temporal network."""
         # TODO: Fix typing issue with temporal graphs
         for u, v, t in self.network.temporal_edges:  # type: ignore
@@ -400,14 +427,10 @@ class TemporalNetworkPlot(NetworkPlot):
             # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
-                    self.network[f"edge_{attribute}", u, v].item()
-                    if attribute in categories
-                    else None
+                    self.network[f"edge_{attribute}", u, v].item() if attribute in categories else None
                 )
 
-    def _get_node_data(
-        self, nodes: dict, attributes: set, attr: defaultdict, categories: set
-    ) -> None:
+    def _get_node_data(self, nodes: dict, attributes: set, attr: defaultdict, categories: set) -> None:
         """Extract node data from temporal network."""
 
         time = {e[2] for e in self.network.temporal_edges}
@@ -428,9 +451,7 @@ class TemporalNetworkPlot(NetworkPlot):
             # add edge attributes if needed
             for attribute in attributes:
                 attr[attribute][uid] = (
-                    self.network[f"node_{attribute}", uid].item()
-                    if attribute in categories
-                    else None
+                    self.network[f"node_{attribute}", uid].item() if attribute in categories else None
                 )
 
 
