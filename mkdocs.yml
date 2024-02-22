@@ -67,7 +67,6 @@ extra:
   version:
     default:
       - dev
-      - stable
     provider: mike
 
 extra_css:
