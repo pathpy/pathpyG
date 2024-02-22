@@ -60,13 +60,13 @@ plugins:
       allow_errors: False
       include_source: True
   - git-revision-date-localized
-  - mike # Versioning
+  - mike: # Versioning
+      alias_type: redirect
   - markdown-exec # Execute code blocks to show the output; Also for rendering of directory trees
 
 extra:
   version:
-    default:
-      - dev
+    default: dev
     provider: mike
 
 extra_css:
