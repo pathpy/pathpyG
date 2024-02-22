@@ -1,6 +1,6 @@
 # Project information
 site_name: pathpyG
-site_url: 'https://www.pathpy.net/'
+site_url: www.pathpy.net/
 site_author: pathpy developers
 site_description: >-
   An Open Source package facilitating next-generation network analytics and graph learning for time series data on graphs.

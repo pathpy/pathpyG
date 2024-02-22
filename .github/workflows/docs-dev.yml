@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fix/docs-404
 
 jobs:
   publish:
@@ -51,5 +52,5 @@ jobs:
           git config user.email github-actions@github.com
           git fetch origin gh-pages --depth=1
           mike delete --push $(mike list | grep dev | awk '{print $2}' | tr -d '()')
-          mike deploy --push --update-aliases "${{ env.package_version }}-dev+${{ env.sha_short}}" dev -t ${{ env.package_version }}-dev
+          mike deploy --push --update-aliases "${{ env.package_version }}-dev" dev -t ${{ env.package_version }}-dev
           mike set-default --push --allow-empty dev
