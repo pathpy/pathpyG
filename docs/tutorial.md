@@ -2,7 +2,7 @@
 
 In this tutorial, we will introduce basic concepts of pathpyG. pathpyG can be used as a wrapper around pytorch-geometric that facilitates network analysis, graph learning, and interactive data visualization. However, its real power comes into play when modelling causal path structures in time series data on networks, such as trajectories on graphs or temporal graphs with time-stamped interactions. pathpyG allows to compute causal paths in temporal graphs and model them based on [higher-order De Bruijn graphs](https://doi.org/10.1145/3097983.3098145), a higher-dimensional generalization of standard graph models for relational data.
 
-The following introductory video explains the basic idea of higher-order De Bruiujn graph models for causal path structures in time series data:
+The following introductory video explains the basic idea of higher-order De Bruijn graph models for causal path structures in time series data:
 
 
 <style>
