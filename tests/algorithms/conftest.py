@@ -5,7 +5,7 @@ import torch
 
 from pathpyG import Graph
 from pathpyG import TemporalGraph
-from pathpyG import PathData
+from pathpyG import WalkData
 
 
 @pytest.fixture
@@ -22,11 +22,11 @@ def simple_temporal_graph() -> TemporalGraph:
 
 
 @pytest.fixture
-def simple_paths_centralities() -> PathData:
-    paths = PathData()
-    paths.add_walk(torch.tensor([[2, 1, 3], [1, 3, 5]]))
-    paths.add_walk(torch.tensor([[0, 1], [1, 3]]))
-    paths.add_walk(torch.tensor([[3], [4]]))
+def simple_paths_centralities() -> WalkData:
+    paths = WalkData()
+    paths.add(torch.tensor([[2, 1, 3], [1, 3, 5]]))
+    paths.add(torch.tensor([[0, 1], [1, 3]]))
+    paths.add(torch.tensor([[3], [4]]))
     return paths
 
 @pytest.fixture

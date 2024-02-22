@@ -7,10 +7,15 @@ from pathpyG.algorithms.temporal import (
     temporal_graph_to_event_dag,
 )
 from pathpyG.core.PathData import PathData
+from pathpyG.core.WalkData import WalkData
+from pathpyG.core.DAGData import DAGData
 
 
 def test_constructor():
-    p = PathData()
+    p = WalkData()
+    assert p.num_paths == 0
+
+    p = DAGData()
     assert p.num_paths == 0
 
 
@@ -40,7 +45,7 @@ def test_temporal_dag_sparse(simple_temporal_graph):
 
 def test_path_from_temporal_graph(simple_temporal_graph):
     dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
-    paths = PathData.from_temporal_dag(dag, detect_walks=False)
+    paths = DAGData.from_temporal_dag(dag)
     assert paths.num_nodes == 5
     assert paths.num_edges == 4
     assert paths.num_paths == 1
@@ -48,9 +53,9 @@ def test_path_from_temporal_graph(simple_temporal_graph):
 
 def test_edge_index_k_weighted(simple_temporal_graph):
     dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
-    paths = PathData.from_temporal_dag(dag)
+    paths = DAGData.from_temporal_dag(dag)
 
-    e1, w1 = PathData.edge_index_k_weighted(paths, k=1)
+    e1, w1 = DAGData.edge_index_k_weighted(paths, k=1)
 
     assert equal(
         e1, IntTensor([[0, 1, 2, 2], [1, 2, 3, 4]]).to(config["torch"]["device"])
@@ -58,7 +63,7 @@ def test_edge_index_k_weighted(simple_temporal_graph):
 
     assert equal(w1, tensor([1.0, 1.0, 1.0, 1.0]).to(config["torch"]["device"]))
 
-    e2, w2 = PathData.edge_index_k_weighted(paths, k=2)
+    e2, w2 = DAGData.edge_index_k_weighted(paths, k=2)
     assert equal(
         e2,
         IntTensor([[[0, 1], [1, 2], [1, 2]], [[1, 2], [2, 3], [2, 4]]]).to(
@@ -68,7 +73,7 @@ def test_edge_index_k_weighted(simple_temporal_graph):
 
     assert equal(w2, tensor([1.0, 1.0, 1.0]).to(config["torch"]["device"]))
 
-    e3, w3 = PathData.edge_index_k_weighted(paths, k=3)
+    e3, w3 = DAGData.edge_index_k_weighted(paths, k=3)
     assert equal(
         e3,
         IntTensor([[[0, 1, 2], [0, 1, 2]], [[1, 2, 3], [1, 2, 4]]]).to(
@@ -83,16 +88,16 @@ def test_edge_index_k_weighted(simple_temporal_graph):
 
 def test_edge_index_kth_order_walk():
     edge_index = IntTensor([[0, 1, 2, 3, 4], [1, 2, 3, 4, 5]])
-    e1 = PathData.edge_index_kth_order_walk(edge_index, k=1)
+    e1 = WalkData.edge_index_kth_order(edge_index, k=1)
     assert equal(e1, IntTensor([[[0], [1], [2], [3], [4]], [[1], [2], [3], [4], [5]]]))
 
-    e2 = PathData.edge_index_kth_order_walk(edge_index, k=2)
+    e2 = WalkData.edge_index_kth_order(edge_index, k=2)
     assert equal(
         e2,
         IntTensor([[[0, 1], [1, 2], [2, 3], [3, 4]], [[1, 2], [2, 3], [3, 4], [4, 5]]]),
     )
 
-    e3 = PathData.edge_index_kth_order_walk(edge_index, k=3)
+    e3 = WalkData.edge_index_kth_order(edge_index, k=3)
     assert equal(
         e3,
         IntTensor(
@@ -100,12 +105,12 @@ def test_edge_index_kth_order_walk():
         ),
     )
 
-    e4 = PathData.edge_index_kth_order_walk(edge_index, k=4)
+    e4 = WalkData.edge_index_kth_order(edge_index, k=4)
     assert equal(
         e4, IntTensor([[[0, 1, 2, 3], [1, 2, 3, 4]], [[1, 2, 3, 4], [2, 3, 4, 5]]])
     )
 
-    e5 = PathData.edge_index_kth_order_walk(edge_index, k=5)
+    e5 = WalkData.edge_index_kth_order(edge_index, k=5)
     assert equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
 
 
@@ -131,14 +136,14 @@ def test_path_mapping():
 
 def test_lift_order_dag():
     e1 = tensor([[[0], [1], [1], [3]], [[1], [2], [3], [4]]])
-    x = PathData.lift_order_dag(e1)
+    x = DAGData.lift_order_dag(e1)
     assert equal(x, IntTensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]]))
 
     e2 = tensor([[[0, 1], [0, 1], [1, 3]],
                  [[1, 2], [1, 3], [3, 4]]])
-    x = PathData.lift_order_dag(e2)
+    x = DAGData.lift_order_dag(e2)
     assert equal(x, IntTensor([[[0, 1, 3]], [[1, 3, 4]]]))
 
     e3 = tensor([[[0, 1, 3]], [[1, 3, 4]]])
-    x = PathData.lift_order_dag(e3)
+    x = DAGData.lift_order_dag(e3)
     assert equal(x, IntTensor([]))

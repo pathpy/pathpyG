@@ -7,7 +7,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.PathData import PathData
+from pathpyG.core.WalkData import WalkData
 
 
 @pytest.fixture
@@ -22,13 +22,13 @@ def simple_graph_multi_edges() -> Graph:
 
 
 @pytest.fixture
-def simple_paths() -> PathData:
+def simple_paths() -> WalkData:
     """Return a simple example for path data."""
-    paths = PathData()
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths = WalkData()
+    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
     paths.mapping = IndexMap(['A', 'B', 'C', 'D', 'E'])
     return paths
 
