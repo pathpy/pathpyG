@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "version": "0.0.2-dev+aedaa6e",
+    "title": "0.0.2-dev",
+    "aliases": [
+      "dev"
+    ]
+  }
+]
