@@ -24,6 +24,7 @@ jobs:
             src/**
             docs/**
             pyproject.toml
+            mkdocs.yml
 
       - name: Setup packages
         if: steps.changed-files-specific.outputs.any_changed == 'true'
