@@ -10,14 +10,14 @@ pathpyG
 [![Testing Status][testing-image]][testing-url]
 [![Linting Status][linting-image]][linting-url]
 
-GPU-accelerated Next-Generation Network Analytics and Graph Learning for Time Series Data on Complex Networks.
+GPU-accelerated Next-Generation Network Analytics and Graph Learning for Time Series Data on Dynamic Networks.
 
 Documentation
 -------------
 
 Online documentation is available at [pathpy.net](https://www.pathpy.net).
 
-The docs include a [tutorial](https://www.pathpy.net/tutorial.html), [example gallery](https://www.pathpy.net/examples/index.html), [API reference](https://www.pathpy.net/api.html), and other useful information.
+The docs include a [tutorial](https://www.pathpy.net/0.0.2-dev/tutorial/), an [API reference](https://www.pathpy.net/0.0.2-dev/reference/pathpyG/), and other useful information.
 
 
 Dependencies
@@ -31,7 +31,7 @@ Installation requires [numpy](http://www.numpy.org/), [scipy](https://www.scipy.
 Installation
 ------------
 
-The development version can be installed from Github:
+The development version can be installed from Github as follows:
 
     pip install git+https://github.com/pathpy/pathpyg.git
 
