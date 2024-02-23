@@ -4,6 +4,7 @@ from typing import (
     Dict,
     Iterable,
     Tuple,
+    List,
     Union,
     Any,
     Optional,
@@ -35,12 +36,13 @@ class Graph:
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from a pyG `Data` object.
 
-        Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex
-        with an optional mapping of node IDs to indices.
+        Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex as well as 
+        optional node-, edge- or graph-level attributes. An optional mapping can be used to transparently map
+        node indices to string identifiers.
 
         Args:
-            data: A pyG Data object containing an EdgeIndex and meta-data
-            mapping: Optional `IndexMap` object that maps node IDs to indices
+            data: A pyG Data object containing an EdgeIndex and additional attributes
+            mapping: `IndexMap` object that maps node indices to string identifiers
 
         Example:
             ```py
@@ -79,12 +81,12 @@ class Graph:
 
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
-        """
-        Construct a graph from a torch Tensor containing and edge index.
+        """Construct a graph from a torch Tensor containing an edge index. An optional mapping can 
+        be used to transparently map node indices to string identifiers.
 
         Args:
-            d:  [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object containing an edge_index as well as 
-                arbitrary node, edge, and graph-level attributes
+            edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
+            mapping: `IndexMap` object that maps node indices to string identifiers
         
         Example:
             ```py
@@ -97,28 +99,29 @@ class Graph:
                                     mapping=pp.IndexMap(['a', 'b', 'c']))
             print(g)
             ```
-        """       
+        """
 
         return Graph(
-            Data(edge_index=edge_index), 
+            Data(edge_index=edge_index),
             mapping=mapping
         )
 
 
     @staticmethod
     def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False) -> Graph:
-        """Generate a Graph instance based on an edge list.
+        """Generate a Graph based on an edge list. Edges can be given as string tuples and a mapping 
+        between node IDs and indices will be created automatically.
 
         Args:
-            edge_list: List of iterables
+            edge_list: Iterable of edges represented as tuples
 
         Example:
             ```
             import pathpyG as pp
 
-            l = [['a', 'b'], ['b', 'c'], ['a', 'c']]
+            l = [('a', 'b'), ('b', 'c'), ('a', 'c')]
             g = pp.Graph.from_edge_list(l)
-            print(g.data)
+            print(g)
             print(g.mapping)
             ```
         """
@@ -153,6 +156,7 @@ class Graph:
             import pathpyG as pp
             g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a')])
             g_u = g.to_undirected()
+            print(g_u)
             ```
         """
         tf = ToUndirected()
@@ -167,7 +171,7 @@ class Graph:
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
         i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
-        return Graph(Data(edge_index=i, edge_weight=w, num_nodes=int(i.max().item()+1)), self.mapping)
+        return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
@@ -227,21 +231,23 @@ class Graph:
 
     @property
     def edges(self) -> Generator[Union[Tuple[int, int], Tuple[str, str]], None, None]:
-        """
-        Return all edges in the graph.
+        """Return all edges in the graph.
         
         This method returns a generator object that yields all edges.
         If an IndexMap is used to map node indices to string IDs, edges
-        are returned as tuples of str IDs. If no mapping is used, nodes
+        are returned as tuples of str IDs. If no mapping is used, edges
         are returned as tuples of integer indices.
         """
         for e in self.data.edge_index.t():
             yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item())
 
-    def get_successors(self, row_idx: int):
+    def get_successors(self, row_idx: int) -> torch.Tensor:
+        """Return a tensor containing the indices of all successor nodes for a given node identified by an index.
+
+        Args:
+            row_idx:   Index of node for which predecessors shall be returned.
         """
-        """
-        ((row_ptr, col), perm) = self.data.edge_index.get_csr()        
+        ((row_ptr, col), perm) = self.data.edge_index.get_csr()
         if row_idx + 1 < row_ptr.size(0):
             row_start = row_ptr[row_idx]
             row_end = row_ptr[row_idx + 1]
@@ -249,10 +255,13 @@ class Graph:
         else:
             return torch.tensor([])
 
-    def get_predecessors(self, col_idx: int):
+    def get_predecessors(self, col_idx: int) -> torch.Tensor:
+        """Return a tensor containing the indices of all predecessor nodes for a given node identified by an index.
+
+        Args:
+            col_idx:   Index of node for which predecessors shall be returned.
         """
-        """
-        ((col_ptr, row), perm) = self.data.edge_index.get_csc()        
+        ((col_ptr, row), perm) = self.data.edge_index.get_csc()
         if col_idx + 1 < col_ptr.size(0):
             col_start = col_ptr[col_idx]
             col_end = col_ptr[col_idx + 1]
@@ -262,11 +271,10 @@ class Graph:
 
     def successors(self, node: Union[int, str] | tuple) \
             -> Generator[Union[int, str] | tuple, None, None]:
-        """
-        Return the successors of a given node.
+        """Return all successors of a given node.
 
         This method returns a generator object that yields all successors of a
-        given node. If an Index mapping is used, successors will be returned
+        given node. If an IndexMap is used, successors are returned
         as string IDs. If no mapping is used, successors are returned as indices.
 
         Args:
@@ -298,7 +306,7 @@ class Graph:
 
         Args:
             v: source node of edge as integer index or string ID
-            w: target node of edge as integer index or string ID       
+            w: target node of edge as integer index or string ID 
         """
         row = self.mapping.to_idx(v)
         ((row_ptr, col), perm) = self.data.edge_index.get_csr()
@@ -476,7 +484,7 @@ class Graph:
         attr_types = Graph.attr_types(self.data.to_dict())
 
         if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.N, self.M)
+            s = "Undirected graph with {0} nodes and {1} (directed) edges\n".format(self.N, self.M)
         else:
             s = "Directed graph with {0} nodes and {1} edges\n".format(self.N, self.M)
         if len(self.data.node_attrs()) > 0:
