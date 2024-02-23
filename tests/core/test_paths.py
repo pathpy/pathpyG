@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from torch import IntTensor, equal, tensor
 
 from pathpyG import config
@@ -9,6 +10,7 @@ from pathpyG.algorithms.temporal import (
 from pathpyG.core.PathData import PathData
 from pathpyG.core.WalkData import WalkData
 from pathpyG.core.DAGData import DAGData
+from pathpyG.core.IndexMap import IndexMap
 
 
 def test_constructor():
@@ -19,16 +21,28 @@ def test_constructor():
     assert p.num_paths == 0
 
 
-def test_num_paths(simple_paths):
-    assert simple_paths.num_paths == 4
+def test_num_walks(simple_walks):
+    assert simple_walks.num_paths == 4
 
 
-def test_num_nodes(simple_paths):
-    assert simple_paths.num_nodes == 5
+def test_num_dags(simple_dags):
+    assert simple_dags.num_paths == 4
 
 
-def test_num_edges(simple_paths):
-    assert simple_paths.num_edges == 4
+def test_num_nodes_walks(simple_walks):
+    assert simple_walks.num_nodes == 5
+
+
+def test_num_nodes_dags(simple_dags):
+    assert simple_dags.num_nodes == 5    
+
+
+def test_num_edges_walks(simple_walks):
+    assert simple_walks.num_edges == 4
+
+
+def test_num_edges_dags(simple_dags):
+    assert simple_dags.num_edges == 6
 
 
 def test_temporal_dag(simple_temporal_graph):
@@ -111,6 +125,61 @@ def test_edge_index_kth_order_walk():
     )
 
     e5 = WalkData.edge_index_kth_order(edge_index, k=5)
+    assert equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
+
+
+def test_add_walk_seq():
+
+    paths = WalkData(IndexMap(['a', 'c', 'b', 'd', 'e']))
+
+    paths.add_walk_seq(('a', 'c', 'd'), freq=1)
+    paths.add_walk_seq(('a', 'c', 'e'), freq=1)
+    paths.add_walk_seq(('b', 'c', 'd'), freq=1)
+    paths.add_walk_seq(('b', 'c', 'e'), freq=1)
+
+    assert equal(paths.paths[0], tensor([[0, 1], [1, 3]]))
+    assert equal(paths.paths[1], tensor([[0, 1], [1, 4]]))
+    assert equal(paths.paths[2], tensor([[2, 1], [1, 3]]))
+    assert equal(paths.paths[3], tensor([[2, 1], [1, 4]]))
+    assert paths.path_freq[0] == 1
+    assert paths.path_freq[1] == 1
+    assert paths.path_freq[2] == 1
+    assert paths.path_freq[3] == 1
+
+
+def test_edge_index_kth_order_dag():
+
+    edge_index = IntTensor([[0, 1, 1], [1, 2, 3]])
+    e1 = DAGData.edge_index_kth_order(edge_index, k=1)
+    assert equal(e1, IntTensor([[[0], [1], [1]], [[1], [2], [3]]]))
+
+    e2 = DAGData.edge_index_kth_order(edge_index, k=2)
+    assert equal(e2, IntTensor([[[0, 1], [0, 1]], [[1, 2], [1, 3]]]))
+
+    edge_index = IntTensor([[0, 1, 2, 3, 4], [1, 2, 3, 4, 5]])
+    e1 = DAGData.edge_index_kth_order(edge_index, k=1)
+    assert equal(e1, IntTensor([[[0], [1], [2], [3], [4]], [[1], [2], [3], [4], [5]]]))
+
+    e2 = DAGData.edge_index_kth_order(edge_index, k=2)
+    assert equal(
+        e2,
+        IntTensor([[[0, 1], [1, 2], [2, 3], [3, 4]], [[1, 2], [2, 3], [3, 4], [4, 5]]]),
+    )
+
+    e3 = DAGData.edge_index_kth_order(edge_index, k=3)
+    assert equal(
+        e3,
+        IntTensor(
+            [[[0, 1, 2], [1, 2, 3], [2, 3, 4]], [[1, 2, 3], [2, 3, 4], [3, 4, 5]]]
+        ),
+    )
+
+    e4 = DAGData.edge_index_kth_order(edge_index, k=4)
+    assert equal(
+        e4, IntTensor([[[0, 1, 2, 3], [1, 2, 3, 4]], [[1, 2, 3, 4], [2, 3, 4, 5]]])
+    )
+
+    e5 = DAGData.edge_index_kth_order(edge_index, k=5)
     assert equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
 
 
