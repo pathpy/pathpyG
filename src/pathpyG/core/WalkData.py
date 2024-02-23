@@ -71,14 +71,15 @@ class WalkData(PathData):
             freq:   The number of times this walk has been observed.
 
         Example:
-            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
-            stores three observations of the walk `A` --> `C` --> `D`:
+            Assuming the index mapping below, the following snippet
+            stores four observations of the walk `A` --> `C` --> `D` --> `A`
+            with length $l=3$.
                 ```py
                 import torch
                 import pathpyG as pp
 
-                paths = pp.WalkData()
-                paths.add(torch.tensor([[0, 2],[2, 3]]), freq=5)
+                paths = pp.WalkData(IndexMap(['A', 'B', 'C', 'D']))
+                paths.add(torch.tensor([[0, 2, 3],[2, 3, 0]]), freq=4)
                 ```
         """
         i = len(self.paths)
