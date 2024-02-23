@@ -195,8 +195,6 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
             targets.append(w)
             n_edges += 1
 
-    #network_data = pd.DataFrame.from_dict(network_dict, orient='index', columns=['v', 'w'])
-
     # collect attributes from property maps
     graph_attr = dict()
     node_attr = dict()
@@ -277,6 +275,9 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
             g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config['torch']['device'])
     for a in graph_attr:
         g.data[a] = graph_attr[a]
+        
+    if not directed:
+        return g.to_undirected()
     return g
 
 

@@ -7,8 +7,8 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.PathData import PathData
-
+from pathpyG.core.WalkData import WalkData
+from pathpyG.core.DAGData import DAGData
 
 @pytest.fixture
 def simple_graph() -> Graph:
@@ -22,16 +22,24 @@ def simple_graph_multi_edges() -> Graph:
 
 
 @pytest.fixture
-def simple_paths() -> PathData:
+def simple_walks() -> WalkData:
     """Return a simple example for path data."""
-    paths = PathData()
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.mapping = IndexMap(['A', 'B', 'C', 'D', 'E'])
+    paths = WalkData(IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
     return paths
 
+@pytest.fixture
+def simple_dags() -> DAGData:
+    """Return a simple example for path data."""
+    paths = DAGData(IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C, C -> D
+    paths.add(torch.tensor([[0, 1], [1, 4]]))  # B -> C, C -> E
+    paths.add(torch.tensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
+    paths.add(torch.tensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
+    return paths
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:

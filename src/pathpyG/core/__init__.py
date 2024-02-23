@@ -24,7 +24,7 @@ Example:
     dag = pp.algorithms.temporal_graph_to_event_dag(g, delta=1)
 
     # Calculate path statistics
-    paths = pp.PathData.from_temporal_dag(dag)
+    paths = pp.DAGData.from_temporal_dag(dag)
 
     # Compute first- and second-order De Bruijn graph model
     g1 = pp.HigherOrderGraph(paths, order=1, node_id=g.data["node_id"])

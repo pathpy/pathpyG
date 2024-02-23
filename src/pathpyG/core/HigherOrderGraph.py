@@ -9,6 +9,7 @@ from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG import PathData
+from pathpyG import DAGData
 from pathpyG import TemporalGraph
 
 from pathpyG.utils.config import config
@@ -111,5 +112,5 @@ class HigherOrderGraph(Graph):
     def from_temporal_graph(g, delta=1, order=1):
         """Creates a higher-order De Bruijn graph model for paths in a temporal graph."""
         dag = temporal_graph_to_event_dag(g, delta=delta)
-        paths = PathData.from_temporal_dag(dag)
-        return HigherOrderGraph(paths, order=order, node_ids=g.mapping.node_ids)
+        paths = DAGData.from_temporal_dag(dag)
+        return HigherOrderGraph(paths, order=order)
