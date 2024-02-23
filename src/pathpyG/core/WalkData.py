@@ -200,7 +200,7 @@ class WalkData(PathData):
         return IntTensor([]).to(config['torch']['device'])
 
     @staticmethod
-    def from_csv(file: str, sep: str = ',', counts=True) -> PathData:
+    def from_csv(file: str, sep: str = ',', freq=True) -> PathData:
         """Read walk data from CSV file.
 
         The CSV file is expected to contain one walk per line, where
@@ -219,7 +219,7 @@ class WalkData(PathData):
                 path = []
                 count = 1
                 fields = line.split(sep)                
-                if counts:
+                if freq:
                     for v in fields[:-1]:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
