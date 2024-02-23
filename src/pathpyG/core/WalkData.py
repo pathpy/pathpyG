@@ -212,7 +212,7 @@ class WalkData(PathData):
             file: filename of csv file containing paths or walks
             sep: character used to separate nodes and integer observation counts
         """
-        p = PathData()
+        p = WalkData()
         mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
@@ -223,7 +223,7 @@ class WalkData(PathData):
                     for v in fields[:-1]:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
-                    count = int(fields[-1])
+                    count = int(float(fields[-1]))
                 else:
                     for v in fields:
                         mapping.add_id(v)
