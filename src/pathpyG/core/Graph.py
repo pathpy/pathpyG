@@ -454,16 +454,15 @@ class Graph:
         """
         return self.data.num_edges  # type: ignore
 
-
-    def is_directed(self) -> Any:
-        """Return whether graph is directed."""        
+    def is_directed(self) -> bool:
+        """Return whether graph is directed."""
         return not is_undirected(self.data.edge_index)        
 
-    def is_undirected(self) -> Any:
+    def is_undirected(self) -> bool:
         """Return whether graph is undirected."""
         return is_undirected(self.data.edge_index)
 
-    def has_self_loops(self) -> Any:
+    def has_self_loops(self) -> bool:
         """Return whether graph contains self-loops."""
         return self.data.has_self_loops()
 
@@ -472,7 +471,10 @@ class Graph:
 
         attr_types = Graph.attr_types(self.data.to_dict())
 
-        s = "Graph with {0} nodes and {1} edges\n".format(self.N, self.M)
+        if self.is_undirected():
+            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.N, self.M)
+        else:
+            s = "Directed graph with {0} nodes and {1} edges\n".format(self.N, self.M)
         if len(self.data.node_attrs()) > 0:
             s += "\nNode attributes\n"
             for a in self.data.node_attrs():
