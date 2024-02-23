@@ -19,9 +19,38 @@ from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.PathData import PathData
 
 class WalkData(PathData):
+    """Class that can be used to store multiple observations of
+    walks in a graph.
+
+    Example:
+        ```py
+        import pathpyG as pp
+        from torch import IntTensor
+
+        pp.config['torch']['device'] = 'cuda'
+
+        # Generate toy example graph
+        g = pp.Graph.from_edge_list([('a', 'c'),
+                            ('b', 'c'),
+                            ('c', 'd'),
+                            ('c', 'e')])
+
+        # Generate data on observed walks
+        paths = pp.WalkData(g.mapping)
+        walk = IntTensor([[0,2], # a -> c -> d
+                [2,3]])
+        paths.add(walk, freq=1)
+        walk = IntTensor([[1,2], # b -> c -> e
+                [2,4]])
+        paths.add(walk, freq=1)
+        print(paths)
+
+        print(paths.edge_index_k_weighted(k=2))
+        ```
+    """
 
     def add(self, p: Tensor, freq: int = 1) -> None:
-        """Add an observation of a path or a walk in a graph based on a tensor representation
+        """Add an observation of a walk in a graph based on a tensor representation
 
         This method adds an observation of a walk, i.e. a sequence of not necessarily
         unique nodes traversed in a graph. A walk of length l is represented as ordered
@@ -34,7 +63,7 @@ class WalkData(PathData):
         Walks can be seen as a special case of DAGs where the in- and out-degree of all
         nodes is one. However, for a walk a higher-order model can be computed much more
         efficiently using a GPU-based 1D convolution operation. It is thus advisable to
-        represent path data as walks whenever possible.
+        use the class `WalkData` whenever possible.
 
         Args:
             p:  An ordered edge index with size (2,l) that represents the sequence
@@ -45,38 +74,35 @@ class WalkData(PathData):
             Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
             stores three observations of the walk `A` --> `C` --> `D`:
                 ```py
+                import torch
                 import pathpyG as pp
 
-                paths = pp.PathData()
-                paths.add_walk(torch.tensor([[0, 2],[2, 3]]), freq=5)
+                paths = pp.WalkData()
+                paths.add(torch.tensor([[0, 2],[2, 3]]), freq=5)
                 ```
         """
         i = len(self.paths)
         self.paths[i] = p
         self.path_freq[i] = freq
 
-    def add_edge(self, p: Tensor, freq: int = 1) -> None:
-        """Add an observation of an edge traversal.
-
-        This method adds an observation of a traversed edge.
-
-        Args:
-            p: edge_index
-
+    def add_walk_seq(self, node_seq, freq=1):
+        """Add an observation of a walk based on a sequence of node IDs or indices
+        
         Example:
-            Assuming a `node_id` mapping of `['A', 'B', 'C', 'D']` the following snippet
-            stores two observations of edge `A` --> `C`:
                 ```py
+                import torch
                 import pathpyG as pp
 
-                paths = pp.PathData()
-                paths.add_edge(torch.tensor([[0],[2]]), freq=2)
+                g = pp.Graph.from_edge_list([('a', 'c'),
+                        ('b', 'c'),
+                        ('c', 'd'),
+                        ('c', 'e')])
+
+                paths = pp.WalkData(g.mapping)
+                paths.add_walk_seq(('a', 'c', 'd'), freq=2)
+                paths.add_walk_seq(('b', 'c', 'e'), freq=2)
                 ```
         """
-        self.add(p, freq)
-
-    def add_walk_seq(self, node_seq, freq=1):
-        """Add an observation of a walk based on a sequence of node IDs or indices"""
         idx_seq = [self.mapping.to_idx(v) for v in node_seq ]
         w = IntTensor([idx_seq[:-1], idx_seq[1:]]).to(config['torch']['device'])
         self.add(w, freq)
@@ -100,11 +126,10 @@ class WalkData(PathData):
             walk: ordered `edge_index` of a given walk in a graph
 
         Example:
-            ```pycon
-            >>> import pathpyG as pp
-            >>> s = pp.PathData.walk_to_node_seq(torch.tensor([[0,2],[2,3]]))
-            >>> print(s)
-            [0,2,3]
+            ```py
+            import pathpyG as pp
+            s = pp.WalkData.walk_to_node_seq(torch.tensor([[0,2],[2,3]]))
+            print(s)
             ```
         """
         return cat([walk[:, 0], walk[1, 1:]])
@@ -210,7 +235,9 @@ class WalkData(PathData):
 
         Args:
             file: filename of csv file containing paths or walks
-            sep: character used to separate nodes and integer observation counts
+            sep: character used to separate nodes (and observation frequencies)
+            freq: whether or not the last element in each row shall be interpreted as 
+                observation frequency
         """
         p = WalkData()
         mapping = IndexMap()
@@ -218,7 +245,7 @@ class WalkData(PathData):
             for line in f:
                 path = []
                 count = 1
-                fields = line.split(sep)                
+                fields = line.split(sep)
                 if freq:
                     for v in fields[:-1]:
                         mapping.add_id(v)

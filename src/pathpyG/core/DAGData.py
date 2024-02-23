@@ -23,6 +23,35 @@ from pathpyG.algorithms.temporal import extract_causal_trees
 
 
 class DAGData(PathData):
+    """Class that can be used to store multiple observations of
+    directed acyclic graphs.
+
+    Example:
+        ```py
+        import pathpyG as pp
+        from torch import IntTensor
+
+        pp.config['torch']['device'] = 'cuda'
+
+        # Generate toy example graph
+        g = pp.Graph.from_edge_list([('a', 'c'),
+                             ('b', 'c'),
+                             ('c', 'd'),
+                             ('c', 'e')])
+
+        # Generate data on observed directed acyclic graphs
+        paths = pp.DAGData(g.mapping)
+        dag = IntTensor([[0,2,2], # a -> c, c -> d, c -> e
+                  [2,3,4]])
+        paths.add(dag, freq=1)
+        dag = IntTensor([[1,2,2], # b -> c, c -> d, c -> e
+                  [2,3,4]])
+        paths.add(dag, freq=1)
+        print(paths)
+
+        print(paths.edge_index_k_weighted(k=2))
+        ```
+    """
 
     def add(self, p: Tensor, freq: int = 1) -> None:
         """Add an observation of a directed acyclic graph.
