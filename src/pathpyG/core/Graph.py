@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Dict,
-    List,
+    Iterable,
     Tuple,
     Union,
     Any,
@@ -100,12 +100,13 @@ class Graph:
         """       
 
         return Graph(
-            Data(edge_index=edge_index, mapping=mapping)
+            Data(edge_index=edge_index), 
+            mapping=mapping
         )
 
 
     @staticmethod
-    def from_edge_list(edge_list: List[List[str]], is_undirected=False) -> Graph:
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False) -> Graph:
         """Generate a Graph instance based on an edge list.
 
         Args:
@@ -132,8 +133,11 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
-        e = EdgeIndex([sources, targets], is_undirected=is_undirected, device=config['torch']['device'])
-        return Graph(Data(edge_index=e), mapping=mapping)
+        edge_index = EdgeIndex([sources, targets], is_undirected=is_undirected, device=config['torch']['device'])
+        return Graph(
+            Data(edge_index=edge_index),
+            mapping=mapping
+        )
 
     def to_undirected(self) -> Graph:
         """
@@ -450,7 +454,7 @@ class Graph:
         """
         Return number of edges.
 
-        Returns the number of edges in the graph.
+        Returns the number of edges in the graph. For an undirected graph, the numnber of directed edges is returned.
         """
         return self.data.num_edges  # type: ignore
 
