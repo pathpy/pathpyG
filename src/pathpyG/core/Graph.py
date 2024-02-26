@@ -114,6 +114,7 @@ class Graph:
 
         Args:
             edge_list: Iterable of edges represented as tuples
+            is_undirected: Whether the graph is undirected or directed
 
         Example:
             ```
@@ -315,7 +316,7 @@ class Graph:
 
         return self.mapping.to_idx(w) in col[row_start:row_end]
 
-    def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
+    def get_sparse_adj_matrix(self, edge_attr: Optional[str] = None) -> Any:
         """Return sparse adjacency matrix representation of (weighted) graph.
 
         Args:
