@@ -1,24 +1,13 @@
 """Manages data on paths in graphs."""
 
 from __future__ import annotations
-from typing import (
-    Dict,
-    Any,
-    List,
-    Tuple,
-    Optional
-)
+from typing import Dict, Any, List, Tuple, Optional
 
 from abc import ABC, abstractmethod
 
-from enum import Enum
-from collections import defaultdict
-
 import torch
-from torch import Tensor, IntTensor, cat, sum
-from torch_geometric.utils import to_scipy_sparse_matrix, degree
+from torch import Tensor
 
-from pathpyG import Graph
 from pathpyG import config
 from pathpyG.core.IndexMap import IndexMap
 
@@ -64,7 +53,7 @@ class PathData(ABC):
 
     @property
     def edge_index_weighted(self) -> Tuple[Tensor, Tensor]:
-        """Return edge index and edge weights of a first-order graph 
+        """Return edge index and edge weights of a first-order graph
         model of all walks or DAGs."""
         return self.edge_index_k_weighted(k=1)
 
@@ -95,8 +84,8 @@ class PathData(ABC):
         """
         # Inspired by `https://stackoverflow.com/questions/13572448`.
         palette, key = zip(*index_translation.items())
-        key = torch.tensor(key).to(config['torch']['device'])
-        palette = torch.tensor(palette).to(config['torch']['device'])
+        key = torch.tensor(key).to(config["torch"]["device"])
+        palette = torch.tensor(palette).to(config["torch"]["device"])
 
         index = torch.bucketize(edge_index.ravel(), palette)
         remapped = key[index].reshape(edge_index.shape)
@@ -105,7 +94,7 @@ class PathData(ABC):
     @abstractmethod
     def add(self, p: Tensor, freq: int = 1) -> None:
         pass
-    
+
     @abstractmethod
     def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
         pass
@@ -114,4 +103,3 @@ class PathData(ABC):
     @abstractmethod
     def edge_index_kth_order(edge_index: Tensor, k: int = 1) -> Tensor:
         pass
-
