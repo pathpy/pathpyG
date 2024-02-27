@@ -1,10 +1,12 @@
 """Random Graph Generation Algorithms"""
 
+from typing import Optional, Union, Dict
+
+import numpy as np
+from tqdm.notebook import tqdm
+
 import pathpyG as pp
 from pathpyG import Graph
-from tqdm.notebook import tqdm
-import numpy as np
-from typing import Optional, Union, Dict
 
 
 
