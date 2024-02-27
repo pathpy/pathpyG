@@ -13,12 +13,12 @@ from pathpyG.core.DAGData import DAGData
 @pytest.fixture
 def simple_graph() -> Graph:
     """Return a simple directed graph."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c')])
 
 @pytest.fixture
 def simple_graph_multi_edges() -> Graph:
     """Return a directed graph with multiple edges."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c'], ['a', 'b']])
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c'), ('a', 'b')])
 
 
 @pytest.fixture

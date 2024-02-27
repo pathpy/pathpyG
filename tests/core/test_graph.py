@@ -287,6 +287,8 @@ def test_get_node_attr(simple_graph):
 
 
 def test_get_edge_attr(simple_graph):
+    # Edge indices are sorted during initialization
+    # Potentially leads to wrong weight assignmend
     simple_graph.data["edge_weight"] = torch.tensor([[1], [1], [2]])
     assert simple_graph["edge_weight"].shape == (3, 1)
     assert torch.equal(simple_graph["edge_weight"], torch.tensor([[1], [1], [2]]))
