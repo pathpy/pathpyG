@@ -78,25 +78,17 @@ def Watts_Strogatz(n: int, s: int, p: float = 0.0, loops: bool = False,
 
     # Rewire each link with probability p
     new_edges = []
-    for edge in tqdm(edges, 'generating WS network'):
-        if np.random.rand() < p:
-            # Delete original link and remember source node
-            v = edge[0]
-            edges.remove(edge)
-
-            # Find new random tgt, which is not yet connected to src
-            new_target = None
-
-            # This loop repeatedly chooses a random target until we find
-            # a target not yet connected to src. Note that this could potentially
-            # result in an infinite loop depending on parameters.
-            while new_target is None:
-                x = reversed_mapping[np.random.randint(n)]
-                if (x != v or loops) and (v, x) not in edges:
-                    new_target = x
-            new_edges.append([v, new_target])
-        else:
-            new_edges.append(edge)
+    rnd_edge_mask = (torch.rand(edges.size(1) < p)
+    rnd_edges = edges[rnd_edge_mask]
+    rnd_edges[1] = torch.randint(len(nodes), (rnd_edges.size(1),)
+    edges[rnd_edge_mask] = rnd_edges
+    while edges.size(1) != edges.unique(dim=0).size(1):
+       unique_edges = edges.unique(return_inverse=True, dim=0)[1]
+       mask = torch.ones(edges.size(1), dtype=bool)
+       mask[unique_edges] = False
+       doubled_edges = edges[mask]
+       doubled_edges[1] =  torch.randint(len(nodes), (doubled_edges.size(1),)
+       edges[mask] = doubled_edges
 
     g = pp.Graph.from_edge_list(new_edges)
     g = g.to_undirected()
