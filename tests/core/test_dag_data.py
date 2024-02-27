@@ -9,6 +9,7 @@ from pathpyG import config
 from pathpyG.algorithms.temporal import (
     temporal_graph_to_event_dag,
 )
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.DAGData import DAGData
 
 
@@ -30,21 +31,12 @@ def test_num_edges_dags(simple_dags):
 
 
 def test_edge_index(simple_dags):
-    assert equal(
-        simple_dags.edge_index,
-        IntTensor([[0, 0, 1, 1, 2, 2], [1, 2, 2, 4, 3, 4]])
-    )
+    assert equal(simple_dags.edge_index, IntTensor([[0, 0, 1, 1, 2, 2], [1, 2, 2, 4, 3, 4]]))
 
 
 def test_edge_index_weighted(simple_dags):
-    assert equal(
-        simple_dags.edge_index_weighted[0],
-        IntTensor([[0, 0, 1, 1, 2, 2], [1, 2, 2, 4, 3, 4]])
-    )
-    assert equal(
-        simple_dags.edge_index_weighted[1],
-        IntTensor([1, 2, 1, 1, 3, 2])
-    )
+    assert equal(simple_dags.edge_index_weighted[0], IntTensor([[0, 0, 1, 1, 2, 2], [1, 2, 2, 4, 3, 4]]))
+    assert equal(simple_dags.edge_index_weighted[1], IntTensor([1, 2, 1, 1, 3, 2]))
 
 
 def test_dag_mapping():
@@ -59,41 +51,32 @@ def test_dag_mapping():
     )
 
 
-def test_path_from_temporal_graph(simple_temporal_graph):
-    dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
-    paths = DAGData.from_temporal_dag(dag)
+def test_add():
+    paths = DAGData(IndexMap(["A", "B", "C", "D", "E"]))
+    paths.add(IntTensor([[0, 2], [2, 3]]))  # A -> C, C -> D
+    paths.add(IntTensor([[0, 1], [1, 4]]))  # A -> B, B -> E
+    paths.add(IntTensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
+    paths.add(IntTensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
     assert paths.num_nodes == 5
-    assert paths.num_edges == 4
-    assert paths.num_paths == 1
+    assert paths.num_edges == 6
 
 
-def test_edge_index_k_weighted(simple_temporal_graph):
-    dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
-    paths = DAGData.from_temporal_dag(dag)
+def test_str(simple_dags):
+    assert str(simple_dags) == "DAGData with 4 dags and total weight 4"
 
-    e1, w1 = DAGData.edge_index_k_weighted(paths, k=1)
 
-    assert equal(
-        e1, IntTensor([[0, 1, 2, 2], [1, 2, 3, 4]]).to(config["torch"]["device"])
-    )  # a -> b | b -> c | c -> d | c -> e
+def test_lift_order_dag():
+    e1 = tensor([[[0], [1], [1], [3]], [[1], [2], [3], [4]]])
+    x = DAGData.lift_order_dag(e1)
+    assert equal(x, IntTensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]]))
 
-    assert equal(w1, tensor([1.0, 1.0, 1.0, 1.0]).to(config["torch"]["device"]))
+    e2 = tensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]])
+    x = DAGData.lift_order_dag(e2)
+    assert equal(x, IntTensor([[[0, 1, 3]], [[1, 3, 4]]]))
 
-    e2, w2 = DAGData.edge_index_k_weighted(paths, k=2)
-    assert equal(
-        e2,
-        IntTensor([[[0, 1], [1, 2], [1, 2]], [[1, 2], [2, 3], [2, 4]]]).to(config["torch"]["device"]),
-    )  # a-b -> b-c | b-c -> c-d | b-c -> c-e
-
-    assert equal(w2, tensor([1.0, 1.0, 1.0]).to(config["torch"]["device"]))
-
-    e3, w3 = DAGData.edge_index_k_weighted(paths, k=3)
-    assert equal(
-        e3,
-        IntTensor([[[0, 1, 2], [0, 1, 2]], [[1, 2, 3], [1, 2, 4]]]).to(config["torch"]["device"]),
-    )
-
-    assert equal(w3, tensor([1.0, 1.0]).to(config["torch"]["device"]))  # a-b-c -> b-c-d | a-b-c -> b-c-e
+    e3 = tensor([[[0, 1, 3]], [[1, 3, 4]]])
+    x = DAGData.lift_order_dag(e3)
+    assert equal(x, IntTensor([]))
 
 
 def test_edge_index_kth_order_dag():
@@ -127,16 +110,45 @@ def test_edge_index_kth_order_dag():
     e5 = DAGData.edge_index_kth_order(edge_index, k=5)
     assert equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
 
+    e6 = DAGData.edge_index_kth_order(edge_index, k=6)
+    assert equal(e6, IntTensor([]))
 
-def test_lift_order_dag():
-    e1 = tensor([[[0], [1], [1], [3]], [[1], [2], [3], [4]]])
-    x = DAGData.lift_order_dag(e1)
-    assert equal(x, IntTensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]]))
 
-    e2 = tensor([[[0, 1], [0, 1], [1, 3]], [[1, 2], [1, 3], [3, 4]]])
-    x = DAGData.lift_order_dag(e2)
-    assert equal(x, IntTensor([[[0, 1, 3]], [[1, 3, 4]]]))
+def test_edge_index_k_weighted(simple_temporal_graph):
+    dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
+    paths = DAGData.from_temporal_dag(dag)
 
-    e3 = tensor([[[0, 1, 3]], [[1, 3, 4]]])
-    x = DAGData.lift_order_dag(e3)
-    assert equal(x, IntTensor([]))
+    e1, w1 = DAGData.edge_index_k_weighted(paths, k=1)
+
+    assert equal(
+        e1, IntTensor([[0, 1, 2, 2], [1, 2, 3, 4]]).to(config["torch"]["device"])
+    )  # a -> b | b -> c | c -> d | c -> e
+
+    assert equal(w1, tensor([1.0, 1.0, 1.0, 1.0]).to(config["torch"]["device"]))
+
+    e2, w2 = DAGData.edge_index_k_weighted(paths, k=2)
+    assert equal(
+        e2,
+        IntTensor([[[0, 1], [1, 2], [1, 2]], [[1, 2], [2, 3], [2, 4]]]).to(config["torch"]["device"]),
+    )  # a-b -> b-c | b-c -> c-d | b-c -> c-e
+
+    assert equal(w2, tensor([1.0, 1.0, 1.0]).to(config["torch"]["device"]))
+
+    e3, w3 = DAGData.edge_index_k_weighted(paths, k=3)
+    assert equal(
+        e3,
+        IntTensor([[[0, 1, 2], [0, 1, 2]], [[1, 2, 3], [1, 2, 4]]]).to(config["torch"]["device"]),
+    )
+
+    assert equal(w3, tensor([1.0, 1.0]).to(config["torch"]["device"]))  # a-b-c -> b-c-d | a-b-c -> b-c-e
+
+    with pytest.raises(ValueError):
+        DAGData.edge_index_k_weighted(paths, k=4)
+
+
+def test_path_from_temporal_graph(simple_temporal_graph):
+    dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
+    paths = DAGData.from_temporal_dag(dag)
+    assert paths.num_nodes == 5
+    assert paths.num_edges == 4
+    assert paths.num_paths == 1

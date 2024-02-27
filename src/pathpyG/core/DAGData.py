@@ -93,6 +93,59 @@ class DAGData(PathData):
         s = f"DAGData with {num_dags} dags and total weight {total}"
         return s
 
+    @staticmethod
+    def lift_order_dag(edge_index: Tensor) -> IntTensor:
+        """Efficiently lift edge index of $k$-th order De Bruijn graph model to $(k+1)$-th order.
+
+        Args:
+            edge_index: $k$-th order edge_index to be lifted to $(k+1)$-th order
+        """
+        a = edge_index[0].unique(dim=0)
+        b = edge_index[1].unique(dim=0)
+        # intersection of a and b corresponds to all center nodes, which have
+        # at least one incoming and one outgoing edge
+        combined = torch.cat((a, b))
+        uniques, counts = combined.unique(dim=0, return_counts=True)
+        center_nodes = uniques[counts > 1]
+
+        src = []
+        dst = []
+
+        # create all edges of order k+1
+        for v in center_nodes:
+            # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
+            src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten()  # type: ignore
+            srcs = edge_index[0][src_index]
+            # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
+            dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten()  # type: ignore
+            dsts = edge_index[1][dst_index]
+            for s in srcs:
+                for d in dsts:
+                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0]).to(config["torch"]["device"])), v)))
+                    dst.append(
+                        torch.cat(
+                            (v, torch.gather(d, 0, torch.tensor([d.size()[0] - 1]).to(config["torch"]["device"])))
+                        )
+                    )
+
+        if len(src) > 0:
+            return torch.stack((torch.stack(src), torch.stack(dst)))
+
+        return torch.tensor([]).to(config["torch"]["device"])
+
+    @staticmethod
+    def edge_index_kth_order(edge_index: Tensor, k: int = 1) -> Tensor:
+        """Calculate $k$-th order edge_index for a single DAG represented by a tensor.
+
+        Args:
+            k: order of $k$-th order De Bruijn Graph model
+        """
+        # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
+        x = edge_index.reshape(edge_index.size() + (1,))
+        for _ in range(1, k):
+            x = DAGData.lift_order_dag(x)
+        return x
+
     def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
         """Compute edge index and edge weights of $k$-th order De Bruijn graph model.
 
@@ -135,59 +188,6 @@ class DAGData(PathData):
         edge_weights = Tensor([sum(freq[x[idx]]) for idx in range(edge_index.size()[1])]).to(config["torch"]["device"])
 
         return edge_index, edge_weights
-
-    @staticmethod
-    def edge_index_kth_order(edge_index: Tensor, k: int = 1) -> Tensor:
-        """Calculate $k$-th order edge_index for a single DAG represented by a tensor.
-
-        Args:
-            k: order of $k$-th order De Bruijn Graph model
-        """
-        # we have to reshape tensors of the form [[0,1,2], [1,2,3]] to [[[0],[1],[2]],[[1],[2],[3]]]
-        x = edge_index.reshape(edge_index.size() + (1,))
-        for _ in range(1, k):
-            x = DAGData.lift_order_dag(x)
-        return x
-
-    @staticmethod
-    def lift_order_dag(edge_index: Tensor) -> IntTensor:
-        """Efficiently lift edge index of $k$-th order De Bruijn graph model to $(k+1)$-th order.
-
-        Args:
-            edge_index: $k$-th order edge_index to be lifted to $(k+1)$-th order
-        """
-        a = edge_index[0].unique(dim=0)
-        b = edge_index[1].unique(dim=0)
-        # intersection of a and b corresponds to all center nodes, which have
-        # at least one incoming and one outgoing edge
-        combined = torch.cat((a, b))
-        uniques, counts = combined.unique(dim=0, return_counts=True)
-        center_nodes = uniques[counts > 1]
-
-        src = []
-        dst = []
-
-        # create all edges of order k+1
-        for v in center_nodes:
-            # get all predecessors of v, i.e. elements in edge_index[0] where edge_index[1] == v
-            src_index = torch.all(edge_index[1] == v, axis=1).nonzero().flatten()  # type: ignore
-            srcs = edge_index[0][src_index]
-            # get all successors of v, i.e. elements in edge_index[1] where edge_index[0] == v
-            dst_index = torch.all(edge_index[0] == v, axis=1).nonzero().flatten()  # type: ignore
-            dsts = edge_index[1][dst_index]
-            for s in srcs:
-                for d in dsts:
-                    src.append(torch.cat((torch.gather(s, 0, torch.tensor([0]).to(config["torch"]["device"])), v)))
-                    dst.append(
-                        torch.cat(
-                            (v, torch.gather(d, 0, torch.tensor([d.size()[0] - 1]).to(config["torch"]["device"])))
-                        )
-                    )
-
-        if len(src) > 0:
-            return torch.stack((torch.stack(src), torch.stack(dst)))
-
-        return torch.tensor([]).to(config["torch"]["device"])
 
     @staticmethod
     def from_temporal_dag(dag: Graph) -> PathData:
