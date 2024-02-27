@@ -33,7 +33,7 @@ class IndexMap:
 
     def add_id(self, node_id: str) -> None:
         """Assigns additional ID to next consecutive index."""
-        if id not in self.id_to_idx:
+        if node_id not in self.id_to_idx:
             idx = self.num_ids()
             self.node_ids.append(node_id)
             self.idx_to_id[idx] = node_id
