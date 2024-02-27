@@ -69,19 +69,8 @@ def Watts_Strogatz(n: int, s: int, p: float = 0.0, loops: bool = False,
             nodes.append(reversed_mapping[i])
 
     # construct a ring lattice (dimension 1)
-    edges = []
-    for i in range(n):
-        if loops:
-            x = 0
-            y = s
-        else:
-            x = 1
-            y = s+1
-        for j in range(x, y):
-            v = nodes[i]
-            w = nodes[(i+j) % n]
-            if (v, w) not in edges:
-                edges.append([v, w])
+    nodes = torch.arange(s)
+    edges = IntTensor([nodes[:-1], nodes[1:]])
 
     if p == 0:
         # nothing to do here
