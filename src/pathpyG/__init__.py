@@ -23,6 +23,7 @@ from pathpyG.core.HigherOrderIndexMap import HigherOrderIndexMap
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.PathData import PathData
 from pathpyG.core.WalkData import WalkData
+from pathpyG.core.WalkDataNested import WalkDataNested
 from pathpyG.core.DAGData import DAGData
 from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG import io
