@@ -1,6 +1,6 @@
 # Project information
 site_name: pathpyG
-site_url: https://pathpyG.github.io/
+site_url: https://www.pathpy.net/
 site_author: pathpy developers
 site_description: >-
   An Open Source package facilitating next-generation network analytics and graph learning for time series data on graphs.
@@ -60,14 +60,13 @@ plugins:
       allow_errors: False
       include_source: True
   - git-revision-date-localized
-  - mike # Versioning
+  - mike: # Versioning
+      alias_type: redirect
   - markdown-exec # Execute code blocks to show the output; Also for rendering of directory trees
 
 extra:
   version:
-    default:
-      - dev
-      - stable
+    default: dev
     provider: mike
 
 extra_css:

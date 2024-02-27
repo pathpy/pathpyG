@@ -43,11 +43,13 @@ def test_read_netzschleuder_network():
     assert isinstance(network, Graph)
     assert network.N == 29
     assert network.M == 740
+    assert network.is_directed() == True
 
     network = read_netzschleuder_network(name="karate", net="77")
     assert isinstance(network, Graph)
     assert network.N == 34
-    assert network.M == 77
+    assert network.M == 154
+    assert network.is_directed() == False
 
     # Test the function without a network name.
     with pytest.raises(Exception, match="Could not connect to netzschleuder repository at"):

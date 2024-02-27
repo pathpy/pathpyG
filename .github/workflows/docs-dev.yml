@@ -24,6 +24,7 @@ jobs:
             src/**
             docs/**
             pyproject.toml
+            mkdocs.yml
 
       - name: Setup packages
         if: steps.changed-files-specific.outputs.any_changed == 'true'
@@ -49,5 +50,6 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git fetch origin gh-pages --depth=1
-          mike delete --push $(mike list | grep dev | awk '{print $2}' | tr -d '()')
-          mike deploy --push --update-aliases "${{ env.package_version }}-dev+${{ env.sha_short}}" dev -t ${{ env.package_version }}-dev
+          mike delete --push $(mike list | grep dev | awk '{print $1}' | tr -d '()')
+          mike deploy --push --update-aliases "${{ env.package_version }}-dev" dev
+          mike set-default --push --allow-empty dev

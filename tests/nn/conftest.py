@@ -4,16 +4,13 @@ import pytest
 import torch
 
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.PathData import PathData
+from pathpyG.core.WalkData import WalkData
 
 
 @pytest.fixture
-def simple_paths() -> PathData:
+def simple_paths() -> WalkData:
     """Return a simple example for path data."""
-    paths = PathData()
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.add_walk(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.mapping = IndexMap(['A', 'B', 'C', 'D', 'E'])
+    paths = WalkData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.add_walk_seq(('A', 'C', 'D'), freq=2)
+    paths.add_walk_seq(('B', 'C', 'E'), freq=2)
     return paths
