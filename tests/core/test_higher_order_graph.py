@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring, missing-module-docstring
+
 from __future__ import annotations
 
 from pathpyG.algorithms.temporal import temporal_graph_to_event_dag
@@ -5,6 +7,19 @@ from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.DAGData import DAGData
 from pathpyG.core.WalkData import WalkData
+
+
+def test_higher_order_graph(simple_walks: WalkData):
+    g2 = HigherOrderGraph(simple_walks, order=2)
+    assert set(g2.nodes) == set([("A", "C"), ("C", "D"), ("B", "C"), ("C", "E")])
+    assert set(g2.edges) == set([(("A", "C"), ("C", "D")), (("B", "C"), ("C", "E"))])
+    assert g2.N == 4
+    assert g2.M == 2
+
+
+def test_str(simple_walks: WalkData):
+    g2 = HigherOrderGraph(simple_walks, order=2)
+    assert isinstance(str(g2), str)
 
 
 def test_higher_order_from_temporal_graph(simple_temporal_graph: TemporalGraph):
@@ -42,14 +57,6 @@ def test_predecessors(simple_walks: WalkData):
 
     assert set([("A", "C")]) == set(g2.predecessors(("C", "D")))
     assert set([("B", "C")]) == set(g2.predecessors(("C", "E")))
-
-
-def test_higher_order_graph(simple_walks: WalkData):
-    g2 = HigherOrderGraph(simple_walks, order=2)
-    assert set(g2.nodes) == set([("A", "C"), ("C", "D"), ("B", "C"), ("C", "E")])
-    assert set(g2.edges) == set([(("A", "C"), ("C", "D")), (("B", "C"), ("C", "E"))])
-    assert g2.N == 4
-    assert g2.M == 2
 
 
 def test_higher_order_index_mapping(simple_walks):

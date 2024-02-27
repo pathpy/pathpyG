@@ -17,7 +17,7 @@ from pathpyG.algorithms.temporal import temporal_graph_to_event_dag
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.HigherOrderIndexMap import HigherOrderIndexMap
 
-# TODO: Add description for arguments
+
 class HigherOrderGraph(Graph):
     """HigherOrderGraph based on torch_geometric.Data."""
 
@@ -25,9 +25,10 @@ class HigherOrderGraph(Graph):
         """Generate HigherOrderGraph based on a given PathData instance.
 
         Args:
-            paths:
-            order:
-            **kwargs:
+            paths: The paths that the higher-order graph is based on.
+                Can contain either only paths (WalkData) or a collection of directed acyclic graphs (DAGData).
+            order: The order of the higher-order graph.
+            **kwargs: Additional keyword arguments that contain graph, node, or edge attributes.
 
         Example:
             ```py
@@ -55,15 +56,17 @@ class HigherOrderGraph(Graph):
             ho_nodes_to_index = {tuple(j.tolist()): i for i, j in enumerate(_nodes)}
 
             # create new tensor with node indices mapped to indices of higher-order nodes
-            edge_index = torch.tensor((
-                [ho_nodes_to_index[tuple(x.tolist())] for x in index[0, :]],
-                [ho_nodes_to_index[tuple(x.tolist())] for x in index[1, :]])
-                ).to(config['torch']['device'])
+            edge_index = torch.tensor(
+                (
+                    [ho_nodes_to_index[tuple(x.tolist())] for x in index[0, :]],
+                    [ho_nodes_to_index[tuple(x.tolist())] for x in index[1, :]],
+                )
+            ).to(config["torch"]["device"])
 
             # Create pyG Data object
             edge_index = edge_index.contiguous()
             self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
-            self.data['edge_weight'] = edge_weights
+            self.data["edge_weight"] = edge_weights
 
         else:
             _nodes = index.reshape(-1).unique(dim=0)
@@ -75,15 +78,14 @@ class HigherOrderGraph(Graph):
             # Create pyG Data object
             edge_index = edge_index.contiguous()
             self.data = Data(edge_index=EdgeIndex(edge_index), num_nodes=len(_nodes), **kwargs)
-            self.data['edge_weight'] = edge_weights
+            self.data["edge_weight"] = edge_weights
 
         # sort EdgeIndex and validate
-        self.data.edge_index = self.data.edge_index.sort_by('row').values
+        self.data.edge_index = self.data.edge_index.sort_by("row").values
         self.data.edge_index.validate()
 
-
         # create mapping between edge tuples and edge indices
-        self.edge_to_index = {(e[0].item(), e[1].item()):i for i, e in enumerate([e for e in edge_index.t()])}
+        self.edge_to_index = {(e[0].item(), e[1].item()): i for i, e in enumerate([e for e in edge_index.t()])}
 
     def __str__(self) -> str:
         """Return a string representation of the higher-order graph."""
@@ -91,7 +93,7 @@ class HigherOrderGraph(Graph):
         attr_types = Graph.attr_types(self.data.to_dict())
 
         s = "HigherOrderGraph (k={0}) with {1} nodes and {2} edges\n".format(self.order, self.N, self.M)
-        s += "\tTotal edge weight = {0}".format(self['edge_weight'].sum())
+        s += "\tTotal edge weight = {0}".format(self["edge_weight"].sum())
         if len(self.data.node_attrs()) > 0:
             s += "\nNode attributes\n"
             for a in self.data.node_attrs():
@@ -99,7 +101,7 @@ class HigherOrderGraph(Graph):
         if len(self.data.edge_attrs()) > 1:
             s += "\nEdge attributes\n"
             for a in self.data.edge_attrs():
-                if a != 'edge_index':
+                if a != "edge_index":
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         if len(self.data.keys()) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
             s += "\nGraph attributes\n"
