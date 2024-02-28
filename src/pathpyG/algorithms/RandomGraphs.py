@@ -43,16 +43,15 @@ def Watts_Strogatz(n: int, s: int, p: float = 0.0, loops: bool = False,
     edges = torch.cat((edges_right, edges_left), dim=1)
 
     if p == 0:
-        return pp.Graph()
+        return pp.Graph.from_edge_index(edges, mapping=mapping)
 
     # Rewire each link with probability p
     rand_vals = torch.rand(edges.shape[0])
     rewire_mask = rand_vals < p
 
-    new_edges = edges.clone()
-    new_edges[rewire_mask, 1] = torch.randint(n, (torch.sum(rewire_mask),)).squeeze()
+    edges[rewire_mask, 1] = torch.randint(n, (torch.sum(rewire_mask),)).squeeze()
 
-    g = pp.Graph.from_edge_index(new_edges.tolist(), mapping=mapping)
+    g = pp.Graph.from_edge_index(edges, mapping=mapping)
 
     g = g.to_undirected()
     return g
