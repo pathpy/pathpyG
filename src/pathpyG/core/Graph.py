@@ -50,7 +50,7 @@ class Graph:
             from torch_geometric.data import Data
             from torch_geometric import EdgeIndex
 
-            data = Data(edge_index=EdgeIndex([[1,1,2],[0,2,1]]))
+            data = Data(edge_index=EdgeIndex([[1,1,2],[0,2,1]], sparse_size=(3,3)))
             g = pp.Graph(data)
 
             g = pp.Graph(data, mapping=pp.IndexMap(['a', 'b', 'c']))
@@ -61,16 +61,21 @@ class Graph:
         else:
             self.mapping = mapping
 
+        # set num_nodes property
+        data.num_nodes = data.edge_index.max().item()+1
+
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = EdgeIndex(data=data.edge_index)
+            data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes))        
+
+        if data.edge_index.get_sparse_size(dim=0) != data.num_nodes or data.edge_index.get_sparse_size(dim=1) != data.num_nodes:
+            raise Exception('sparse size of EdgeIndex should match number of nodes!')
 
         # sort EdgeIndex and validate
         data.edge_index = data.edge_index.sort_by('row').values
         data.edge_index.validate()
 
-        # set num_nodes property
-        data.num_nodes = data.edge_index.max().item()+1
+
         self.data = data
 
         # create mapping between edge tuples and edge indices
@@ -136,7 +141,7 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
-        edge_index = EdgeIndex([sources, targets], is_undirected=is_undirected, device=config['torch']['device'])
+        edge_index = EdgeIndex([sources, targets], sparse_size=(mapping.num_ids(), mapping.num_ids()), is_undirected=is_undirected, device=config['torch']['device'])
         return Graph(
             Data(edge_index=edge_index),
             mapping=mapping
