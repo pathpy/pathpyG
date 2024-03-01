@@ -127,11 +127,13 @@ class TemporalGraph(Graph):
         else:
             edge_index = torch.stack((self.data.src, self.data.dst))
 
+        n = edge_index.max().item()+1
+
         if weighted:
-            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))
-            return Graph(Data(edge_index=EdgeIndex(data=i), edge_weight=w), self.mapping)
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))            
+            return Graph(Data(edge_index=EdgeIndex(data=i, sparse_size=(n,n)), edge_weight=w), self.mapping)
         else:
-            return Graph.from_edge_index(EdgeIndex(data=edge_index), self.mapping)
+            return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n,n)), self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
