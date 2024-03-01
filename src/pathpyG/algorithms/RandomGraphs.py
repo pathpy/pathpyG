@@ -33,20 +33,21 @@ def Watts_Strogatz(n: int, s: int, p: float = 0.0, mapping: pp.IndexMap = None) 
         .permute(1, 0, 2)
         .reshape(2, -1)
     )
-    # edges_left = (
-    #     torch.stack([torch.stack((nodes, torch.roll(nodes, shifts=+i, dims=0))) for i in range(1, s + 1)], dim=0)
-    #     .permute(1, 0, 2)
-    #     .reshape(2, -1)
-    # )
-    # edges = torch.cat((edges_right, edges_left), dim=1)
 
     # Rewire each link with probability p
-    rand_vals = torch.rand(edges.shape[0])
+    rand_vals = torch.rand(edges.shape[1])
     rewire_mask = rand_vals < p
 
-    edges[rewire_mask, 1] = torch.randint(n, (torch.sum(rewire_mask),))
+    # Generate random nodes excluding the current node for each edge that needs to be rewired, also avoid duplicate edges
+    for i in range(edges.shape[1]):
+        if rewire_mask[i]:
+            while True:
+                new_node = torch.randint(n, (1,)).item()
+                if new_node != edges[0, i] and new_node not in edges[1, edges[0] == edges[0, i]] and new_node not in edges[0, edges[1] == edges[0, i]]:
+                    edges[1, i] = new_node
+                    break
 
     g = pp.Graph.from_edge_index(edges, mapping=mapping)
-    print(g.data.edge_index)
+
     g = g.to_undirected()
     return g
