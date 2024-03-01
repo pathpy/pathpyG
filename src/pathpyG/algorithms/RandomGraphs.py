@@ -53,7 +53,7 @@ def Watts_Strogatz(
             raise ValueError(
                 "The number of edges is greater than the number of possible edges in the graph. Set `allow_duplicate_edges=True` to allow this."
             )
-        elif n * (n - 1) < edges.shape[1] * 0.75 and p > 0.3:
+        elif n * (n - 1) * 0.5 < edges.shape[1] and p > 0.3:
             warnings.warn(
                 "Avoding duplicate in graphs with high connectivity and high rewiring probability may be slow. Consider setting `allow_duplicate_edges=True`."
             )

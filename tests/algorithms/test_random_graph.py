@@ -1,5 +1,6 @@
 # pylint: disable=missing-module-docstring,missing-function-docstring
 
+import pytest
 import torch
 from torch_geometric.utils import to_undirected, sort_edge_index
 
@@ -60,3 +61,11 @@ def test_watts_strogatz_rewiring():
     ratio = (sorted_edges_g[1] == sorted_edges[1]).sum() / edges.size(1)
     assert ratio > 0.4
     assert ratio < 0.6
+
+
+def test_watts_strogatz_get_warning():
+    with pytest.raises(ValueError):
+        print(Watts_Strogatz(5, 10, 0.5, allow_duplicate_edges=False))
+
+    with pytest.warns(Warning):
+        print(Watts_Strogatz(10, 5, 0.31, allow_duplicate_edges=False))
