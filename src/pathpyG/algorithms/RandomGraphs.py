@@ -101,3 +101,64 @@ def Watts_Strogatz(
     if undirected:
         g = g.to_undirected()
     return g
+
+
+def Molloy_Reed(
+        degree_sequence: torch.Tensor,
+        undirected: bool = True,
+        mapping: pp.IndexMap | None = None,
+) -> pp.Graph:
+    """
+    Generate a random graph using the Molloy-Reed algorithm.
+
+    Args:
+        degree_sequence: The degree sequence, a list of the degrees of each node.
+        undirected: If True, the graph will be undirected.
+        mapping: A mapping from the node indices to node names.
+
+    Returns:
+        torch.Tensor: The adjacency matrix of the generated graph.
+        dict: A mapping from node indices to degrees.
+
+    Raises:
+        ValueError: If the degree sequence is not graphical (i.e., the sum of the degrees is not even).
+
+    Example:
+        degree_sequence = torch.tensor([3, 2, 2, 1, 1, 1])
+        g = molloy_reed_graph(degree_sequence)
+    """
+
+    # Check if the degree sequence is graphical (i.e., the sum of the degrees is even)
+    if sum(degree_sequence) % 2 != 0:
+        raise ValueError('Degree sequence is not graphical')
+
+    # Create a list of node indices
+    nodes = torch.arange(len(degree_sequence))
+
+    # Repeat each node index according to its degree to create "stubs" (half-edges)
+    stubs = nodes.repeat_interleave(degree_sequence)
+
+    # Randomly permute the stubs to create pairs
+    stubs = stubs[torch.randperm(len(stubs))]
+
+    # Pair up the stubs to form edges
+    edges = torch.stack([stubs[i::2] for i in range(2)], dim=-1)
+
+    # Create an adjacency matrix
+    adjacency_matrix = torch.zeros((len(nodes), len(nodes)))
+
+    # Fill the adjacency matrix based on the edges
+    adjacency_matrix[edges[:, 0], edges[:, 1]] = 1
+    adjacency_matrix[edges[:, 1], edges[:, 0]] = 1
+
+    # Convert the adjacency matrix to an edge list
+    final_edges = adjacency_matrix.nonzero().t()
+
+    # Create a graph from the edge list
+    g = pp.Graph.from_edge_index(final_edges, mapping=mapping)
+
+    # If the graph is undirected, convert it to an undirected graph
+    if undirected:
+        g = g.to_undirected()
+
+    return g
