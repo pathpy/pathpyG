@@ -149,16 +149,13 @@ def Molloy_Reed(
 
     # Fill the adjacency matrix based on the edges
     adjacency_matrix[edges[:, 0], edges[:, 1]] = 1
-    adjacency_matrix[edges[:, 1], edges[:, 0]] = 1
+    if undirected:
+        adjacency_matrix[edges[:, 1], edges[:, 0]] = 1
 
     # Convert the adjacency matrix to an edge list
     final_edges = adjacency_matrix.nonzero().t()
 
     # Create a graph from the edge list
     g = pp.Graph.from_edge_index(final_edges, mapping=mapping)
-
-    # If the graph is undirected, convert it to an undirected graph
-    if undirected:
-        g = g.to_undirected()
 
     return g
