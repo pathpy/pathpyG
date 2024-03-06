@@ -4,7 +4,8 @@ import pytest
 import torch
 from torch_geometric.utils import to_undirected, sort_edge_index
 
-from pathpyG.algorithms.RandomGraphs import Watts_Strogatz
+import pathpyG as pp
+from pathpyG.algorithms.RandomGraphs import Watts_Strogatz, Molloy_Reed
 
 
 def test_watts_strogatz_simple():
@@ -69,3 +70,14 @@ def test_watts_strogatz_get_warning():
 
     with pytest.warns(Warning):
         print(Watts_Strogatz(10, 5, 0.31, allow_duplicate_edges=False))
+
+
+def test_molloy_reed():
+    g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), undirected=True)
+    assert g.N == 6
+    assert set(g.degrees().keys()) == {1, 2, 3}
+
+    g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), mapping=pp.IndexMap(['a', 'b', 'c', 'd', 'e', 'f']))
+    assert g.N == 6
+    assert set(g.degrees().keys()) == {'a', 'b', 'c', 'd', 'e', 'f'}
+    assert set(g.degrees().values()) == {1, 2, 3}
