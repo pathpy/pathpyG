@@ -75,9 +75,9 @@ def test_watts_strogatz_get_warning():
 def test_molloy_reed():
     g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), undirected=True)
     assert g.N == 6
-    assert set(g.degrees().keys()) == {1, 2, 3}
+    assert set(g.degrees().keys()) == set(1, 2, 3)
 
     g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), mapping=pp.IndexMap(['a', 'b', 'c', 'd', 'e', 'f']))
     assert g.N == 6
-    assert set(g.degrees().keys()) == {'a', 'b', 'c', 'd', 'e', 'f'}
-    assert set(g.degrees().values()) == {1, 2, 3}
+    assert set(g.degrees().keys()) == set('a', 'b', 'c', 'd', 'e', 'f')
+    assert set(g.degrees().values()) == set(1, 2, 3)
