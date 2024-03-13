@@ -73,11 +73,14 @@ def test_watts_strogatz_get_warning():
 
 
 def test_molloy_reed():
-    g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), undirected=True)
+    g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), undirected=False)
     assert g.N == 6
-    assert set(g.degrees().keys()) == set(1, 2, 3)
+    assert set(g.degrees().keys()) == {0, 1, 2, 3, 4, 5}
+    assert set(g.degrees().values()) == {1, 2, 3}
+    assert g.is_directed() == True
 
     g = Molloy_Reed(torch.tensor([3, 2, 2, 1, 1, 1]), mapping=pp.IndexMap(['a', 'b', 'c', 'd', 'e', 'f']))
     assert g.N == 6
-    assert set(g.degrees().keys()) == set('a', 'b', 'c', 'd', 'e', 'f')
-    assert set(g.degrees().values()) == set(1, 2, 3)
+    assert set(g.degrees().keys()) == {'a', 'b', 'c', 'd', 'e', 'f'}
+    assert set(g.degrees().values()) == {1, 2, 3}
+    assert g.is_directed() == False
