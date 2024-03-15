@@ -3,6 +3,7 @@
 import warnings
 
 import torch
+from torch_geometric.utils import coalesce
 
 import pathpyG as pp
 
@@ -105,7 +106,6 @@ def Watts_Strogatz(
 
 def Molloy_Reed(
         degree_sequence: torch.Tensor,
-        undirected: bool = True,
         mapping: pp.IndexMap | None = None,
 ) -> pp.Graph:
     """
@@ -113,7 +113,6 @@ def Molloy_Reed(
 
     Args:
         degree_sequence: The degree sequence, a list of the degrees of each node.
-        undirected: If True, the graph will be undirected.
         mapping: A mapping from the node indices to node names.
 
     Returns:
@@ -127,9 +126,8 @@ def Molloy_Reed(
         degree_sequence = torch.tensor([3, 2, 2, 1, 1, 1])
         g = molloy_reed_graph(degree_sequence)
     """
-
     # Check if the degree sequence is graphical (i.e., the sum of the degrees is even)
-    if sum(degree_sequence) % 2 != 0:
+    if torch.sum(degree_sequence) % 2 != 0:
         raise ValueError('Degree sequence is not graphical')
 
     # Create a list of node indices
@@ -144,18 +142,63 @@ def Molloy_Reed(
     # Pair up the stubs to form edges
     edges = torch.stack([stubs[i::2] for i in range(2)], dim=-1)
 
+    # Remove self-loops, save the removed edges to stubs
+    print(edges)
+    stubs = edges[edges[:, 0] == edges[:, 1]].reshape(-1)
+    edges = edges[edges[:, 0] != edges[:, 1]]
+    print(edges)
+    print(stubs)
+
+    # Remove repeated edges, save the removed edges to stubs
+    # edges, counts = edges.unique(dim=0, return_counts=True)
+    # # reshape the stubs to be a 1D tensor
+    # stubs = torch.cat((stubs, edges[counts > 1]), dim=0).reshape(-1)
+    # edges = edges[counts == 1]
+
+    while stubs.shape[0] > 0:
+
+        
+        # remove a random edge and add the nodes to stubs
+        removed_edge = edges[torch.randint(edges.shape[0], (1,))]
+        stubs = torch.cat((stubs, removed_edge.squeeze()), dim=0)
+        # keep only the edges that don't need to be removed
+        # remove also the oposite order of the removed edge
+        # edges = edges[~torch.all(edges == removed_edge.squeeze(), dim=1)]
+        # edges = edges[~torch.all(edges == removed_edge.flip(0).squeeze(), dim=1)]
+
+        # Pair up the stubs to form edges with the missing stubs
+        edges = torch.cat((edges, stubs[torch.randperm(len(stubs))].reshape(-1, 2)), dim=0)
+
+        # Remove self-loops, save the removed edges to stubs
+        stubs = edges[edges[:, 0] == edges[:, 1]].reshape(-1)
+        edges = edges[edges[:, 0] != edges[:, 1]]
+
+        # Remove repeated edges, save the removed edges to stubs
+        # print('---')
+        # print(edges)
+        # edges_ = edges.clone().sort(dim=1)[0]
+        # edges = coalesce(edges)
+        # nodes_to_stubs = edges_[~torch.all(edges_ == edges, dim=1)]
+        # # print(stubs.reshape(-1).shape)
+        # # print(nodes_to_stubs.reshape(-1).shape)
+        # stubs = torch.cat((stubs.reshape(-1), nodes_to_stubs.reshape(-1)), dim=0)
+
+        
+
+
+
     # Create an adjacency matrix
     adjacency_matrix = torch.zeros((len(nodes), len(nodes)))
 
     # Fill the adjacency matrix based on the edges
     adjacency_matrix[edges[:, 0], edges[:, 1]] = 1
-    if undirected:
-        adjacency_matrix[edges[:, 1], edges[:, 0]] = 1
 
     # Convert the adjacency matrix to an edge list
     final_edges = adjacency_matrix.nonzero().t()
 
     # Create a graph from the edge list
     g = pp.Graph.from_edge_index(final_edges, mapping=mapping)
+
+    g = g.to_undirected()
 
     return g
