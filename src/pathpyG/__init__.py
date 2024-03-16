@@ -28,6 +28,7 @@ from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 from pathpyG import io
 from pathpyG import nn
 from pathpyG import algorithms
+from pathpyG import processes
 from pathpyG.visualisations import plot, layout
 
 
