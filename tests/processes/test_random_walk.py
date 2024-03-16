@@ -29,6 +29,11 @@ def test_random_walk(simple_graph):
     paths = rw.get_paths(data)
     check_transitions(simple_graph, paths)
 
+def test_transition_matrix(simple_graph):
+    rw = RandomWalk(simple_graph)
+
+    assert (rw.transition_matrix.data == 1.).all()
+
 def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, HigherOrderGraph]):
     g = simple_second_order_graph[0]
     g2 = simple_second_order_graph[1]
