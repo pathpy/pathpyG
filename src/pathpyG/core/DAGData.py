@@ -98,18 +98,18 @@ class DAGData:
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
                 path = []
-                w = 1
+                w = 1.0
                 fields = line.split(sep)
                 if weight:
                     for v in fields[:-1]:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
-                    w = int(float(fields[-1]))
+                    w = float(fields[-1])
                 else:
                     for v in fields:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
-                e_i = torch.tensor([path[:-1], path[1:]]) #.to(config['torch']['device'])
+                e_i = torch.tensor([path[:-1], path[1:]])
                 dags.append(edge_index=e_i, weight=w)
         dags.mapping = mapping
         return dags

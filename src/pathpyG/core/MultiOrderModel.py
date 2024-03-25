@@ -142,7 +142,6 @@ class MultiOrderModel:
         #     num_nodes = unique_nodes.size(0)
         #     data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
         dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config['torch']['device'])
-        print('loader finished')
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
 
@@ -150,7 +149,6 @@ class MultiOrderModel:
 
         for k in range(2, max_order + 1):
             # Lift order
-            print('k')
             ho_index = m.lift_order_edge_index(edge_index, num_nodes=node_sequences.size(0))
             node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
 
