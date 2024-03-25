@@ -24,12 +24,12 @@ from pathpyG.algorithms.temporal import extract_causal_trees
 
 class DAGData:
     """Class that can be used to store multiple observations of
-    directed acyclic graphs.
+    directed acyclic graphs (or - as a special case - walks)
 
     Example:
         ```py
         import pathpyG as pp
-        from torch import IntTensor
+        import torch
 
         pp.config['torch']['device'] = 'cuda'
 
@@ -39,17 +39,18 @@ class DAGData:
                              ('c', 'd'),
                              ('c', 'e')])
 
-        # Generate data on observed directed acyclic graphs
-        paths = pp.DAGData(g.mapping)
-        dag = IntTensor([[0,2,2], # a -> c, c -> d, c -> e
-                  [2,3,4]])
-        paths.add(dag, freq=1)
-        dag = IntTensor([[1,2,2], # b -> c, c -> d, c -> e
-                  [2,3,4]])
-        paths.add(dag, freq=1)
-        print(paths)
+        # Store observations of walks or dags using the index mapping
+        # from the graph above
+        dags = pp.DAGData(g.mapping)
 
-        print(paths.edge_index_k_weighted(k=2))
+        # Append one observation of a DAG
+        d = torch.tensor([[0,2,2], # a -> c, c -> d, c -> e
+                  [2,3,4]])
+        dags.append_dag(d, weight=1.0)
+
+        # Append observation of a walk
+        dags.append_walk(('a', 'c', 'd'), weight=2.0)
+        print(dags)
         ```
     """
 
@@ -80,10 +81,10 @@ class DAGData:
                 ```
         """
         idx_seq = [ self.mapping.to_idx(v) for v in node_seq ]
-        e_i = torch.tensor([idx_seq[:-1], idx_seq[1:]]) #.to(config['torch']['device'])
+        e_i = torch.tensor([idx_seq[:-1], idx_seq[1:]])
         self.append_dag(e_i, weight)
 
-    def append_dag(self, edge_index, weight: int=1) -> None:
+    def append_dag(self, edge_index, weight: float = 1.0) -> None:
         """Add an observation of a DAG based on an edge index
         
         Example:
@@ -99,10 +100,16 @@ class DAGData:
         node_idx = torch.arange(num_nodes)
         self.dags.append(Data(edge_index=edge_index, node_sequences=node_idx.unsqueeze(1), num_nodes=num_nodes, weight=torch.tensor(weight)))
 
+    def map_node_seq(self, node_seq: list | tuple):
+        """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs
+        """
+        return [ self.mapping.to_id(v) for v in node_seq ]
+
     def __str__(self) -> str:
-        """Return string representation of DAGData object."""
+        """Return a string representation of the DAGData object."""
         num_dags = len(self.dags)
-        s = f"DAGData with {num_dags} dags"
+        weight = sum([d.weight.item() for d in self.dags])
+        s = f"DAGData with {num_dags} dags with total weight {weight}"
         return s
 
     @staticmethod
