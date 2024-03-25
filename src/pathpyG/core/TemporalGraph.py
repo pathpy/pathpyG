@@ -32,16 +32,7 @@ class TemporalGraph(Graph):
             ```
         """
 
-        # sort edges by timestamp
-        # Note: function sort_by_time mentioned in pyG documentation does not exist
-        t_sorted, sort_index = torch.sort(data.t)
-
-        # reorder temporal data
-        self.data = TemporalData(
-            src=data.src[sort_index],
-            dst=data.dst[sort_index],
-            t=t_sorted
-        )
+        self.data = data.sort()
 
         if mapping is not None:
             self.mapping = mapping
@@ -54,13 +45,9 @@ class TemporalGraph(Graph):
             for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
 
-        self.start_time = t_sorted.min().item()
-        self.end_time = t_sorted.max().item()
+        self.start_time = self.data.t.min().item()
+        self.end_time = self.data.t.max().item()
 
-        # # initialize adjacency matrix
-        # self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
-        #     self.data.edge_index
-        # ).tocsr()
 
     @staticmethod
     def from_edge_list(edge_list) -> TemporalGraph:

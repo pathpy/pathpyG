@@ -116,8 +116,9 @@ class MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
 
-        # TODO: add higher-order layers
-        # m.layers.append(...)
+        # We assume 
+        second_order_edge_index = m.lift_order_edge_index(g.data.edge_index, num_nodes=g.data.num_nodes)
+
         return m
 
     @staticmethod
@@ -132,13 +133,7 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # Outsource to DAGData
-        # data_list = []
-        # for dag in data.dags:
-        #     edge_index = coalesce(dag.long())
-        #     unique_nodes = torch.unique(edge_index)
-        #     num_nodes = unique_nodes.size(0)
-        #     data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
+        # We assume that each DAG is sorted and contains the node sequences!
         dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags))))
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
