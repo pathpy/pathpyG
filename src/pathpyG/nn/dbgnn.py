@@ -6,7 +6,6 @@ from torch.nn import Linear, ModuleList, Module
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GCNConv
 
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 
 class BipartiteGraphOperator(MessagePassing):
     def __init__(self, in_ch, out_ch):

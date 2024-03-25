@@ -4,7 +4,6 @@ import pytest
 import torch
 
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.WalkData import WalkData
 
 
 @pytest.fixture

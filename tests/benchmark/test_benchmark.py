@@ -4,9 +4,7 @@ import pytest
 import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.PathData import PathData
 from pathpyG import config
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
 
 def construct_higher_order(max_order):
     paths = PathData.from_csv('docs/data/tube_paths_train.ngram')

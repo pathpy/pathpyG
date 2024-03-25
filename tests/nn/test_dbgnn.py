@@ -6,9 +6,6 @@ from pathpyG import config
 from pathpyG.nn.dbgnn import (
     DBGNN
 )
-from pathpyG.core.PathData import PathData
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
-
 
 def test_bipartite_edge_index(simple_paths):
     g = HigherOrderGraph(simple_paths, order=1)
