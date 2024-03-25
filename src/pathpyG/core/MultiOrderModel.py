@@ -6,10 +6,10 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree
 
 from pathpyG.utils.config import config
-from pathpyG import Graph
-from pathpyG import DAGData
-from pathpyG import TemporalGraph
-from pathpyG import IndexMap
+from pathpyG.core.Graph import Graph
+from pathpyG.core.DAGData import DAGData
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.IndexMap import IndexMap
 
 
 class MultiOrderModel:

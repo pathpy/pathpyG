@@ -18,9 +18,6 @@ from torch_geometric.data import Data
 
 from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.Graph import Graph
-from pathpyG.algorithms.temporal import extract_causal_trees
-
 
 class DAGData:
     """Class that can be used to store multiple observations of

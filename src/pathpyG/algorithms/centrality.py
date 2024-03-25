@@ -41,32 +41,35 @@ from typing import (
     Dict,
 )
 
-from pathpyG import Graph
-from pathpyG import TemporalGraph
+from pathpyG.core.Graph import Graph
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.DAGData import DAGData
 
-from torch_geometric.utils import to_networkx
 from networkx import centrality
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 import numpy as _np
+import torch
 from torch import tensor
 
-def path_node_traversals(paths):
-    """Calculate the number of times any path traverses each of the nodes.
+from torch_geometric.utils import to_networkx, degree
+
+def path_node_traversals(dags: DAGData):
+    """Calculate the number of times any dag traverses each of the nodes.
 
     Parameters
     ----------
-    paths: Paths
+    dags: DAGData
 
     Returns
     -------
-    dict
+    Counter
     """
-    traversals = defaultdict(lambda: 0)
-    for path_id, path_edgelist in paths.paths.items():
-        path_seq = paths.walk_to_node_seq(path_edgelist)
-        for node in path_seq:
-            traversals[node.item()] += paths.path_freq[path_id]
+    traversals = Counter()
+    for dag in dags.dags:
+        t = torch.maximum(degree(dag.edge_index[1],num_nodes=dag.num_nodes), degree(dag.edge_index[0], num_nodes=dag.num_nodes))
+        for v in range(len(t)):
+            traversals[dags.mapping.to_id(v)] += t[v].item() * dag.weight.item()
     return traversals
 
 
