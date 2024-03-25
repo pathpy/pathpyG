@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import torch
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree
 
+from pathpyG.utils.config import config
 from pathpyG import Graph
 from pathpyG import DAGData
 from pathpyG import TemporalGraph
@@ -101,7 +103,7 @@ class MultiOrderModel:
         unique_nodes, inverse_idx = torch.unique(node_sequences, dim=0, return_inverse=True)
         mapped_edge_index = inverse_idx[edge_index]
         aggregated_edge_index, edge_weights = coalesce(
-            mapped_edge_index, edge_attr=torch.ones(edge_index.size(1)), num_nodes=unique_nodes.size(0)
+            mapped_edge_index, edge_attr=torch.ones(edge_index.size(1), device=edge_index.device), num_nodes=unique_nodes.size(0)
         )
         data = Data(
             edge_index=aggregated_edge_index,
@@ -139,7 +141,8 @@ class MultiOrderModel:
         #     unique_nodes = torch.unique(edge_index)
         #     num_nodes = unique_nodes.size(0)
         #     data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags))))
+        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config['torch']['device'])
+        print('loader finished')
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
 
@@ -147,6 +150,7 @@ class MultiOrderModel:
 
         for k in range(2, max_order + 1):
             # Lift order
+            print('k')
             ho_index = m.lift_order_edge_index(edge_index, num_nodes=node_sequences.size(0))
             node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
 
