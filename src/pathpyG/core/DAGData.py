@@ -62,6 +62,11 @@ class DAGData:
         else:
             self.mapping = IndexMap()
 
+    @property
+    def num_dags(self) -> int:
+        """Return the number of stored dags."""
+        return len(self.dags)
+
     def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
         """Add an observation of a walk based on a list or tuple of node IDs or indices
         

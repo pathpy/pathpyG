@@ -24,10 +24,10 @@ def simple_graph_multi_edges() -> Graph:
 def simple_walks() -> DAGData:
     """Return a simple example for path data."""
     paths = DAGData()
-    paths.append(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.append(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.append(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.append(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
+    paths.append_dag(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths.append_dag(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
     return paths
 
 
@@ -35,10 +35,10 @@ def simple_walks() -> DAGData:
 def simple_dags() -> DAGData:
     """Return a simple example for path data."""
     paths = DAGData()
-    paths.append(torch.tensor([[0, 2], [2, 3]]))  # A -> C, C -> D
-    paths.append(torch.tensor([[0, 1], [1, 4]]))  # B -> C, C -> E
-    paths.append(torch.tensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
-    paths.append(torch.tensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
+    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C, C -> D
+    paths.append_dag(torch.tensor([[0, 1], [1, 4]]))  # B -> C, C -> E
+    paths.append_dag(torch.tensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
+    paths.append_dag(torch.tensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
     return paths
 
 

@@ -65,30 +65,6 @@ def test_edge_index_kth_order_dag(simple_dags):
     assert torch.equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
 
 
-def test_edge_index_kth_order_walk(simple_walks):
-    edge_index = IntTensor([[0, 1, 2, 3, 4], [1, 2, 3, 4, 5]])
-    e1 = WalkData.edge_index_kth_order(edge_index, k=1)
-    assert torch.equal(e1, IntTensor([[[0], [1], [2], [3], [4]], [[1], [2], [3], [4], [5]]]))
-
-    e2 = WalkData.edge_index_kth_order(edge_index, k=2)
-    assert torch.equal(
-        e2,
-        IntTensor([[[0, 1], [1, 2], [2, 3], [3, 4]], [[1, 2], [2, 3], [3, 4], [4, 5]]]),
-    )
-
-    e3 = WalkData.edge_index_kth_order(edge_index, k=3)
-    assert torch.equal(
-        e3,
-        IntTensor([[[0, 1, 2], [1, 2, 3], [2, 3, 4]], [[1, 2, 3], [2, 3, 4], [3, 4, 5]]]),
-    )
-
-    e4 = WalkData.edge_index_kth_order(edge_index, k=4)
-    assert torch.equal(e4, IntTensor([[[0, 1, 2, 3], [1, 2, 3, 4]], [[1, 2, 3, 4], [2, 3, 4, 5]]]))
-
-    e5 = WalkData.edge_index_kth_order(edge_index, k=5)
-    assert torch.equal(e5, IntTensor([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]]))
-
-
 # TODO: 
 def test_edge_index_temporal(simple_temporal_graph):
     # dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)
