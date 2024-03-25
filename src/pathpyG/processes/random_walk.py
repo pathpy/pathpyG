@@ -319,7 +319,7 @@ class RandomWalk(BaseProcess):
     def current_node(self) -> str:
         return self._current_node
 
-    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> WalkData:
+    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> DAGData:
         """Returns a path that represents the sequence of (first-order) nodes traversed
         by a single random walk.
 
@@ -352,8 +352,8 @@ class RandomWalk(BaseProcess):
         path.append_walk([walk_steps[i] for i in range(len(walk_steps))])
         return path
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> WalkData:
-        """Returns a PathCollection where each
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> DAGData:
+        """Returns a DAGData object where each DAG is one walk
 
         Parameters
         ----------
@@ -368,13 +368,13 @@ class RandomWalk(BaseProcess):
         Returns
         -------
 
-        PathCollection
-            PathCollection object where each random walk is represented by one Path instance in the collection.
+        DAGData
+            DAGData object where each random walk is represented by one dag.
 
         See Also
         --------
 
-        PathCollection
+        DAGData
         """
 
         if not run_ids:  # generate paths for all run_ids in the data frame
@@ -382,15 +382,16 @@ class RandomWalk(BaseProcess):
         else:
             runs = run_ids
 
-        paths = DAGData(self._network.mapping)
+        walks = DAGData(self._network.mapping)
         for id in runs:
             walk_steps = list(data.loc[(data['run_id'] == id) & (
             data['state'] == True)]['node'].values)
 
-            # generate Path
-            paths.append_walk([walk_steps[i] for i in range(len(walk_steps))])
+            # add walk to DAGData
+            print(walk_steps)
+            walks.append_walk(walk_steps)
             
-        return paths
+        return walks
 
     def stationary_state(self, **kwargs: Any) -> np.array:
         """Computes stationary visitation probabilities.

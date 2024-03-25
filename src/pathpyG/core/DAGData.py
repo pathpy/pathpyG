@@ -97,6 +97,7 @@ class DAGData:
             dags = pp.DAGData()
             
         """
+        # TODO: this is a problem if we store WALKS (which are not DAGs)!
         edge_index = coalesce(edge_index.long())
         num_nodes = edge_index.max()+1
         node_idx = torch.arange(num_nodes)
