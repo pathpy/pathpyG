@@ -53,12 +53,16 @@ class DAGData:
         ```
     """
 
-    def __init__(self) -> None:
-        self.dags = []
-        self.mapping = IndexMap()
+    def __init__(self, mapping: IndexMap | None = None) -> None:
+        self.dags: list = []
 
-    def append_walk(self, node_seq, weight: int=1):
-        """Add an observation of a walk based on a sequence of node IDs or indices
+        if mapping:
+            self.mapping = mapping
+        else:
+            self.mapping = IndexMap()
+
+    def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
+        """Add an observation of a walk based on a list or tuple of node IDs or indices
         
         Example:
                 ```py
@@ -70,29 +74,39 @@ class DAGData:
                         ('c', 'd'),
                         ('c', 'e')])
 
-                paths = pp.DAGData(g.mapping)
-                paths.add_walk_seq(('a', 'c', 'd'), weight=2)
-                paths.add_walk_seq(('b', 'c', 'e'), weight=2)
+                walks = pp.DAGData(g.mapping)
+                walks.append_walk(('a', 'c', 'd'), weight=2.0)
+                paths.append_walk(('b', 'c', 'e'), weight=1.0)
                 ```
         """
         idx_seq = [ self.mapping.to_idx(v) for v in node_seq ]
         e_i = torch.tensor([idx_seq[:-1], idx_seq[1:]]) #.to(config['torch']['device'])
-        self.append(e_i, weight)
+        self.append_dag(e_i, weight)
 
-    def append(self, edge_index, weight: int=1):
+    def append_dag(self, edge_index, weight: int=1) -> None:
+        """Add an observation of a DAG based on an edge index
+        
+        Example:
+            ```py
+            import torch
+            import pathpyG as pp
+
+            dags = pp.DAGData()
+            
+        """
         edge_index = coalesce(edge_index.long())
         num_nodes = edge_index.max()+1
         node_idx = torch.arange(num_nodes)
-        self.dags.append(Data(edge_index=edge_index, node_sequences=node_idx.unsqueeze(1), num_nodes=num_nodes, weight=torch.tensor(weight))) #.to(config['torch']['device']))
+        self.dags.append(Data(edge_index=edge_index, node_sequences=node_idx.unsqueeze(1), num_nodes=num_nodes, weight=torch.tensor(weight)))
 
     def __str__(self) -> str:
         """Return string representation of DAGData object."""
         num_dags = len(self.dags)
         s = f"DAGData with {num_dags} dags"
         return s
-    
+
     @staticmethod
-    def from_ngram(file: str, sep: str=',', weight: bool=True) -> DAGData:
+    def from_ngram(file: str, sep: str = ',', weight: bool = True) -> DAGData:
         dags = DAGData()
         mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
@@ -110,6 +124,6 @@ class DAGData:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
                 e_i = torch.tensor([path[:-1], path[1:]])
-                dags.append(edge_index=e_i, weight=w)
+                dags.append_dag(edge_index=e_i, weight=w)
         dags.mapping = mapping
         return dags
