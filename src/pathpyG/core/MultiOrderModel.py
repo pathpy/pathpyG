@@ -102,14 +102,14 @@ class MultiOrderModel:
         """
         unique_nodes, inverse_idx = torch.unique(node_sequences, dim=0, return_inverse=True)
         mapped_edge_index = inverse_idx[edge_index]
-        aggregated_edge_index, edge_weights = coalesce(
+        aggregated_edge_index, edge_weight = coalesce(
             mapped_edge_index, edge_attr=torch.ones(edge_index.size(1), device=edge_index.device), num_nodes=unique_nodes.size(0)
         )
         data = Data(
             edge_index=aggregated_edge_index,
             num_nodes=unique_nodes.size(0),
             node_sequences=unique_nodes,
-            edge_weights=edge_weights,
+            edge_weight=edge_weight,
         )
         return Graph(data)
 
@@ -146,6 +146,7 @@ class MultiOrderModel:
         node_sequences = dag_graph.node_sequences
 
         m.layers[1] = m.aggregate_edge_index(edge_index, node_sequences)
+        m.layers[1].mapping = dag_data.mapping
 
         for k in range(2, max_order + 1):
             # Lift order
