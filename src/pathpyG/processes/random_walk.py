@@ -5,7 +5,6 @@ from __future__ import annotations
 import abc
 
 from scipy.sparse.construct import random
-from pathpyG import HigherOrderGraph
 
 from typing import Any, Iterable, Optional, Union, Set, Tuple
 
@@ -14,7 +13,7 @@ import scipy as sp  # pylint: disable=import-error
 from scipy.sparse import linalg as spl
 from scipy import linalg as spla
 from pandas import DataFrame
-from pathpyG import WalkData
+from pathpyG import DAGData
 from pathpyG import Graph
 
 from .sampling import VoseAliasSampling
