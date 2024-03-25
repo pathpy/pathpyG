@@ -108,26 +108,26 @@ class MultiOrderModel:
             edge_index = coalesce(dag.long())
             unique_nodes = torch.unique(edge_index)
             num_nodes = unique_nodes.size(0)
-            data_list.append(Data(edge_index=edge_index, node_sequence=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
+            data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
         dag_graph = next(iter(DataLoader(data_list, batch_size=len(data.dags))))
         edge_index = dag_graph.edge_index
-        old_node_sequence = dag_graph.node_sequence
+        old_node_sequences = dag_graph.node_sequences
 
         m.layers[1] = pp.Graph(dag_graph)
         
         for k in range(2, max_order+1):
             # Lift order
-            node_sequence = torch.cat([old_node_sequence[edge_index[0]], old_node_sequence[edge_index[1]][:, -1:]], dim=1)
-            ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=old_node_sequence.size(0))
-            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
+            node_sequences = torch.cat([old_node_sequences[edge_index[0]], old_node_sequences[edge_index[1]][:, -1:]], dim=1)
+            ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=old_node_sequences.size(0))
+            unique_nodes, inverse_idx = torch.unique(node_sequences, dim=0, return_inverse=True)
 
             # Save for the next iteration
             edge_index = ho_index
-            old_node_sequence = node_sequence
+            old_node_sequences = node_sequences
 
             # Save aggregated higher-order graph
             mapped_ho_index = inverse_idx[ho_index]
             aggregated_ho_index, edge_weights = coalesce(mapped_ho_index, edge_attr=torch.ones(ho_index.size(1)), num_nodes=unique_nodes.size(0))
-            m.layers[k] = pp.Graph(Data(edge_index=aggregated_ho_index, num_nodes=unique_nodes.size(0), node_sequence=unique_nodes, edge_weights=edge_weights))
+            m.layers[k] = pp.Graph(Data(edge_index=aggregated_ho_index, num_nodes=unique_nodes.size(0), node_sequences=unique_nodes, edge_weights=edge_weights))
         
         return m
