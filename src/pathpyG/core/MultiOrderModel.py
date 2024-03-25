@@ -9,6 +9,7 @@ from pathpyG.utils.config import config
 from pathpyG import Graph
 from pathpyG import DAGData
 from pathpyG import TemporalGraph
+from pathpyG import IndexMap
 
 
 class MultiOrderModel:
@@ -157,5 +158,6 @@ class MultiOrderModel:
             edge_index = ho_index
 
             m.layers[k] = m.aggregate_edge_index(edge_index, node_sequences)
+            m.layers[k].mapping = IndexMap([tuple([dag_data.mapping.to_id(x) for x in v.tolist()]) for v in m.layers[k].data.node_sequences])
 
         return m
