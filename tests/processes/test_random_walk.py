@@ -10,8 +10,8 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def check_transitions(g, paths):
-    for p in paths.paths:
-        w = paths.paths[p]
+    for i in range(len(paths.dags)):
+        w = paths.dags[i].edge_index
         for i in range(w.size(1)):
             src = g.mapping.idx_to_id[w[0][i].item()]
             dst = g.mapping.idx_to_id[w[1][i].item()]

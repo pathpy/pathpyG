@@ -348,8 +348,8 @@ class RandomWalk(BaseProcess):
             data['state'] == True)]['node'].values)
 
         # generate Path
-        path = WalkData(self._network.mapping)
-        path.add_walk_seq([walk_steps[i] for i in range(len(walk_steps))])
+        path = DAGData(self._network.mapping)
+        path.append_walk([walk_steps[i] for i in range(len(walk_steps))])
         return path
 
     def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> WalkData:
@@ -382,13 +382,13 @@ class RandomWalk(BaseProcess):
         else:
             runs = run_ids
 
-        paths = WalkData(self._network.mapping)
+        paths = DAGData(self._network.mapping)
         for id in runs:
             walk_steps = list(data.loc[(data['run_id'] == id) & (
             data['state'] == True)]['node'].values)
 
             # generate Path
-            paths.add_walk_seq([walk_steps[i] for i in range(len(walk_steps))])
+            paths.append_walk([walk_steps[i] for i in range(len(walk_steps))])
             
         return paths
 
@@ -654,7 +654,7 @@ class HigherOrderRandomWalk(RandomWalk):
         else:
             runs = run_ids
         
-        paths = WalkData(mapping =  self._first_order_network.mapping)
+        paths = DAGData(mapping = self._first_order_network.mapping)
         for run in runs:
             walk_steps = list(data.loc[(data['run_id'] == run) & (
                 data['state'] == True)]['node'].values)
@@ -667,7 +667,7 @@ class HigherOrderRandomWalk(RandomWalk):
             # map higher-order nodes to first-order nodes
             for i in range(1, len(walk_steps)):
                 walk.append(walk_steps[i][-1])
-            paths.add_walk_seq(walk)
+            paths.append_walk(walk)
         return paths
 
     

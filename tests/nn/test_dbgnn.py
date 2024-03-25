@@ -12,7 +12,7 @@ from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 
 def test_bipartite_edge_index(simple_dags):
-    m = MultiOrderModel.from_DAGs(simple_dags)
+    m = MultiOrderModel.from_DAGs(simple_dags, max_order=2)
     g = m.layers[1]
     print(g.data.edge_index)
     print(g.mapping)
