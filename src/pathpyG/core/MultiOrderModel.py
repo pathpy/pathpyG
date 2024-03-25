@@ -33,7 +33,7 @@ class MultiOrderModel:
         return s
 
     @staticmethod
-    def lift_order_edge_index(edge_index: EdgeIndex | torch.Tensor, num_nodes: int | None = None) -> torch.Tensor:
+    def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int | None = None) -> torch.Tensor:
         # Since this is a complicated function, we will use the following example to explain the steps:
         # Example:
         #   edge_index = [[0, 0, 1, 1, 1, 3, 4, 5, 6],
@@ -84,8 +84,8 @@ class MultiOrderModel:
         # Example:
         #   ho_edge_dsts = [2, 3, 4, 5, 5, 8, 6, 7, 7]
         ho_edge_dsts += idx_correction
-    # tensor([[0, 0, 0, 1, 3, 4, 5, 6, 8],
-    #         [2, 3, 4, 5, 5, 8, 6, 7, 7]])
+        # tensor([[0, 0, 0, 1, 3, 4, 5, 6, 8],
+        #         [2, 3, 4, 5, 5, 8, 6, 7, 7]])
         return torch.stack([ho_edge_srcs, ho_edge_dsts], dim=0)
 
     @staticmethod
@@ -98,46 +98,36 @@ class MultiOrderModel:
         return m
 
     @staticmethod
-    def map_batch_indices(edge_index, batch, ptr):
-        row, _ = edge_index
-        mapped_index = edge_index-ptr[batch[row]]
-        return mapped_index
-
-    @staticmethod
-    def from_DAGs(data: DAGData, max_order: int = 1) -> MultiOrderModel:
+    def from_DAGs(data: pp.DAGData, max_order: int = 1) -> pp.MultiOrderModel:
         """Creates multiple higher-order De Bruijn graphs for paths in DAGData."""
-        m = MultiOrderModel()
+        m = pp.MultiOrderModel()
 
-        data_list = [Data(edge_index=dag.long()) for dag in data.dags]
-        # We use a dataloader from PyG to combine all the edge indices into a single graph with multiple disjoint subgraphs
-        # If two paths share a node, the node is duplicated in the resulting graph and the new higher order edges need to be aggregated afterwards
-        # Note that due to the `batch_size` parameter, we can also do computations on a set of paths that are too large to fit into memory at once
+        # Outsource to DAGData
+        data_list = []
+        for dag in data.dags:
+            edge_index = coalesce(dag.long())
+            unique_nodes = torch.unique(edge_index)
+            num_nodes = unique_nodes.size(0)
+            data_list.append(Data(edge_index=edge_index, node_sequence=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
         dag_graph = next(iter(DataLoader(data_list, batch_size=len(data.dags))))
-        dag_edge_index = dag_graph.edge_index
-        dag_edge_index = coalesce(dag_edge_index)
+        edge_index = dag_graph.edge_index
+        old_node_sequence = dag_graph.node_sequence
 
-        print(dag_edge_index)
-        print(dag_graph.ptr)
-        print(dag_graph.batch)
-
-        edge_index = MultiOrderModel.map_batch_indices(dag_edge_index, dag_graph.batch, dag_graph.ptr)
-        unique_nodes = torch.unique(edge_index)
-        m.layers[1] = Graph(Data(edge_index=edge_index, num_nodes=unique_nodes.size(), fo_nodes=unique_nodes.reshape(-1, 1)))
-
+        m.layers[1] = pp.Graph(dag_graph)
+        
         for k in range(2, max_order+1):
-            ho_index = MultiOrderModel.lift_order_edge_index(dag_edge_index)
-            print(ho_index)
+            # Lift order
+            node_sequence = torch.cat([old_node_sequence[edge_index[0]], old_node_sequence[edge_index[1]][:, -1:]], dim=1)
+            ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=old_node_sequence.size(0))
+            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
 
+            # Save for the next iteration
+            edge_index = ho_index
+            old_node_sequence = node_sequence
 
-            #ho_edge_index, inverse = x.unique(dim=0, return_inverse=True)
-
-            # weights of the two unique higher-order edges should be N and 3*N
-            # weights of k-th element in output = sum of all w at indices where inverse is k
-            #weights = torch.zeros(ho_edge_index.size()[0], device=config['torch']['device'], dtype=torch.long).index_add(0, inverse, w)
-     
-
-            m.layers[k] = Graph(data=Data(edge_index=dag_edge_index))
-
-            dag_edge_index = coalesce(ho_index)
-
+            # Save aggregated higher-order graph
+            mapped_ho_index = inverse_idx[ho_index]
+            aggregated_ho_index, edge_weights = coalesce(mapped_ho_index, edge_attr=torch.ones(ho_index.size(1)), num_nodes=unique_nodes.size(0))
+            m.layers[k] = pp.Graph(Data(edge_index=aggregated_ho_index, num_nodes=unique_nodes.size(0), node_sequence=unique_nodes, edge_weights=edge_weights))
+        
         return m
