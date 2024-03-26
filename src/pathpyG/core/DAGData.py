@@ -19,6 +19,7 @@ from torch_geometric.data import Data
 from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
 
+
 class DAGData:
     """Class that can be used to store multiple observations of
     directed acyclic graphs (or - as a special case - walks)
@@ -66,7 +67,7 @@ class DAGData:
 
     def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
         """Add an observation of a walk based on a list or tuple of node IDs or indices
-        
+
         Example:
                 ```py
                 import torch
@@ -82,45 +83,58 @@ class DAGData:
                 paths.append_walk(('b', 'c', 'e'), weight=1.0)
                 ```
         """
-        idx_seq = torch.tensor([ self.mapping.to_idx(v) for v in node_seq ])
-        e_i = torch.stack([torch.arange(0, len(node_seq)-1), torch.arange(1, len(node_seq))])
+        idx_seq = torch.tensor([self.mapping.to_idx(v) for v in node_seq])
+        e_i = torch.stack([torch.arange(0, len(node_seq) - 1), torch.arange(1, len(node_seq))])
 
-        self.dags.append(Data(edge_index=e_i, node_sequences=idx_seq.unsqueeze(1), num_nodes=len(node_seq), weight=torch.tensor(weight)))
+        self.dags.append(
+            Data(
+                edge_index=e_i,
+                node_sequence=idx_seq.unsqueeze(1),
+                num_nodes=len(node_seq),
+                edge_weight=torch.full((e_i.size(1),), weight),
+            )
+        )
 
-    def get_walk(self, i) -> tuple:
-        return tuple([self.mapping.to_id(v.item()) for v in self.dags[i].node_sequences.squeeze()])
+    def get_walk(self, i: int) -> tuple:
+        return tuple([self.mapping.to_id(v.item()) for v in self.dags[i].node_sequence.squeeze()])
 
-    def append_dag(self, edge_index, weight: float = 1.0) -> None:
+    def append_dag(self, edge_index: torch.Tensor, weight: float = 1.0) -> None:
         """Add an observation of a DAG based on an edge index
-        
+
         Example:
             ```py
             import torch
             import pathpyG as pp
 
             dags = pp.DAGData()
-            
+
         """
         # TODO: this is a problem if we store WALKS (which are not DAGs)!
         edge_index = coalesce(edge_index.long())
-        num_nodes = edge_index.max()+1
+        num_nodes = edge_index.max() + 1
         node_idx = torch.arange(num_nodes)
-        self.dags.append(Data(edge_index=edge_index, node_sequences=node_idx.unsqueeze(1), num_nodes=num_nodes, weight=torch.tensor(weight)))
+        self.dags.append(
+            Data(
+                edge_index=edge_index,
+                node_sequence=node_idx.unsqueeze(1),
+                num_nodes=num_nodes,
+                edge_weight=torch.full((edge_index.size(1),), weight),
+            )
+        )
 
     def map_node_seq(self, node_seq: list | tuple):
-        """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs
-        """
-        return [ self.mapping.to_id(v) for v in node_seq ]
+        """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs"""
+        return [self.mapping.to_id(v) for v in node_seq]
 
     def __str__(self) -> str:
         """Return a string representation of the DAGData object."""
         num_dags = len(self.dags)
-        weight = sum([d.weight.item() for d in self.dags])
+        weight = sum([d.edge_weight.max().item() for d in self.dags])
         s = f"DAGData with {num_dags} dags with total weight {weight}"
         return s
 
     @staticmethod
-    def from_ngram(file: str, sep: str = ',', weight: bool = True) -> DAGData:
+    def from_ngram(file: str, sep: str = ",", weight: bool = True) -> DAGData:
         dags = DAGData()
         mapping = IndexMap()
         with open(file, "r", encoding="utf-8") as f:
