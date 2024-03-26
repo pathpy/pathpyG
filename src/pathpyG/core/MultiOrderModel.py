@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
-from torch_geometric.utils import cumsum, coalesce, degree
+from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
@@ -104,7 +104,9 @@ class MultiOrderModel:
         unique_nodes, inverse_idx = torch.unique(node_sequences, dim=0, return_inverse=True)
         mapped_edge_index = inverse_idx[edge_index]
         aggregated_edge_index, edge_weight = coalesce(
-            mapped_edge_index, edge_attr=torch.ones(edge_index.size(1), device=edge_index.device), num_nodes=unique_nodes.size(0)
+            mapped_edge_index,
+            edge_attr=torch.ones(edge_index.size(1), device=edge_index.device),
+            num_nodes=unique_nodes.size(0),
         )
         data = Data(
             edge_index=aggregated_edge_index,
@@ -114,13 +116,56 @@ class MultiOrderModel:
         )
         return Graph(data)
 
+    def _iterate_lift_order(
+        self, edge_index: torch.Tensor, node_sequences: torch.Tensor, k: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Lift order by one and save the result in the layers dictionary of the object.
+        This is a helper function that should not be called directly.
+        Only use for edge_indices after the special cases have been handled
+        in the from_temporal_graph (filtering non-time-respecting paths of order 2)
+        or from_DAGs (reindexing with dataloader) functions.
+
+        Args:
+            edge_index: The edge index of the (k-1)-th order graph.
+            node_sequences: The node sequences of the (k-1)-th order graph.
+            k: The order of the graph that should be computed.
+        """
+        # Lift order
+        ho_index = self.lift_order_edge_index(edge_index, num_nodes=node_sequences.size(0))
+        node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
+
+        # Aggregate
+        self.layers[k] = self.aggregate_edge_index(ho_index, node_sequences)
+        self.layers[k].mapping = IndexMap(
+            [tuple([self.layers[1].mapping.to_id(x) for x in v.tolist()]) for v in self.layers[k].data.node_sequences]
+        )
+        return ho_index, node_sequences
+
     @staticmethod
     def from_temporal_graph(g: TemporalGraph, delta: float | int = 1, max_order: int = 1) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
+        edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
+        node_sequences = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
+        m.layers[1] = m.aggregate_edge_index(edge_index, node_sequences)
 
-        # TODO: add higher-order layers
-        # m.layers.append(...)
+        if max_order > 1:
+            # Compute null model
+            null_model_edge_index = m.lift_order_edge_index(edge_index, num_nodes=node_sequences.size(0))
+            # Update node sequences
+            node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
+            # Remove non-time-respecting higher-order edges
+            time_diff = timestamps[edge_index[1]] - timestamps[edge_index[0]]
+            non_negative_mask = time_diff > 0
+            delta_mask = time_diff <= delta
+            time_respecting_mask = non_negative_mask & delta_mask
+            edge_index = null_model_edge_index[:, time_respecting_mask]
+            # Aggregate
+            m.layers[2] = m.aggregate_edge_index(edge_index, node_sequences)
+
+            for k in range(3, max_order + 1):
+                edge_index, node_sequences = m._iterate_lift_order(edge_index, node_sequences, k)
+
         return m
 
     @staticmethod
@@ -135,14 +180,8 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # Outsource to DAGData
-        # data_list = []
-        # for dag in data.dags:
-        #     edge_index = coalesce(dag.long())
-        #     unique_nodes = torch.unique(edge_index)
-        #     num_nodes = unique_nodes.size(0)
-        #     data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config['torch']['device'])
+        # We assume that the DAGs are sorted and that walks are remapped to a DAG
+        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
 
@@ -150,14 +189,6 @@ class MultiOrderModel:
         m.layers[1].mapping = dag_data.mapping
 
         for k in range(2, max_order + 1):
-            # Lift order
-            ho_index = m.lift_order_edge_index(edge_index, num_nodes=node_sequences.size(0))
-            node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
-
-            # Save for the next iteration
-            edge_index = ho_index
-
-            m.layers[k] = m.aggregate_edge_index(edge_index, node_sequences)
-            m.layers[k].mapping = IndexMap([tuple([dag_data.mapping.to_id(x) for x in v.tolist()]) for v in m.layers[k].data.node_sequences])
+            edge_index, node_sequences = m._iterate_lift_order(edge_index, node_sequences, k)
 
         return m
