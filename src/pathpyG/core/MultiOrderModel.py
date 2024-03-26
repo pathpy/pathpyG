@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import torch
-
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree
@@ -11,6 +10,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.DAGData import DAGData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
+
 
 class MultiOrderModel:
     """MultiOrderModel based on torch_geometric.Data."""
@@ -119,9 +119,8 @@ class MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
 
-        # We assume 
-        second_order_edge_index = m.lift_order_edge_index(g.data.edge_index, num_nodes=g.data.num_nodes)
-
+        # TODO: add higher-order layers
+        # m.layers.append(...)
         return m
 
     @staticmethod
@@ -136,7 +135,13 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # We assume that each DAG is sorted and contains the node sequences!
+        # Outsource to DAGData
+        # data_list = []
+        # for dag in data.dags:
+        #     edge_index = coalesce(dag.long())
+        #     unique_nodes = torch.unique(edge_index)
+        #     num_nodes = unique_nodes.size(0)
+        #     data_list.append(Data(edge_index=edge_index, node_sequences=unique_nodes.unsqueeze(1), num_nodes=num_nodes))
         dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config['torch']['device'])
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
