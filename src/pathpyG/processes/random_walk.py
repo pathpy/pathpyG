@@ -532,7 +532,7 @@ class HigherOrderRandomWalk(RandomWalk):
         VoseAliasSampling, RandomWalk, BaseProcess
     """
 
-    def __init__(self, higher_order_network: HigherOrderGraph, first_order_network, weight: Optional[Weight] = None, restart_prob: float = 0) -> None:
+    def __init__(self, higher_order_network: Graph, first_order_network, weight: Optional[Weight] = None, restart_prob: float = 0) -> None:
         """Creates a biased random walk process in a network.
 
             Parameters
@@ -629,7 +629,7 @@ class HigherOrderRandomWalk(RandomWalk):
         return (current_node, previous_node)
 
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> WalkData:
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> DAGData:
         """Returns paths that represent the sequences of (first-order) nodes traversed by random walks with given run ids.
 
         Parameters
