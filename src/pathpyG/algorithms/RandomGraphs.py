@@ -143,11 +143,11 @@ def Molloy_Reed(
     edges = torch.stack([stubs[i::2] for i in range(2)], dim=-1)
 
     # Remove self-loops, save the removed edges to stubs
-    print(edges)
+    print('Edges first:', edges)
     stubs = edges[edges[:, 0] == edges[:, 1]].reshape(-1)
     edges = edges[edges[:, 0] != edges[:, 1]]
-    print(edges)
-    print(stubs)
+    print('Edges after first self-loop removal:', edges)
+    print('Stubs after first self-loop removal:', stubs)
 
     # Remove repeated edges, save the removed edges to stubs
     # edges, counts = edges.unique(dim=0, return_counts=True)
@@ -160,18 +160,23 @@ def Molloy_Reed(
         
         # remove a random edge and add the nodes to stubs
         removed_edge = edges[torch.randint(edges.shape[0], (1,))]
+        print('Removed edge:', removed_edge)
         stubs = torch.cat((stubs, removed_edge.squeeze()), dim=0)
         # keep only the edges that don't need to be removed
         # remove also the oposite order of the removed edge
         # edges = edges[~torch.all(edges == removed_edge.squeeze(), dim=1)]
         # edges = edges[~torch.all(edges == removed_edge.flip(0).squeeze(), dim=1)]
+        print('Stubs after edge removal:', stubs)
 
         # Pair up the stubs to form edges with the missing stubs
         edges = torch.cat((edges, stubs[torch.randperm(len(stubs))].reshape(-1, 2)), dim=0)
+        print('Edges after edge removal and restubbing:', edges)
 
         # Remove self-loops, save the removed edges to stubs
         stubs = edges[edges[:, 0] == edges[:, 1]].reshape(-1)
         edges = edges[edges[:, 0] != edges[:, 1]]
+        print('Edges after second self-loop removal:', edges)
+        print('Stubs after second self-loop removal:', stubs)
 
         # Remove repeated edges, save the removed edges to stubs
         # print('---')
@@ -191,11 +196,12 @@ def Molloy_Reed(
     adjacency_matrix = torch.zeros((len(nodes), len(nodes)))
 
     # Fill the adjacency matrix based on the edges
-    adjacency_matrix[edges[:, 0], edges[:, 1]] = 1
+    adjacency_matrix[edges[:, 0], edges[:, 1]] += 1
 
     # Convert the adjacency matrix to an edge list
     final_edges = adjacency_matrix.nonzero().t()
 
+    print(final_edges)
     # Create a graph from the edge list
     g = pp.Graph.from_edge_index(final_edges, mapping=mapping)
 
