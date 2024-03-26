@@ -41,7 +41,7 @@ class TemporalGraph(Graph):
             src=data.src[sort_index],
             dst=data.dst[sort_index],
             t=t_sorted
-        )
+        ).to(config['torch']['device'])
 
         if mapping is not None:
             self.mapping = mapping

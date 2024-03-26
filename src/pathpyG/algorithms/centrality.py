@@ -130,13 +130,13 @@ def path_visitation_probabilities(paths):
     # Log.add('finished.', Severity.INFO)
     return visit_probabilities
 
-def shortest_paths(paths):
+def temporal_shortest_paths(g: TemporalGraph) -> defaultdict:
     """
     Calculates all shortest paths between all pairs of nodes 
     based on a set of empirically observed paths.
     """
-    s_p = defaultdict(lambda: defaultdict(set))
-    s_p_lengths = defaultdict(lambda: defaultdict(lambda: _np.inf))
+    sp = defaultdict(lambda: defaultdict(set))
+    sp_lengths = torch.full((g.N, g.N), float('inf'))
 
     p_length = 1
     index, edge_weights = paths.edge_index_k_weighted(k=p_length)

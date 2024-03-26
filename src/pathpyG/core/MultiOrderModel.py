@@ -93,8 +93,9 @@ class MultiOrderModel:
 
         return ho_index, ho_edge_weight
 
+    @staticmethod
     def aggregate_edge_index(
-        self, edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None
+        edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None
     ) -> Graph:
         """
         Aggregate the possibly duplicated edges in the (higher-order) edge index and return a graph object
@@ -126,14 +127,14 @@ class MultiOrderModel:
         )
         return Graph(data)
 
-    def _iterate_lift_order(
-        self,
+    @staticmethod
+    def iterate_lift_order(
         edge_index: torch.Tensor,
         node_sequence: torch.Tensor,
-        edge_weight: torch.Tensor,
-        k: int,
+        mapping: IndexMap,
+        edge_weight: torch.Tensor | None = None,
         aggr: str = "src",
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, Graph]:
         """Lift order by one and save the result in the layers dictionary of the object.
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
@@ -148,36 +149,40 @@ class MultiOrderModel:
             aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
         """
         # Lift order
-        ho_index, edge_weight = self.lift_order_edge_index_weighted(
-            edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
-        )
+        if edge_weight is None:
+            ho_index = MultiOrderModel.lift_order_edge_index(
+                edge_index, num_nodes=node_sequence.size(0))
+        else:
+            ho_index, edge_weight = MultiOrderModel.lift_order_edge_index_weighted(
+                edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
+            )
         node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
 
         # Aggregate
-        self.layers[k] = self.aggregate_edge_index(ho_index, node_sequence, edge_weight)
-        self.layers[k].mapping = IndexMap(
-            [tuple([self.layers[1].mapping.to_id(x) for x in v.tolist()]) for v in self.layers[k].data.node_sequence]
+        gk = MultiOrderModel.aggregate_edge_index(ho_index, node_sequence, edge_weight)
+        gk.mapping = IndexMap(
+            [tuple([mapping.to_id(x) for x in v.tolist()]) for v in gk.data.node_sequence]
         )
-        return ho_index, node_sequence, edge_weight
+        return ho_index, node_sequence, edge_weight, gk
 
     @staticmethod
-    def from_temporal_graph(g: TemporalGraph, delta: float | int = 1, max_order: int = 1) -> MultiOrderModel:
+    def from_temporal_graph(g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = 'edge_weight') -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
         edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
         node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
-        if g.data.edge_attr is not None:
-            edge_weight = g.data.edge_attr
+        if weight in g.data:
+            edge_weight = g.data[weight]
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-        m.layers[1] = m.aggregate_edge_index(
+        m.layers[1] = MultiOrderModel.aggregate_edge_index(
             edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
         )
         m.layers[1].mapping = g.mapping
 
         if max_order > 1:
             # Compute null model
-            null_model_edge_index, null_model_edge_weight = m.lift_order_edge_index_weighted(
+            null_model_edge_index, null_model_edge_weight = MultiOrderModel.lift_order_edge_index_weighted(
                 edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr="src"
             )
             # Update node sequences
@@ -190,7 +195,7 @@ class MultiOrderModel:
             edge_index = null_model_edge_index[:, time_respecting_mask]
             edge_weight = null_model_edge_weight[time_respecting_mask]
             # Aggregate
-            m.layers[2] = m.aggregate_edge_index(
+            m.layers[2] = MultiOrderModel.aggregate_edge_index(
                 edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
             )
             m.layers[2].mapping = IndexMap(
@@ -198,9 +203,10 @@ class MultiOrderModel:
             )
 
             for k in range(3, max_order + 1):
-                edge_index, node_sequence, edge_weight = m._iterate_lift_order(
-                    edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight, k=k, aggr="src"
+                edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
+                    edge_index=edge_index, node_sequence=node_sequence, mapping=m.layers[1].mapping, edge_weight=edge_weight, aggr="src"
                 )
+                m.layers[k] = gk
 
         return m
 
@@ -233,14 +239,15 @@ class MultiOrderModel:
         elif mode == "propagation":
             aggr = "src"
 
-        m.layers[1] = m.aggregate_edge_index(
+        m.layers[1] = MultiOrderModel.aggregate_edge_index(
             edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
         )
         m.layers[1].mapping = dag_data.mapping
 
         for k in range(2, max_order + 1):
-            edge_index, node_sequence, edge_weight = m._iterate_lift_order(
-                edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight, k=k, aggr=aggr
+            edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
+                edge_index=edge_index, node_sequence=node_sequence, mapping=m.layers[1].mapping, edge_weight=edge_weight, aggr=aggr
             )
+            m.layers[k] = gk
 
         return m
