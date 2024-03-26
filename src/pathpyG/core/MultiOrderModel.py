@@ -148,6 +148,7 @@ class MultiOrderModel:
         edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
         node_sequences = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
         m.layers[1] = m.aggregate_edge_index(edge_index, node_sequences)
+        m.layers[1].mapping = g.mapping
 
         if max_order > 1:
             # Compute null model
@@ -155,13 +156,16 @@ class MultiOrderModel:
             # Update node sequences
             node_sequences = torch.cat([node_sequences[edge_index[0]], node_sequences[edge_index[1]][:, -1:]], dim=1)
             # Remove non-time-respecting higher-order edges
-            time_diff = timestamps[edge_index[1]] - timestamps[edge_index[0]]
+            time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
             non_negative_mask = time_diff > 0
             delta_mask = time_diff <= delta
             time_respecting_mask = non_negative_mask & delta_mask
             edge_index = null_model_edge_index[:, time_respecting_mask]
             # Aggregate
             m.layers[2] = m.aggregate_edge_index(edge_index, node_sequences)
+            m.layers[2].mapping = IndexMap(
+                [tuple([m.layers[1].mapping.to_id(x) for x in v.tolist()]) for v in m.layers[2].data.node_sequences]
+            )
 
             for k in range(3, max_order + 1):
                 edge_index, node_sequences = m._iterate_lift_order(edge_index, node_sequences, k)
