@@ -1,15 +1,18 @@
-"""Algorithms for the analysis of causal path structures in temporal graphs."""
-
+"""Algorithms for the analysis of time-respecting paths in temporal graphs."""
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Union, List
 from collections import defaultdict
+from torch_geometric.utils import degree, sort_edge_index
 
 import numpy as np
 import torch
 
 from pathpyG import Graph
-from pathpyG import TemporalGraph
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.MultiOrderModel import MultiOrderModel
+
 from pathpyG import config
 
 
@@ -105,3 +108,95 @@ def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
             # TODO: Remove redundant zero-degree neighbors of all nodes
             causal_trees[v] = torch.IntTensor([src, dst]).to(config['torch']['device'])
     return causal_trees
+
+
+def routes_from_node(g: Graph, v: int, node_sequence: tensor, mapping: IndexMap):
+    """
+    Construct all paths from node v to any leaf node in a DAG
+
+    Parameters
+    ----------
+    v:
+        node from which to start
+    node_mapping: dict
+        an optional mapping from node to a different set.
+
+    Returns
+    -------
+    Counter
+    """
+    # Collect temporary paths, indexed by the target node
+    temp_paths = defaultdict(list)
+    temp_paths[v] = [ [mapping.to_id(v) for v in node_sequence[v].tolist()] ]
+
+    # set of unprocessed nodes
+    queue = {v}
+
+    while queue:
+        # take one unprocessed node
+        x = queue.pop()
+
+        # successors of x expand all temporary
+        # paths, currently ending in x
+        c = 0
+        for w in g.successors(x):
+            c += 1
+            for p in temp_paths[x]:
+                temp_paths[w].append(p + [mapping.to_id(node_sequence[w][1].item())])
+            queue.add(w)
+        if c > 0:
+            del temp_paths[x]
+    # flatten dictionary
+    return temp_paths    
+
+
+def time_respecting_paths(g: TemporalGraph, delta: float) -> list:
+    """
+    Calculate all longest time-respecting paths in a temporal graph.
+    """
+    #sp = defaultdict(lambda: defaultdict(set))
+    #sp_lengths = torch.full((g.N, g.N), float('inf'))
+    #sp_lengths.fill_diagonal_(float(0))
+    #out_degree = degree(g.data.edge_index[0],num_nodes=g.N)
+    in_degree = degree(g.data.edge_index[1], num_nodes=g.N)
+
+    #sp_lengths[out_degree == 0]=0
+    #sp_lengths[:,in_degree == 0]=0
+    #print(sp_lengths)
+
+    # first-order edge index
+    edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
+    node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
+
+    # second-order edge index
+    null_model_edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
+    # Update node sequences
+    node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+    # Remove non-time-respecting higher-order edges
+    time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
+    non_negative_mask = time_diff > 0
+    delta_mask = time_diff <= delta
+    time_respecting_mask = non_negative_mask & delta_mask
+    edge_index = null_model_edge_index[:, time_respecting_mask]
+    
+    # identify root nodes with in-degree zero
+    in_degree = degree(edge_index[1], num_nodes=g.M)
+    roots = torch.where(in_degree == 0)[0]
+
+    # create traversable graph
+    event_dag = Graph.from_edge_index(edge_index)
+    print(event_dag)
+
+    # count all longest time-respecting paths in the temporal graph
+    paths = []
+    i = 0
+    for r in roots:
+        if i % 10 == 0:
+            print(f'Processing root {i+1}/{roots.size(0)}')
+        root_paths = routes_from_node(event_dag, r.item(), node_sequence, g.mapping)
+        # print(f'\t found {len(root_paths)} paths')
+        for x in root_paths:
+            for p in root_paths[x]:
+                paths.append(p)
+        i += 1
+    return paths
