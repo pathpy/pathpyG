@@ -31,10 +31,10 @@ def test_add_walk_seq():
     paths.append_walk(('b', 'c', 'd'), weight=1.0)
     paths.append_walk(('b', 'c', 'e'), weight=1.0)
 
-    assert equal(paths.dags[0].edge_index, coalesce(tensor([[0, 1], [1, 3]])))
-    assert equal(paths.dags[1].edge_index, coalesce(tensor([[0, 1], [1, 4]])))
-    assert equal(paths.dags[2].edge_index, coalesce(tensor([[2, 1], [1, 3]])))
-    assert equal(paths.dags[3].edge_index, coalesce(tensor([[2, 1], [1, 4]])))
+    assert paths.get_walk(0) == ('a', 'c', 'd')
+    assert paths.get_walk(1) == ('a', 'c', 'e')
+    assert paths.get_walk(2) == ('b', 'c', 'd')
+    assert paths.get_walk(3) == ('b', 'c', 'e')
 
     assert equal(paths.dags[0].weight, tensor(1.0))
     assert equal(paths.dags[1].weight, tensor(1.0))

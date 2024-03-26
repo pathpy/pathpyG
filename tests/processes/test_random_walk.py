@@ -11,11 +11,9 @@ from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def check_transitions(g, paths):
     for i in range(len(paths.dags)):
-        w = paths.dags[i].edge_index
-        for i in range(w.size(1)):
-            src = g.mapping.idx_to_id[w[0][i].item()]
-            dst = g.mapping.idx_to_id[w[1][i].item()]
-            assert g.is_edge(src, dst)
+        w = paths.get_walk(i)
+        for j in range(len(w)-1):
+            assert g.is_edge(w[j], w[j+1])
 
 def test_random_walk(simple_graph):
     rw = RandomWalk(simple_graph)

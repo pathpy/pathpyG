@@ -82,9 +82,13 @@ class DAGData:
                 paths.append_walk(('b', 'c', 'e'), weight=1.0)
                 ```
         """
-        idx_seq = [ self.mapping.to_idx(v) for v in node_seq ]
-        e_i = torch.tensor([idx_seq[:-1], idx_seq[1:]])
-        self.append_dag(e_i, weight)
+        idx_seq = torch.tensor([ self.mapping.to_idx(v) for v in node_seq ])
+        e_i = torch.stack([torch.arange(0, len(node_seq)-1), torch.arange(1, len(node_seq))])
+
+        self.dags.append(Data(edge_index=e_i, node_sequences=idx_seq.unsqueeze(1), num_nodes=len(node_seq), weight=torch.tensor(weight)))
+
+    def get_walk(self, i) -> tuple:
+        return tuple([self.mapping.to_id(v.item()) for v in self.dags[i].node_sequences.squeeze()])
 
     def append_dag(self, edge_index, weight: float = 1.0) -> None:
         """Add an observation of a DAG based on an edge index
