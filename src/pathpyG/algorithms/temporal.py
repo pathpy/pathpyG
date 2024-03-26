@@ -1,7 +1,7 @@
 """Algorithms for the analysis of time-respecting paths in temporal graphs."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, Union, List
+from typing import TYPE_CHECKING, Dict, Union, List, Tuple
 from collections import defaultdict
 from torch_geometric.utils import degree, sort_edge_index
 
@@ -147,22 +147,14 @@ def routes_from_node(g: Graph, v: int, node_sequence: tensor, mapping: IndexMap)
         if c > 0:
             del temp_paths[x]
     # flatten dictionary
-    return temp_paths    
+    return temp_paths
 
 
-def time_respecting_paths(g: TemporalGraph, delta: float) -> list:
+def time_respecting_paths(g: TemporalGraph, delta: float) -> defaultdict:
     """
     Calculate all longest time-respecting paths in a temporal graph.
     """
-    #sp = defaultdict(lambda: defaultdict(set))
-    #sp_lengths = torch.full((g.N, g.N), float('inf'))
-    #sp_lengths.fill_diagonal_(float(0))
-    #out_degree = degree(g.data.edge_index[0],num_nodes=g.N)
     in_degree = degree(g.data.edge_index[1], num_nodes=g.N)
-
-    #sp_lengths[out_degree == 0]=0
-    #sp_lengths[:,in_degree == 0]=0
-    #print(sp_lengths)
 
     # first-order edge index
     edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
@@ -188,15 +180,40 @@ def time_respecting_paths(g: TemporalGraph, delta: float) -> list:
     print(event_dag)
 
     # count all longest time-respecting paths in the temporal graph
-    paths = []
+    paths = defaultdict(lambda: list())
     i = 0
     for r in roots:
         if i % 10 == 0:
             print(f'Processing root {i+1}/{roots.size(0)}')
         root_paths = routes_from_node(event_dag, r.item(), node_sequence, g.mapping)
-        # print(f'\t found {len(root_paths)} paths')
         for x in root_paths:
             for p in root_paths[x]:
-                paths.append(p)
+                paths[len(p)-1].append(p)
         i += 1
     return paths
+
+def temporal_shortest_paths(g: TemporalGraph, delta: float) -> Tuple[defaultdict, defaultdict]:
+    """Calculate shortest time-respecting paths between all pairs of nodes in a temporal graph"""
+    # calculate all longest time-respecting paths
+    paths = time_respecting_paths(g, delta)
+
+    # Todo: expand sub-paths contained in longest paths
+
+    # calculate shortest time-respecting paths
+    s_p = defaultdict(lambda: defaultdict(set))
+    s_p_lengths = defaultdict(lambda: defaultdict(lambda: np.inf))
+
+    for p_length in paths:
+        for p in paths[p_length]:
+            s = p[0]
+            d = p[-1]
+            # we found a shorter path of length l between s and d
+            if p_length < s_p_lengths[s][d]:
+                # update shortest path length
+                s_p_lengths[s][d] = p_length
+                # redefine set
+                s_p[s][d] = set()
+                s_p[s][d].add(tuple(p))
+            elif p_length == s_p_lengths[s][d]:
+                s_p[s][d].add(tuple(p))
+    return s_p, s_p_lengths
