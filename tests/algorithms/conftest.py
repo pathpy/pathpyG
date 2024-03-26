@@ -10,8 +10,8 @@ from pathpyG import DAGData
 
 @pytest.fixture
 def simple_graph() -> Graph:
-    """Return a simple directed graph."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+    """Return a simple undirected graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'a'), ('b', 'c'), ('c', 'b'), ('a', 'c'), ('c', 'a')], is_undirected=True)
 
 
 @pytest.fixture
@@ -22,12 +22,13 @@ def simple_temporal_graph() -> TemporalGraph:
 
 
 @pytest.fixture
-def simple_paths_centralities() -> DAGData:
+def simple_dags() -> DAGData:
     paths = DAGData()
-    paths.append_dag(torch.tensor([[2, 1, 3], [1, 3, 5]]))
-    paths.append_dag(torch.tensor([[0, 1], [1, 3]]))
-    paths.append_dag(torch.tensor([[3], [4]]))
+    paths.append_dag(torch.tensor([[2, 1, 3], [1, 3, 5]]), weight=1.0)
+    paths.append_dag(torch.tensor([[0, 1], [1, 3]]), weight=1.0)
+    paths.append_dag(torch.tensor([[3], [4]]), weight=1.0)
     return paths
+
 
 @pytest.fixture
 def long_temporal_graph() -> TemporalGraph:

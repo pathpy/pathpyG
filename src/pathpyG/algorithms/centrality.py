@@ -152,7 +152,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta, normalized=False):
 
     # Log.add('Calculating betweenness in paths ...', Severity.INFO)
 
-    sp, sp_lengths = temporal_shortest_paths(g, delta)
+    sp, _ = temporal_shortest_paths(g, delta)
 
     for s in sp:
         for d in sp[s]:
@@ -171,46 +171,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta, normalized=False):
     return node_centralities
 
 
-def path_distance_matrix(paths):
-    """
-    Calculates shortest path distances between all pairs of
-    nodes based on the observed shortest paths (and subpaths)
-    """
-    dist = defaultdict(lambda: defaultdict(lambda: _np.inf))
-    # Log.add('Calculating distance matrix based on empirical paths ...', Severity.INFO)
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)] # NOTE: modify once set of nodes can be obtained from path obeject
-    for v in nodes:
-        dist[v][v] = 0
-
-    p_length = 1
-    index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-    sources = index[0]
-    destinations = index[-1]
-    for e, (s, d) in enumerate(zip(sources, destinations)):
-        s = s.item()
-        d = d.item()
-        dist[s][d] = p_length
-        # s_p[s][d] = set({torch.tensor([s,d])})
-    p_length += 1
-    while True: # until max path length
-        try:
-            index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-            sources = index[0, :, 0]
-            destinations = index[1, :, -1]
-            for e, (s, d) in enumerate(zip(sources, destinations)):
-                s = s.item()
-                d = d.item()
-                if p_length < dist[s][d]:
-                    # update shortest path length
-                    dist[s][d] = p_length
-            p_length += 1
-        except IndexError:
-            #print(f"IndexError occurred. Reached maximum path length of {p_length}")
-            break
-    return dist
-
-
-def path_closeness_centrality(paths, normalized=False):
+def temporal_closeness_centrality(g: TemporalGraph, delta, normalized=False):
     """Calculates the closeness of nodes based on observed shortest paths
     between all nodes
 
@@ -225,23 +186,22 @@ def path_closeness_centrality(paths, normalized=False):
     dict
     """
     node_centralities = defaultdict(lambda: 0)
-    distances = path_distance_matrix(paths)
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)] # NOTE: modify once set of nodes can be obtained from path obeject
+    sp, sp_lengths = temporal_shortest_paths(g, delta)
 
-    for x in nodes:
+    for x in g.nodes:
         # calculate closeness centrality of x
-        for d in nodes:
-            if x != d and distances[d][x] < _np.inf:
-                node_centralities[x] += 1.0 / distances[d][x]
+        for d in g.nodes:
+            if x != d and sp_lengths[d][x] < _np.inf:
+                node_centralities[x] += 1.0 / sp_lengths[d][x]
 
     # assign zero values to nodes not occurring
     
-    for v in nodes:
+    for v in g.nodes:
         node_centralities[v] += 0.0
 
     if normalized:
         m = max(node_centralities.values())
-        for v in nodes:
+        for v in g.nodes:
             node_centralities[v] /= m
 
     return node_centralities
