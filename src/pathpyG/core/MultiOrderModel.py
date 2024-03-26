@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import torch
-from torch_geometric.data import Data, DataLoader
+
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree
 
-from pathpyG import Graph
-from pathpyG import DAGData
-from pathpyG import TemporalGraph
-
+from pathpyG.utils.config import config
+from pathpyG.core.Graph import Graph
+from pathpyG.core.DAGData import DAGData
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.IndexMap import IndexMap
 
 class MultiOrderModel:
     """MultiOrderModel based on torch_geometric.Data."""
@@ -100,14 +103,14 @@ class MultiOrderModel:
         """
         unique_nodes, inverse_idx = torch.unique(node_sequences, dim=0, return_inverse=True)
         mapped_edge_index = inverse_idx[edge_index]
-        aggregated_edge_index, edge_weights = coalesce(
-            mapped_edge_index, edge_attr=torch.ones(edge_index.size(1)), num_nodes=unique_nodes.size(0)
+        aggregated_edge_index, edge_weight = coalesce(
+            mapped_edge_index, edge_attr=torch.ones(edge_index.size(1), device=edge_index.device), num_nodes=unique_nodes.size(0)
         )
         data = Data(
             edge_index=aggregated_edge_index,
             num_nodes=unique_nodes.size(0),
             node_sequences=unique_nodes,
-            edge_weights=edge_weights,
+            edge_weight=edge_weight,
         )
         return Graph(data)
 
@@ -134,11 +137,12 @@ class MultiOrderModel:
         m = MultiOrderModel()
 
         # We assume that each DAG is sorted and contains the node sequences!
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags))))
+        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config['torch']['device'])
         edge_index = dag_graph.edge_index
         node_sequences = dag_graph.node_sequences
 
         m.layers[1] = m.aggregate_edge_index(edge_index, node_sequences)
+        m.layers[1].mapping = dag_data.mapping
 
         for k in range(2, max_order + 1):
             # Lift order
@@ -149,5 +153,6 @@ class MultiOrderModel:
             edge_index = ho_index
 
             m.layers[k] = m.aggregate_edge_index(edge_index, node_sequences)
+            m.layers[k].mapping = IndexMap([tuple([dag_data.mapping.to_id(x) for x in v.tolist()]) for v in m.layers[k].data.node_sequences])
 
         return m

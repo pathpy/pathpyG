@@ -6,6 +6,8 @@ from torch.nn import Linear, ModuleList, Module
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GCNConv
 
+from pathpyG.core.Graph import Graph
+from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 class BipartiteGraphOperator(MessagePassing):
     def __init__(self, in_ch, out_ch):
@@ -91,21 +93,23 @@ class DBGNN(Module):
         return x
     
     @staticmethod
-    def generate_bipartite_edge_index(g: HigherOrderGraph, g2: HigherOrderGraph, mapping: str = 'last') -> torch.Tensor:
+    def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = 'last') -> torch.Tensor:
         """Generate edge_index for bipartite graph connecting nodes of a second-order graph to first-order nodes."""
 
         if mapping == 'last':
             bipartide_edge_index = torch.tensor(
-                [list(range(g2.N)),
-                [g.mapping.to_idx(i[1]) for i in g2.mapping.idx_to_id.values()]]
+                [list(range(g2.N)), [v[1] for v in g2.data.node_sequences]]
                 )
 
         elif mapping == 'first':
-            bipartide_edge_index = torch.tensor([list(range(g2.N)),
-                                    [g.mapping.to_idx(i[0]) for i in g2.mapping.idx_to_id.values()]])
+            bipartide_edge_index = torch.tensor(
+                [list(range(g2.N)), [v[0] for v in g2.data.node_sequences]]
+            )
         else:
-            bipartide_edge_index = torch.tensor([list(g2.mapping.idx_to_id.keys()) + list(g2.mapping.idx_to_id.keys()),
-                                    [g.mapping.to_idx(i[0]) for i in g2.mapping.idx_to_id.values()] + [i[1] for i in g2.mapping.idx_to_id.values()]])
+            bipartide_edge_index = torch.tensor(
+                [list(range(g2.N)) + list(range(g2.N)),
+                [v[0] for v in g2.data.node_sequences] + [v[1] for v in g2.data.node_sequences]]
+            )
 
         return bipartide_edge_index
 

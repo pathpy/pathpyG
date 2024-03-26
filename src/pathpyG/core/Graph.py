@@ -62,7 +62,8 @@ class Graph:
             self.mapping = mapping
 
         # set num_nodes property
-        data.num_nodes = data.edge_index.max().item()+1
+        if 'num_nodes' not in data:
+            data.num_nodes = data.edge_index.max().item()+1
 
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):

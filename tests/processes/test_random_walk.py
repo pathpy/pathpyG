@@ -5,13 +5,13 @@ from torch import IntTensor, equal, tensor
 
 from pathpyG import config
 from pathpyG.processes.random_walk import RandomWalk, HigherOrderRandomWalk
-from pathpyG.core.WalkData import WalkData
+from pathpyG.core.DAGData import DAGData
 from pathpyG.core.Graph import Graph
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def check_transitions(g, paths):
-    for p in paths.paths:
-        w = paths.paths[p]
+    for i in range(len(paths.dags)):
+        w = paths.dags[i].edge_index
         for i in range(w.size(1)):
             src = g.mapping.idx_to_id[w[0][i].item()]
             dst = g.mapping.idx_to_id[w[1][i].item()]
@@ -34,7 +34,7 @@ def test_transition_matrix(simple_graph):
 
     assert (rw.transition_matrix.data == 1.).all()
 
-def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, HigherOrderGraph]):
+def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]):
     g = simple_second_order_graph[0]
     g2 = simple_second_order_graph[1]
     rw = HigherOrderRandomWalk(g2, g, weight=True)
