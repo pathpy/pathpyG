@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Tuple
 
 import pytest
-import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.DAGData import DAGData
 from pathpyG.core.MultiOrderModel import MultiOrderModel
+
 
 @pytest.fixture
 def simple_graph() -> Graph:
@@ -28,6 +27,7 @@ def simple_graph() -> Graph:
         ('n', 'o'),
         ('o', 'a')
     ])
+
 
 @pytest.fixture
 def simple_second_order_graph() -> Tuple[Graph, Graph]:
