@@ -36,7 +36,7 @@ def test_add_walk_seq():
     assert paths.get_walk(2) == ('b', 'c', 'd')
     assert paths.get_walk(3) == ('b', 'c', 'e')
 
-    assert equal(paths.dags[0].weight, tensor(1.0))
-    assert equal(paths.dags[1].weight, tensor(1.0))
-    assert equal(paths.dags[2].weight, tensor(1.0))
-    assert equal(paths.dags[3].weight, tensor(1.0))
+    assert equal(paths.dags[0].edge_weight.max(), tensor(1.0))
+    assert equal(paths.dags[1].edge_weight.max(), tensor(1.0))
+    assert equal(paths.dags[2].edge_weight.max(), tensor(1.0))
+    assert equal(paths.dags[3].edge_weight.max(), tensor(1.0))
