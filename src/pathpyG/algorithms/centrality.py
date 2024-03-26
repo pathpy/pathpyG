@@ -48,6 +48,7 @@ from pathpyG.core.DAGData import DAGData
 from networkx import centrality
 
 from collections import defaultdict, Counter
+from pathpyG.algorithms.temporal import temporal_shortest_paths, time_respecting_paths
 import numpy as _np
 import torch
 from torch import tensor
@@ -130,47 +131,8 @@ def path_visitation_probabilities(paths):
     # Log.add('finished.', Severity.INFO)
     return visit_probabilities
 
-def temporal_shortest_paths(g: TemporalGraph) -> defaultdict:
-    """
-    Calculates all shortest paths between all pairs of nodes 
-    based on a set of empirically observed paths.
-    """
-    sp = defaultdict(lambda: defaultdict(set))
-    sp_lengths = torch.full((g.N, g.N), float('inf'))
 
-    p_length = 1
-    index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-    sources = index[0]
-    destinations = index[-1]
-    for e, (s, d) in enumerate(zip(sources, destinations)):
-        s = s.item()
-        d = d.item()
-        s_p_lengths[s][d] = p_length
-        s_p[s][d] = set({tensor([s, d])})
-    p_length += 1
-    while True: # until max path length
-        try:
-            index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-            sources = index[0, :, 0]
-            destinations = index[1, :, -1]
-            for e, (s, d) in enumerate(zip(sources, destinations)):
-                s = s.item()
-                d = d.item()
-                if p_length < s_p_lengths[s][d]:
-                    # update shortest path length
-                    s_p_lengths[s][d] = p_length
-                    # redefine set
-                    s_p[s][d] = {paths.walk_to_node_seq(index[:, e])}
-                elif p_length == s_p_lengths[s][d]:
-                    s_p[s][d].add(paths.walk_to_node_seq(index[:, e]))
-            p_length += 1
-        except IndexError:
-            # print(f"IndexError occurred. Reached maximum path length of {p_length}")
-            break
-    return s_p
-
-
-def path_betweenness_centrality(paths, normalized=False):
+def temporal_betweenness_centrality(g: TemporalGraph, delta, normalized=False):
     """Calculates the betweenness of nodes based on observed shortest paths
     between all pairs of nodes
 
@@ -190,21 +152,20 @@ def path_betweenness_centrality(paths, normalized=False):
 
     # Log.add('Calculating betweenness in paths ...', Severity.INFO)
 
-    all_paths = shortest_paths(paths)
+    sp, sp_lengths = temporal_shortest_paths(g, delta)
 
-    for s in all_paths:
-        for d in all_paths[s]:
-            for p in all_paths[s][d]:
+    for s in sp:
+        for d in sp[s]:
+            for p in sp[s][d]:
                 for x in p[1:-1]:
                     if s != d != x:
-                        node_centralities[x.item()] += 1.0 / len(all_paths[s][d])
+                        node_centralities[x] += 1.0 / len(sp[s][d])
     if normalized:
         max_centr = max(node_centralities.values())
         for v in node_centralities:
             node_centralities[v] /= max_centr
     # assign zero values to nodes not occurring on shortest paths
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)]
-    for v in nodes:
+    for v in g.nodes:
         node_centralities[v] += 0
     # Log.add('finished.')
     return node_centralities

@@ -6,7 +6,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.visualisations.hist_plots import hist
 from pathpyG.algorithms import centrality
 from pathpyG.algorithms.centrality import path_node_traversals, \
-    path_visitation_probabilities, shortest_paths, path_betweenness_centrality, \
+    path_visitation_probabilities, shortest_paths, temporal_betweenness_centrality, \
     path_distance_matrix, path_closeness_centrality
 
 def test_centrality(simple_graph):
@@ -42,12 +42,11 @@ def test_shortest_paths(simple_paths_centralities):
     assert all(torch.equal(tensor1, tensor2) for tensor1, tensor2 in zip(s_p[2][3], {torch.tensor([2, 1, 3])}))
     assert all(torch.equal(tensor1, tensor2) for tensor1, tensor2 in zip(s_p[2][5], {torch.tensor([2, 1, 3, 5])}))
 
-def test_betweenness_paths(simple_paths_centralities):
-    bw = path_betweenness_centrality(simple_paths_centralities, normalized=False)
-    # 1 is in the shortest path between 0-5,2-3,2-5
-    assert bw[1] == 3.0
-    # 1 is in the shortest path between 2-5,1-5
-    assert bw[3] == 2.0
+def test_temporal_betweenness(simple_temporal_graph):
+    bw = temporal_betweenness_centrality(simple_temporal_graph, delta=5, normalized=False)
+    
+    assert bw['a'] == 0.0    
+    assert bw['c'] == 2.0
 
 def test_distance_matrix_paths(simple_paths_centralities):
     dm = path_distance_matrix(simple_paths_centralities)
