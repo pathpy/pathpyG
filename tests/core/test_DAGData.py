@@ -40,3 +40,15 @@ def test_add_walk_seq():
     assert equal(paths.dags[1].edge_weight.max(), tensor(1.0))
     assert equal(paths.dags[2].edge_weight.max(), tensor(1.0))
     assert equal(paths.dags[3].edge_weight.max(), tensor(1.0))
+
+
+def test_add_walk_seqs():
+    paths = DAGData(IndexMap(['a', 'c', 'b', 'd', 'e']))
+    paths.append_walks([('a', 'c', 'd'), ('a', 'c', 'e'), ('b', 'c', 'd'), ('b', 'c', 'e')], weights=[1.0]*4)
+
+    assert paths.get_walk(0) == ('a', 'c', 'd')
+    assert paths.get_walk(1) == ('a', 'c', 'e')
+    assert paths.get_walk(2) == ('b', 'c', 'd')
+    assert paths.get_walk(3) == ('b', 'c', 'e')
+
+    assert equal(paths.dags[0].edge_weight.max(), tensor(1.0))

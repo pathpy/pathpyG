@@ -12,7 +12,7 @@ from typing import (
 
 import torch
 import numpy as np
-from torch_geometric.utils import coalesce
+from torch_geometric.utils import coalesce, cumsum
 from torch_geometric.data import Data
 
 from pathpyG.utils.config import config
@@ -58,6 +58,9 @@ class DAGData:
             self.mapping = mapping
         else:
             self.mapping = IndexMap()
+        # If the function add_walks is used, all walks are saved in one Data object
+        # walk_index stores a tuple that contains the idx in the dag list, the start and end index of the walk
+        self.walk_index: list[tuple[int, int, int]] = []
 
     @property
     def num_dags(self) -> int:
@@ -86,6 +89,7 @@ class DAGData:
         idx = torch.arange(len(node_seq))
         edge_index = torch.stack([idx[:-1], idx[1:]])
 
+        self.walk_index.append((len(self.dags), 0, len(node_seq)))
         self.dags.append(
             Data(
                 edge_index=edge_index,
@@ -103,8 +107,13 @@ class DAGData:
         big_edge_index = torch.stack([big_idx[:-1], big_idx[1:]])
         # remove the edges that connect different walks
         mask = torch.ones(big_edge_index.size(1), dtype=torch.bool)
-        mask[torch.cumsum(path_lengths, 0)[:-1]-1] = False
+        cum_sum = cumsum(path_lengths, 0)
+        mask[cum_sum[1:-1] - 1] = False
         big_edge_index = big_edge_index[:, mask]
+
+        self.walk_index += [
+            (len(self.dags), start.item(), end.item()) for start, end in torch.vstack([cum_sum[:-1], cum_sum[1:]]).T
+        ]
         self.dags.append(
             Data(
                 edge_index=big_edge_index,
@@ -115,7 +124,8 @@ class DAGData:
         )
 
     def get_walk(self, i: int) -> tuple:
-        return tuple([self.mapping.to_id(v.item()) for v in self.dags[i].node_sequence.squeeze()])
+        i_dag, start, end = self.walk_index[i]
+        return tuple(self.mapping.to_ids(self.dags[i_dag].node_sequence[start:end].squeeze()))
 
     def append_dag(self, edge_index: torch.Tensor, weight: float = 1.0) -> None:
         """Add an observation of a DAG based on an edge index
@@ -137,7 +147,7 @@ class DAGData:
                 node_sequence=node_idx.unsqueeze(1),
                 num_nodes=num_nodes,
                 edge_weight=torch.full((edge_index.size(1),), weight),
-                weight=torch.tensor(weight)
+                weight=torch.tensor(weight),
             )
         )
 
