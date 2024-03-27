@@ -35,6 +35,7 @@ def test_transition_matrix(simple_graph):
 def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]):
     g = simple_second_order_graph[0]
     g2 = simple_second_order_graph[1]
+    print(g2.mapping)
     rw = HigherOrderRandomWalk(g2, g, weight=True)
     steps = 100
     data = rw.run_experiment(steps=steps, runs=list(g2.nodes))

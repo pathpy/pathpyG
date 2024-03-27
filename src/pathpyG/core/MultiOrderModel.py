@@ -139,7 +139,8 @@ class MultiOrderModel:
         mapping: IndexMap,
         edge_weight: torch.Tensor | None = None,
         aggr: str = "src",
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, Graph]:
+        save: bool = True,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, Graph | None]:
         """Lift order by one and save the result in the layers dictionary of the object.
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
@@ -152,6 +153,7 @@ class MultiOrderModel:
             edge_weight: The edge weights of the (k-1)-th order graph.
             k: The order of the graph that should be computed.
             aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
+            save: Whether to compute the aggregated graph and later save it in the layers dictionary.
         """
         # Lift order
         if edge_weight is None:
@@ -163,13 +165,16 @@ class MultiOrderModel:
         node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
 
         # Aggregate
-        gk = MultiOrderModel.aggregate_edge_index(ho_index, node_sequence, edge_weight)
-        gk.mapping = IndexMap([tuple([mapping.to_id(x) for x in v.tolist()]) for v in gk.data.node_sequence])
+        if save:
+            gk = MultiOrderModel.aggregate_edge_index(ho_index, node_sequence, edge_weight)
+            gk.mapping = IndexMap([tuple(mapping.to_ids(v.cpu())) for v in gk.data.node_sequence])
+        else:
+            gk = None
         return ho_index, node_sequence, edge_weight, gk
 
     @staticmethod
     def from_temporal_graph(
-        g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = "edge_weight"
+        g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = "edge_weight", cached: bool = True
     ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
@@ -179,10 +184,11 @@ class MultiOrderModel:
             edge_weight = g.data[weight]
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-        m.layers[1] = MultiOrderModel.aggregate_edge_index(
-            edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
-        )
-        m.layers[1].mapping = g.mapping
+        if cached or max_order == 1:
+            m.layers[1] = MultiOrderModel.aggregate_edge_index(
+                edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
+            )
+            m.layers[1].mapping = g.mapping
 
         if max_order > 1:
             # Compute null model
@@ -199,27 +205,32 @@ class MultiOrderModel:
             edge_index = null_model_edge_index[:, time_respecting_mask]
             edge_weight = null_model_edge_weight[time_respecting_mask]
             # Aggregate
-            m.layers[2] = MultiOrderModel.aggregate_edge_index(
-                edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
-            )
-            m.layers[2].mapping = IndexMap(
-                [tuple([m.layers[1].mapping.to_id(x) for x in v.tolist()]) for v in m.layers[2].data.node_sequence]
-            )
+            if cached or max_order == 2:
+                m.layers[2] = MultiOrderModel.aggregate_edge_index(
+                    edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
+                )
+                m.layers[2].mapping = IndexMap(
+                    [tuple(g.mapping.to_ids(v.cpu())) for v in m.layers[2].data.node_sequence]
+                )
 
             for k in range(3, max_order + 1):
                 edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
                     edge_index=edge_index,
                     node_sequence=node_sequence,
-                    mapping=m.layers[1].mapping,
+                    mapping=g.mapping,
                     edge_weight=edge_weight,
                     aggr="src",
+                    save=cached or k == max_order,
                 )
-                m.layers[k] = gk
+                if cached or k == max_order:
+                    m.layers[k] = gk
 
         return m
 
     @staticmethod
-    def from_DAGs(dag_data: DAGData, max_order: int = 1, mode: str = "propagation") -> MultiOrderModel:
+    def from_DAGs(
+        dag_data: DAGData, max_order: int = 1, mode: str = "propagation", cached: bool = True
+    ) -> MultiOrderModel:
         """
         Creates multiple higher-order De Bruijn graphs for paths in DAGData.
 
@@ -228,6 +239,8 @@ class MultiOrderModel:
                 with sorted edge indices, node sequences and num_nodes.
             max_order: The maximum order of the MultiOrderModel that should be computed
             mode: The process that we assume. Can be "diffusion" or "propagation".
+            cached: Whether to save the aggregated higher-order graphs smaller than max order
+                in the MultiOrderModel.
         """
         m = MultiOrderModel()
 
@@ -259,7 +272,9 @@ class MultiOrderModel:
                 mapping=m.layers[1].mapping,
                 edge_weight=edge_weight,
                 aggr=aggr,
+                save=cached or k == max_order,
             )
-            m.layers[k] = gk
+            if cached or k == max_order:
+                m.layers[k] = gk
 
         return m
