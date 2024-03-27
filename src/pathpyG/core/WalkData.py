@@ -12,7 +12,6 @@ from typing import (
 
 import torch
 from torch import IntTensor, Tensor, cat
-from torch_geometric import EdgeIndex
 
 from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
@@ -86,9 +85,9 @@ class WalkData(PathData):
         self.paths[i] = p
         self.path_freq[i] = freq
 
-    def add_walk_seq(self, node_seq, freq=1):
+    def add_walk_seq(self, node_seq: tuple, freq: int = 1) -> None:
         """Add an observation of a walk based on a sequence of node IDs or indices
-        
+
         Example:
                 ```py
                 import torch
@@ -104,10 +103,9 @@ class WalkData(PathData):
                 paths.add_walk_seq(('b', 'c', 'e'), freq=2)
                 ```
         """
-        idx_seq = [self.mapping.to_idx(v) for v in node_seq ]
+        idx_seq = [self.mapping.to_idx(v) for v in node_seq]
         w = IntTensor([idx_seq[:-1], idx_seq[1:]]).to(config['torch']['device'])
         self.add(w, freq)
-        
 
     def __str__(self) -> str:
         """Return string representation of WalkData object."""
@@ -116,7 +114,7 @@ class WalkData(PathData):
         for p in self.paths:
             num_walks += 1
             total += self.path_freq[p]
-        s = f"PathData with {num_walks} walks and total weight {total}"
+        s = f"WalkData with {num_walks} walks and total weight {total}"
         return s
 
     @staticmethod
@@ -134,51 +132,6 @@ class WalkData(PathData):
             ```
         """
         return cat([walk[:, 0], walk[1, 1:]])
-
-    def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
-        """Compute edge index and edge weights of $k$-th order De Bruijn graph model.
-        
-        Args:
-            k: order of the $k$-th order De Bruijn graph model
-        """
-        freq: Tensor = torch.Tensor([])
-
-        if k == 1:
-            i = cat(list(self.paths.values()), dim=1)
-            if self.index_translation:
-                i = PathData.map_nodes(i, self.index_translation)
-            l_f = []
-            for idx in self.paths:
-                l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
-            freq = cat(l_f, dim=0)
-        else:
-            l_p = []
-            l_f = []
-            for idx in self.paths:
-                p = WalkData.edge_index_kth_order(self.paths[idx], k)
-                if self.index_translation:
-                    p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
-                l_p.append(p)
-                l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))                
-            i = cat(l_p, dim=1)
-            freq = cat(l_f, dim=0)
-
-        # make edge index unique and keep reverse index, 
-        # that maps each element in i to the corresponding element in edge_index
-        edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
-
-        # for each edge in edge_index, the elements of x
-        # contain all indices in i that correspond to that edge
-        x = list((reverse_index == idx).nonzero() 
-                 for idx in range(edge_index.size()[1]))
-
-        # for each edge, sum the weights of all occurences
-        edge_weights = Tensor([
-            sum(freq[x[idx]]) for idx in
-            range(edge_index.size()[1])]).to(config['torch']['device'])
-
-        return edge_index, edge_weights
-
 
     @staticmethod
     def edge_index_kth_order(edge_index: Tensor, k: int = 1) -> Tensor:
@@ -225,8 +178,52 @@ class WalkData(PathData):
 
         return IntTensor([]).to(config['torch']['device'])
 
+    def edge_index_k_weighted(self, k: int = 1) -> Tuple[Tensor, Tensor]:
+        """Compute edge index and edge weights of $k$-th order De Bruijn graph model.
+
+        Args:
+            k: order of the $k$-th order De Bruijn graph model
+        """
+        freq: Tensor = torch.Tensor([])
+
+        if k == 1:
+            i = cat(list(self.paths.values()), dim=1)
+            if self.index_translation:
+                i = PathData.map_nodes(i, self.index_translation)
+            l_f = []
+            for idx in self.paths:
+                l_f.append(Tensor([self.path_freq[idx]]*self.paths[idx].size()[1]).to(config['torch']['device']))
+            freq = cat(l_f, dim=0)
+        else:
+            l_p = []
+            l_f = []
+            for idx in self.paths:
+                p = WalkData.edge_index_kth_order(self.paths[idx], k)
+                if self.index_translation:
+                    p = PathData.map_nodes(p, self.index_translation).unique_consecutive(dim=0)
+                l_p.append(p)
+                l_f.append(Tensor([self.path_freq[idx]]*(self.paths[idx].size()[1]-k+1)).to(config['torch']['device']))                
+            i = cat(l_p, dim=1)
+            freq = cat(l_f, dim=0)
+
+        # make edge index unique and keep reverse index,
+        # that maps each element in i to the corresponding element in edge_index
+        edge_index, reverse_index = i.unique(dim=1, return_inverse=True)
+
+        # for each edge in edge_index, the elements of x
+        # contain all indices in i that correspond to that edge
+        x = list((reverse_index == idx).nonzero() 
+                 for idx in range(edge_index.size()[1]))
+
+        # for each edge, sum the weights of all occurences
+        edge_weights = Tensor([
+            sum(freq[x[idx]]) for idx in
+            range(edge_index.size()[1])]).to(config['torch']['device'])
+
+        return edge_index, edge_weights
+
     @staticmethod
-    def from_csv(file: str, sep: str = ',', freq=True) -> PathData:
+    def from_csv(file: str, sep: str = ',', freq: bool = True) -> PathData:
         """Read walk data from CSV file.
 
         The CSV file is expected to contain one walk per line, where
