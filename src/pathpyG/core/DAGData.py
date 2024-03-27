@@ -11,9 +11,7 @@ from typing import (
 )
 
 import torch
-from torch import IntTensor, Tensor, cat
-from torch_geometric import EdgeIndex
-from torch_geometric.utils import degree, coalesce
+from torch_geometric.utils import coalesce
 from torch_geometric.data import Data
 
 from pathpyG.utils.config import config
@@ -84,7 +82,8 @@ class DAGData:
                 ```
         """
         idx_seq = torch.tensor([self.mapping.to_idx(v) for v in node_seq])
-        e_i = torch.stack([torch.arange(0, len(node_seq) - 1), torch.arange(1, len(node_seq))])
+        idx = torch.arange(len(node_seq))
+        e_i = torch.stack([idx[:-1], idx[1:]])
 
         self.dags.append(
             Data(
@@ -110,7 +109,7 @@ class DAGData:
 
         """
         edge_index = coalesce(edge_index.long())
-        num_nodes = edge_index.max() + 1
+        num_nodes = edge_index.max().item() + 1
         node_idx = torch.arange(num_nodes)
         self.dags.append(
             Data(
@@ -151,7 +150,6 @@ class DAGData:
                     for v in fields:
                         mapping.add_id(v)
                         path.append(mapping.to_idx(v))
-                e_i = torch.tensor([path[:-1], path[1:]])
-                dags.append_dag(edge_index=e_i, weight=w)
+                dags.append_walk(node_seq=path, weight=w)
         dags.mapping = mapping
         return dags

@@ -111,8 +111,13 @@ class MultiOrderModel:
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
 
-        unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
-        mapped_edge_index = inverse_idx[edge_index]
+        # If first order, then the indices in the node sequence are the inverse idx we would need already
+        if node_sequence.size(1) == 1:
+            unique_nodes = torch.arange(node_sequence.max().item() + 1, device=node_sequence.device).unsqueeze(1)
+            mapped_edge_index = node_sequence.squeeze()[edge_index]
+        else:
+            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
+            mapped_edge_index = inverse_idx[edge_index]
         aggregated_edge_index, edge_weight = coalesce(
             mapped_edge_index,
             edge_attr=edge_weight,
@@ -150,8 +155,7 @@ class MultiOrderModel:
         """
         # Lift order
         if edge_weight is None:
-            ho_index = MultiOrderModel.lift_order_edge_index(
-                edge_index, num_nodes=node_sequence.size(0))
+            ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
         else:
             ho_index, edge_weight = MultiOrderModel.lift_order_edge_index_weighted(
                 edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
@@ -160,13 +164,13 @@ class MultiOrderModel:
 
         # Aggregate
         gk = MultiOrderModel.aggregate_edge_index(ho_index, node_sequence, edge_weight)
-        gk.mapping = IndexMap(
-            [tuple([mapping.to_id(x) for x in v.tolist()]) for v in gk.data.node_sequence]
-        )
+        gk.mapping = IndexMap([tuple([mapping.to_id(x) for x in v.tolist()]) for v in gk.data.node_sequence])
         return ho_index, node_sequence, edge_weight, gk
 
     @staticmethod
-    def from_temporal_graph(g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = 'edge_weight') -> MultiOrderModel:
+    def from_temporal_graph(
+        g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = "edge_weight"
+    ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
         edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
@@ -204,7 +208,11 @@ class MultiOrderModel:
 
             for k in range(3, max_order + 1):
                 edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
-                    edge_index=edge_index, node_sequence=node_sequence, mapping=m.layers[1].mapping, edge_weight=edge_weight, aggr="src"
+                    edge_index=edge_index,
+                    node_sequence=node_sequence,
+                    mapping=m.layers[1].mapping,
+                    edge_weight=edge_weight,
+                    aggr="src",
                 )
                 m.layers[k] = gk
 
@@ -246,7 +254,11 @@ class MultiOrderModel:
 
         for k in range(2, max_order + 1):
             edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
-                edge_index=edge_index, node_sequence=node_sequence, mapping=m.layers[1].mapping, edge_weight=edge_weight, aggr=aggr
+                edge_index=edge_index,
+                node_sequence=node_sequence,
+                mapping=m.layers[1].mapping,
+                edge_weight=edge_weight,
+                aggr=aggr,
             )
             m.layers[k] = gk
 
