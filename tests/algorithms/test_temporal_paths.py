@@ -14,10 +14,7 @@ def test_time_respecting_paths(long_temporal_graph):
                         ['b', 'i'],
                         ['c', 'f'],
                         ['c', 'i'],
-                        ['f', 'h'],
-                        ['h', 'f'],
-                        ['h', 'i'],
-                        ['i', 'b']]
+                        ['f', 'h']]
     assert paths[3] == [['a', 'b', 'c', 'd'],
                         ['a', 'b', 'c', 'e'],
                         ['c', 'f', 'a', 'g']]
@@ -27,6 +24,7 @@ def test_time_respecting_paths(long_temporal_graph):
 
 def test_temporal_shortest_paths(long_temporal_graph):
     sp, sp_lengths = temporal_shortest_paths(long_temporal_graph, delta=5)
-    assert sp['a']['h'] == {('a', 'c', 'h'), ('a', 'g', 'h')}
-    assert sp_lengths['a']['h'] == 2
-    assert sp_lengths['a']['i'] == np.inf
+    assert sp['a']['b'] == {('a', 'b')}
+    assert sp['c']['g'] == {('c', 'f', 'a', 'g')}
+    assert sp_lengths['a']['b'] == 1
+    assert sp_lengths['c']['g'] == 3
