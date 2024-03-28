@@ -62,11 +62,12 @@ class Graph:
             self.mapping = mapping
 
         # set num_nodes property
-        data.num_nodes = data.edge_index.max().item()+1
+        if 'num_nodes' not in data:
+            data.num_nodes = data.edge_index.max().item()+1
 
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes))        
+            data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes))
 
         if data.edge_index.get_sparse_size(dim=0) != data.num_nodes or data.edge_index.get_sparse_size(dim=1) != data.num_nodes:
             raise Exception('sparse size of EdgeIndex should match number of nodes!')
@@ -75,7 +76,6 @@ class Graph:
         data.edge_index = data.edge_index.sort_by('row').values
         data.edge_index.validate()
 
-
         self.data = data
 
         # create mapping between edge tuples and edge indices
@@ -83,6 +83,9 @@ class Graph:
             (e[0].item(), e[1].item()): i
             for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
+
+        ((self.row_ptr, self.col), _) = self.data.edge_index.get_csr()
+        ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
@@ -252,11 +255,11 @@ class Graph:
         Args:
             row_idx:   Index of node for which predecessors shall be returned.
         """
-        ((row_ptr, col), perm) = self.data.edge_index.get_csr()
-        if row_idx + 1 < row_ptr.size(0):
-            row_start = row_ptr[row_idx]
-            row_end = row_ptr[row_idx + 1]
-            return col[row_start:row_end]
+        
+        if row_idx + 1 < self.row_ptr.size(0):
+            row_start = self.row_ptr[row_idx]
+            row_end = self.row_ptr[row_idx + 1]
+            return self.col[row_start:row_end]
         else:
             return torch.tensor([])
 
@@ -265,12 +268,11 @@ class Graph:
 
         Args:
             col_idx:   Index of node for which predecessors shall be returned.
-        """
-        ((col_ptr, row), perm) = self.data.edge_index.get_csc()
-        if col_idx + 1 < col_ptr.size(0):
-            col_start = col_ptr[col_idx]
-            col_end = col_ptr[col_idx + 1]
-            return row[col_start:col_end]
+        """        
+        if col_idx + 1 < self.col_ptr.size(0):
+            col_start = self.col_ptr[col_idx]
+            col_end = self.col_ptr[col_idx + 1]
+            return self.row[col_start:col_end]
         else:
             return torch.tensor([])
 

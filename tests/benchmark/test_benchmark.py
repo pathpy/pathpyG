@@ -4,23 +4,22 @@ import pytest
 import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.PathData import PathData
+from pathpyG.core.DAGData import DAGData
 from pathpyG import config
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def construct_higher_order(max_order):
-    paths = PathData.from_csv('docs/data/tube_paths_train.ngram')
-    for k in range(1, max_order):
-        gk = HigherOrderGraph(paths, order=k, path_freq='path_freq')
+    dags = DAGData.from_ngram('docs/data/tube_paths_train.ngram')
+    m = MultiOrderModel.from_DAGs(dags, max_order=10)
 
 @pytest.mark.benchmark
 def test_higher_order_gpu(benchmark):
 
     config['torch']['device'] = 'cuda'
-    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 8}, iterations=1, rounds=2)
+    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 10}, iterations=1, rounds=2)
 
 @pytest.mark.benchmark
 def test_higher_order_cpu(benchmark):
 
     config['torch']['device'] = 'cpu'
-    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 8}, iterations=1, rounds=2)
+    benchmark.pedantic(construct_higher_order, kwargs={'max_order': 10}, iterations=1, rounds=2)

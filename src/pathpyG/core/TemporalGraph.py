@@ -41,7 +41,7 @@ class TemporalGraph(Graph):
             src=data.src[sort_index],
             dst=data.dst[sort_index],
             t=t_sorted
-        )
+        ).to(config['torch']['device'])
 
         if mapping is not None:
             self.mapping = mapping
@@ -130,7 +130,7 @@ class TemporalGraph(Graph):
         n = edge_index.max().item()+1
 
         if weighted:
-            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))            
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1), device=self.data.edge_index.device))
             return Graph(Data(edge_index=EdgeIndex(data=i, sparse_size=(n,n)), edge_weight=w), self.mapping)
         else:
             return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n,n)), self.mapping)

@@ -5,17 +5,15 @@ from torch import IntTensor, equal, tensor
 
 from pathpyG import config
 from pathpyG.processes.random_walk import RandomWalk, HigherOrderRandomWalk
-from pathpyG.core.WalkData import WalkData
+from pathpyG.core.DAGData import DAGData
 from pathpyG.core.Graph import Graph
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def check_transitions(g, paths):
-    for p in paths.paths:
-        w = paths.paths[p]
-        for i in range(w.size(1)):
-            src = g.mapping.idx_to_id[w[0][i].item()]
-            dst = g.mapping.idx_to_id[w[1][i].item()]
-            assert g.is_edge(src, dst)
+    for i in range(len(paths.dags)):
+        w = paths.get_walk(i)
+        for j in range(len(w)-1):
+            assert g.is_edge(w[j], w[j+1])
 
 def test_random_walk(simple_graph):
     rw = RandomWalk(simple_graph)
@@ -34,9 +32,10 @@ def test_transition_matrix(simple_graph):
 
     assert (rw.transition_matrix.data == 1.).all()
 
-def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, HigherOrderGraph]):
+def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]):
     g = simple_second_order_graph[0]
     g2 = simple_second_order_graph[1]
+    print(g2.mapping)
     rw = HigherOrderRandomWalk(g2, g, weight=True)
     steps = 100
     data = rw.run_experiment(steps=steps, runs=list(g2.nodes))

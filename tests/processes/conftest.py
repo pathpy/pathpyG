@@ -5,32 +5,32 @@ import pytest
 import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.WalkData import WalkData
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
+from pathpyG.core.DAGData import DAGData
+from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 @pytest.fixture
 def simple_graph() -> Graph:
     """Return a simple example for a graph with a ring topology."""
     return Graph.from_edge_list([
-        ['a', 'b'],
-        ['b', 'c'],
-        ['c', 'd'],
-        ['d', 'e'],
-        ['e', 'f'],
-        ['f', 'g'],
-        ['g', 'h'],
-        ['h', 'i'],
-        ['i', 'j'],
-        ['j', 'k'],
-        ['k', 'l'],
-        ['l', 'm'],
-        ['m', 'n'],
-        ['n', 'o'],
-        ['o', 'a']
+        ('a', 'b'),
+        ('b', 'c'),
+        ('c', 'd'),
+        ('d', 'e'),
+        ('e', 'f'),
+        ('f', 'g'),
+        ('g', 'h'),
+        ('h', 'i'),
+        ('i', 'j'),
+        ('j', 'k'),
+        ('k', 'l'),
+        ('l', 'm'),
+        ('m', 'n'),
+        ('n', 'o'),
+        ('o', 'a')
     ])
 
 @pytest.fixture
-def simple_second_order_graph() -> Tuple[Graph, HigherOrderGraph]:
+def simple_second_order_graph() -> Tuple[Graph, Graph]:
     """Return a simple second-order graph."""
     g = Graph.from_edge_list([
         ['a','b'],
@@ -42,12 +42,13 @@ def simple_second_order_graph() -> Tuple[Graph, HigherOrderGraph]:
 
     g.data['edge_weight'] = torch.tensor([[1], [1], [2], [1], [1]])
 
-    paths = WalkData(g.mapping)
-    paths.add_walk_seq(['a', 'b', 'c'], freq=1)
-    paths.add_walk_seq(['b', 'c', 'a'], freq=1)
-    paths.add_walk_seq(['b', 'c', 'd'], freq=0.2)
-    paths.add_walk_seq(['c', 'a', 'b'], freq=1)
-    paths.add_walk_seq(['c', 'd', 'a'], freq=0.2)
-    paths.add_walk_seq(['d', 'a', 'b'], freq=1)
+    paths = DAGData(g.mapping)
+    paths.append_walk(['a', 'b', 'c'], weight=1)
+    paths.append_walk(['b', 'c', 'a'], weight=1)
+    paths.append_walk(['b', 'c', 'd'], weight=0.2)
+    paths.append_walk(['c', 'a', 'b'], weight=1)
+    paths.append_walk(['c', 'd', 'a'], weight=0.2)
+    paths.append_walk(['d', 'a', 'b'], weight=1)
 
-    return (g, HigherOrderGraph(paths, order = 2))
+    m = MultiOrderModel.from_DAGs(paths, max_order=2)
+    return (g, m.layers[2])
