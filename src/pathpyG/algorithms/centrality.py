@@ -34,6 +34,7 @@ Example:
     c = pp.algorithms.centrality.closeness_centrality(g)
     ```
 """
+
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
@@ -55,6 +56,7 @@ from torch import tensor
 
 from torch_geometric.utils import to_networkx, degree
 
+
 def path_node_traversals(dags: DAGData):
     """Calculate the number of times any dag traverses each of the nodes.
 
@@ -68,7 +70,9 @@ def path_node_traversals(dags: DAGData):
     """
     traversals = Counter()
     for dag in dags.dags:
-        t = torch.maximum(degree(dag.edge_index[1],num_nodes=dag.num_nodes), degree(dag.edge_index[0], num_nodes=dag.num_nodes))
+        t = torch.maximum(
+            degree(dag.edge_index[1], num_nodes=dag.num_nodes), degree(dag.edge_index[0], num_nodes=dag.num_nodes)
+        )
         for v in range(len(t)):
             traversals[dags.mapping.to_id(v)] += t[v].item() * dag.weight.item()
     return traversals
@@ -131,7 +135,7 @@ def path_visitation_probabilities(paths):
     return visit_probabilities
 
 
-def temporal_betweenness_centrality(g: TemporalGraph, delta, normalized=False):
+def temporal_betweenness_centrality(g: TemporalGraph, delta: int) -> dict:
     """Calculates the betweenness of nodes based on observed shortest paths
     between all pairs of nodes
 
@@ -149,30 +153,24 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta, normalized=False):
     # assert isinstance(paths, pp.PathData), "argument must be an instance of pathpy.Paths"
     node_centralities = defaultdict(lambda: 0)
 
-    # Log.add('Calculating betweenness in paths ...', Severity.INFO)
+    sp, _, counts = temporal_shortest_paths(g, delta)
 
-    sp, _ = temporal_shortest_paths(g, delta)
+    for v in range(g.N):
+        for paths in list(sp.values())[1:]:
+            v_as_start = paths[:, 0] == v
+            v_as_end = paths[:, -1] == v
+            paths_not_v = paths[~(v_as_start | v_as_end)]
+            mask = paths_not_v == v
+            fractions = (mask.sum(dim=1) > 0) / counts[paths_not_v[:, 0], paths_not_v[:, -1]]
+            node_centralities[g.mapping.to_id(v)] += fractions.sum().item()
 
-    for s in sp:
-        for d in sp[s]:
-            for p in sp[s][d]:
-                for x in p[1:-1]:
-                    if s != d != x:
-                        node_centralities[x] += 1.0 / len(sp[s][d])
-    if normalized:
-        max_centr = max(node_centralities.values())
-        for v in node_centralities:
-            node_centralities[v] /= max_centr
-    # assign zero values to nodes not occurring on shortest paths
-    for v in g.nodes:
-        node_centralities[v] += 0
-    # Log.add('finished.')
     return node_centralities
 
 
-def temporal_closeness_centrality(g: TemporalGraph, delta, normalized=False):
+def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict:
     """Calculates the closeness of nodes based on observed shortest paths
-    between all nodes
+    between all nodes. Following the definition by M. A. Beauchamp 1965
+    (https://doi.org/10.1002/bs.3830100205).
 
     Parameters
     ----------
@@ -185,23 +183,13 @@ def temporal_closeness_centrality(g: TemporalGraph, delta, normalized=False):
     dict
     """
     node_centralities = defaultdict(lambda: 0)
-    sp, sp_lengths = temporal_shortest_paths(g, delta)
-
-    for x in g.nodes:
-        # calculate closeness centrality of x
-        for d in g.nodes:
-            if x != d and sp_lengths[d][x] < _np.inf:
-                node_centralities[x] += 1.0 / sp_lengths[d][x]
-
-    # assign zero values to nodes not occurring
-    
+    _, sp_lengths, _ = temporal_shortest_paths(g, delta)
+    sp_lengths.fill_diagonal_(float("inf"))
+    print(sp_lengths)
     for v in g.nodes:
-        node_centralities[v] += 0.0
-
-    if normalized:
-        m = max(node_centralities.values())
-        for v in g.nodes:
-            node_centralities[v] /= m
+        print(f"v: {v}, idx: {g.mapping.to_idx(v)}")
+        print((g.N - 1) / sp_lengths[:, g.mapping.to_idx(v)])
+        node_centralities[v] = ((g.N - 1) / sp_lengths[:, g.mapping.to_idx(v)]).sum().item()
 
     return node_centralities
 
@@ -218,19 +206,21 @@ def __getattr__(name: str) -> Any:
     Args:
         name: the name of the function that shall be called
     """
+
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if len(args) == 0:
-            raise RuntimeError(f'Did not find method {name} with no arguments')
+            raise RuntimeError(f"Did not find method {name} with no arguments")
         if isinstance(args[0], TemporalGraph):
-            raise NotImplementedError(f'Missing implementation of {name} for temporal graphs')
-        # if first argument is of type Graph, delegate to networkx function    
+            raise NotImplementedError(f"Missing implementation of {name} for temporal graphs")
+        # if first argument is of type Graph, delegate to networkx function
         if isinstance(args[0], Graph):
             g = to_networkx(args[0].data)
             r = getattr(centrality, name)(g, *args[1:], **kwargs)
-            if name.index('centrality') > 0 and isinstance(r, dict):
+            if name.index("centrality") > 0 and isinstance(r, dict):
                 return map_to_nodes(args[0], r)
             return r
         else:
             return wrapper(*args, **kwargs)
-            #raise RuntimeError(f'Did not find method {name} that accepts first argument of type {type(args[0])}')
+            # raise RuntimeError(f'Did not find method {name} that accepts first argument of type {type(args[0])}')
+
     return wrapper
