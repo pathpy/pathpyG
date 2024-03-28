@@ -16,132 +16,81 @@ from pathpyG.core.MultiOrderModel import MultiOrderModel
 from pathpyG import config
 
 
-def temporal_graph_to_event_dag(g: TemporalGraph, delta: float = np.infty, sparsify: bool = True) -> Graph:
-    """Create directed acyclic event graph where nodes are node-time events and edges are time-respecting paths.
+def temporal_graph_to_event_dag(g: TemporalGraph, delta: float = np.infty, create_mapping=False) -> Graph | None:
+    """Create directed acyclic event graph where nodes are time-stamped edge events and edges are time-respecting paths of length two.
 
-    Args:
-        g: the temporal graph to be convered to an event dag
-        delta: for a maximum time difference delta two consecutive interactions
-                (u, v; t) and (v, w; t') are considered to contribute to a causal
-                path from u via v to w iff t'-t <= delta
-        sparsify: whether not to add edges for time-respecting paths
-            between same nodes for multiple inter-event times
+        Args:
+            g: the temporal graph to be convered to an event dag
+            delta: for a maximum time difference delta two consecutive interactions 
+                    (u, v; t) and (v, w; t') are considered to contribute to a causal
+                    path from u via v to w iff t'-t <= delta
     """
-    edge_list = []
-    node_names = {}
-    edge_times = []
+    # first-order edge index
+    edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
+    node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
 
-    sources = defaultdict(set)
+    # second-order edge index
+    null_model_edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
+    # Update node sequences
+    node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
 
-    for v, _w, t in g.temporal_edges:
-        sources[t].add(v)
+    # Remove edges that do not correspond to time-respecting paths
+    time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
+    non_negative_mask = time_diff > 0
+    delta_mask = time_diff <= delta
+    time_respecting_mask = non_negative_mask & delta_mask
+    edge_index = null_model_edge_index[:, time_respecting_mask]
 
-    for v, w, t in g.temporal_edges:
+    if edge_index.size(1) == 0:
+        print('Warning: Temporal event DAG is empty')
+        return None
 
-        if delta < np.infty:
-            current_delta = int(delta)
-        else:
-            current_delta = g.end_time - g.start_time
+    # construct graph object with mapping and node sequence tensor
+    dag = Graph.from_edge_index(edge_index=edge_index)
+    dag.data.node_sequence = node_sequence
 
-        event_src = f"{v}-{t}"
-        node_names[event_src] = v
-
-        # create one time-unfolded link for all delta in [1, delta]
-        # this implies that for delta = 2 and an edge (a,b,1) two
-        # time-unfolded links (a_1, b_2) and (a_1, b_3) will be created
-        cont = False
-        for x in range(1, int(current_delta) + 1):
-
-            # only add edge to event DAG if an edge (w,*) continues a time-respecting path at time t+x
-            if w in sources[t + x] or not sparsify:
-                event_dst = "{0}-{1}".format(w, t + x)
-                node_names[event_dst] = w
-                edge_list.append([event_src, event_dst])
-                edge_times.append(t)
-                cont = True
-        if not cont and sparsify:  # if there is no continuing time-respecting path, include edge to t+1
-            event_dst = "{0}-{1}".format(w, t + 1)
-            node_names[event_dst] = w
-            edge_list.append([event_src, event_dst])
-            edge_times.append(t)
-
-    dag = Graph.from_edge_list(edge_list)
-    dag.data["node_name"] = [node_names[dag.mapping.to_id(i)] for i in range(dag.N)]
-    dag.data["node_idx"] = [g.mapping.to_idx(v) for v in dag.data["node_name"]]
-    dag.data["edge_ts"] = torch.tensor(edge_times)
-    dag.data["temporal_graph_index_map"] = g.mapping.node_ids
+    if create_mapping:
+        dag.mapping = IndexMap([
+            tuple(g.mapping.to_ids(node_sequence[i].tolist()) + [timestamps[i].item()])
+                for i in range(node_sequence.size(0))
+            ])
     return dag
 
 
-def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
-    """Extract all causally isolated trees from a directed acyclic event graph.
-
-    For a directed acyclic graph where all events are related to single root
-    event, this function will return a single tree. For other DAGs, it will return
-    multiple trees such that each root in the tree is not causally influenced by
-    any other node-time event.
-
-    Args:
-        dag: the event graph to process
+def routes_from_node(dag: Graph, v: int, mapping: IndexMap):
     """
-    causal_trees = {}
-    d = dag.degrees(mode="in")
-    for v in d:
-        if d[v] == 0:
-            # print('Processing root', v)
-
-            src: List[int] = []
-            dst: List[int] = []
-
-            visited = set()
-            queue = [v]
-
-            while queue:
-                x = queue.pop()
-                for w in dag.successors(x):
-                    if w not in visited:
-                        visited.add(w)
-                        queue.append(w)
-                        src.append(dag.mapping.to_idx(x))
-                        dst.append(dag.mapping.to_idx(w))
-            # TODO: Remove redundant zero-degree neighbors of all nodes
-            causal_trees[v] = torch.IntTensor([src, dst]).to(config["torch"]["device"])
-    return causal_trees
-
-
-def routes_from_node(g: Graph, v: int, node_sequence: tensor, mapping: IndexMap):
-    """
-    Construct all paths from node v to any leaf node in a DAG
+    Construct all paths from node v to any leaf node in a temporal event DAG
 
     Parameters
     ----------
-    v:
-        node from which to start
-    node_mapping: dict
-        an optional mapping from node to a different set.
+    dag: Graph
+        temporal event DAG
+    v: int
+        index of node in temporal event dag from which to explore paths
+    node_mapping: IndexMap
+        mapping that maps first-order node indices to IDs
 
     Returns
     -------
     Counter
     """
-    # Collect temporary paths, indexed by the target node
+    # Collect all temporary paths, indexed by target node (initially v)
     temp_paths = defaultdict(list)
-    temp_paths[v] = [[mapping.to_id(x) for x in node_sequence[v].tolist()]]
+    temp_paths[v] = [ mapping.to_ids(dag.data.node_sequence[v].tolist()) ]
 
-    # set of unprocessed nodes
+    # queue contains all unprocessed nodes
     queue = {v}
 
     while queue:
         # take one unprocessed node
         x = queue.pop()
 
-        # successors of x expand all temporary
-        # paths, currently ending in x
+        # successors of x expand all temporary paths that currently end in x
         c = 0
-        for w in g.successors(x):
+        for w in dag.successors(x):
             c += 1
             for p in temp_paths[x]:
-                temp_paths[w].append(p + [mapping.to_id(node_sequence[w][1].item())])
+                temp_paths[w].append(p + [mapping.to_id(dag.data.node_sequence[w][1].item())])
             queue.add(w)
         if c > 0:
             del temp_paths[x]
@@ -153,38 +102,26 @@ def time_respecting_paths(g: TemporalGraph, delta: float) -> defaultdict:
     """
     Calculate all longest time-respecting paths in a temporal graph.
     """
-    in_degree = degree(g.data.edge_index[1], num_nodes=g.N)
 
-    # first-order edge index
-    edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
-    node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
+    paths = defaultdict(lambda: list())
 
-    # second-order edge index
-    null_model_edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
-    # Update node sequences
-    node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
-    # Remove non-time-respecting higher-order edges
-    time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
-    non_negative_mask = time_diff > 0
-    delta_mask = time_diff <= delta
-    time_respecting_mask = non_negative_mask & delta_mask
-    edge_index = null_model_edge_index[:, time_respecting_mask]
-
+    # Construct temporal event DAG
+    event_dag = temporal_graph_to_event_dag(g, delta)
+    if event_dag:
+        print(f'Constructed temporal event DAG with {event_dag.N} nodes and {event_dag.M} edges')
+    else:
+        return paths
+    
     # identify root nodes with in-degree zero
-    in_degree = degree(edge_index[1], num_nodes=g.M)
+    in_degree = degree(event_dag.data.edge_index[1], num_nodes=event_dag.N)
     roots = torch.where(in_degree == 0)[0]
 
-    # create traversable graph
-    event_dag = Graph.from_edge_index(edge_index)
-    print(event_dag)
-
-    # count all longest time-respecting paths in the temporal graph
-    paths = defaultdict(lambda: list())
+    # compute all longest time-respecting paths in temporal graph    
     i = 0
     for r in roots:
         if i % 10 == 0:
-            print(f"Processing root {i+1}/{roots.size(0)}")
-        root_paths = routes_from_node(event_dag, r.item(), node_sequence, g.mapping)
+            print(f'Processing root {i+1}/{roots.size(0)}')
+        root_paths = routes_from_node(event_dag, r.item(), g.mapping)
         for x in root_paths:
             for p in root_paths[x]:
                 paths[len(p) - 1].append(p)

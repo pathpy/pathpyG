@@ -98,7 +98,6 @@ def map_to_nodes(g: Graph, c: Dict) -> Dict:
     """
     return {g.mapping.to_id(i): c[i] for i in c}
 
-    return c
 
 
 def path_visitation_probabilities(paths):
