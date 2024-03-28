@@ -127,7 +127,7 @@ def routes_from_node(g: Graph, v: int, node_sequence: tensor, mapping: IndexMap)
     """
     # Collect temporary paths, indexed by the target node
     temp_paths = defaultdict(list)
-    temp_paths[v] = [ [mapping.to_id(v) for v in node_sequence[v].tolist()] ]
+    temp_paths[v] = [ [mapping.to_id(x) for x in node_sequence[v].tolist()] ]
 
     # set of unprocessed nodes
     queue = {v}
