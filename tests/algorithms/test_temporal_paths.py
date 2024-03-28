@@ -24,7 +24,29 @@ def test_time_respecting_paths(long_temporal_graph):
 
 def test_temporal_shortest_paths(long_temporal_graph):
     sp, sp_lengths, counts = temporal_shortest_paths(long_temporal_graph, delta=5)
-    assert sp['a']['b'] == {('a', 'b')}
-    assert sp['c']['g'] == {('c', 'f', 'a', 'g')}
-    assert sp_lengths['a']['b'] == 1
-    assert sp_lengths['c']['g'] == 3
+    assert torch.equal(sp[1], torch.tensor([[0, 1],
+        [0, 2],
+        [0, 6],
+        [1, 2],
+        [1, 5],
+        [1, 8],
+        [2, 3],
+        [2, 4],
+        [2, 5],
+        [2, 7],
+        [2, 8],
+        [5, 0],
+        [5, 7],
+        [6, 7],
+        [7, 5],
+        [7, 8],
+        [8, 1]]))
+    assert torch.equal(sp[2], torch.tensor([[0, 2, 7],
+        [0, 6, 7],
+        [1, 2, 3],
+        [1, 2, 4],
+        [2, 5, 0],
+        [5, 0, 6]]))
+    assert torch.equal(sp[3], torch.tensor([[0, 1, 2, 3],
+        [0, 1, 2, 4],
+        [2, 5, 0, 6]]))
