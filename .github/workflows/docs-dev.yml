@@ -23,6 +23,9 @@ jobs:
             .github/workflows/docs-dev.yml
             src/**
             docs/**
+            docs/tutorial/**
+            docs/overrides/**
+            docs/img/**
             pyproject.toml
             mkdocs.yml
 
