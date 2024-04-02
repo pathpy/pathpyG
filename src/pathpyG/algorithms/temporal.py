@@ -165,15 +165,14 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> tuple[dict[int, tor
         shortest_path_lengths[path_starts[mask], path_ends[mask]] = k - 1
         if mask.sum() > 0:
             shortest_paths[k - 1] = torch.unique(node_sequence[mask], dim=0)
-        pairs = torch.cat([shortest_paths[k - 1][:, 0].unsqueeze(1), shortest_paths[k - 1][:, -1].unsqueeze(1)], dim=1)
-        unique_pairs, counts = torch.unique(pairs, dim=0, return_counts=True)
-        shortest_path_counts[unique_pairs[:, 0], unique_pairs[:, 1]] = counts
+            pairs = torch.cat([shortest_paths[k - 1][:, 0].unsqueeze(1), shortest_paths[k - 1][:, -1].unsqueeze(1)], dim=1)
+            unique_pairs, counts = torch.unique(pairs, dim=0, return_counts=True)
+            shortest_path_counts[unique_pairs[:, 0], unique_pairs[:, 1]] = counts
 
     update_paths(node_sequence, k)
 
     k = 3
     while torch.max(shortest_path_lengths) > k and edge_index.size(1) > 0:
-        print(f"k = {k}, edge_index size = {edge_index.size(1)}")
         ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
         node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
         edge_index = ho_index
