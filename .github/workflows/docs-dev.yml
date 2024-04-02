@@ -14,38 +14,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Only run workflow if certain files have been changed.
-      - name: Get changed files
-        id: changed-files-specific
-        uses: tj-actions/changed-files@v42
-        with:
-          files: |
-            .github/workflows/docs-dev.yml
-            src/**
-            docs/**
-            docs/tutorial/**
-            docs/overrides/**
-            docs/img/**
-            pyproject.toml
-            mkdocs.yml
-
       - name: Setup packages
-        if: steps.changed-files-specific.outputs.any_changed == 'true'
         uses: ./.github/actions/setup
 
       - name: Install dependencies
-        if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
           pip install -e .[doc]
 
       - name: Get variables
-        if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
           python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
           echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Publish docs
-        if: steps.changed-files-specific.outputs.any_changed == 'true'
         # First configure git correctly
         # Then use the alias of the current dev version to delete it based on its identifier
         # Then deploy the new version so that there is only one dev version at a time
