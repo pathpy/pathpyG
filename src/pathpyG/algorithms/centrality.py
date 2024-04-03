@@ -57,7 +57,7 @@ from torch import tensor
 from torch_geometric.utils import to_networkx, degree
 
 
-def path_node_traversals(dags: DAGData):
+def path_node_traversals(dags: DAGData) -> Counter:
     """Calculate the number of times any dag traverses each of the nodes.
 
     Parameters
@@ -74,7 +74,8 @@ def path_node_traversals(dags: DAGData):
             degree(dag.edge_index[1], num_nodes=dag.num_nodes), degree(dag.edge_index[0], num_nodes=dag.num_nodes)
         )
         for v in range(len(t)):
-            traversals[dags.mapping.to_id(v)] += t[v].item() * dag.weight.item()
+            # TODO: Re-evaluate the weight representation
+            traversals[dags.mapping.to_id(v)] += t[v].item() * dag.edge_weight.max().item()
     return traversals
 
 
