@@ -182,13 +182,9 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> tuple[dict[int, tor
     update_paths(unique_node_seq, k)
     k = 3
     while torch.max(shortest_path_lengths) > k and edge_index.size(1) > 0:
-        print(k)
         size = node_idx.size(0)
         unique_node_seq, node_idx= update_node_seq(node_idx, unique_node_seq)
-        
-        
         edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=size)
-
         update_paths(unique_node_seq, k)
         k += 1
         
