@@ -147,7 +147,8 @@ class DAGData:
                 node_sequence=node_idx.unsqueeze(1),
                 num_nodes=num_nodes,
                 edge_weight=torch.full((edge_index.size(1),), weight),
-                weight=torch.tensor(weight),
+                # TODO: Re-evaluate the weight representation
+                # weight=torch.tensor(weight),
             )
         )
 
