@@ -146,13 +146,17 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> tuple[dict[int, tor
     node_idx = torch.arange(g.data.num_nodes, device=edge_index.device,dtype=torch.int32)
     unique_node_seq = node_idx.unsqueeze(1)
 
+    def update_node_seq(node_idx, unique_node_seq):
+        idx_seq = torch.cat([node_idx[edge_index[0]].unsqueeze(1), unique_node_seq[:, -1:][node_idx[edge_index[1]]]], dim=1)
+        unique_idx_seq, node_idx = torch.unique(idx_seq, dim=0,return_inverse =True)
+        unique_node_seq= torch.cat([unique_node_seq[unique_idx_seq[:,0]],unique_idx_seq[:,-1:]],dim=1)
+        return unique_node_seq, node_idx
+
     # second-order edge index with time-respective filtering
     k = 2
     null_model_edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_idx.size(0))
     # Update node sequences
-    idx_seq = torch.cat([node_idx[edge_index[0]].unsqueeze(1), unique_node_seq[node_idx[edge_index[1]]][:, -1:]], dim=1)
-    unique_idx_seq, node_idx = torch.unique(idx_seq, dim=0,return_inverse =True)
-    unique_node_seq= torch.cat([unique_node_seq[unique_idx_seq[:,0]],unique_idx_seq[:,-1:]],dim=1)
+    unique_node_seq, node_idx= update_node_seq(node_idx, unique_node_seq)
     
     # Remove non-time-respecting higher-order edges
     time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
@@ -162,29 +166,30 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> tuple[dict[int, tor
     edge_index = null_model_edge_index[:, time_respecting_mask]
 
     # Use node sequences to update shortest path lengths
-    def update_paths(node_sequence: torch.Tensor, k: int) -> None:
-        path_starts = node_sequence[:, 0]
-        path_ends = node_sequence[:, -1]
+    def update_paths(unique_node_seq: torch.Tensor, k: int) -> None:
+        path_starts = unique_node_seq[:, 0]
+        path_ends = unique_node_seq[:, -1]
+
         mask = shortest_path_lengths[path_starts, path_ends] >= k - 1
         shortest_path_lengths[path_starts[mask], path_ends[mask]] = k - 1
         if mask.sum() > 0:
-            sp = torch.unique(node_sequence[mask], dim=0)
+            sp = unique_node_seq[mask]
             pairs = torch.cat([sp[:, 0].unsqueeze(1), sp[:, -1].unsqueeze(1)], dim=1)
             unique_pairs, counts = torch.unique(pairs, dim=0, return_counts=True)
             shortest_path_counts[unique_pairs[:, 0], unique_pairs[:, 1]] = counts
             shortest_paths[k - 1] = sp.cpu()
 
-    update_paths(unique_node_seq[node_idx], k)
+    update_paths(unique_node_seq, k)
     k = 3
     while torch.max(shortest_path_lengths) > k and edge_index.size(1) > 0:
         print(k)
         size = node_idx.size(0)
-        idx_seq = torch.cat([node_idx[edge_index[0]].unsqueeze(1), unique_node_seq[:, -1:][node_idx[edge_index[1]]]], dim=1)
-        unique_idx_seq, node_idx = torch.unique(idx_seq, dim=0,return_inverse =True)
-        unique_node_seq= torch.cat([unique_node_seq[unique_idx_seq[:,0]],unique_idx_seq[:,-1:]],dim=1)
+        unique_node_seq, node_idx= update_node_seq(node_idx, unique_node_seq)
+        
+        
         edge_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=size)
 
-        update_paths(unique_node_seq[node_idx], k)
+        update_paths(unique_node_seq, k)
         k += 1
         
 
