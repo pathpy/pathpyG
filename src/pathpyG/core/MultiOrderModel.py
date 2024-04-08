@@ -248,7 +248,7 @@ class MultiOrderModel:
         dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
         edge_index = dag_graph.edge_index
         node_sequence = dag_graph.node_sequence
-        if dag_graph.edge_attr is None:
+        if dag_graph.edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         else:
             edge_weight = dag_graph.edge_attr
