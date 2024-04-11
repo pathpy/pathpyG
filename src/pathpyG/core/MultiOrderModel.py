@@ -251,7 +251,7 @@ class MultiOrderModel:
         if dag_graph.edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         else:
-            edge_weight = dag_graph.edge_attr
+            edge_weight = dag_graph.edge_weight
         if mode == "diffusion":
             edge_weight = (
                 edge_weight / degree(edge_index[0], dtype=torch.long, num_nodes=node_sequence.size(0))[edge_index[0]]
