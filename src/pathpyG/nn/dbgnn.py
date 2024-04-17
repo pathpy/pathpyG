@@ -91,25 +91,3 @@ class DBGNN(Module):
         x = self.lin(x)
 
         return x
-    
-    @staticmethod
-    def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = 'last') -> torch.Tensor:
-        """Generate edge_index for bipartite graph connecting nodes of a second-order graph to first-order nodes."""
-
-        if mapping == 'last':
-            bipartide_edge_index = torch.tensor(
-                [list(range(g2.N)), [v[1] for v in g2.data.node_sequence]]
-                )
-
-        elif mapping == 'first':
-            bipartide_edge_index = torch.tensor(
-                [list(range(g2.N)), [v[0] for v in g2.data.node_sequence]]
-            )
-        else:
-            bipartide_edge_index = torch.tensor(
-                [list(range(g2.N)) + list(range(g2.N)),
-                [v[0] for v in g2.data.node_sequence] + [v[1] for v in g2.data.node_sequence]]
-            )
-
-        return bipartide_edge_index
-

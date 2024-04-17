@@ -10,6 +10,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.DAGData import DAGData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
+from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 
 class MultiOrderModel:
@@ -278,3 +279,45 @@ class MultiOrderModel:
                 m.layers[k] = gk
 
         return m
+
+    def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
+        """
+        Convert the MultiOrderModel to a De Bruijn graph for the given maximum order.
+        
+        Args:
+            max_order: The maximum order of the De Bruijn graph to be computed.
+            mapping: The mapping to use for the bipartite edge index. One of "last", "first", or "both".
+        """
+        if max_order not in self.layers:
+            raise ValueError(f"Higher-order graph of order {max_order} not found.")
+        
+        g = self.layers[1]
+        g_max_order = self.layers[max_order]
+        num_nodes = g.data.num_nodes
+        num_ho_nodes = g_max_order.data.num_nodes
+        if g.data.x is not None:
+            x = g.data.x
+        else:
+            x = torch.eye(num_nodes, num_nodes)
+        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes)
+        edge_index = g.data.edge_index
+        edge_index_max_order = g_max_order.data.edge_index
+        edge_weight = g.data.edge_weight
+        edge_weight_max_order = g_max_order.data.edge_weight
+        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping)
+        
+        if g.data.y is not None:
+            y = g.data.y
+        
+        return Data(
+            num_nodes=num_nodes,
+            num_ho_nodes=num_ho_nodes,
+            x=x,
+            x_h=x_max_order,
+            edge_index=edge_index,
+            edge_index_higher_order=edge_index_max_order,
+            edge_weights=edge_weight.float(),
+            edge_weights_higher_order=edge_weight_max_order.float(),
+            bipartite_edge_index=bipartite_edge_index,
+            y=y if 'y' in locals() else None
+        )
