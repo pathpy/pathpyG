@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from scipy.stats import chi2
 import torch
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
+# from torch_geometric.data.batch import DataBatch
 from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index, scatter
 
 from pathpyG.utils.config import config
@@ -352,7 +353,7 @@ class MultiOrderModel:
 
         return int(dof)
 
-    def get_zeroth_order_log_likelihood(self, dag_graph: Batch) -> float:
+    def get_zeroth_order_log_likelihood(self, dag_graph: DataBatch) -> float:
         """
         Compute the zeroth order log likelihood.
 
@@ -377,7 +378,7 @@ class MultiOrderModel:
         node_emission_probabilities = counts / counts.sum()
         return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
 
-    def get_intermediate_order_log_likelihood(self, dag_graph: Batch, order: int) -> float:
+    def get_intermediate_order_log_likelihood(self, dag_graph: DataBatch, order: int) -> float:
         """
         Compute the intermediate order log likelihood.
 
@@ -389,6 +390,7 @@ class MultiOrderModel:
         Returns:
             float: Intermediate order log likelihood.
         """
+        print(order)
         # Get frequencies
         # TODO: put this tensor directly in dag_graph (intead of edge_weight) and remove the following line
         frequencies = dag_graph.edge_weight[dag_graph.ptr[:-1]]
@@ -412,7 +414,7 @@ class MultiOrderModel:
             .item()
         )
 
-    def get_mon_log_likelihood(self, dag_graph: Batch, max_order: int = 1) -> float:
+    def get_mon_log_likelihood(self, dag_graph: DataBatch, max_order: int = 1) -> float:
         """
         Compute the likelihood of the walks given a multi-order model.
 
@@ -456,24 +458,40 @@ class MultiOrderModel:
             llh = torch.mul(torch.log(node_emission_probabilities), counts).sum().item()
 
         return llh
-    
-    def lh_ratio_test(self, dag_graph : Batch, max_order_null : int = 0, max_order :int = 1, assumption : str = 'paths', significance_threshold : float = 0.01) -> tuple:
-        assert max_order_null < max_order, 'Error: order of null hypothesis must be smaller than order of alternative hypothesis'
-        assert max_order < max(self.layers), f'Error: order of hypotheses ({max_order_null} and {max_order}) must be smaller than the maximum order of the MultiOrderModel {max(self.layers)}'
+
+    def likelhood_ratio_test(
+        self,
+        dag_graph: DataBatch,
+        max_order_null: int = 0,
+        max_order: int = 1,
+        assumption: str = "paths",
+        significance_threshold: float = 0.01,
+    ) -> tuple:
+        assert (
+            max_order_null < max_order
+        ), "Error: order of null hypothesis must be smaller than order of alternative hypothesis"
+        assert max_order <= max(
+            self.layers
+        ), f"Error: order of hypotheses ({max_order_null} and {max_order}) must be smaller than the maximum order of the MultiOrderModel {max(self.layers)}"
         # let L0 be the likelihood for the null model and L1 be the likelihood for the alternative model
 
         # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
-        x = -2 * (self.get_mon_log_likelihood(dag_graph, max_order=max_order_null) - self.get_mon_log_likelihood(dag_graph, max_order=max_order))
+        x = -2 * (
+            self.get_mon_log_likelihood(dag_graph, max_order=max_order_null)
+            - self.get_mon_log_likelihood(dag_graph, max_order=max_order)
+        )
 
         # we calculate the additional degrees of freedom in the alternative model
-        dof_diff = self.get_mon_dof(max_order, assumption = assumption) - self.get_mon_dof(max_order_null, assumption = assumption)
+        dof_diff = self.get_mon_dof(max_order, assumption=assumption) - self.get_mon_dof(
+            max_order_null, assumption=assumption
+        )
         # print(x, dof_diff)
 
         # if the p-value is *below* the significance threshold, we reject the null hypothesis
-        p = 1-chi2.cdf(x, dof_diff)
-        return (p<significance_threshold), p
+        p = 1 - chi2.cdf(x, dof_diff)
+        return (p < significance_threshold), p
 
-    def estimate_order(self, dag_graph : Batch, max_order : int = None, significance_threshold : float = 0.01) -> int:
+    def estimate_order(self, dag_data: DAGData, max_order: int = None, significance_threshold: float = 0.01) -> int:
         """
         Selects the optimal maximum order of a multi-order network model for the
         observed paths, based on a likelihood ratio test with p-value threshold of p
@@ -483,24 +501,29 @@ class MultiOrderModel:
 
         @param maxOrder: The maximum order up to which the multi-order model shall be tested.
         """
-        if max_order == None:
-            max_order = max(self.layers)
-        assert max_order <= max(self.layers), 'Error: maxOrder cannot be larger than maximum order of multi-order network'
-        assert max_order > 1, 'Error: maxOrder must be larger than one'
+        if max_order is None:
+            max_order = max(self.layers)  # THIS
+        assert max_order <= max(
+            self.layers
+        ), "Error: maxOrder cannot be larger than maximum order of multi-order network"
+        assert max_order > 1, "Error: max_order must be larger than one"
+
+        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
+        assert set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) == set(dag_data.mapping.node_ids), "Input DAGData doesn t have the same set of nodes as those of the multi-order network"
 
         max_accepted_order = 1
 
         # Test for highest order that passes
         # likelihood ratio test against null model
-        for k in range(2, max_order+1):
-            if self.lh_ratio_test(dag_graph, max_order_null = k-1, max_order = k, significance_threshold=significance_threshold)[0]:
+        for k in range(2, max_order + 1):
+            if self.likelhood_ratio_test(
+                dag_graph, max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
+            )[0]:
                 max_accepted_order = k
 
         return max_accepted_order
 
-
-
-def compute_weighted_outdegrees(graph):
+def compute_weighted_outdegrees(graph: Graph) -> torch.Tensor:
     """
     Compute the weighted outdegrees of each node in the graph.
 
@@ -510,10 +533,12 @@ def compute_weighted_outdegrees(graph):
     Returns:
         tensor: Weighted outdegrees of nodes.
     """
-    weighted_outdegree = scatter(graph.data.edge_weight, graph.data.edge_index[0], dim=0, dim_size=graph.data.num_nodes, reduce='sum')
+    weighted_outdegree = scatter(
+        graph.data.edge_weight, graph.data.edge_index[0], dim=0, dim_size=graph.data.num_nodes, reduce="sum"
+    )
     return weighted_outdegree
 
-def compute_transition_probabilities(graph):
+def compute_transition_probabilities(graph: Graph) -> torch.Tensor:
     """
     Compute transition probabilities based on weighted outdegrees.
 
@@ -526,3 +551,5 @@ def compute_transition_probabilities(graph):
     weighted_outdegree = compute_weighted_outdegrees(graph)
     source_ids = graph.data.edge_index[0]
     return graph.data.edge_weight / weighted_outdegree[source_ids]
+
+
