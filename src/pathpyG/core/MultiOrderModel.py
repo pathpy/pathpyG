@@ -390,7 +390,6 @@ class MultiOrderModel:
         Returns:
             float: Intermediate order log likelihood.
         """
-        print(order)
         # Get frequencies
         # TODO: put this tensor directly in dag_graph (intead of edge_weight) and remove the following line
         frequencies = dag_graph.edge_weight[dag_graph.ptr[:-1]]
