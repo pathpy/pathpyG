@@ -465,7 +465,7 @@ class MultiOrderModel:
 
         return llh
 
-    def likelhood_ratio_test(
+    def likelihood_ratio_test(
         self,
         dag_graph: DataBatch,
         max_order_null: int = 0,
@@ -482,7 +482,7 @@ class MultiOrderModel:
         # let L0 be the likelihood for the null model and L1 be the likelihood for the alternative model
 
         # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
-        x = -2 * (
+        x = - 2 * (
             self.get_mon_log_likelihood(dag_graph, max_order=max_order_null)
             - self.get_mon_log_likelihood(dag_graph, max_order=max_order)
         )
@@ -522,7 +522,7 @@ class MultiOrderModel:
         # Test for highest order that passes
         # likelihood ratio test against null model
         for k in range(2, max_order + 1):
-            if self.likelhood_ratio_test(
+            if self.likelihood_ratio_test(
                 dag_graph, max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
             )[0]:
                 max_accepted_order = k
