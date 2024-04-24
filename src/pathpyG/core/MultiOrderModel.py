@@ -321,20 +321,19 @@ class MultiOrderModel:
         if assumption == "paths":
             # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONERO OUTDEGREES SEPARATELY
             # TODO: CAN IT BE DONE TOGETHER?
-
+            
+            edge_index = self.layers[1].data.edge_index
             # Adding dof from Number of paths of length k
             for k in range(1, max_order + 1):
-
-                if k == 1:
-                    edge_index = self.layers[1].data.edge_index
-                else:
-                    edge_index = self.lift_order_edge_index(edge_index, num_len_k_paths)
-                num_len_k_paths = edge_index.shape[1]  # Number of paths of length k
+                if k > 1:
+                    num_nodes = 0 if edge_index.numel() == 0 else edge_index.max().item() + 1
+                    edge_index = self.lift_order_edge_index(edge_index, num_nodes)
+                #counting number of len k paths
+                num_len_k_paths = edge_index.shape[1]#edge_index.max().item() +1  # Number of paths of length k
                 dof += num_len_k_paths
 
             # removing dof from total probability of nonzero degree nodes
             for k in range(1, max_order + 1):
-
                 if k == 1:
                     edge_index_adj = self.layers[1].data.edge_index
                     edge_index = edge_index_adj
