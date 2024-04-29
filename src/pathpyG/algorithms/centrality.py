@@ -49,7 +49,7 @@ from pathpyG.core.DAGData import DAGData
 from networkx import centrality
 
 from collections import defaultdict, Counter
-from pathpyG.algorithms.temporal import temporal_shortest_paths, time_respecting_paths
+from pathpyG.algorithms.temporal import temporal_shortest_paths
 import numpy as _np
 import torch
 from torch import tensor
@@ -175,24 +175,19 @@ def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict:
 
     Parameters
     ----------
-    paths: Paths
-    normalized: bool
-        normalize such that largest value is 1.0
+    g: TemporalGraph
+    delta: int
 
     Returns
     -------
     dict
     """
-    node_centralities = defaultdict(lambda: 0)
-    _, sp_lengths, _ = temporal_shortest_paths(g, delta)
-    sp_lengths.fill_diagonal_(float("inf"))
-    print(sp_lengths)
-    for v in g.nodes:
-        print(f"v: {v}, idx: {g.mapping.to_idx(v)}")
-        print((g.N - 1) / sp_lengths[:, g.mapping.to_idx(v)])
-        node_centralities[v] = ((g.N - 1) / sp_lengths[:, g.mapping.to_idx(v)]).sum().item()
+    centralities = dict()
+    dist, _ = temporal_shortest_paths(g, delta)
+    for x in g.nodes:
+        centralities[x] = sum((g.N - 1) / dist[_np.arange(g.N)!=g.mapping.to_idx(x), g.mapping.to_idx(x)])
 
-    return node_centralities
+    return centralities
 
 
 def __getattr__(name: str) -> Any:
