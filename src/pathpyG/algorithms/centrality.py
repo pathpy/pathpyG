@@ -185,7 +185,7 @@ def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict:
     centralities = dict()
     dist, _ = temporal_shortest_paths(g, delta)
     for x in g.nodes:
-        centralities[x] = sum((g.N - 1) / dist[_np.arange(g.N)!=g.mapping.to_idx(x), g.mapping.to_idx(x)])
+        centralities[x] = sum((g.N - 1) / dist[_np.arange(g.N) != g.mapping.to_idx(x), g.mapping.to_idx(x)])
 
     return centralities
 

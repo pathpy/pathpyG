@@ -60,11 +60,11 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int):
 
     # Add indices of first-order nodes as src and dst of paths in augmented
     # temporal event DAG
-    src_edges_src = g.data.edge_index[0,:] + g.data.edge_index.size(1)
+    src_edges_src = g.data.edge_index[0] + g.M
     src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
 
     dst_edges_src = torch.arange(0, g.data.edge_index.size(1))
-    dst_edges_dst = g.data.edge_index[1,:] + 2*g.data.edge_index.size(1)
+    dst_edges_dst = g.data.edge_index[1] + g.M + g.N
 
     # add edges from source to edges and from edges to destinations
     src_edges = torch.stack([src_edges_src, src_edges_dst])
@@ -78,11 +78,11 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int):
     print(f"Created temporal event DAG with {event_graph.N} nodes and {event_graph.M} edges")
 
     # run disjktra for all source nodes
-    dist, pred = dijkstra(m, directed=True, indices = np.arange(g.M, g.M+g.N),  return_predecessors=True, unweighted=True)
+    dist, pred = dijkstra(m, directed=True, indices=np.arange(g.M, g.M+g.N),  return_predecessors=True, unweighted=True)
     
     # limit to first-order destinations and correct distances
-    dist_fo = dist[:,2*g.M:] - 1
-    pred_fo = pred[:,2*g.M:]
+    dist_fo = dist[:, g.M+g.N:] - 1
+    pred_fo = pred[:, g.N+g.M:]
     np.fill_diagonal(dist_fo, 0)
 
     return dist_fo, pred_fo
