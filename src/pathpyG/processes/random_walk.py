@@ -388,7 +388,6 @@ class RandomWalk(BaseProcess):
             data['state'] == True)]['node'].values)
 
             # add walk to DAGData
-            print(walk_steps)
             walks.append_walk(walk_steps)
             
         return walks
