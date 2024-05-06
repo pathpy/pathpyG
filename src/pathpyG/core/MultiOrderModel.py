@@ -4,7 +4,6 @@ from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
-# from torch_geometric.data.batch import DataBatch
 from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index, scatter
 
 from pathpyG.utils.config import config
@@ -285,10 +284,10 @@ class MultiOrderModel:
 
     def get_mon_dof(self, max_order: int = None, assumption: str = "paths") -> int:
         """
-        The degrees of freedom fo the kth layer of a multi-order model this depende on the number of different paths of exactly length k in the graph.
-        Therefore, we can obtain this values by summing the entries of the kth power of the binary adhacency matrix of the graph.
+        The degrees of freedom for the kth layer of a multi-order model. This depends on the number of different paths of exactly length `k` in the graph.
+        Therefore, we can obtain these values by summing the entries of the `k`-th power of the binary adjacency matrix of the graph.
         Finally, we must consider that, due the conservation of probablility, all non-zero rows of the transition matrix of the higher-order network must sum to one.
-        This poses on additional constraint per row that respects the condition, which should be removed from the total count of degrees of freedom.
+        This poses one additional constraint per row that respects the condition, which should be removed from the total count of degrees of freedom.
 
         Args:
             m (MultiOrderModel): The multi-order model.
@@ -352,7 +351,7 @@ class MultiOrderModel:
 
         return int(dof)
 
-    def get_zeroth_order_log_likelihood(self, dag_graph: DataBatch) -> float:
+    def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
         """
         Compute the zeroth order log likelihood.
 
@@ -377,6 +376,8 @@ class MultiOrderModel:
         # Compute node emission probabilities
         # TODOL modify once we have zeroth order in mon
         _, counts = torch.unique(dag_graph.node_sequence, return_counts=True)
+        # WARNING: Only works if all nodes in the first-order graph are also in `node_sequence`
+        # Otherwise the missing nodes will not be included in `counts` which can lead to elements at the wrong index.
         node_emission_probabilities = counts / counts.sum()
         return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
 
@@ -418,13 +419,13 @@ class MultiOrderModel:
             .item()
         )
 
-    def get_mon_log_likelihood(self, dag_graph: DataBatch, max_order: int = 1) -> float:
+    def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
         """
         Compute the likelihood of the walks given a multi-order model.
 
         Args:
             m (MultiOrderModel): The multi-order model.
-            dag_graph (DataBatch): Dataset containing the walks.
+            dag_graph (Data): Dataset containing the walks.
             max_order (int, optional): The maximum order up to which model layers
                 shall be taken into account. Defaults to 1.
 
@@ -467,7 +468,7 @@ class MultiOrderModel:
 
     def likelihood_ratio_test(
         self,
-        dag_graph: DataBatch,
+        dag_graph: Data,
         max_order_null: int = 0,
         max_order: int = 1,
         assumption: str = "paths",
@@ -491,7 +492,6 @@ class MultiOrderModel:
         dof_diff = self.get_mon_dof(max_order, assumption=assumption) - self.get_mon_dof(
             max_order_null, assumption=assumption
         )
-        # print(x, dof_diff)
 
         # if the p-value is *below* the significance threshold, we reject the null hypothesis
         p = 1 - chi2.cdf(x, dof_diff)
