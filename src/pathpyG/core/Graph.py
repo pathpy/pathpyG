@@ -88,7 +88,7 @@ class Graph:
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
     @staticmethod
-    def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None) -> Graph:
+    def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes=None) -> Graph:
         """Construct a graph from a torch Tensor containing an edge index. An optional mapping can 
         be used to transparently map node indices to string identifiers.
 
@@ -109,8 +109,12 @@ class Graph:
             ```
         """
 
+        if not num_nodes:
+            d = Data(edge_index=edge_index)
+        else: 
+            d = Data(edge_index=edge_index, num_nodes=num_nodes)
         return Graph(
-            Data(edge_index=edge_index),
+            d,
             mapping=mapping
         )
 
@@ -332,7 +336,7 @@ class Graph:
             return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index)
         else:
             return torch_geometric.utils.to_scipy_sparse_matrix(
-                self.data.edge_index, edge_attr=self.data[edge_attr]
+                self.data.edge_index, edge_attr=self.data[edge_attr], num_nodes=self.N
             )
 
     @property
