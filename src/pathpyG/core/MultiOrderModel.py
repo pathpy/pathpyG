@@ -111,14 +111,12 @@ class MultiOrderModel:
         """
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-
+            
+        unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
         # If first order, then the indices in the node sequence are the inverse idx we would need already
         if node_sequence.size(1) == 1:
-            unique_nodes = torch.arange(node_sequence.max().item() + 1, device=node_sequence.device).unsqueeze(1)
             mapped_edge_index = node_sequence.squeeze()[edge_index]
-            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
         else:
-            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
             mapped_edge_index = inverse_idx[edge_index]
         aggregated_edge_index, edge_weight = coalesce(
             mapped_edge_index,
