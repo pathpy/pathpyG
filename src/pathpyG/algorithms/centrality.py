@@ -47,8 +47,9 @@ from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.DAGData import DAGData
 
 from networkx import centrality
+from tqdm import tqdm
 
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, deque
 from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temporal
 import numpy as _np
 import torch
@@ -177,12 +178,12 @@ def path_visitation_probabilities(paths):
     return visit_probabilities
 
 
-def fo_node(v, g, src_indices) -> int:
-    # if v is one of the source nodes, return corresponding first-order node
-    if v in src_indices:
-        return v - g.M
-    else: # return first-order target node otherwise
-        return g.data.edge_index[1,v].int().item()
+# def fo_node(v, g, src_indices) -> int:
+#     # if v is one of the source nodes, return corresponding first-order node
+#     if v in src_indices:
+#         return v - g.M
+#     else: # return first-order target node otherwise
+#         return g.data.edge_index[1,v].int().item()
 
 
 def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
@@ -193,42 +194,55 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
     # Add indices of first-order nodes as src of paths in augmented
     # temporal event DAG
     src_edges_src = g.data.edge_index[0] + g.M
-    src_edges_dst = torch.arange(0, g.data.edge_index.size(1))    
+    src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
 
-    # add edges from source to edges
+
+    # add edges from source to edges and from edges to destinations
     src_edges = torch.stack([src_edges_src, src_edges_dst])
     edge_index = torch.cat([edge_index, src_edges], dim=1)
 
-    # create temporal event graph
     event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
-    src_indices = set(torch.unique(src_edges_src).tolist())
-    
+    #print(event_graph)
+
+    # sources = first-order source nodes in temporal event graph
+    src_indices = torch.unique(src_edges_src).tolist()
+
+    e_i = g.data.edge_index.numpy()    
+
+    fo_nodes = dict()
+    for v in range(g.M+g.N):
+        if v < g.M: # return first-order target node otherwise
+            fo_nodes[v] = e_i[1,v]
+        else:
+            fo_nodes[v] = v - g.M
+
     bw = defaultdict(lambda: 0.0)
 
     # for all first-order nodes
-    for s in src_indices:
-        # print('source', g.mapping.to_id(fo_node(s, g, src_indices)))
+    for s in tqdm(src_indices):
 
+        # for any given s, d[v] is the shortest path distance from s to v
+        # Note that here we calculate topological distances from sources to events (i.e. time-stamped edges)
         delta_ = defaultdict(lambda: 0.0)
 
         # for any given s, sigma[v] counts shortest paths from s to v
-        sigma = defaultdict(lambda: 0.0)          
+        sigma = defaultdict(lambda: 0.0)
         sigma[s] = 1
 
-        sigma_fo = defaultdict(lambda: 0.0)       
-        sigma_fo[fo_node(s, g, src_indices)] = 1
+        sigma_fo = defaultdict(lambda: 0.0)
+        sigma_fo[fo_nodes[s]] = 1
 
         dist = defaultdict(lambda: -1)
         dist[s] = 0
 
         dist_fo = defaultdict(lambda: -1)
-        dist_fo[fo_node(s, g, src_indices)] = 0
+        dist_fo[fo_nodes[s]] = 0
                 
         # for any given s, P[v] is the set of predecessors of v on shortest paths from s
         P = defaultdict(set)
 
         # Q is a queue, so we append at the end and pop from the start
-        Q = list()
+        Q = deque()
         Q.append(s)
 
         # S is a stack, so we append at the end and pop from the end
@@ -236,16 +250,15 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
     
         # dijkstra with path counting
         while Q:
-            v = Q.pop(0)
-
+            v = Q.popleft()
             # for all successor events within delta
             for w in event_graph.successors(v):
 
                 # we dicover w for the first time
                 if dist[w] == -1:
                     dist[w] = dist[v] + 1
-                    if dist_fo[fo_node(w, g, src_indices)] == -1:
-                        dist_fo[fo_node(w, g, src_indices)] = dist[v] + 1
+                    if dist_fo[fo_nodes[w]] == -1:
+                        dist_fo[fo_nodes[w]] = dist[v] + 1
                     S.append(w)
                     Q.append(w)
                 # we found a shortest path to event w via event v
@@ -253,24 +266,24 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
                     sigma[w] += sigma[w] + sigma[v]
                     P[w].add(v)
                     # we found a shortest path to first-order node of event w
-                    if dist[w] == dist_fo[fo_node(w, g, src_indices)]:
-                        sigma_fo[fo_node(w, g, src_indices)] += sigma[v]
-        c = 0 
+                    if dist[w] == dist_fo[fo_nodes[w]]:
+                        sigma_fo[fo_nodes[w]] += sigma[v]
+        
+        c = 0
         for i in dist_fo:
-            if dist_fo[i] >= 0:
-                c += 1
-        bw[fo_node(s, g, src_indices)] = bw[fo_node(s, g, src_indices)] - c + 1
+            if dist_fo[i] >=0:
+                c+= 1
+        bw[fo_nodes[s]] = bw[fo_nodes[s]] - c + 1
 
         while S:
             w = S.pop()
-            # work backwards through paths to all targets and sum delta and sigma
-
-            # check whether shortest path from s to event w is also shortest path to first-order target of w 
-            if dist[w] == dist_fo[fo_node(w, g, src_indices)]:
-                delta_[w] += (sigma[w]/sigma_fo[fo_node(w, g, src_indices)])
+            # work backwards through paths to all targets and sum delta and sigma   
+            if dist[w] == dist_fo[fo_nodes[w]]:
+                # v_fo = fo_tgt(v, g, src_indices, tgt_indices)
+                delta_[w] += (sigma[w]/sigma_fo[fo_nodes[w]])
             for v in P[w]:
                 delta_[v] += (sigma[v]/sigma[w]) * delta_[w]
-                bw[fo_node(v, g, src_indices)] += delta_[w] * (sigma[v]/sigma[w])
+                bw[fo_nodes[v]] += delta_[w] * (sigma[v]/sigma[w])
     bw_id = defaultdict(lambda: 0.0)
     for idx in bw:
         bw_id[g.mapping.to_id(idx)] = bw[idx]
