@@ -8,7 +8,7 @@ from pathpyG.algorithms import centrality
 from pathpyG.algorithms.centrality import (
     path_node_traversals,
     path_visitation_probabilities,
-    #temporal_betweenness_centrality,
+    temporal_betweenness_centrality,
     temporal_closeness_centrality,
 )
 
@@ -45,16 +45,17 @@ def test_visitation_probabilities(simple_dags):
     assert traversals_dict[5] == 1 / 9
 
 
-# def test_temporal_betweenness(long_temporal_graph):
-#     bw = temporal_betweenness_centrality(long_temporal_graph, delta=5)
-#     assert bw["a"] == 2.0
-#     assert bw["c"] == 4.5
-#     assert bw["g"] == 0.5
-#     assert bw["d"] == 0
-#     assert bw["e"] == 0
-#     assert bw["h"] == 0
-#     assert bw["i"] == 0
-#     assert bw["f"] == 2.0
+def test_temporal_betweenness(long_temporal_graph):
+    bw = temporal_betweenness_centrality(long_temporal_graph, delta=5)
+    assert bw["a"] == 2.0
+    assert bw["b"] == 2.0
+    assert bw["c"] == 4.5
+    assert bw["d"] == 0
+    assert bw["e"] == 0
+    assert bw["f"] == 2.0
+    assert bw["g"] == 0.5
+    assert bw["h"] == 0
+    assert bw["i"] == 0
 
 
 def test_temporal_closeness(long_temporal_graph):
