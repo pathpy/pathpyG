@@ -95,6 +95,8 @@ class Graph:
         Args:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
             mapping: `IndexMap` object that maps node indices to string identifiers
+            num_nodes: optional number of nodes (default: None). If None, the number of nodes will be
+                inferred based on the maximum node index in the edge index
         
         Example:
             ```py
@@ -121,7 +123,7 @@ class Graph:
 
     @staticmethod
     def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False) -> Graph:
-        """Generate a Graph based on an edge list. Edges can be given as string tuples and a mapping 
+        """Generate a Graph based on an edge list. Edges can be given as string tuples and a mapping
         between node IDs and indices will be created automatically.
 
         Args:
@@ -290,7 +292,7 @@ class Graph:
 
         Args:
             node:   Index or string ID of node for which successors shall be returned.
-        """ 
+        """
 
         for j in self.get_successors(self.mapping.to_idx(node)):  # type: ignore
             yield self.mapping.to_id(j.item())

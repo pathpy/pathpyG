@@ -61,13 +61,8 @@ from torch_geometric.utils import to_networkx, degree
 def path_node_traversals(dags: DAGData) -> Counter:
     """Calculate the number of times any dag traverses each of the nodes.
 
-    Parameters
-    ----------
-    dags: DAGData
-
-    Returns
-    -------
-    Counter
+    Args:    
+        dags: `DAGData` object that contains path data
     """
     traversals = Counter()
     for dag in dags.dags:
@@ -101,10 +96,24 @@ def map_to_nodes(g: Graph, c: Dict) -> Dict:
     return {g.mapping.to_id(i): c[i] for i in c}
 
 
-def betweenness_centrality(g: Graph, sources=None):
-    """
-    Calculates the betweenness centrality of nodes based on the algorithm 
-    proposed by Brandes.
+def betweenness_centrality(g: Graph, sources=None) -> dict[str, float]:
+    """Calculate the betweenness centrality of nodes based on the fast algorithm 
+    proposed by Brandes:
+
+    U. Brandes: A faster algorithm for betweenness centrality, The Journal of 
+    Mathematical Sociology, 2001
+
+    Args:
+        g: `Graph` object for which betweenness centrality will be computed
+        sources: optional list of source nodes for BFS-based shortest path calculation
+
+    Example:
+        ```py
+        import pathpyG as pp
+        g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'),
+                            ('b', 'd'), ('c', 'e'), ('d', 'e')])
+        bw = pp.algorithms.betweenness_centrality(g)
+        ```
     """
     bw = defaultdict(lambda: 0.0)
 
@@ -143,20 +152,15 @@ def betweenness_centrality(g: Graph, sources=None):
     return bw
 
 
-def path_visitation_probabilities(paths):
-    """Calculates the probabilities that a randomly chosen path passes through each of
+def path_visitation_probabilities(paths: DAGData) -> dict:
+    """Calculate the probabilities that a randomly chosen path passes through each of
     the nodes. If 5 out of 100 paths (of any length) traverse node v, node v will be
     assigned a visitation probability of 0.05. This measure can be interpreted as ground
     truth for the notion of importance captured by PageRank applied to a graphical
     abstraction of the paths.
 
-    Parameters
-    ----------
-    paths: Paths
-
-    Returns
-    -------
-    dict
+    Args:
+        paths: DAGData object that contains path data
     """
     # if not isinstance(paths, PathData):
     #    assert False, "`paths` must be an instance of Paths"
@@ -174,20 +178,41 @@ def path_visitation_probabilities(paths):
 
     for v in visit_probabilities:
         visit_probabilities[v] /= visits
-    # Log.add('finished.', Severity.INFO)
     return visit_probabilities
 
 
-# def fo_node(v, g, src_indices) -> int:
-#     # if v is one of the source nodes, return corresponding first-order node
-#     if v in src_indices:
-#         return v - g.M
-#     else: # return first-order target node otherwise
-#         return g.data.edge_index[1,v].int().item()
+def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[str, float]:
+    """Calculate the temporal betweenness of nodes in a temporal graph.
 
+    The temporal betweenness centrality definition is based on shortest 
+    time-respecting paths with a given maximum time difference delta, where 
+    the length of a path is given as the number of traversed edges (i.e. not 
+    the temporal duration of a path or the earliest arrival at a node).
 
-def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
+    The algorithm is an adaptation of Brandes' fast algorithm for betweenness 
+    centrality based on the following work:
 
+    S. Buss, H. Molter, R. Niedermeier, M. Rymar: Algorithmic Aspects of Temporal
+    Betweenness, arXiv:2006.08668v2
+
+    Different from the algorithm proposed above, the temporal betweenness centrality
+    implemented in pathpyG is based on a directed acyclic event graph representation of 
+    a temporal graph and it considers a maximum waiting time of delta. The complexity 
+    is in O(nm) where n is the number of nodes in the temporal graph and m is the number 
+    of time-stamped edges.
+
+    Args:
+        g: `TemporalGraph` object for which temporal betweenness centrality will be computed
+        delta: maximum waiting time for time-respecting paths
+
+    Example:
+        ```py
+        import pathpyG as pp
+        t = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2),
+                            ('b', 'd', 2), ('c', 'e', 3), ('d', 'e', 3)])
+        bw = pp.algorithms.temporal_betweenness_centrality(t, delta=1)
+        ```
+    """
     # generate temporal event DAG
     edge_index = lift_order_temporal(g, delta)
 
@@ -196,53 +221,49 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
     src_edges_src = g.data.edge_index[0] + g.M
     src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
 
-
-    # add edges from source to edges and from edges to destinations
+    # add edges from first-order source nodes to edge events
     src_edges = torch.stack([src_edges_src, src_edges_dst])
     edge_index = torch.cat([edge_index, src_edges], dim=1)
-
-    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
-    #print(event_graph)
-
-    # sources = first-order source nodes in temporal event graph
     src_indices = torch.unique(src_edges_src).tolist()
 
-    e_i = g.data.edge_index.numpy()    
+    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
+
+    e_i = g.data.edge_index.numpy()
 
     fo_nodes = dict()
     for v in range(g.M+g.N):
-        if v < g.M: # return first-order target node otherwise
-            fo_nodes[v] = e_i[1,v]
+        if v < g.M:  # return first-order target node otherwise
+            fo_nodes[v] = e_i[1, v]
         else:
             fo_nodes[v] = v - g.M
 
-    bw = defaultdict(lambda: 0.0)
+    bw: defaultdict[int, float] = defaultdict(lambda: 0.0)
 
     # for all first-order nodes
     for s in tqdm(src_indices):
 
         # for any given s, d[v] is the shortest path distance from s to v
         # Note that here we calculate topological distances from sources to events (i.e. time-stamped edges)
-        delta_ = defaultdict(lambda: 0.0)
+        delta_: defaultdict[int, float] = defaultdict(lambda: 0.0)
 
         # for any given s, sigma[v] counts shortest paths from s to v
-        sigma = defaultdict(lambda: 0.0)
+        sigma: defaultdict[int, float] = defaultdict(lambda: 0.0)
         sigma[s] = 1
 
-        sigma_fo = defaultdict(lambda: 0.0)
+        sigma_fo: defaultdict[int, float] = defaultdict(lambda: 0.0)
         sigma_fo[fo_nodes[s]] = 1
 
-        dist = defaultdict(lambda: -1)
+        dist: defaultdict[int, int] = defaultdict(lambda: -1)
         dist[s] = 0
 
-        dist_fo = defaultdict(lambda: -1)
+        dist_fo: defaultdict[int, int] = defaultdict(lambda: -1)
         dist_fo[fo_nodes[s]] = 0
                 
         # for any given s, P[v] is the set of predecessors of v on shortest paths from s
         P = defaultdict(set)
 
         # Q is a queue, so we append at the end and pop from the start
-        Q = deque()
+        Q: deque = deque()
         Q.append(s)
 
         # S is a stack, so we append at the end and pop from the end
@@ -271,8 +292,8 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
         
         c = 0
         for i in dist_fo:
-            if dist_fo[i] >=0:
-                c+= 1
+            if dist_fo[i] >= 0:
+                c += 1
         bw[fo_nodes[s]] = bw[fo_nodes[s]] - c + 1
 
         while S:
@@ -284,25 +305,32 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta=1):
             for v in P[w]:
                 delta_[v] += (sigma[v]/sigma[w]) * delta_[w]
                 bw[fo_nodes[v]] += delta_[w] * (sigma[v]/sigma[w])
+    
+    # map index-based centralities to node IDs
     bw_id = defaultdict(lambda: 0.0)
     for idx in bw:
         bw_id[g.mapping.to_id(idx)] = bw[idx]
     return bw_id
 
 
-def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict:
-    """Calculates the closeness of nodes based on observed shortest paths
-    between all nodes. Following the definition by M. A. Beauchamp 1965
+def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict[str, float]:
+    """Calculates the temporal closeness centrality of nodes based on
+    observed shortest time-respecting paths between all nodes.
+    
+    Following the definition by M. A. Beauchamp 1965
     (https://doi.org/10.1002/bs.3830100205).
 
-    Parameters
-    ----------
-    g: TemporalGraph
-    delta: int
+    Args:
+        g: `TemporalGraph` object for which temporal betweenness centrality will be computed
+        delta: maximum waiting time for time-respecting paths
 
-    Returns
-    -------
-    dict
+    Example:
+        ```py
+        import pathpyG as pp
+        t = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2),
+                            ('b', 'd', 2), ('c', 'e', 3), ('d', 'e', 3)])
+        cl = pp.algorithms.temporal_closeness_centrality(t, delta=1)
+        ```
     """
     centralities = dict()
     dist, _ = temporal_shortest_paths(g, delta)
