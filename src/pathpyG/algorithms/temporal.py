@@ -17,6 +17,7 @@ from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 from pathpyG import config
 
+device = config['torch']['device']
 
 def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
@@ -56,26 +57,26 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
 def temporal_shortest_paths(g: TemporalGraph, delta: int):
     # generate temporal event DAG
-    edge_index = lift_order_temporal(g, delta)
+    edge_index = lift_order_temporal(g, delta).to(device)
 
-    # Add indices of g.N first-order nodes as source nodes of paths in augmented TEG
-    src_edges_src = g.data.edge_index[0] + g.M
-    src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
+    # Add indices of first-order nodes as src and dst of paths in augmented
+    # temporal event DAG
+    src_edges_src = (g.data.edge_index[0] + g.M).to(device)
+    src_edges_dst = (torch.arange(0, g.data.edge_index.size(1))).to(device)
 
-    # Add indices of g.N first-order nodes as target nodes of paths in augmented TEG
-    dst_edges_src = torch.arange(0, g.data.edge_index.size(1))
-    dst_edges_dst = g.data.edge_index[1] + g.M + g.N
+    dst_edges_src = torch.arange(0, g.data.edge_index.size(1)).to(device)
+    dst_edges_dst = (g.data.edge_index[1] + g.M + g.N).to(device)
 
     # add edges from source to edges and from edges to destinations
-    src_edges = torch.stack([src_edges_src, src_edges_dst])
-    dst_edges = torch.stack([dst_edges_src, dst_edges_dst])
+    src_edges = torch.stack([src_edges_src, src_edges_dst]).to(device)
+    dst_edges = torch.stack([dst_edges_src, dst_edges_dst]).to(device)
     edge_index = torch.cat([edge_index, src_edges, dst_edges], dim=1)
 
     # create sparse scipy matrix
     event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M + 2 * g.N) 
     m = event_graph.get_sparse_adj_matrix()
 
-    print(f"Created temporal event DAG with {event_graph.N} nodes and {event_graph.M} edges")
+    #print(f"Created temporal event DAG with {event_graph.N} nodes and {event_graph.M} edges")
 
     # run disjktra for all source nodes
     dist, pred = dijkstra(m, directed=True, indices=np.arange(g.M, g.M+g.N),  return_predecessors=True, unweighted=True)
