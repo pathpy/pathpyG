@@ -85,6 +85,10 @@ def test_max_edges():
         assert max_edges(100, directed=True, self_loops=True, multi_edges=True) == _np.inf
 
 def test_graphic_sequence():
-    assert is_graphic_Erdos_Gallai([1,0]) is False
-    assert is_graphic_Erdos_Gallai([1,3]) is False
-    assert is_graphic_Erdos_Gallai([1,1]) is True
+    assert is_graphic_Erdos_Gallai([1, 0]) is False
+    assert is_graphic_Erdos_Gallai([1, 3]) is False
+    assert is_graphic_Erdos_Gallai([1, 1]) is True
+    assert is_graphic_Erdos_Gallai([1, 3, 1, 1]) is True
+    assert is_graphic_Erdos_Gallai([1, 3, 0, 2]) is False
+    assert is_graphic_Erdos_Gallai([3, 2, 2, 1]) is True
+
