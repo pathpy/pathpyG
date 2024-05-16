@@ -21,7 +21,21 @@ def shortest_paths_dijkstra(graph: Graph) -> (_np.ndarray, _np.ndarray):
 
     m = graph.get_sparse_adj_matrix()
 
-    # run disjktra for all source nodes
     dist, pred = dijkstra(m, directed=graph.is_directed(), return_predecessors=True, unweighted=True)
 
     return dist, pred
+
+def diameter(graph: Graph) -> float:
+
+    m = graph.get_sparse_adj_matrix()
+
+    dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
+    return _np.max(dist)
+
+def avg_path_length(graph: Graph) -> float:
+
+    m = graph.get_sparse_adj_matrix()
+
+    dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
+    print(dist)
+    return _np.sum(dist) / (graph.N * (graph.N-1))
