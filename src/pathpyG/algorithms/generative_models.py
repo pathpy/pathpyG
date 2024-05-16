@@ -83,7 +83,7 @@ def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = Fal
         directed: whether or not to generate a directed graph
     """
     assert m <= max_edges(n, directed=directed, self_loops=self_loops, multi_edges=multi_edges)
-    
+
     edges = set()
     edges_added: int = 0
 
@@ -106,6 +106,32 @@ def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = Fal
             edges_added += 1
 
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+
+
+
+def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph | None:
+    """Generate a random graph whose number of nodes, edges, edge directedness and node IDs 
+    match the corresponding values of a given network instance. Useful to generate a randomized 
+    version of a network.
+
+    Args:
+        graph: A given network used to determine number of nodes, edges, node uids, and edge directedness    
+        self_loops: Whether or not the generated network can contain loops.
+        multi_edges: Whether or not multiple edges can be added to the same node pair
+
+    Example:
+    ```py
+        # Generate undirected network
+        import pathpyG as pp
+        g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('d', 'e')])    
+        r = pp.algorithms.generative_models.G_nm_randomize(g)
+    """
+    if graph.is_undirected():
+        m = graph.M/2
+    else:
+        m = graph.M
+    return G_nm(graph.N, m, directed=graph.is_directed(), self_loops=self_loops, multi_edges=multi_edges,
+                mapping = graph.mapping)
 
 
 def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = False, directed: bool = False) -> Graph:
@@ -141,6 +167,22 @@ def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = F
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
 
 
+def G_np_randomize(graph: Graph, self_loops: bool = False) -> Graph:
+    """Generate a random microstate based on the G(n,p) model. 
+    
+    The number of nodes,
+    the expected number of edges, the edge directedness and the node uids of the 
+    generated network match the corresponding values of a given network instance.
+    """
+    if graph.is_directed():
+        m = graph.M
+    else:
+        m = graph.M/2
+    M = max_edges(graph.N, directed=graph.is_directed(), self_loops=self_loops)
+    p = m/M
+    return G_np(n=graph.N, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping = graph.mapping)
+
+
 def G_np_likelihood(p: float, graph: Graph) -> float:
     """Calculate the likelihood of parameter p for a G(n,p) model and a given graph
     """
@@ -155,9 +197,9 @@ def Gnp_log_likelihood(p: float, graph: Graph) -> float:
 
 
 def G_np_MLE(graph: Graph) -> float:
-    """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given graph
+    """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given undirected graph
     """
-    assert graph.is_directed is False
+    assert graph.is_directed() is False
     return (graph.M/2) / scipy.special.binom(graph.N, 2)
 
 
@@ -185,3 +227,32 @@ def is_graphic_Erdos_Gallai(degrees: list[int]) -> bool:
         if S > r * (r-1) + M:
             return False
     return True
+
+
+def generate_degree_sequence(n, distribution: Dict[float, float] | scipy.stats.rv_continuous | scipy.stats.rv_discrete, 
+                             **distribution_args) -> _np.array:
+    """Generates a random graphic degree sequence drawn from a given degree distribution"""
+    # create rv_discrete object with custom distribution and generate degree sequence
+    if isinstance(distribution, dict):
+        degrees = [k for k in distribution]
+        probs = [distribution[k] for k in degrees]
+
+        dist = scipy.stats.rv_discrete(name='custom', values=(degrees, probs))
+        s = [1]
+        while not is_graphic_Erdos_Gallai(s):
+            s = dist.rvs(size=n, **distribution_args)
+        return s
+    # use scipy rv objects to generate graphic degree sequence
+    elif isinstance(distribution, scipy.stats.rv_discrete):
+        s = [1]
+        while not is_graphic_Erdos_Gallai(s):
+            s = distribution.rvs(size=n, **distribution_args)
+        return s
+
+    elif isinstance(distribution, scipy.stats.rv_continuous):
+        s = [1]
+        while not is_graphic_Erdos_Gallai(s):
+            s = _np.rint(distribution.rvs(size=n, **distribution_args))
+        return s
+    else:
+        raise NotImplementedError()

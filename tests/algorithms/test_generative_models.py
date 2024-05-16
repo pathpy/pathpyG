@@ -2,7 +2,7 @@ import numpy as _np
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges
+from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges, G_np_randomize, G_nm_randomize, G_np_MLE
 
 
 def test_G_nm():
@@ -78,6 +78,26 @@ def test_G_np():
     assert m_4.is_directed() is False
     assert m_4.M <= max_edges(n, directed=False, self_loops=True)
 
+def test_G_nm_randomize():
+     n = 100
+     m = 200
+
+     g = G_np(n, m)
+     g_r = G_nm_randomize(g)
+     assert g_r.N == g.N
+     assert g_r.mapping == g.mapping
+     assert g_r.M == g_r.M
+     
+
+def test_G_np_randomize():
+     n = 100
+     p = 0.01
+
+     g = G_np(n, p)
+     g_r = G_np_randomize(g)
+     assert g_r.N == g.N
+     assert g_r.mapping == g.mapping
+
 def test_max_edges():
         assert max_edges(100) == 4950
         assert max_edges(100, directed=True) == 9900
@@ -91,4 +111,3 @@ def test_graphic_sequence():
     assert is_graphic_Erdos_Gallai([1, 3, 1, 1]) is True
     assert is_graphic_Erdos_Gallai([1, 3, 0, 2]) is False
     assert is_graphic_Erdos_Gallai([3, 2, 2, 1]) is True
-
