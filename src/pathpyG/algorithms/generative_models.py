@@ -256,3 +256,35 @@ def generate_degree_sequence(n, distribution: Dict[float, float] | scipy.stats.r
         return s
     else:
         raise NotImplementedError()
+
+
+def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: IndexMap = None) -> Graph:
+    """Generate a random undirected graph based on the stochastic block model
+    
+    Args:
+        M: n x n stochastic block matrix, where entry M[i,j] gives probability of edge to be generated
+            between nodes in blocks i and j
+        z: n-dimensional block assignment vector, where z[i] gives block assignment of i-th node
+        mapping: optional mapping of node IDs to indices. If not given, a standard 
+            mapping based on integer IDs will be created
+    """
+    # the number of nodes is implicitly given by the length of block assignment vector z 
+    n = len(z)
+    B = len(set(z))
+
+    # we can use pre-defined node names, if not given, we use contiguous numbers
+    if mapping is None:
+        mapping = IndexMap([str(i) for i in range(n)])
+
+    edges = []
+
+    # randomly generate links with probabilities given by entries of the stochastic block matrix M
+    for u in range(n):
+        for v in range(u): # do not add self-loops!
+            if _np.random.random() <= M[z[u], z[v]]:
+                edges.append((mapping.to_id(u), mapping.to_id(v)))
+                edges.append((mapping.to_id(v), mapping.to_id(u)))
+
+    G = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n)
+    G.data.node_label = torch.tensor(z)
+    return G
