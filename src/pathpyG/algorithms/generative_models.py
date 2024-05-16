@@ -110,8 +110,8 @@ def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = Fal
 
 
 def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph | None:
-    """Generate a random graph whose number of nodes, edges, edge directedness and node IDs 
-    match the corresponding values of a given network instance. Useful to generate a randomized 
+    """Generate a random graph whose number of nodes, edges, edge directedness and node IDs
+    match the corresponding values of a given network instance. Useful to generate a randomized
     version of a network.
 
     Args:
@@ -127,11 +127,11 @@ def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = F
         r = pp.algorithms.generative_models.G_nm_randomize(g)
     """
     if graph.is_undirected():
-        m = graph.M/2
+        m = int(graph.M/2)
     else:
         m = graph.M
     return G_nm(graph.N, m, directed=graph.is_directed(), self_loops=self_loops, multi_edges=multi_edges,
-                mapping = graph.mapping)
+                mapping=graph.mapping)
 
 
 def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = False, directed: bool = False) -> Graph:
@@ -177,10 +177,10 @@ def G_np_randomize(graph: Graph, self_loops: bool = False) -> Graph:
     if graph.is_directed():
         m = graph.M
     else:
-        m = graph.M/2
+        m = int(graph.M/2)
     M = max_edges(graph.N, directed=graph.is_directed(), self_loops=self_loops)
     p = m/M
-    return G_np(n=graph.N, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping = graph.mapping)
+    return G_np(n=graph.N, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping=graph.mapping)
 
 
 def G_np_likelihood(p: float, graph: Graph) -> float:
@@ -270,7 +270,6 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: IndexMap = None
     """
     # the number of nodes is implicitly given by the length of block assignment vector z 
     n = len(z)
-    B = len(set(z))
 
     # we can use pre-defined node names, if not given, we use contiguous numbers
     if mapping is None:
@@ -280,7 +279,7 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: IndexMap = None
 
     # randomly generate links with probabilities given by entries of the stochastic block matrix M
     for u in range(n):
-        for v in range(u): # do not add self-loops!
+        for v in range(u):
             if _np.random.random() <= M[z[u], z[v]]:
                 edges.append((mapping.to_id(u), mapping.to_id(v)))
                 edges.append((mapping.to_id(v), mapping.to_id(u)))
