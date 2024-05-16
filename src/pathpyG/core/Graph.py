@@ -122,31 +122,46 @@ class Graph:
 
 
     @staticmethod
-    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False) -> Graph:
-        """Generate a Graph based on an edge list. Edges can be given as string tuples and a mapping
-        between node IDs and indices will be created automatically.
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None) -> Graph:
+        """Generate a Graph based on an edge list.
+        
+        Edges can be given as string or integer tuples. If strings are used and no mapping is given,
+        a mapping of node IDs to indices will be automatically created based on a lexicographic ordering of
+        node IDs.
 
         Args:
             edge_list: Iterable of edges represented as tuples
+            is_undirected: Whether the edge list contains all bidorectional edges
+            mapping: optional mapping of string IDs to node indices
 
         Example:
             ```
             import pathpyG as pp
 
-            l = [('a', 'b'), ('b', 'c'), ('a', 'c')]
+            l = [('a', 'b'), ('a', 'c'), ('b', 'c')]
+            g = pp.Graph.from_edge_list(l)
+            print(g)
+            print(g.mapping)
+
+            l = [('a', 'b'), ('a', 'c'), ('b', 'c')]
             g = pp.Graph.from_edge_list(l)
             print(g)
             print(g.mapping)
             ```
         """
+
+        if mapping is None:
+            node_ids = set()
+            for v, w in edge_list:
+                node_ids.add(v)
+                node_ids.add(w)
+            node_list = list(node_ids)
+            node_list.sort()
+            mapping = IndexMap(node_list)
+
         sources = []
         targets = []
-
-        mapping = IndexMap()
-
         for v, w in edge_list:
-            mapping.add_id(v)
-            mapping.add_id(w)
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
