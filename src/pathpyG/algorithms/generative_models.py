@@ -82,6 +82,8 @@ def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = Fal
         multi_edges: whether or not multiple identical edges are allowed
         directed: whether or not to generate a directed graph
     """
+    assert m <= max_edges(n, directed=directed, self_loops=self_loops, multi_edges=multi_edges)
+    
     edges = set()
     edges_added: int = 0
 
