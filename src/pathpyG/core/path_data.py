@@ -53,7 +53,7 @@ class PathData:
         else:
             self.mapping = IndexMap()
         # If the function add_walks is used, all walks are saved in one Data object
-        # walk_index stores a tuple that contains the idx in the dag list, the start and end index of the walk
+        # walk_index stores a tuple that contains the idx in the path list, the start and end index of the walk
         self.path_index: list[tuple[int, int, int]] = []
 
     @property
@@ -74,7 +74,7 @@ class PathData:
                         ('c', 'd'),
                         ('c', 'e')])
 
-                walks = pp.DAGData(g.mapping)
+                walks = pp.PathData(g.mapping)
                 walks.append_walk(('a', 'c', 'd'), weight=2.0)
                 paths.append_walk(('b', 'c', 'e'), weight=1.0)
                 ```
@@ -118,8 +118,8 @@ class PathData:
         )
 
     def get_walk(self, i: int) -> tuple:
-        i_dag, start, end = self.path_index[i]
-        return tuple(self.mapping.to_ids(self.paths[i_dag].node_sequence[start:end].squeeze()))   
+        i_walk, start, end = self.path_index[i]
+        return tuple(self.mapping.to_ids(self.paths[i_walk].node_sequence[start:end].squeeze()))
 
     def map_node_seq(self, node_seq: list | tuple) -> list:
         """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs"""

@@ -12,26 +12,21 @@ Example:
 
     # Generate toy example for temporal graph
     g = pp.TemporalGraph.from_edge_list([
-        ['b', 'c', 2],
-        ['a', 'b', 1],
-        ['c', 'd', 3],
-        ['d', 'a', 4],
-        ['b', 'd', 2],
-        ['d', 'a', 6],
-        ['a', 'b', 7]
-    ])
+        ('b', 'c', 2),
+        ('a', 'b', 1),
+        ('c', 'd', 3),
+        ('d', 'a', 4),
+        ('b', 'd', 2),
+        ('d', 'a', 6),
+        ('a', 'b', 7)
+    ])    
 
-    # Extract DAG capturing causal interaction sequences in temporal graph
-    dag = pp.algorithms.temporal_graph_to_event_dag(g, delta=1)
+    bw_t = pp.algorithms.temporal_betweenness_centrality(g, delta=1)
+    cl_t = pp.algorithms.temporal_closeness_centrality(g, delta=1)
 
-    # Get path object to calculate statistics.
-    paths = pp.PathData.from_temporal_dag(dag)
-
-    # Generate weighted (first-order) time-aggregated graph
-    g = pp.HigherOrderGraph(paths, order=1)
-
-    # Call networkx function `closeness_centrality` on graph
-    c = pp.algorithms.centrality.closeness_centrality(g)
+    static_graph = g.to_static_graph()
+    bw_s = pp.algorithms.betweenness_centrality(static_graph)
+    bw_s = pp.algorithms.closeness_centrality(static_graph)
     ```
 """
 

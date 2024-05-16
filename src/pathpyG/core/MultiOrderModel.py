@@ -146,7 +146,7 @@ class MultiOrderModel:
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
         in the from_temporal_graph (filtering non-time-respecting paths of order 2)
-        or from_DAGs (reindexing with dataloader) functions.
+        or from_PathData (reindexing with dataloader) functions.
 
         Args:
             edge_index: The edge index of the (k-1)-th order graph.
@@ -233,10 +233,10 @@ class MultiOrderModel:
         path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
     ) -> MultiOrderModel:
         """
-        Creates multiple higher-order De Bruijn graphs for paths in DAGData.
+        Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
 
         Args:
-            dag_data: The DAGData object containing the DAGs as list of PyG Data objects
+            path_data: `PathData` object containing paths as list of PyG Data objects
                 with sorted edge indices, node sequences and num_nodes.
             max_order: The maximum order of the MultiOrderModel that should be computed
             mode: The process that we assume. Can be "diffusion" or "propagation".
@@ -245,7 +245,7 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # We assume that the DAGs are sorted and that walks are remapped to a DAG
+        # We assume that paths are sorted
         path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
         edge_index = path_graph.edge_index
         node_sequence = path_graph.node_sequence

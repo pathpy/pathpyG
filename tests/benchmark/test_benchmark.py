@@ -9,8 +9,8 @@ from pathpyG import config
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def construct_higher_order(max_order):
-    dags = PathData.from_ngram('docs/data/tube_paths_train.ngram')
-    m = MultiOrderModel.from_PathData(dags, max_order=10)
+    paths = PathData.from_ngram('docs/data/tube_paths_train.ngram')
+    m = MultiOrderModel.from_PathData(paths, max_order=max_order)
 
 @pytest.mark.benchmark
 def test_higher_order_gpu(benchmark):
