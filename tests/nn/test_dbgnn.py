@@ -6,14 +6,13 @@ from pathpyG import config
 from pathpyG.nn.dbgnn import (
     DBGNN
 )
-from pathpyG.core.DAGData import DAGData
 from pathpyG.core.Graph import Graph
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 
-def test_bipartite_edge_index(simple_dags):
-    m = MultiOrderModel.from_DAGs(simple_dags, max_order=2)
+def test_bipartite_edge_index(simple_walks):
+    m = MultiOrderModel.from_PathData(simple_walks, max_order=2)
     g = m.layers[1]
     print(g.data.edge_index)
     print(g.mapping)

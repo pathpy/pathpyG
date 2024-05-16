@@ -5,12 +5,12 @@ from torch import IntTensor, equal, tensor
 
 from pathpyG import config
 from pathpyG.processes.random_walk import RandomWalk, HigherOrderRandomWalk
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 from pathpyG.core.Graph import Graph
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 
-def check_transitions(g, paths):
-    for i in range(len(paths.dags)):
+def check_transitions(g, paths: PathData):
+    for i in range(len(paths.paths)):
         w = paths.get_walk(i)
         for j in range(len(w)-1):
             assert g.is_edge(w[j], w[j+1])
@@ -19,7 +19,7 @@ def test_random_walk(simple_graph):
     rw = RandomWalk(simple_graph)
 
     steps = 20
-    data = rw.run_experiment(steps = steps, runs=[v for v in simple_graph.nodes])
+    data = rw.run_experiment(steps=steps, runs=[v for v in simple_graph.nodes])
 
     assert len(data) == simple_graph.N * steps * 2 + simple_graph.N * simple_graph.N
 

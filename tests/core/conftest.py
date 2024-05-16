@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-import torch
 
 from pathpyG.core.Graph import Graph
+from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 
 
 @pytest.fixture
@@ -21,24 +21,13 @@ def simple_graph_multi_edges() -> Graph:
 
 
 @pytest.fixture
-def simple_walks() -> DAGData:
+def simple_walks() -> PathData:
     """Return a simple example for path data."""
-    paths = DAGData()
-    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.append_dag(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.append_dag(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    return paths
-
-
-@pytest.fixture
-def simple_dags() -> DAGData:
-    """Return a simple example for path data."""
-    paths = DAGData()
-    paths.append_dag(torch.tensor([[0, 2], [2, 3]]))  # A -> C, C -> D
-    paths.append_dag(torch.tensor([[0, 1], [1, 4]]))  # B -> C, C -> E
-    paths.append_dag(torch.tensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
-    paths.append_dag(torch.tensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
+    paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.append_walk(('A', 'C', 'D'))
+    paths.append_walk(('A', 'C', 'D'))
+    paths.append_walk(('B', 'C', 'E'))
+    paths.append_walk(('B', 'C', 'E'))
     return paths
 
 

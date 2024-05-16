@@ -13,7 +13,7 @@ import scipy as sp  # pylint: disable=import-error
 from scipy.sparse import linalg as spl
 from scipy import linalg as spla
 from pandas import DataFrame
-from pathpyG import DAGData
+from pathpyG import PathData
 from pathpyG import Graph
 
 from .sampling import VoseAliasSampling
@@ -207,6 +207,7 @@ class RandomWalk(BaseProcess):
         """
         if v in self._network.nodes:
             return v == self._current_node
+        # TODO: Error here!
         elif type(self._network) == HigherOrderGraph:
             return v == self._network.mapping.to_id(self._current_node)[-1]
         else:
@@ -319,7 +320,7 @@ class RandomWalk(BaseProcess):
     def current_node(self) -> str:
         return self._current_node
 
-    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> DAGData:
+    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> PathData:
         """Returns a path that represents the sequence of (first-order) nodes traversed
         by a single random walk.
 
@@ -348,11 +349,11 @@ class RandomWalk(BaseProcess):
             data['state'] == True)]['node'].values)
 
         # generate Path
-        path = DAGData(self._network.mapping)
+        path = PathData(self._network.mapping)
         path.append_walk([walk_steps[i] for i in range(len(walk_steps))])
         return path
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> DAGData:
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> PathData:
         """Returns a DAGData object where each DAG is one walk
 
         Parameters
@@ -382,7 +383,7 @@ class RandomWalk(BaseProcess):
         else:
             runs = run_ids
 
-        walks = DAGData(self._network.mapping)
+        walks = PathData(self._network.mapping)
         for id in runs:
             walk_steps = list(data.loc[(data['run_id'] == id) & (
             data['state'] == True)]['node'].values)
@@ -628,7 +629,7 @@ class HigherOrderRandomWalk(RandomWalk):
         return (current_node, previous_node)
 
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> DAGData:
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> PathData:
         """Returns paths that represent the sequences of (first-order) nodes traversed by random walks with given run ids.
 
         Parameters
@@ -654,7 +655,7 @@ class HigherOrderRandomWalk(RandomWalk):
         else:
             runs = run_ids
         
-        paths = DAGData(mapping = self._first_order_network.mapping)
+        paths = PathData(mapping = self._first_order_network.mapping)
         for run in runs:
             walk_steps = list(data.loc[(data['run_id'] == run) & (
                 data['state'] == True)]['node'].values)

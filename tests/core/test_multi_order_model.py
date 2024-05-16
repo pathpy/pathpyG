@@ -35,28 +35,6 @@ def test_multi_order_model_lift_order_edge_index():
     assert ho_index.tolist() == [[0, 1, 1, 2, 3, 4], [1, 2, 3, 0, 4, 0]]
 
 
-def test_lift_order_dag():
-    e1 = torch.tensor([[0, 1, 1, 3], [1, 2, 3, 4]])
-    x = MultiOrderModel.lift_order_edge_index(e1, num_nodes=5)
-    assert torch.equal(x, IntTensor([[0, 0, 2], [1, 2, 3]]))
-
-    e2 = torch.tensor([[0, 0, 2], [1, 2, 3]])
-    x = MultiOrderModel.lift_order_edge_index(e2, num_nodes=4)
-    assert torch.equal(x, IntTensor([[1], [2]]))
-
-    e3 = torch.tensor([[1], [2]])
-    x = MultiOrderModel.lift_order_edge_index(e3, num_nodes=3)
-    assert x.size(1) == 0
-
-
-def test_edge_index_kth_order_dag(simple_dags):
-    m = MultiOrderModel.from_DAGs(simple_dags, max_order=2)
-    assert torch.equal(m.layers[1].data.edge_index.data, torch.tensor([[0, 0, 1, 1, 2, 2],
-           [1, 2, 2, 4, 3, 4]], device=m.layers[1].data.edge_index.device))
-    assert torch.equal(m.layers[2].data.edge_index.data, torch.tensor([[0, 1, 1, 2, 2],
-           [3, 4, 5, 4, 5]], device=m.layers[2].data.edge_index.device))
-
-
 # TODO: 
 def test_edge_index_temporal(simple_temporal_graph):
     # dag = temporal_graph_to_event_dag(simple_temporal_graph, delta=5, sparsify=True)

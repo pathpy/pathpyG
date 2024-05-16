@@ -44,7 +44,7 @@ from typing import (
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 
 from networkx import centrality
 from tqdm import tqdm
@@ -58,20 +58,17 @@ from torch import tensor
 from torch_geometric.utils import to_networkx, degree
 
 
-def path_node_traversals(dags: DAGData) -> Counter:
-    """Calculate the number of times any dag traverses each of the nodes.
+def path_node_traversals(paths: PathData) -> Counter:
+    """Calculate the number of times any path traverses each of the nodes.
 
-    Args:    
-        dags: `DAGData` object that contains path data
+    Args:
+        paths: `PathData` object that contains observations of paths in a graph
     """
     traversals = Counter()
-    for dag in dags.dags:
-        t = torch.maximum(
-            degree(dag.edge_index[1], num_nodes=dag.num_nodes), degree(dag.edge_index[0], num_nodes=dag.num_nodes)
-        )
-        for v in range(len(t)):
-            # TODO: Re-evaluate the weight representation
-            traversals[dags.mapping.to_id(v)] += t[v].item() * dag.edge_weight.max().item()
+    for i in range(paths.num_paths):
+        w = paths.get_walk(i)
+        for v in w:
+            traversals[v] += paths.paths[i].edge_weight.max().item()
     return traversals
 
 
@@ -152,7 +149,7 @@ def betweenness_centrality(g: Graph, sources=None) -> dict[str, float]:
     return bw
 
 
-def path_visitation_probabilities(paths: DAGData) -> dict:
+def path_visitation_probabilities(paths: PathData) -> dict:
     """Calculate the probabilities that a randomly chosen path passes through each of
     the nodes. If 5 out of 100 paths (of any length) traverse node v, node v will be
     assigned a visitation probability of 0.05. This measure can be interpreted as ground
@@ -160,7 +157,7 @@ def path_visitation_probabilities(paths: DAGData) -> dict:
     abstraction of the paths.
 
     Args:
-        paths: DAGData object that contains path data
+        paths: PathData object that contains path data
     """
     # if not isinstance(paths, PathData):
     #    assert False, "`paths` must be an instance of Paths"

@@ -20,7 +20,7 @@ from pathpyG.utils.progress import tqdm
 from pathpyG.core.Graph import Graph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 from pathpyG import io
 from pathpyG import nn
