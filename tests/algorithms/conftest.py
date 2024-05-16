@@ -14,6 +14,10 @@ def simple_graph() -> Graph:
     """Return a simple undirected graph."""
     return Graph.from_edge_list([('a', 'b'), ('b', 'a'), ('b', 'c'), ('c', 'b'), ('a', 'c'), ('c', 'a')], is_undirected=True)
 
+@pytest.fixture
+def simple_graph_sp() -> Graph:
+    """Return a undirected graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'e'), ('b', 'd'), ('d', 'e')]).to_undirected()
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:
