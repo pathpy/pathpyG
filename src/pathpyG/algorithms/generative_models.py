@@ -18,6 +18,7 @@ from typing import (
     Dict,
 )
 
+import scipy.special
 from networkx import centrality
 from tqdm import tqdm
 
@@ -31,6 +32,7 @@ from torch_geometric.utils import to_networkx, degree
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.IndexMap import IndexMap
+
 
 def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_loops: bool = False) -> int | float:
     """Returns the maximum number of edges that a directed or undirected network with n nodes can
@@ -67,6 +69,7 @@ def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_lo
         return int(n*(n-1)/2)
     else:  # not loops and directed:
         return int(n*(n-1))
+
 
 def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = False, multi_edges: bool = False, directed: bool = False) -> Graph:
     """Generate a random graph with n nodes and m edges based on the G(n,m) model by Pal Eröds and Alfred Renyi.
@@ -127,13 +130,34 @@ def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = F
             x = s + 1
         for t in range(x):
             if not self_loops and t == s:
-                continue        
+                continue
             if _np.random.random() <= p:
                 edges.add((mapping.to_id(s), mapping.to_id(t)))
                 if not directed and s != t:
                     edges.add((mapping.to_id(t), mapping.to_id(s)))
         
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+
+
+def G_np_likelihood(p: float, graph: Graph) -> float:
+    """Calculate the likelihood of parameter p for a G(n,p) model and a given graph
+    """
+    assert graph.is_directed is False
+    return p**graph.N * (1-p)**(scipy.special.binom(graph.N, 2)-graph.M/2)
+
+
+def Gnp_log_likelihood(p: float, graph: Graph) -> float:
+    """Calculate the log-likelihood of parameter p for a G(n,p) model and a given graph
+    """
+    return (graph.M/2)*_np.log10(p) + (scipy.special.binom(graph.N, 2)-(graph.M/2)) * _np.log10(1-p)
+
+
+def G_np_MLE(graph: Graph) -> float:
+    """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given graph
+    """
+    assert graph.is_directed is False
+    return (graph.M/2) / scipy.special.binom(graph.N, 2)
+
 
 def is_graphic_Erdos_Gallai(degrees: list[int]) -> bool:
     """Check Erdös and Gallai condition.
