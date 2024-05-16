@@ -3,9 +3,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pathpyG import Graph
-from pathpyG import TemporalGraph
-from pathpyG import DAGData
+from pathpyG.core.Graph import Graph
+from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.path_data import PathData
 
 
 @pytest.fixture
@@ -22,11 +23,11 @@ def simple_temporal_graph() -> TemporalGraph:
 
 
 @pytest.fixture
-def simple_dags() -> DAGData:
-    paths = DAGData()
-    paths.append_dag(torch.tensor([[2, 1, 3], [1, 3, 5]]), weight=1.0)
-    paths.append_dag(torch.tensor([[0, 1], [1, 3]]), weight=1.0)
-    paths.append_dag(torch.tensor([[3], [4]]), weight=1.0)
+def simple_walks() -> PathData:
+    paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E', 'F']))
+    paths.append_walk(('C', 'B', 'D', 'F'), weight=1.0)
+    paths.append_walk(('A', 'B', 'D'), weight=1.0)
+    paths.append_walk(('D', 'E'), weight=1.0)
     return paths
 
 

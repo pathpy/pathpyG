@@ -7,7 +7,7 @@ from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
@@ -146,7 +146,7 @@ class MultiOrderModel:
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
         in the from_temporal_graph (filtering non-time-respecting paths of order 2)
-        or from_DAGs (reindexing with dataloader) functions.
+        or from_PathData (reindexing with dataloader) functions.
 
         Args:
             edge_index: The edge index of the (k-1)-th order graph.
@@ -229,14 +229,14 @@ class MultiOrderModel:
         return m
 
     @staticmethod
-    def from_DAGs(
-        dag_data: DAGData, max_order: int = 1, mode: str = "propagation", cached: bool = True
+    def from_PathData(
+        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
     ) -> MultiOrderModel:
         """
-        Creates multiple higher-order De Bruijn graphs for paths in DAGData.
+        Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
 
         Args:
-            dag_data: The DAGData object containing the DAGs as list of PyG Data objects
+            path_data: `PathData` object containing paths as list of PyG Data objects
                 with sorted edge indices, node sequences and num_nodes.
             max_order: The maximum order of the MultiOrderModel that should be computed
             mode: The process that we assume. Can be "diffusion" or "propagation".
@@ -245,14 +245,14 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # We assume that the DAGs are sorted and that walks are remapped to a DAG
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
-        edge_index = dag_graph.edge_index
-        node_sequence = dag_graph.node_sequence
-        if dag_graph.edge_attr is None:
+        # We assume that paths are sorted
+        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
+        edge_index = path_graph.edge_index
+        node_sequence = path_graph.node_sequence
+        if path_graph.edge_attr is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         else:
-            edge_weight = dag_graph.edge_attr
+            edge_weight = path_graph.edge_attr
         if mode == "diffusion":
             edge_weight = (
                 edge_weight / degree(edge_index[0], dtype=torch.long, num_nodes=node_sequence.size(0))[edge_index[0]]
@@ -264,7 +264,7 @@ class MultiOrderModel:
         m.layers[1] = MultiOrderModel.aggregate_edge_index(
             edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
         )
-        m.layers[1].mapping = dag_data.mapping
+        m.layers[1].mapping = path_data.mapping
 
         for k in range(2, max_order + 1):
             edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(

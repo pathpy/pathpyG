@@ -23,26 +23,27 @@ def test_betweenness_centrality(simple_graph):
     assert r == {"a": 0.0, "b": 0.0, "c": 0.0}
 
 
-def test_node_traversals(simple_dags):
-    traversals_dict = path_node_traversals(simple_dags)
-    assert set(traversals_dict.keys()) == {0, 1, 2, 3, 4, 5}
-    assert traversals_dict[0] == 1
-    assert traversals_dict[1] == 2
-    assert traversals_dict[2] == 1
-    assert traversals_dict[3] == 3
-    assert traversals_dict[4] == 1
-    assert traversals_dict[5] == 1
+def test_node_traversals(simple_walks):
+    print(simple_walks)
+    traversals_dict = path_node_traversals(simple_walks)
+    assert set(traversals_dict.keys()) == {'A', 'B', 'C', 'D', 'E', 'F'}
+    assert traversals_dict['A'] == 1
+    assert traversals_dict['B'] == 2
+    assert traversals_dict['C'] == 1
+    assert traversals_dict['D'] == 3
+    assert traversals_dict['E'] == 1
+    assert traversals_dict['F'] == 1
 
 
-def test_visitation_probabilities(simple_dags):
-    traversals_dict = path_visitation_probabilities(simple_dags)
-    assert set(traversals_dict.keys()) == {0, 1, 2, 3, 4, 5}
-    assert traversals_dict[0] == 1 / 9
-    assert traversals_dict[1] == 2 / 9
-    assert traversals_dict[2] == 1 / 9
-    assert traversals_dict[3] == 3 / 9
-    assert traversals_dict[4] == 1 / 9
-    assert traversals_dict[5] == 1 / 9
+def test_visitation_probabilities(simple_walks):
+    visitations_dict = path_visitation_probabilities(simple_walks)
+    assert set(visitations_dict.keys()) == {'A', 'B', 'C', 'D', 'E', 'F'}
+    assert visitations_dict['A'] == 1 / 9
+    assert visitations_dict['B'] == 2 / 9
+    assert visitations_dict['C'] == 1 / 9
+    assert visitations_dict['D'] == 3 / 9
+    assert visitations_dict['E'] == 1 / 9
+    assert visitations_dict['F'] == 1 / 9
 
 
 def test_temporal_betweenness(long_temporal_graph):

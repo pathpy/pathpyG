@@ -52,7 +52,7 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
             ho_edge_index = x[:,torch.where(src_edges[1,:] == dst_edges[0,:])[0]]
             second_order.append(ho_edge_index)
 
-    ho_index = torch.cat(second_order, dim=1)    
+    ho_index = torch.cat(second_order, dim=1)
     return ho_index
 
 def temporal_shortest_paths(g: TemporalGraph, delta: int):
