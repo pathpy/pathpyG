@@ -33,4 +33,5 @@ Example:
 
 from pathpyG.algorithms.temporal import *
 from pathpyG.algorithms import centrality
+from pathpyG.algorithms import generative_models
 from pathpyG.algorithms.RollingTimeWindow import RollingTimeWindow

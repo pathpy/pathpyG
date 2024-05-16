@@ -122,7 +122,7 @@ class Graph:
 
 
     @staticmethod
-    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None) -> Graph:
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None, num_nodes=None) -> Graph:
         """Generate a Graph based on an edge list.
         
         Edges can be given as string or integer tuples. If strings are used and no mapping is given,
@@ -133,6 +133,7 @@ class Graph:
             edge_list: Iterable of edges represented as tuples
             is_undirected: Whether the edge list contains all bidorectional edges
             mapping: optional mapping of string IDs to node indices
+            num_nodes: optional number of nodes (useful in case not all nodes have incident edges)
 
         Example:
             ```
@@ -165,9 +166,12 @@ class Graph:
             sources.append(mapping.to_idx(v))
             targets.append(mapping.to_idx(w))
 
-        edge_index = EdgeIndex([sources, targets], sparse_size=(mapping.num_ids(), mapping.num_ids()), is_undirected=is_undirected, device=config['torch']['device'])
+        if num_nodes is None:
+            num_nodes = mapping.num_ids()
+
+        edge_index = EdgeIndex([sources, targets], sparse_size=(num_nodes, num_nodes), is_undirected=is_undirected, device=config['torch']['device'])
         return Graph(
-            Data(edge_index=edge_index),
+            Data(edge_index=edge_index, num_nodes=num_nodes),
             mapping=mapping
         )
 
