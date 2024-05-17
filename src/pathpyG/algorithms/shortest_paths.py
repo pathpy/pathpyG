@@ -1,6 +1,6 @@
 """Algorithms to calculate shortest paths in static networks
 
-The functions  in this module allow to compute shortest paths 
+The functions  in this module allow to compute shortest paths
 in static networks."""
 
 
@@ -12,10 +12,9 @@ from typing import (
 )
 
 import numpy as _np
+from scipy.sparse.csgraph import dijkstra
 
 from pathpyG.core.Graph import Graph
-
-from scipy.sparse.csgraph import dijkstra
 
 def shortest_paths_dijkstra(graph: Graph) -> (_np.ndarray, _np.ndarray):
 
