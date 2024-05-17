@@ -510,6 +510,83 @@ class Graph:
         """Return whether graph contains self-loops."""
         return self.data.has_self_loops()
 
+    def __add__(self, other: Graph) -> Graph:
+        """Combine Graph object with other Graph object.
+
+        The semantics of this operation depends on the optional IndexMap
+        of both graphs. If no IndexMap is included, the two underlying data objects
+        are concatenated, thus merging edges from both graphs while leaving node indices
+        unchanged. If both graphs include IndexMaps that assign node IDs to indices,
+        indiced will be adjusted, creating a new mapping for the union of node Ids in both graphs.
+
+        Node IDs of graphs to be combined can be disjoint, partly overlapping or non-overlapping.
+
+        Example: 
+        ```py
+        # no node IDs
+        g1 = pp.Graph.from_edge_index(torch.Tensor([[0,1,1],[1,2,3]]))
+        g1 = pp.Graph.from_edge_index(torch.Tensor([[0,2,3],[3,2,1]]))
+        print(g1 + g2)
+        # Graph with 3 nodes and 6 edges
+
+        # Identical node IDs
+        g1 = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c')])
+        g2 = pp.Graph.from_edge_list([('a', 'c'), ('c', 'b')])
+        print(g1 + g2)
+        # Graph with 3 nodes and 4 edges
+
+        # Non-overlapping node IDs
+        g1 = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c')])
+        g2 = pp.Graph.from_edge_list([('c', 'd'), ('d', 'e')])
+        print(g1 + g2)
+        # Graph with 6 nodes and 4 edges
+
+        # Partly overlapping node IDs
+        g1 = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c')])
+        g2 = pp.Graph.from_edge_list([('b', 'd'), ('d', 'e')])
+        print(g1 + g2)
+        # Graph with 5 nodes and 4 edges
+        ```
+        """
+        d1 = self.data
+        m1 = self.mapping
+
+        d2 = other.data
+        m2 = other.mapping
+
+        # compute overlap and additional nodes in g2 over g1
+        overlap = set(m2.node_ids).intersection(m1.node_ids)
+        additional_nodes = set(m2.node_ids).difference(m1.node_ids)
+
+        d2_idx_translation = {}
+        node_ids = ['']*(self.N + len(additional_nodes))
+        # keep mappings of nodes in g1
+        for v in m1.node_ids:
+            node_ids[m1.to_idx(v)] = v
+        for v in m2.node_ids:
+            d2_idx_translation[m2.to_idx(v)] = m2.to_idx(v)
+        # for overlapping node IDs we must correct node indices in m2
+        for v in overlap:
+            d2_idx_translation[m2.to_idx(v)] = m1.to_idx(v)
+        # add mapping for nodes in g2 that are not in g1 and correct indices in g2
+        for v in additional_nodes:
+            new_idx = m2.to_idx(v) + self.N - len(overlap)
+            node_ids[new_idx] = v
+            d2_idx_translation[m2.to_idx(v)] = new_idx
+        # apply index translation to d2
+        # fast dictionary based mapping using torch
+        palette, key = zip(*d2_idx_translation.items())
+        key = torch.tensor(key)
+        palette = torch.tensor(palette)
+
+        index = torch.bucketize(d2.edge_index.ravel(), palette)
+        d2.edge_index = key[index].reshape(d2.edge_index.shape)
+        d = d1.concat(d2)
+        mapping = IndexMap(node_ids)
+        d.num_nodes = self.N + len(additional_nodes)
+        d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
+        return Graph(d, mapping=mapping)
+
     def __str__(self) -> str:
         """Return a string representation of the graph."""
 

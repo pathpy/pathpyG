@@ -220,6 +220,37 @@ def test_get_laplacian(simple_graph):
     assert laplacian.data[4] == 1
     assert laplacian.data[5] == 0
 
+def test_add_operator_complete_overlap():
+    # complete overlap
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
+    g = g1 + g2
+    assert g.N == g1.N
+    assert g.M == g1.M + g2.M
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
+                                                        [1, 1, 2, 3, 2, 3]]))
+
+
+def test_add_operator_no_overlap():
+    # no overlap
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['e', 'f', 'g', 'h']))
+    g = g1 + g2
+    assert g.N == g1.N + g2.N
+    assert g.M == g1.M + g2.M
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 1, 1, 4, 5, 5],
+                                                        [1, 2, 3, 5, 6, 7]]))
+
+
+def test_add_operator_partial_overlap():
+    # partial overlap
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h']))
+    g = g1 + g2
+    assert g.N == 6
+    assert g.M == g1.M + g2.M
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
+                                                        [1, 1, 2, 3, 4, 5]]))
 
 # def test_add_node_ohe(simple_graph):
 #     simple_graph.add_node_ohe("node_ohe")
