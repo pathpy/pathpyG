@@ -35,6 +35,6 @@ from pathpyG.algorithms.temporal import *
 from pathpyG.algorithms import centrality
 from pathpyG.algorithms import generative_models
 from pathpyG.algorithms import shortest_paths
-from pathpyG.algorithms.components import connected_components
+from pathpyG.algorithms.components import connected_components, largest_connected_component
 from pathpyG.algorithms.RollingTimeWindow import RollingTimeWindow
 from pathpyG.algorithms.weisfeiler_leman import WeisfeilerLeman_test
