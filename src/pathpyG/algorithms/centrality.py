@@ -37,6 +37,8 @@ from typing import (
     Dict,
 )
 
+from math import isnan
+
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.path_data import PathData
@@ -293,10 +295,12 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
             # work backwards through paths to all targets and sum delta and sigma   
             if dist[w] == dist_fo[fo_nodes[w]]:
                 # v_fo = fo_tgt(v, g, src_indices, tgt_indices)
-                delta_[w] += (sigma[w]/sigma_fo[fo_nodes[w]])
+                if not isnan(sigma[w]/sigma_fo[fo_nodes[w]]):
+                    delta_[w] += (sigma[w]/sigma_fo[fo_nodes[w]])
             for v in P[w]:
-                delta_[v] += (sigma[v]/sigma[w]) * delta_[w]
-                bw[fo_nodes[v]] += delta_[w] * (sigma[v]/sigma[w])
+                if not isnan(sigma[v]/sigma[w]):
+                    delta_[v] += (sigma[v]/sigma[w]) * delta_[w]
+                    bw[fo_nodes[v]] += delta_[w] * (sigma[v]/sigma[w])
     
     # map index-based centralities to node IDs
     bw_id = defaultdict(lambda: 0.0)
