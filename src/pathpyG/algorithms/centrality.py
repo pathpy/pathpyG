@@ -242,10 +242,10 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
 
         # for any given s, sigma[v] counts shortest paths from s to v
         sigma: defaultdict[int, float] = defaultdict(lambda: 0.0)
-        sigma[s] = 1
+        sigma[s] = 1.0
 
         sigma_fo: defaultdict[int, float] = defaultdict(lambda: 0.0)
-        sigma_fo[fo_nodes[s]] = 1
+        sigma_fo[fo_nodes[s]] = 1.0
 
         dist: defaultdict[int, int] = defaultdict(lambda: -1)
         dist[s] = 0
@@ -256,7 +256,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
         # for any given s, P[v] is the set of predecessors of v on shortest paths from s
         P = defaultdict(set)
 
-        # Q is a queue, so we append at the end and pop from the start
+        # Q is a queue, so we append at the right and pop from the left
         Q: deque = deque()
         Q.append(s)
 
@@ -278,29 +278,32 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
                     Q.append(w)
                 # we found a shortest path to event w via event v
                 if dist[w] == dist[v] + 1:
-                    sigma[w] += sigma[w] + sigma[v]
+                    sigma[w] += sigma[v]
                     P[w].add(v)
                     # we found a shortest path to first-order node of event w
                     if dist[w] == dist_fo[fo_nodes[w]]:
                         sigma_fo[fo_nodes[w]] += sigma[v]
         
-        c = 0
+        c = 0.0
         for i in dist_fo:
             if dist_fo[i] >= 0:
-                c += 1
-        bw[fo_nodes[s]] = bw[fo_nodes[s]] - c + 1
+                c += 1.0
+        bw[fo_nodes[s]] = bw[fo_nodes[s]] - c + 1.0
 
         while S:
             w = S.pop()
             # work backwards through paths to all targets and sum delta and sigma   
             if dist[w] == dist_fo[fo_nodes[w]]:
-                # v_fo = fo_tgt(v, g, src_indices, tgt_indices)
-                if not isnan(sigma[w]/sigma_fo[fo_nodes[w]]):
-                    delta_[w] += (sigma[w]/sigma_fo[fo_nodes[w]])
+                x = sigma[w]/sigma_fo[fo_nodes[w]]
+                if isnan(x):
+                    x = 0.0
+                delta_[w] += x
             for v in P[w]:
-                if not isnan(sigma[v]/sigma[w]):
-                    delta_[v] += (sigma[v]/sigma[w]) * delta_[w]
-                    bw[fo_nodes[v]] += delta_[w] * (sigma[v]/sigma[w])
+                x = sigma[v]/sigma[w]
+                if isnan(x):
+                    x = 0.0
+                delta_[v] += x * delta_[w]
+                bw[fo_nodes[v]] += delta_[w] * x
     
     # map index-based centralities to node IDs
     bw_id = defaultdict(lambda: 0.0)
