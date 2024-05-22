@@ -548,10 +548,10 @@ class Graph:
         # Graph with 5 nodes and 4 edges
         ```
         """
-        d1 = self.data
+        d1 = self.data.clone()
         m1 = self.mapping
 
-        d2 = other.data
+        d2 = other.data.clone()
         m2 = other.mapping
 
         # compute overlap and additional nodes in g2 over g1

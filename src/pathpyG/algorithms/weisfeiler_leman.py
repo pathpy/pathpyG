@@ -26,7 +26,7 @@ def WeisfeilerLeman_test(g1: Graph, g2: Graph) -> Tuple[bool, List[str], List[st
     if len(set(g1.mapping.node_ids).intersection(g2.mapping.node_ids)) > 0:
         raise Exception('node identifiers of graphs must not overlap')
     g_combined = g1 + g2
-    # initialize labels of all ndoes to zero
+    # initialize labels of all nodes to zero
     fingerprint: Dict[str | int, str] = {v: '0' for v in g_combined.nodes}
     labels = {} 
     label_count = 1
