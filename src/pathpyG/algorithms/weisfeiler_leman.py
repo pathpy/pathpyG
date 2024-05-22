@@ -53,11 +53,13 @@ def WeisfeilerLeman_test(g1: Graph, g2: Graph) -> Tuple[bool, List[str], List[st
 
     # Reduce fingerprints to nodes of g1 and g2 respectively
     fingerprint_1 = [fingerprint[v] for v in g1.nodes]
-    fingerprint_1.sort()
+    fingerprint_1_sorted = fingerprint_1.copy()
+    fingerprint_1_sorted.sort()
     fingerprint_2 = [fingerprint[v] for v in g2.nodes]
-    fingerprint_2.sort()
+    fingerprint_2_sorted = fingerprint_2.copy()
+    fingerprint_2_sorted.sort()
     
     # perform WL-test
-    if fingerprint_1 == fingerprint_2:
+    if fingerprint_1_sorted == fingerprint_2_sorted:
         return True, fingerprint_1, fingerprint_2
     return False, fingerprint_1, fingerprint_2
