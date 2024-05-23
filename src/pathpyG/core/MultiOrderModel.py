@@ -23,6 +23,12 @@ class MultiOrderModel:
         max_order = max(list(self.layers.keys())) if self.layers else 0
         s = f"MultiOrderModel with max. order {max_order}"
         return s
+    
+    def to(self, device: torch.device) -> MultiOrderModel:
+        for g in self.layers.values():
+            g.to(device)
+        return self
+
 
     @staticmethod
     def aggregate_edge_weight(ho_index: torch.Tensor, edge_weight: torch.Tensor, aggr: str = "src") -> torch.Tensor:
@@ -229,7 +235,7 @@ class MultiOrderModel:
 
     @staticmethod
     def from_PathData(
-        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True, device : Union[int, str]= None
+        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
     ) -> MultiOrderModel:
         """
         Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
@@ -245,7 +251,7 @@ class MultiOrderModel:
         m = MultiOrderModel()
 
         # We assume that paths are sorted
-        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(device)
+        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(path_data.device)
         edge_index = path_graph.edge_index
         node_sequence = path_graph.node_sequence
         if path_graph.edge_attr is None:
