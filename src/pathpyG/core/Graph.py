@@ -210,9 +210,7 @@ class Graph:
         return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
 
     def to(self, device: torch.device) -> Graph:
-        """
-        Moves all attributes to the given device.
-        """
+        """Moves all attributes to the given device. """
         self.data.to(device)
         self.row = self.row.to(device)
         self.row_ptr = self.row_ptr.to(device)

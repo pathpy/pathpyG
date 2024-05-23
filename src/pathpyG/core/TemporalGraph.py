@@ -110,9 +110,7 @@ class TemporalGraph(Graph):
             i += 1
 
     def to(self, device: torch.device) -> Graph:
-        """
-        Moves all attributes to the given device.
-        """
+        """Moves all attributes to the given device. """
         self.data.to(device)
         return self
     
