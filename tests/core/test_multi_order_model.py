@@ -4,7 +4,7 @@ import torch
 from torch_geometric import EdgeIndex
 
 from pathpyG.core.multi_order_model import MultiOrderModel
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.algorithms.temporal import lift_order_temporal
 
 def test_multi_order_model_init():

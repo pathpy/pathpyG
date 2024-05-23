@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy  as _np
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.statistics import degree_distribution, degree_raw_moment, degree_sequence, degree_central_moment, degree_generating_function
 
 

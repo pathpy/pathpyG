@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 from numpy import array
 import torch
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils.config import config
 

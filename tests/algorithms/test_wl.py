@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.algorithms import WeisfeilerLeman_test
 
 def test_WeisfeilerLeman_test_1():

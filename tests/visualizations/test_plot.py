@@ -2,7 +2,7 @@ import torch
 import pytest
 
 from types import ModuleType
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.plot import _get_plot_backend

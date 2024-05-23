@@ -30,7 +30,7 @@ from torch import tensor
 
 from torch_geometric.utils import to_networkx, degree
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 
 

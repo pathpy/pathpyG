@@ -7,7 +7,7 @@ from typing import (
 
 from collections import defaultdict
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 import numpy as _np
 
 def degree_sequence(graph: Graph) -> _np.array:

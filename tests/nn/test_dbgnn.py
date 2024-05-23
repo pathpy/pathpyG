@@ -6,7 +6,7 @@ from pathpyG import config
 from pathpyG.nn.dbgnn import (
     DBGNN
 )
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 

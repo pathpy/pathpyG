@@ -7,7 +7,7 @@ from pathpyG.visualisations.plot import PathPyPlot
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
-    from pathpyG.core.Graph import Graph
+    from pathpyG.core.graph import Graph
 
 # create logger
 logger = logging.getLogger("root")

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Tuple
 import pytest
 import torch
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.multi_order_model import MultiOrderModel
 
