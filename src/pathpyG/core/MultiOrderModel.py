@@ -25,6 +25,7 @@ class MultiOrderModel:
         return s
     
     def to(self, device: torch.device) -> MultiOrderModel:
+        """Converts the graph layers to the given device."""
         for g in self.layers.values():
             g.to(device)
         return self
