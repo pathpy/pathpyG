@@ -31,7 +31,7 @@ class PathData:
         g = pp.Graph.from_edge_list([('a', 'c'),
                              ('b', 'c'),
                              ('c', 'd'),
-                             ('c', 'e')], device = 'cuda')
+                             ('c', 'e')], device = torch.device('cuda:0'))
 
         # Store observations of walks using the index mapping
         # from the graph above
