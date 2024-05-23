@@ -3,7 +3,7 @@ from __future__ import annotations
 from torch import IntTensor, equal, tensor, Size
 
 from pathpyG import config
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.temporal_graph import TemporalGraph
 
 def test_N(long_temporal_graph):
     assert long_temporal_graph.N == 9

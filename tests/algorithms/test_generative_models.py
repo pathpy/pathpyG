@@ -1,7 +1,7 @@
 import numpy as _np
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges, G_np_randomize, G_nm_randomize, G_np_MLE
 
 

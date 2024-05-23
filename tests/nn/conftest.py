@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
 
 

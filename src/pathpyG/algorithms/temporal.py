@@ -11,9 +11,9 @@ import torch
 from scipy.sparse.csgraph import dijkstra
 
 from pathpyG import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.core.index_map import IndexMap
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 from pathpyG import config
 

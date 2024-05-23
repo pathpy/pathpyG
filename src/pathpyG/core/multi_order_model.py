@@ -8,8 +8,8 @@ from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
 from pathpyG.core.path_data import PathData
-from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 

@@ -6,7 +6,7 @@ import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.path_data import PathData
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 @pytest.fixture
 def simple_graph() -> Graph:

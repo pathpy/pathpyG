@@ -16,7 +16,7 @@ from torch_geometric.utils import cumsum
 from torch_geometric.data import Data
 
 from pathpyG.utils.config import config
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 
 
 class PathData:

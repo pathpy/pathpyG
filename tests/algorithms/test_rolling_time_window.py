@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.algorithms.RollingTimeWindow import RollingTimeWindow
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.algorithms.rolling_time_window import RollingTimeWindow
 
 
 def test_rolling_time_window(long_temporal_graph):

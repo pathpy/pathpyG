@@ -31,7 +31,7 @@ from torch import tensor
 from torch_geometric.utils import to_networkx, degree
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 
 
 def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_loops: bool = False) -> int | float:

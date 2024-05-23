@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GCNConv
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 class BipartiteGraphOperator(MessagePassing):
     def __init__(self, in_ch, out_ch):

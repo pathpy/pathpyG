@@ -12,7 +12,7 @@ from numpy import array
 import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils.config import config
 
 
