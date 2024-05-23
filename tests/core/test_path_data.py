@@ -53,7 +53,7 @@ def test_add_walk_seqs():
 def test_to_device():
     cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cpu = torch.device('cpu')
-
+    
     paths = PathData(IndexMap(['a', 'c', 'b', 'd', 'e']), device=cuda)
     paths.append_walks([('a', 'c', 'd'), ('a', 'c', 'e'), ('b', 'c', 'd'), ('b', 'c', 'e')], weights=[1.0]*4)
 

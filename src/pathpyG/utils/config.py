@@ -44,9 +44,6 @@ config['attributes']['history'] = parser.getboolean('attributes', 'history')
 config['attributes']['multiple'] = parser.getboolean('attributes', 'multiple')
 config['attributes']['frequency'] = parser.get('attributes', 'frequency')
 
-
-config['torch']['device'] = parser.get('torch', 'device')
-
 config['object']['separator'] = parser.get('object', 'separator')
 
 config['node']['color'] = parser.get('node', 'color')
