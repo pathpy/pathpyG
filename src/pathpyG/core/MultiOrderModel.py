@@ -5,7 +5,6 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 
-from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
@@ -230,7 +229,7 @@ class MultiOrderModel:
 
     @staticmethod
     def from_PathData(
-        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
+        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True, device : Union[int, str]= None
     ) -> MultiOrderModel:
         """
         Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
@@ -246,7 +245,7 @@ class MultiOrderModel:
         m = MultiOrderModel()
 
         # We assume that paths are sorted
-        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
+        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(device)
         edge_index = path_graph.edge_index
         node_sequence = path_graph.node_sequence
         if path_graph.edge_attr is None:
