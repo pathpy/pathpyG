@@ -14,17 +14,27 @@ from pathpyG import Graph, IndexMap
 
 
 def test_init():
-    edge_index = get_random_edge_index(100, 100, 1000)
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    edge_index = get_random_edge_index(100, 100, 1000).to(cuda)
     data = Data(edge_index=edge_index, num_nodes=100)
     g = Graph(data)
     assert isinstance(g, Graph)
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
+
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
 
 
 def test_init_with_edge_index():
-    edge_index = EdgeIndex(get_random_edge_index(100, 100, 1000))
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    edge_index = EdgeIndex(get_random_edge_index(100, 100, 1000)).to(cuda)
     data = Data(edge_index=edge_index, num_nodes=100)
     g = Graph(data)
     assert isinstance(g, Graph)
@@ -32,9 +42,17 @@ def test_init_with_edge_index():
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
 
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
+
 
 def test_init_with_mapping():
-    edge_index = get_random_edge_index(100, 100, 1000)
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    edge_index = get_random_edge_index(100, 100, 1000).to(cuda)
     data = Data(edge_index=edge_index, num_nodes=100)
     idxs = [str(i) for i in range(100)]
     mapping = IndexMap(idxs)
@@ -44,23 +62,39 @@ def test_init_with_mapping():
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
 
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
+
 
 def test_from_edge_index():
-    edge_index = get_random_edge_index(100, 100, 1000)
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    edge_index = get_random_edge_index(100, 100, 1000).to(cuda)
     g = Graph.from_edge_index(edge_index)
     assert isinstance(g, Graph)
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
 
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
+
 
 def test_from_edge_list():
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
     edge_list = [
         ("a", "b"),
         ("c", "a"),
         ("b", "c"),
     ]
-    g = Graph.from_edge_list(edge_list)
+    g = Graph.from_edge_list(edge_list, device=cuda)
     assert isinstance(g, Graph)
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
@@ -68,7 +102,13 @@ def test_from_edge_list():
     assert g.mapping.to_idx('b') == 1
     assert g.mapping.to_idx('c') == 2
     assert isinstance(g.edge_to_index, dict)
-    assert torch.equal(g.data.edge_index, EdgeIndex([[0,1,2], [1,2,0]]))
+    assert torch.equal(g.data.edge_index, EdgeIndex([[0,1,2], [1,2,0]]).to(cuda))
+
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
 
 
 def test_from_edge_list_undirected():
@@ -88,8 +128,38 @@ def test_from_edge_list_undirected():
 
 
 def test_to_undirected(simple_graph):
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    simple_graph.to(cuda)
+
     g_u = simple_graph.to_undirected()
     assert g_u.data.is_undirected()
+    
+    assert g_u.data.edge_index.device == cuda
+    assert g_u.row.device == cuda
+    assert g_u.row_ptr.device == cuda
+    assert g_u.col.device == cuda
+    assert g_u.col_ptr.device == cuda
+
+
+def test_to_device(simple_graph):
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    cpu = torch.device('cpu')
+
+    g = simple_graph.to(cuda)
+
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
+
+    g.to(cpu)
+
+    assert g.data.edge_index.device == cpu
+    assert g.row.device == cpu
+    assert g.row_ptr.device == cpu
+    assert g.col.device == cpu
+    assert g.col_ptr.device == cpu
 
 
 def test_weighted_graph(simple_graph_multi_edges):
@@ -231,6 +301,7 @@ def test_add_operator_complete_overlap():
                                                         [1, 1, 2, 3, 2, 3]]))
 
 
+
 def test_add_operator_no_overlap():
     # no overlap
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
@@ -243,15 +314,25 @@ def test_add_operator_no_overlap():
 
 
 def test_add_operator_partial_overlap():
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
     # partial overlap
-    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
-    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h']))
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd'])).to(cuda)
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h'])).to(cuda)
     g = g1 + g2
     assert g.N == 6
     assert g.M == g1.M + g2.M
-    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
-                                                        [1, 1, 2, 3, 4, 5]]))
 
+    # we need to sort because the order may vary when merged on GPU
+    assert torch.equal(g.data.edge_index.sort_by('col')[0], torch.tensor([[0, 0, 1, 1, 1, 1],
+                                                                          [1, 1, 2, 3, 4, 5]], device=cuda))
+    
+    assert g.data.edge_index.device == cuda
+    assert g.row.device == cuda
+    assert g.row_ptr.device == cuda
+    assert g.col.device == cuda
+    assert g.col_ptr.device == cuda
+    
 # def test_add_node_ohe(simple_graph):
 #     simple_graph.add_node_ohe("node_ohe")
 #     assert simple_graph.data["node_ohe"].shape == (3, 3)

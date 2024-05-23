@@ -13,11 +13,10 @@ from time import mktime
 
 from pathpyG import Graph
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.utils.config import config
 
 
 class TemporalGraph(Graph):
-    def __init__(self, data: TemporalData, mapping: IndexMap = None) -> None:
+    def __init__(self, data: TemporalData, mapping: IndexMap = None, device: Union[int, str, None] = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
         
         
@@ -41,7 +40,7 @@ class TemporalGraph(Graph):
             src=data.src[sort_index],
             dst=data.dst[sort_index],
             t=t_sorted
-        ).to(config['torch']['device'])
+        ).to(device)
 
         if mapping is not None:
             self.mapping = mapping
@@ -63,7 +62,7 @@ class TemporalGraph(Graph):
         # ).tocsr()
 
     @staticmethod
-    def from_edge_list(edge_list) -> TemporalGraph:
+    def from_edge_list(edge_list, device: Union[int, str, None] = None) -> TemporalGraph:
         sources = []
         targets = []
         ts = []
@@ -82,11 +81,12 @@ class TemporalGraph(Graph):
                         src=torch.Tensor(sources).long(),
                         dst=torch.Tensor(targets).long(),
                         t=torch.Tensor(ts)),
-            mapping=index_map
+            mapping=index_map,
+            device=device
         )
 
     @staticmethod
-    def from_csv(file, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
+    def from_csv(file, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1, device: Union[int, str, None] = None) -> TemporalGraph:
         tedges = []
         with open(file, "r", encoding="utf-8") as f:
             for line in f:
@@ -100,7 +100,7 @@ class TemporalGraph(Graph):
                     x = datetime.datetime.strptime(timestamp, timestamp_format)
                     t = int(mktime(x.timetuple()))
                 tedges.append((fields[0], fields[1], int(t/time_rescale)))
-        return TemporalGraph.from_edge_list(tedges)
+        return TemporalGraph.from_edge_list(tedges, device=device)
 
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:

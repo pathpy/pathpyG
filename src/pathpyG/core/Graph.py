@@ -20,7 +20,6 @@ from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
 from torch_geometric.utils import is_undirected
 
-from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
 
 
@@ -35,8 +34,9 @@ class Graph:
 
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from a pyG `Data` object.
+        The device is defined by data.edge_index.
 
-        Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex as well as 
+        Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex as well as
         optional node-, edge- or graph-level attributes. An optional mapping can be used to transparently map
         node indices to string identifiers.
 
@@ -67,7 +67,7 @@ class Graph:
 
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes))
+            data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes)).to(device=data.edge_index.device)
 
         if data.edge_index.get_sparse_size(dim=0) != data.num_nodes or data.edge_index.get_sparse_size(dim=1) != data.num_nodes:
             raise Exception('sparse size of EdgeIndex should match number of nodes!')
@@ -76,7 +76,7 @@ class Graph:
         data.edge_index = data.edge_index.sort_by('row').values
         data.edge_index.validate()
 
-        self.data = data
+        self.data = data.to(data.edge_index.device)
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
@@ -87,10 +87,12 @@ class Graph:
         ((self.row_ptr, self.col), _) = self.data.edge_index.get_csr()
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
+
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes=None) -> Graph:
         """Construct a graph from a torch Tensor containing an edge index. An optional mapping can 
         be used to transparently map node indices to string identifiers.
+        The device is defined by edge_index.
 
         Args:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
@@ -115,6 +117,7 @@ class Graph:
             d = Data(edge_index=edge_index)
         else: 
             d = Data(edge_index=edge_index, num_nodes=num_nodes)
+
         return Graph(
             d,
             mapping=mapping
@@ -122,7 +125,7 @@ class Graph:
 
 
     @staticmethod
-    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None, num_nodes=None) -> Graph:
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None, num_nodes=None, device: Optional[torch.device] = None) -> Graph:
         """Generate a Graph based on an edge list.
         
         Edges can be given as string or integer tuples. If strings are used and no mapping is given,
@@ -169,7 +172,7 @@ class Graph:
         if num_nodes is None:
             num_nodes = mapping.num_ids()
 
-        edge_index = EdgeIndex([sources, targets], sparse_size=(num_nodes, num_nodes), is_undirected=is_undirected, device=config['torch']['device'])
+        edge_index = EdgeIndex([sources, targets], sparse_size=(num_nodes, num_nodes), is_undirected=is_undirected, device=device)
         return Graph(
             Data(edge_index=edge_index, num_nodes=num_nodes),
             mapping=mapping
@@ -203,9 +206,20 @@ class Graph:
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
-        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M))
         return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
 
+    def to(self, device: torch.device) -> Graph:
+        """
+        Moves all attributes to the given device.
+        """
+        self.data.to(device)
+        self.row = self.row.to(device)
+        self.row_ptr = self.row_ptr.to(device)
+        self.col = self.col.to(device)
+        self.col_ptr = self.col_ptr.to(device)
+        return self
+    
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
         """
@@ -422,9 +436,7 @@ class Graph:
         """
         if dim == 0:
             dim = self.N
-        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(
-            config["torch"]["device"]
-        )[: self.N]
+        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(self.data.edge_index.device)[: self.N]
 
     def add_edge_ohe(self, attr_name: str, dim: int = 0) -> None:
         """Add one-hot encoding of edges to edge attribute.
@@ -435,9 +447,7 @@ class Graph:
         """
         if dim == 0:
             dim = self.M
-        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(
-            config["torch"]["device"]
-        )[: self.M]
+        self.data[attr_name] = torch.eye(dim, dtype=torch.float).to(self.data.edge_index.device)[: self.M]
 
     def __getitem__(self, key: Union[tuple, str]) -> Any:
         """Return node, edge, or graph attribute.
@@ -576,8 +586,8 @@ class Graph:
         # apply index translation to d2
         # fast dictionary based mapping using torch
         palette, key = zip(*d2_idx_translation.items())
-        key = torch.tensor(key)
-        palette = torch.tensor(palette)
+        key = torch.tensor(key, device=d2.edge_index.device)
+        palette = torch.tensor(palette, device=d2.edge_index.device)
 
         index = torch.bucketize(d2.edge_index.ravel(), palette)
         d2.edge_index = key[index].reshape(d2.edge_index.shape)
