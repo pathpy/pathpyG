@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import torch
 from torch import IntTensor, equal, tensor
 
 from pathpyG import config
@@ -47,3 +48,17 @@ def test_add_walk_seqs():
     assert paths.get_walk(3) == ('b', 'c', 'e')
 
     assert equal(paths.paths[0].edge_weight.max(), tensor(1.0))
+
+
+def test_to_device():
+    cuda = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    cpu = torch.device('cpu')
+
+    paths = PathData(IndexMap(['a', 'c', 'b', 'd', 'e']), device=cuda)
+    paths.append_walks([('a', 'c', 'd'), ('a', 'c', 'e'), ('b', 'c', 'd'), ('b', 'c', 'e')], weights=[1.0]*4)
+
+    assert paths.paths[0].edge_weight.device == cuda
+
+    paths.to(cpu)
+
+    assert paths.paths[0].edge_weight.device == cpu

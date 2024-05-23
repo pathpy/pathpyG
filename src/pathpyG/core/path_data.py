@@ -15,7 +15,6 @@ import numpy as np
 from torch_geometric.utils import cumsum
 from torch_geometric.data import Data
 
-from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
 
 
@@ -28,13 +27,11 @@ class PathData:
         import pathpyG as pp
         import torch
 
-        pp.config['torch']['device'] = 'cuda'
-
         # Generate toy example graph
         g = pp.Graph.from_edge_list([('a', 'c'),
                              ('b', 'c'),
                              ('c', 'd'),
-                             ('c', 'e')])
+                             ('c', 'e')], device = 'cuda')
 
         # Store observations of walks using the index mapping
         # from the graph above
@@ -45,8 +42,9 @@ class PathData:
         ```
     """
 
-    def __init__(self, mapping: IndexMap | None = None) -> None:
+    def __init__(self, mapping: IndexMap | None = None, device: Optional[torch.device] = None) -> None:
         self.paths: list = []
+        self.device = device
 
         if mapping:
             self.mapping = mapping
@@ -60,6 +58,12 @@ class PathData:
     def num_paths(self) -> int:
         """Return the number of stored paths."""
         return len(self.paths)
+
+    def to(self, device: torch.device) -> PathData:
+        """Moves all paths to the given device."""
+        for data in self.paths:
+            data.to(device)
+        return self
 
     def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
         """Add an observation of a walk based on a list or tuple of node IDs or indices
@@ -80,7 +84,7 @@ class PathData:
                 ```
         """
         idx_seq = self.mapping.to_idxs(node_seq)
-        idx = torch.arange(len(node_seq))
+        idx = torch.arange(len(node_seq), device=self.device)
         edge_index = torch.stack([idx[:-1], idx[1:]])
 
         self.path_index.append((len(self.paths), 0, len(node_seq)))
@@ -89,18 +93,18 @@ class PathData:
                 edge_index=edge_index,
                 node_sequence=idx_seq.unsqueeze(1),
                 num_nodes=len(node_seq),
-                edge_weight=torch.full((edge_index.size(1),), weight),
-            )
+                edge_weight=torch.full((edge_index.size(1),), weight, device=self.device),
+            ).to(self.device)
         )
 
     def append_walks(self, node_seqs: list | tuple, weights: list | tuple) -> None:
         """Add multiple observations of walks based on lists or tuples of node IDs or indices"""
         idx_seqs = torch.cat([self.mapping.to_idxs(seq) for seq in node_seqs]).unsqueeze(1)
-        path_lengths = torch.tensor([len(seq) for seq in node_seqs])
-        big_idx = torch.arange(path_lengths.sum())
+        path_lengths = torch.tensor([len(seq) for seq in node_seqs], device=self.device)
+        big_idx = torch.arange(path_lengths.sum(), device=self.device)
         big_edge_index = torch.stack([big_idx[:-1], big_idx[1:]])
         # remove the edges that connect different walks
-        mask = torch.ones(big_edge_index.size(1), dtype=torch.bool)
+        mask = torch.ones(big_edge_index.size(1), dtype=torch.bool, device=self.device)
         cum_sum = cumsum(path_lengths, 0)
         mask[cum_sum[1:-1] - 1] = False
         big_edge_index = big_edge_index[:, mask]
@@ -113,8 +117,8 @@ class PathData:
                 edge_index=big_edge_index,
                 node_sequence=idx_seqs,
                 num_nodes=idx_seqs.max().item() + 1,
-                edge_weight=torch.cat([torch.full((length,), w) for length, w in zip(path_lengths, weights)]),
-            )
+                edge_weight=torch.cat([torch.full((length,), w, device=self.device) for length, w in zip(path_lengths, weights)]),
+            ).to(self.device)
         )
 
     def get_walk(self, i: int) -> tuple:
@@ -133,7 +137,7 @@ class PathData:
         return s
 
     @staticmethod
-    def from_ngram(file: str, sep: str = ",", weight: bool = True) -> PathData:
+    def from_ngram(file: str, sep: str = ",", weight: bool = True, device: Optional[torch.device] = None) -> PathData:
         with open(file, "r", encoding="utf-8") as f:
             if weight:
                 paths_and_weights = [line.split(sep) for line in f]
@@ -146,7 +150,7 @@ class PathData:
         mapping = IndexMap()
         mapping.add_ids(np.concatenate([np.array(path) for path in paths]))
 
-        pathdata = PathData(mapping)
+        pathdata = PathData(mapping, device)
         pathdata.append_walks(node_seqs=paths, weights=weights)
 
         return pathdata
