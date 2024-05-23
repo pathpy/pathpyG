@@ -55,3 +55,6 @@ def test_index_mapping_bulk():
     assert mapping.to_idxs(('a', 'b', 'c', 'd', 'e', 'f')).tolist() == [0, 1, 2, 3, 4, 5]
     assert mapping.to_ids(torch.tensor([0, 1, 2, 3, 4, 5])) == ['a', 'b', 'c', 'd', 'e', 'f']
     assert mapping.to_idxs(np.array(['a', 'b', 'c', 'd', 'e', 'f'])).tolist() == [0, 1, 2, 3, 4, 5]
+
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    assert mapping.to_idxs(np.array(['a', 'b', 'c', 'd', 'e', 'f']), device=device).device == device

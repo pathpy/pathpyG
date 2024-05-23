@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Union
+from typing import TYPE_CHECKING, Dict, List, Union, Optional
 
 import torch
 import numpy as np
@@ -65,12 +65,12 @@ class IndexMap:
         else:
             return node
         
-    def to_idxs(self, nodes: list | tuple) -> torch.Tensor:
+    def to_idxs(self, nodes: list | tuple, device: Optional[torch.device] = None) -> torch.Tensor:
         """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise."""
         if self.has_ids:
-            return torch.tensor([self.id_to_idx[node] for node in nodes])
+            return torch.tensor([self.id_to_idx[node] for node in nodes], device=device)
         else:
-            return torch.tensor(nodes)
+            return torch.tensor(nodes, device=device)
 
     def __str__(self) -> str:
         s = ''
