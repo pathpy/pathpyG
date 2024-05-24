@@ -1,1 +1,0 @@
-::: pathpyG.visualisations._matplotlib.network_plots
