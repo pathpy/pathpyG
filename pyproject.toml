@@ -88,8 +88,9 @@ pythonpath = ["src"]
 testpaths = "tests"
 markers = [
     "benchmark: marks tests as benchmarking tests (deselect with '-m \"not benchmark\"')"
+    "gpu: marks tests that require GPU support (deselect with '-m \"not gpu\"')"
 ]
-addopts = "--cov=src -m \"not benchmark\""
+addopts = "--cov=src -m \"not benchmark\" -m \"not gpu\""
 
 [tool.coverage.run]
 branch = true
