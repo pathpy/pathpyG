@@ -34,7 +34,6 @@ class Graph:
 
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from a pyG `Data` object.
-        The device is defined by data.edge_index.
 
         Generate a Graph instance from a `torch_geometric.Data` object that contains an EdgeIndex as well as
         optional node-, edge- or graph-level attributes. An optional mapping can be used to transparently map
@@ -76,7 +75,7 @@ class Graph:
         data.edge_index = data.edge_index.sort_by('row').values
         data.edge_index.validate()
 
-        self.data = data.to(data.edge_index.device)
+        self.data = data
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
@@ -210,8 +209,8 @@ class Graph:
         return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
 
     def to(self, device: torch.device) -> Graph:
-        """Moves all attributes to the given device. """
-        self.data.to(device)
+        """Moves `edge_index` to the given device. To move whole underlying data use `graph.data.to(device)`."""
+        self.data.to(device, 'edge_index')
         self.row = self.row.to(device)
         self.row_ptr = self.row_ptr.to(device)
         self.col = self.col.to(device)
