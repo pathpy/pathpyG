@@ -206,7 +206,7 @@ class Graph:
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
-        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M))
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M, device=self.data.edge_index.device))
         return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
 
     def to(self, device: torch.device) -> Graph:
