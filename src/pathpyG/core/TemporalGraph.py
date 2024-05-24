@@ -164,7 +164,7 @@ class TemporalGraph(Graph):
                 src=edge_index[0],
                 dst=edge_index[1],
                 t=times
-            ).to(self.data.edge_index.device),
+            ),
             mapping=self.mapping
         )        
 
