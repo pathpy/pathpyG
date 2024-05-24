@@ -186,7 +186,7 @@ class TemporalGraph(Graph):
                 src=self.data.src[start:end],
                 dst=self.data.dst[start:end],
                 t=self.data.t[start:end]
-            ).to(self.data.edge_index.device),
+            ),
             mapping=self.mapping
         )
     
