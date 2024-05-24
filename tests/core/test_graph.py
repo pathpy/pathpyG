@@ -231,7 +231,6 @@ def test_add_operator_complete_overlap():
                                                         [1, 1, 2, 3, 2, 3]]))
 
 
-
 def test_add_operator_no_overlap():
     # no overlap
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
@@ -250,12 +249,9 @@ def test_add_operator_partial_overlap():
     g = g1 + g2
     assert g.N == 6
     assert g.M == g1.M + g2.M
-
-    # we need to sort because the order may vary when merged on GPU
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
                                                         [1, 1, 2, 3, 4, 5]]))
-    
-    
+
 # def test_add_node_ohe(simple_graph):
 #     simple_graph.add_node_ohe("node_ohe")
 #     assert simple_graph.data["node_ohe"].shape == (3, 3)
