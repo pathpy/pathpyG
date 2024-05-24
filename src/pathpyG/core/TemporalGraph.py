@@ -80,7 +80,7 @@ class TemporalGraph(Graph):
             data=TemporalData(
                         src=torch.Tensor(sources, device=device).long(),
                         dst=torch.Tensor(targets, device=device).long(),
-                        t=torch.Tensor(ts, device=device)).to(device),
+                        t=torch.Tensor(ts, device=device)),
             mapping=index_map
         )
 
