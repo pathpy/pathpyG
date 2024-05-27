@@ -112,7 +112,7 @@ def _parse_property_value(data: bytes, ptr: int, type_index: int, endianness: st
         raise Exception(msg)
 
 
-def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
+def parse_graphtool_format(data: bytes, id_node_attr=None, device: Optional[Union[int, str]] = None) -> Graph:
     """
     Decodes data in graphtool binary format and returns a [`Graph`][pathpyG.Graph]. For a documentation of
     hte graphtool binary format, see see doc at https://graph-tool.skewed.de/static/doc/gt_format.html
@@ -264,7 +264,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     else:
         mapping = None
 
-    g = Graph.from_edge_index(torch.LongTensor([sources, targets]).to(config['torch']['device']), mapping=mapping)
+    g = Graph.from_edge_index(torch.LongTensor([sources, targets]).to(device), mapping=mapping)
     for a in node_attr:
         if not a.startswith('node_'):
             # print(node_attr[a])
@@ -272,7 +272,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
             g.data['node_{0}'.format(a)] = node_attr[a]
     for a in edge_attr:
         if not a.startswith('edge_'):
-            g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config['torch']['device'])
+            g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(device)
     for a in graph_attr:
         g.data[a] = graph_attr[a]
         
@@ -388,7 +388,8 @@ def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.
 
 def read_netzschleuder_network(name: str, net: Optional[str]=None,
         ignore_temporal: bool=False, multiedges: bool=False,
-        base_url: str='https://networks.skewed.de') -> Union[Graph, TemporalGraph]:
+        base_url: str='https://networks.skewed.de',
+        device: Optional[Union[int, str]] = None) -> Union[Graph, TemporalGraph]:
     """Read a pathpy network record from the netzschleuder repository.
 
     Args:
@@ -455,7 +456,7 @@ def read_netzschleuder_network(name: str, net: Optional[str]=None,
         decompressed = reader.readall()
 
         # parse graphtool binary format
-        return parse_graphtool_format(bytes(decompressed))
+        return parse_graphtool_format(bytes(decompressed), device)
 
     except ModuleNotFoundError:
         msg = 'Package zstandard is required to decompress graphtool files. Please install module, e.g., using "pip install zstandard.'
