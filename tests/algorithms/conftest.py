@@ -3,16 +3,27 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pathpyG import Graph
-from pathpyG import TemporalGraph
-from pathpyG import WalkData
+from pathpyG.core.Graph import Graph
+from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.path_data import PathData
 
 
 @pytest.fixture
 def simple_graph() -> Graph:
-    """Return a simple directed graph."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+    """Return a simple undirected graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'a'), ('b', 'c'), ('c', 'b'), ('a', 'c'), ('c', 'a')], is_undirected=True)
 
+
+@pytest.fixture
+def simple_graph_sp() -> Graph:
+    """Return a undirected graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'e'), ('b', 'd'), ('d', 'e')]).to_undirected()
+
+
+@pytest.fixture
+def toy_example_graph() -> Graph:
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'), ('f', 'g'), ('g', 'd'), ('d', 'f'), ('b', 'd')]).to_undirected()
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:
@@ -22,12 +33,13 @@ def simple_temporal_graph() -> TemporalGraph:
 
 
 @pytest.fixture
-def simple_paths_centralities() -> WalkData:
-    paths = WalkData()
-    paths.add(torch.tensor([[2, 1, 3], [1, 3, 5]]))
-    paths.add(torch.tensor([[0, 1], [1, 3]]))
-    paths.add(torch.tensor([[3], [4]]))
+def simple_walks() -> PathData:
+    paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E', 'F']))
+    paths.append_walk(('C', 'B', 'D', 'F'), weight=1.0)
+    paths.append_walk(('A', 'B', 'D'), weight=1.0)
+    paths.append_walk(('D', 'E'), weight=1.0)
     return paths
+
 
 @pytest.fixture
 def long_temporal_graph() -> TemporalGraph:

@@ -1,45 +1,35 @@
 from __future__ import annotations
 
 import pytest
-import torch
 
 from pathpyG.core.Graph import Graph
-from pathpyG.core.HigherOrderGraph import HigherOrderGraph
-from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.WalkData import WalkData
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.path_data import PathData
+
 
 @pytest.fixture
 def simple_graph() -> Graph:
     """Return a simple directed graph."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c']])
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c')])
+
 
 @pytest.fixture
 def simple_graph_multi_edges() -> Graph:
     """Return a directed graph with multiple edges."""
-    return Graph.from_edge_list([['a', 'b'], ['b', 'c'], ['a', 'c'], ['a', 'b']])
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c'), ('a', 'b')])
 
 
 @pytest.fixture
-def simple_walks() -> WalkData:
+def simple_walks() -> PathData:
     """Return a simple example for path data."""
-    paths = WalkData(IndexMap(['A', 'B', 'C', 'D', 'E']))
-    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C -> D
-    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
-    paths.add(torch.tensor([[1, 2], [2, 4]]))  # B -> C -> E
+    paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.append_walk(('A', 'C', 'D'))
+    paths.append_walk(('A', 'C', 'D'))
+    paths.append_walk(('B', 'C', 'E'))
+    paths.append_walk(('B', 'C', 'E'))
     return paths
 
-@pytest.fixture
-def simple_dags() -> DAGData:
-    """Return a simple example for path data."""
-    paths = DAGData(IndexMap(['A', 'B', 'C', 'D', 'E']))
-    paths.add(torch.tensor([[0, 2], [2, 3]]))  # A -> C, C -> D
-    paths.add(torch.tensor([[0, 1], [1, 4]]))  # B -> C, C -> E
-    paths.add(torch.tensor([[1, 2, 2], [2, 3, 4]]))  # B -> C, C -> D, C -> E
-    paths.add(torch.tensor([[0, 2, 2], [2, 3, 4]]))  # A -> C, C -> D, C -> E
-    return paths
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:

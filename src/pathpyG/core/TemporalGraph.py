@@ -41,7 +41,7 @@ class TemporalGraph(Graph):
             src=data.src[sort_index],
             dst=data.dst[sort_index],
             t=t_sorted
-        )
+        ).to(config['torch']['device'])
 
         if mapping is not None:
             self.mapping = mapping
@@ -127,11 +127,42 @@ class TemporalGraph(Graph):
         else:
             edge_index = torch.stack((self.data.src, self.data.dst))
 
+        n = edge_index.max().item()+1
+
         if weighted:
-            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1)))
-            return Graph(Data(edge_index=EdgeIndex(data=i), edge_weight=w), self.mapping)
+            i, w = torch_geometric.utils.coalesce(edge_index, torch.ones(edge_index.size(1), device=self.data.edge_index.device))
+            return Graph(Data(edge_index=EdgeIndex(data=i, sparse_size=(n,n)), edge_weight=w), self.mapping)
         else:
-            return Graph.from_edge_index(EdgeIndex(data=edge_index), self.mapping)
+            return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n,n)), self.mapping)
+
+    def to_undirected(self) -> TemporalGraph:
+        """
+        Returns an undirected version of a directed graph.
+
+        This method transforms the current graph instance into an undirected graph by
+        adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
+        transform to the underlying [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object, which automatically
+        duplicates edge attributes for newly created directed edges.
+
+        Example:
+            ```py
+            import pathpyG as pp
+            g = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)])
+            g_u = g.to_undirected()
+            print(g_u)
+            ```
+        """        
+        rev_edge_index = self.data.edge_index.flip([0])
+        edge_index = torch.cat([self.data.edge_index, rev_edge_index], dim=1)
+        times = torch.cat([self.data.t, self.data.t])
+        return TemporalGraph(
+            data=TemporalData(
+                src=edge_index[0],
+                dst=edge_index[1],
+                t=times
+            ),
+            mapping=self.mapping
+        )        
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
         """Returns an instance of the TemporalGraph that captures all time-stamped 
@@ -147,12 +178,12 @@ class TemporalGraph(Graph):
         #     node_id = self.data.node_id[:max_idx+1]
         #     )
         return TemporalGraph(
-            data = TemporalData(
+            data=TemporalData(
                 src=self.data.src[start:end],
                 dst=self.data.dst[start:end],
                 t=self.data.t[start:end]
             ),
-            mapping = self.mapping
+            mapping=self.mapping
         )
     
 
@@ -165,12 +196,12 @@ class TemporalGraph(Graph):
         #max_idx = torch.max(idx).item()
 
         return TemporalGraph(
-            data = TemporalData(
+            data=TemporalData(
                 src=self.data.src[start:end],
                 dst=self.data.dst[start:end],
                 t=self.data.t[start:end]
             ),
-            mapping = self.mapping
+            mapping=self.mapping
         )
 
       

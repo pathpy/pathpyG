@@ -12,28 +12,24 @@ Example:
 
     # Generate toy example for temporal graph
     g = pp.TemporalGraph.from_edge_list([
-        ['b', 'c', 2],
-        ['a', 'b', 1],
-        ['c', 'd', 3],
-        ['d', 'a', 4],
-        ['b', 'd', 2],
-        ['d', 'a', 6],
-        ['a', 'b', 7]
-    ])
+        ('b', 'c', 2),
+        ('a', 'b', 1),
+        ('c', 'd', 3),
+        ('d', 'a', 4),
+        ('b', 'd', 2),
+        ('d', 'a', 6),
+        ('a', 'b', 7)
+    ])    
 
-    # Extract DAG capturing causal interaction sequences in temporal graph
-    dag = pp.algorithms.temporal_graph_to_event_dag(g, delta=1)
+    bw_t = pp.algorithms.temporal_betweenness_centrality(g, delta=1)
+    cl_t = pp.algorithms.temporal_closeness_centrality(g, delta=1)
 
-    # Get path object to calculate statistics.
-    paths = pp.PathData.from_temporal_dag(dag)
-
-    # Generate weighted (first-order) time-aggregated graph
-    g = pp.HigherOrderGraph(paths, order=1)
-
-    # Call networkx function `closeness_centrality` on graph
-    c = pp.algorithms.centrality.closeness_centrality(g)
+    static_graph = g.to_static_graph()
+    bw_s = pp.algorithms.betweenness_centrality(static_graph)
+    bw_s = pp.algorithms.closeness_centrality(static_graph)
     ```
 """
+
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
@@ -41,32 +37,35 @@ from typing import (
     Dict,
 )
 
-from pathpyG import Graph
-from pathpyG import TemporalGraph
+from math import isnan
 
-from torch_geometric.utils import to_networkx
+from pathpyG.core.Graph import Graph
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.path_data import PathData
+
 from networkx import centrality
+from tqdm import tqdm
 
-from collections import defaultdict
+from collections import defaultdict, Counter, deque
+from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temporal
 import numpy as _np
+import torch
 from torch import tensor
 
-def path_node_traversals(paths):
+from torch_geometric.utils import to_networkx, degree
+
+
+def path_node_traversals(paths: PathData) -> Counter:
     """Calculate the number of times any path traverses each of the nodes.
 
-    Parameters
-    ----------
-    paths: Paths
-
-    Returns
-    -------
-    dict
+    Args:
+        paths: `PathData` object that contains observations of paths in a graph
     """
-    traversals = defaultdict(lambda: 0)
-    for path_id, path_edgelist in paths.paths.items():
-        path_seq = paths.walk_to_node_seq(path_edgelist)
-        for node in path_seq:
-            traversals[node.item()] += paths.path_freq[path_id]
+    traversals = Counter()
+    for i in range(paths.num_paths):
+        w = paths.get_walk(i)
+        for v in w:
+            traversals[v] += paths.paths[i].edge_weight.max().item()
     return traversals
 
 
@@ -90,23 +89,72 @@ def map_to_nodes(g: Graph, c: Dict) -> Dict:
     """
     return {g.mapping.to_id(i): c[i] for i in c}
 
-    return c
+
+def betweenness_centrality(g: Graph, sources=None) -> dict[str, float]:
+    """Calculate the betweenness centrality of nodes based on the fast algorithm 
+    proposed by Brandes:
+
+    U. Brandes: A faster algorithm for betweenness centrality, The Journal of 
+    Mathematical Sociology, 2001
+
+    Args:
+        g: `Graph` object for which betweenness centrality will be computed
+        sources: optional list of source nodes for BFS-based shortest path calculation
+
+    Example:
+        ```py
+        import pathpyG as pp
+        g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'),
+                            ('b', 'd'), ('c', 'e'), ('d', 'e')])
+        bw = pp.algorithms.betweenness_centrality(g)
+        ```
+    """
+    bw = defaultdict(lambda: 0.0)
+
+    if sources == None:
+        sources = [v for v in g.nodes]
+
+    for s in sources:
+        S = list()
+        P = defaultdict(list)
+
+        sigma = defaultdict(lambda: 0)  
+        sigma[s] = 1
+
+        d = defaultdict(lambda: -1)        
+        d[s] = 0
+
+        Q = [s]
+        while Q:
+            v = Q.pop(0)
+            S.append(v)
+            for w in g.successors(v):
+                if d[w] < 0:
+                    Q.append(w)
+                    d[w] = d[v] + 1
+                if d[w] == d[v] + 1:
+                    # we found shortest path from s via v to w
+                    sigma[w] = sigma[w] + sigma[v]
+                    P[w].append(v)
+        delta = defaultdict(lambda: 0.0)
+        while S:
+            w = S.pop()
+            for v in P[w]:
+                delta[v] = delta[v] + sigma[v]/sigma[w] * (1 + delta[w])
+                if v != w:
+                    bw[w] = bw[w] + delta[w]
+    return bw
 
 
-def path_visitation_probabilities(paths):
-    """Calculates the probabilities that a randomly chosen path passes through each of
+def path_visitation_probabilities(paths: PathData) -> dict:
+    """Calculate the probabilities that a randomly chosen path passes through each of
     the nodes. If 5 out of 100 paths (of any length) traverse node v, node v will be
     assigned a visitation probability of 0.05. This measure can be interpreted as ground
     truth for the notion of importance captured by PageRank applied to a graphical
     abstraction of the paths.
 
-    Parameters
-    ----------
-    paths: Paths
-
-    Returns
-    -------
-    dict
+    Args:
+        paths: PathData object that contains path data
     """
     # if not isinstance(paths, PathData):
     #    assert False, "`paths` must be an instance of Paths"
@@ -124,163 +172,171 @@ def path_visitation_probabilities(paths):
 
     for v in visit_probabilities:
         visit_probabilities[v] /= visits
-    # Log.add('finished.', Severity.INFO)
     return visit_probabilities
 
-def shortest_paths(paths):
+
+def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[str, float]:
+    """Calculate the temporal betweenness of nodes in a temporal graph.
+
+    The temporal betweenness centrality definition is based on shortest 
+    time-respecting paths with a given maximum time difference delta, where 
+    the length of a path is given as the number of traversed edges (i.e. not 
+    the temporal duration of a path or the earliest arrival at a node).
+
+    The algorithm is an adaptation of Brandes' fast algorithm for betweenness 
+    centrality based on the following work:
+
+    S. Buss, H. Molter, R. Niedermeier, M. Rymar: Algorithmic Aspects of Temporal
+    Betweenness, arXiv:2006.08668v2
+
+    Different from the algorithm proposed above, the temporal betweenness centrality
+    implemented in pathpyG is based on a directed acyclic event graph representation of 
+    a temporal graph and it considers a maximum waiting time of delta. The complexity 
+    is in O(nm) where n is the number of nodes in the temporal graph and m is the number 
+    of time-stamped edges.
+
+    Args:
+        g: `TemporalGraph` object for which temporal betweenness centrality will be computed
+        delta: maximum waiting time for time-respecting paths
+
+    Example:
+        ```py
+        import pathpyG as pp
+        t = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2),
+                            ('b', 'd', 2), ('c', 'e', 3), ('d', 'e', 3)])
+        bw = pp.algorithms.temporal_betweenness_centrality(t, delta=1)
+        ```
     """
-    Calculates all shortest paths between all pairs of nodes 
-    based on a set of empirically observed paths.
-    """
-    s_p = defaultdict(lambda: defaultdict(set))
-    s_p_lengths = defaultdict(lambda: defaultdict(lambda: _np.inf))
+    # generate temporal event DAG
+    edge_index = lift_order_temporal(g, delta)
 
-    p_length = 1
-    index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-    sources = index[0]
-    destinations = index[-1]
-    for e, (s, d) in enumerate(zip(sources, destinations)):
-        s = s.item()
-        d = d.item()
-        s_p_lengths[s][d] = p_length
-        s_p[s][d] = set({tensor([s, d])})
-    p_length += 1
-    while True: # until max path length
-        try:
-            index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-            sources = index[0, :, 0]
-            destinations = index[1, :, -1]
-            for e, (s, d) in enumerate(zip(sources, destinations)):
-                s = s.item()
-                d = d.item()
-                if p_length < s_p_lengths[s][d]:
-                    # update shortest path length
-                    s_p_lengths[s][d] = p_length
-                    # redefine set
-                    s_p[s][d] = {paths.walk_to_node_seq(index[:, e])}
-                elif p_length == s_p_lengths[s][d]:
-                    s_p[s][d].add(paths.walk_to_node_seq(index[:, e]))
-            p_length += 1
-        except IndexError:
-            # print(f"IndexError occurred. Reached maximum path length of {p_length}")
-            break
-    return s_p
+    # Add indices of first-order nodes as src of paths in augmented
+    # temporal event DAG
+    src_edges_src = g.data.edge_index[0] + g.M
+    src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
 
+    # add edges from first-order source nodes to edge events
+    src_edges = torch.stack([src_edges_src, src_edges_dst])
+    edge_index = torch.cat([edge_index, src_edges], dim=1)
+    src_indices = torch.unique(src_edges_src).tolist()
 
-def path_betweenness_centrality(paths, normalized=False):
-    """Calculates the betweenness of nodes based on observed shortest paths
-    between all pairs of nodes
+    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
 
-    Parameters
-    ----------
-    paths:
-        Paths object
-    normalized: bool
-        normalize such that largest value is 1.0
+    e_i = g.data.edge_index.numpy()
 
-    Returns
-    -------
-    dict
-    """
-    # assert isinstance(paths, pp.PathData), "argument must be an instance of pathpy.Paths"
-    node_centralities = defaultdict(lambda: 0)
+    fo_nodes = dict()
+    for v in range(g.M+g.N):
+        if v < g.M:  # return first-order target node otherwise
+            fo_nodes[v] = e_i[1, v]
+        else:
+            fo_nodes[v] = v - g.M
 
-    # Log.add('Calculating betweenness in paths ...', Severity.INFO)
+    bw: defaultdict[int, float] = defaultdict(lambda: 0.0)
 
-    all_paths = shortest_paths(paths)
+    # for all first-order nodes
+    for s in tqdm(src_indices):
 
-    for s in all_paths:
-        for d in all_paths[s]:
-            for p in all_paths[s][d]:
-                for x in p[1:-1]:
-                    if s != d != x:
-                        node_centralities[x.item()] += 1.0 / len(all_paths[s][d])
-    if normalized:
-        max_centr = max(node_centralities.values())
-        for v in node_centralities:
-            node_centralities[v] /= max_centr
-    # assign zero values to nodes not occurring on shortest paths
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)]
-    for v in nodes:
-        node_centralities[v] += 0
-    # Log.add('finished.')
-    return node_centralities
+        # for any given s, d[v] is the shortest path distance from s to v
+        # Note that here we calculate topological distances from sources to events (i.e. time-stamped edges)
+        delta_: defaultdict[int, float] = defaultdict(lambda: 0.0)
 
+        # for any given s, sigma[v] counts shortest paths from s to v
+        sigma: defaultdict[int, float] = defaultdict(lambda: 0.0)
+        sigma[s] = 1.0
 
-def path_distance_matrix(paths):
-    """
-    Calculates shortest path distances between all pairs of
-    nodes based on the observed shortest paths (and subpaths)
-    """
-    dist = defaultdict(lambda: defaultdict(lambda: _np.inf))
-    # Log.add('Calculating distance matrix based on empirical paths ...', Severity.INFO)
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)] # NOTE: modify once set of nodes can be obtained from path obeject
-    for v in nodes:
-        dist[v][v] = 0
+        sigma_fo: defaultdict[int, float] = defaultdict(lambda: 0.0)
+        sigma_fo[fo_nodes[s]] = 1.0
 
-    p_length = 1
-    index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-    sources = index[0]
-    destinations = index[-1]
-    for e, (s, d) in enumerate(zip(sources, destinations)):
-        s = s.item()
-        d = d.item()
-        dist[s][d] = p_length
-        # s_p[s][d] = set({torch.tensor([s,d])})
-    p_length += 1
-    while True: # until max path length
-        try:
-            index, edge_weights = paths.edge_index_k_weighted(k=p_length)
-            sources = index[0, :, 0]
-            destinations = index[1, :, -1]
-            for e, (s, d) in enumerate(zip(sources, destinations)):
-                s = s.item()
-                d = d.item()
-                if p_length < dist[s][d]:
-                    # update shortest path length
-                    dist[s][d] = p_length
-            p_length += 1
-        except IndexError:
-            #print(f"IndexError occurred. Reached maximum path length of {p_length}")
-            break
-    return dist
+        dist: defaultdict[int, int] = defaultdict(lambda: -1)
+        dist[s] = 0
 
+        dist_fo: defaultdict[int, int] = defaultdict(lambda: -1)
+        dist_fo[fo_nodes[s]] = 0
+                
+        # for any given s, P[v] is the set of predecessors of v on shortest paths from s
+        P = defaultdict(set)
 
-def path_closeness_centrality(paths, normalized=False):
-    """Calculates the closeness of nodes based on observed shortest paths
-    between all nodes
+        # Q is a queue, so we append at the right and pop from the left
+        Q: deque = deque()
+        Q.append(s)
 
-    Parameters
-    ----------
-    paths: Paths
-    normalized: bool
-        normalize such that largest value is 1.0
-
-    Returns
-    -------
-    dict
-    """
-    node_centralities = defaultdict(lambda: 0)
-    distances = path_distance_matrix(paths)
-    nodes = [v.item() for v in paths.edge_index.reshape(-1).unique(dim=0)] # NOTE: modify once set of nodes can be obtained from path obeject
-
-    for x in nodes:
-        # calculate closeness centrality of x
-        for d in nodes:
-            if x != d and distances[d][x] < _np.inf:
-                node_centralities[x] += 1.0 / distances[d][x]
-
-    # assign zero values to nodes not occurring
+        # S is a stack, so we append at the end and pop from the end
+        S = list()
     
-    for v in nodes:
-        node_centralities[v] += 0.0
+        # dijkstra with path counting
+        while Q:
+            v = Q.popleft()
+            # for all successor events within delta
+            for w in event_graph.successors(v):
 
-    if normalized:
-        m = max(node_centralities.values())
-        for v in nodes:
-            node_centralities[v] /= m
+                # we dicover w for the first time
+                if dist[w] == -1:
+                    dist[w] = dist[v] + 1
+                    if dist_fo[fo_nodes[w]] == -1:
+                        dist_fo[fo_nodes[w]] = dist[v] + 1
+                    S.append(w)
+                    Q.append(w)
+                # we found a shortest path to event w via event v
+                if dist[w] == dist[v] + 1:
+                    sigma[w] += sigma[v]
+                    P[w].add(v)
+                    # we found a shortest path to first-order node of event w
+                    if dist[w] == dist_fo[fo_nodes[w]]:
+                        sigma_fo[fo_nodes[w]] += sigma[v]
+        
+        c = 0.0
+        for i in dist_fo:
+            if dist_fo[i] >= 0:
+                c += 1.0
+        bw[fo_nodes[s]] = bw[fo_nodes[s]] - c + 1.0
 
-    return node_centralities
+        while S:
+            w = S.pop()
+            # work backwards through paths to all targets and sum delta and sigma   
+            if dist[w] == dist_fo[fo_nodes[w]]:
+                x = sigma[w]/sigma_fo[fo_nodes[w]]
+                if isnan(x):
+                    x = 0.0
+                delta_[w] += x
+            for v in P[w]:
+                x = sigma[v]/sigma[w]
+                if isnan(x):
+                    x = 0.0
+                delta_[v] += x * delta_[w]
+                bw[fo_nodes[v]] += delta_[w] * x
+    
+    # map index-based centralities to node IDs
+    bw_id = defaultdict(lambda: 0.0)
+    for idx in bw:
+        bw_id[g.mapping.to_id(idx)] = bw[idx]
+    return bw_id
+
+
+def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict[str, float]:
+    """Calculates the temporal closeness centrality of nodes based on
+    observed shortest time-respecting paths between all nodes.
+    
+    Following the definition by M. A. Beauchamp 1965
+    (https://doi.org/10.1002/bs.3830100205).
+
+    Args:
+        g: `TemporalGraph` object for which temporal betweenness centrality will be computed
+        delta: maximum waiting time for time-respecting paths
+
+    Example:
+        ```py
+        import pathpyG as pp
+        t = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2),
+                            ('b', 'd', 2), ('c', 'e', 3), ('d', 'e', 3)])
+        cl = pp.algorithms.temporal_closeness_centrality(t, delta=1)
+        ```
+    """
+    centralities = dict()
+    dist, _ = temporal_shortest_paths(g, delta)
+    for x in g.nodes:
+        centralities[x] = sum((g.N - 1) / dist[_np.arange(g.N) != g.mapping.to_idx(x), g.mapping.to_idx(x)])
+
+    return centralities
 
 
 def __getattr__(name: str) -> Any:
@@ -295,19 +351,21 @@ def __getattr__(name: str) -> Any:
     Args:
         name: the name of the function that shall be called
     """
+
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if len(args) == 0:
-            raise RuntimeError(f'Did not find method {name} with no arguments')
+            raise RuntimeError(f"Did not find method {name} with no arguments")
         if isinstance(args[0], TemporalGraph):
-            raise NotImplementedError(f'Missing implementation of {name} for temporal graphs')
-        # if first argument is of type Graph, delegate to networkx function    
+            raise NotImplementedError(f"Missing implementation of {name} for temporal graphs")
+        # if first argument is of type Graph, delegate to networkx function
         if isinstance(args[0], Graph):
             g = to_networkx(args[0].data)
             r = getattr(centrality, name)(g, *args[1:], **kwargs)
-            if name.index('centrality') > 0 and isinstance(r, dict):
+            if name.index("centrality") > 0 and isinstance(r, dict):
                 return map_to_nodes(args[0], r)
             return r
         else:
             return wrapper(*args, **kwargs)
-            #raise RuntimeError(f'Did not find method {name} that accepts first argument of type {type(args[0])}')
+            # raise RuntimeError(f'Did not find method {name} that accepts first argument of type {type(args[0])}')
+
     return wrapper

@@ -1,107 +1,89 @@
-"""Algorithms for the analysis of causal path structures in temporal graphs."""
-
+"""Algorithms for the analysis of time-respecting paths in temporal graphs."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, Union, List
+from typing import TYPE_CHECKING, Dict, Union, List, Tuple
 from collections import defaultdict
+from torch_geometric.utils import degree, sort_edge_index
 
 import numpy as np
+from tqdm import tqdm
 import torch
+from scipy.sparse.csgraph import dijkstra
 
 from pathpyG import Graph
-from pathpyG import TemporalGraph
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.MultiOrderModel import MultiOrderModel
+
 from pathpyG import config
 
+device = config['torch']['device']
 
-def temporal_graph_to_event_dag(g: TemporalGraph, delta: float = np.infty,
-                                sparsify: bool = True) -> Graph:
-    """Create directed acyclic event graph where nodes are node-time events and edges are time-respecting paths.
+def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
-        Args:
-            g: the temporal graph to be convered to an event dag
-            delta: for a maximum time difference delta two consecutive interactions 
-                    (u, v; t) and (v, w; t') are considered to contribute to a causal
-                    path from u via v to w iff t'-t <= delta
-            sparsify: whether not to add edges for time-respecting paths
-                between same nodes for multiple inter-event times
-    """
-    edge_list = []
-    node_names = {}
-    edge_times = []
+    # first-order edge index
+    edge_index, timestamps = g.data.edge_index, g.data.t
 
-    sources = defaultdict(set)
+    indices = torch.arange(0, edge_index.size(1), device=g.data.edge_index.device)
 
-    for v, _w, t in g.temporal_edges:
-        sources[t].add(v)
+    unique_t = torch.unique(timestamps, sorted=True)
+    second_order = []
 
-    for v, w, t in g.temporal_edges:
+    # lift order: find possible continuations for edges in each time stamp
+    for i in tqdm(range(unique_t.size(0))):
+        t = unique_t[i]
+        
+        # find indices of all source edges that occur at unique timestamp t
+        src_time_mask = (timestamps == t)
+        src_edges = edge_index[:,src_time_mask]
+        src_edge_idx = indices[src_time_mask]
 
-        if delta < np.infty:
-            current_delta = int(delta)
-        else:
-            current_delta = g.end_time - g.start_time
+        # find indices of all edges that can possibly continue edges occurring at time t for the given delta
+        dst_time_mask = (timestamps > t) & (timestamps <= t+delta)
+        dst_edges = edge_index[:,dst_time_mask]
+        dst_edge_idx = indices[dst_time_mask]
 
-        event_src = f"{v}-{t}"
-        node_names[event_src] = v
+        if dst_edge_idx.size(0)>0 and src_edge_idx.size(0)>0:
 
-        # create one time-unfolded link for all delta in [1, delta]
-        # this implies that for delta = 2 and an edge (a,b,1) two
-        # time-unfolded links (a_1, b_2) and (a_1, b_3) will be created
-        cont = False
-        for x in range(1, int(current_delta)+1):
+            # compute second-order edges between src and dst idx for all edges where dst in src_edges matches src in dst_edges        
+            x = torch.cartesian_prod(src_edge_idx, dst_edge_idx).t()
+            src_edges = torch.index_select(edge_index, dim=1, index=x[0])
+            dst_edges = torch.index_select(edge_index, dim=1, index=x[1])
+            ho_edge_index = x[:,torch.where(src_edges[1,:] == dst_edges[0,:])[0]]
+            second_order.append(ho_edge_index)
 
-            # only add edge to event DAG if an edge (w,*) continues a time-respecting path at time t+x
-            if w in sources[t+x] or not sparsify:
-                event_dst = "{0}-{1}".format(w, t+x)
-                node_names[event_dst] = w
-                edge_list.append([event_src, event_dst])
-                edge_times.append(t)
-                cont = True
-        if not cont and sparsify:  # if there is no continuing time-respecting path, include edge to t+1
-            event_dst = "{0}-{1}".format(w, t+1)
-            node_names[event_dst] = w
-            edge_list.append([event_src, event_dst])
-            edge_times.append(t)
+    ho_index = torch.cat(second_order, dim=1)
+    return ho_index
 
-    dag = Graph.from_edge_list(edge_list)
-    dag.data['node_name'] = [node_names[dag.mapping.to_id(i)] for i in range(dag.N)]
-    dag.data['node_idx'] = [g.mapping.to_idx(v) for v in dag.data['node_name']]
-    dag.data['edge_ts'] = torch.tensor(edge_times)
-    dag.data['temporal_graph_index_map'] = g.mapping.node_ids
-    return dag
+def temporal_shortest_paths(g: TemporalGraph, delta: int):
+    # generate temporal event DAG
+    edge_index = lift_order_temporal(g, delta).to(device)
 
+    # Add indices of first-order nodes as src and dst of paths in augmented
+    # temporal event DAG
+    src_edges_src = (g.data.edge_index[0] + g.M).to(device)
+    src_edges_dst = (torch.arange(0, g.data.edge_index.size(1))).to(device)
 
-def extract_causal_trees(dag: Graph) -> Dict[Union[int, str], torch.IntTensor]:
-    """Extract all causally isolated trees from a directed acyclic event graph.
+    dst_edges_src = torch.arange(0, g.data.edge_index.size(1)).to(device)
+    dst_edges_dst = (g.data.edge_index[1] + g.M + g.N).to(device)
 
-    For a directed acyclic graph where all events are related to single root
-    event, this function will return a single tree. For other DAGs, it will return
-    multiple trees such that each root in the tree is not causally influenced by
-    any other node-time event.
+    # add edges from source to edges and from edges to destinations
+    src_edges = torch.stack([src_edges_src, src_edges_dst]).to(device)
+    dst_edges = torch.stack([dst_edges_src, dst_edges_dst]).to(device)
+    edge_index = torch.cat([edge_index, src_edges, dst_edges], dim=1)
 
-    Args:
-        dag: the event graph to process
-    """
-    causal_trees = {}
-    d = dag.degrees(mode='in')
-    for v in d:
-        if d[v] == 0:
-            # print('Processing root', v)
+    # create sparse scipy matrix
+    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M + 2 * g.N) 
+    m = event_graph.get_sparse_adj_matrix()
 
-            src: List[int] = []
-            dst: List[int] = []
+    #print(f"Created temporal event DAG with {event_graph.N} nodes and {event_graph.M} edges")
 
-            visited = set()
-            queue = [v]
+    # run disjktra for all source nodes
+    dist, pred = dijkstra(m, directed=True, indices=np.arange(g.M, g.M+g.N),  return_predecessors=True, unweighted=True)
 
-            while queue:
-                x = queue.pop()
-                for w in dag.successors(x):
-                    if w not in visited:
-                        visited.add(w)
-                        queue.append(w)
-                        src.append(dag.mapping.to_idx(x))
-                        dst.append(dag.mapping.to_idx(w))
-            # TODO: Remove redundant zero-degree neighbors of all nodes
-            causal_trees[v] = torch.IntTensor([src, dst]).to(config['torch']['device'])
-    return causal_trees
+    # limit to first-order destinations and correct distances
+    dist_fo = dist[:, g.M+g.N:] - 1    
+    pred_fo = pred[:, g.N+g.M:]
+    np.fill_diagonal(dist_fo, 0)
+
+    return dist_fo, pred_fo
