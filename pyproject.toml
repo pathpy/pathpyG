@@ -21,7 +21,7 @@ dynamic = ["version"]
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
     'zstandard',            # Compression library
-    'numpy',                # Numerical computing library
+    'numpy<2',                # Numerical computing library
     'scipy',                # Scientific computing library
     'scikit-learn',         # Machine learning library
     'pandas',               # Data analysis library
