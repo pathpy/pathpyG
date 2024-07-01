@@ -12,7 +12,7 @@ import datetime
 from time import mktime
 
 from pathpyG import Graph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.config import config
 
 

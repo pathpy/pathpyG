@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as _np
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.visualisations.hist_plots import hist
 from pathpyG.algorithms import centrality
 from pathpyG.algorithms.shortest_paths import shortest_paths_dijkstra, diameter, avg_path_length

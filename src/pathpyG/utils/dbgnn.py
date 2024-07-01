@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import torch
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 
 def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = 'last') -> torch.Tensor:
     """Generate edge_index for bipartite graph connecting nodes of a second-order graph to first-order nodes."""

@@ -8,7 +8,7 @@ from typing import (
 import numpy as _np
 import scipy as _sp
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.algorithms.shortest_paths import shortest_paths_dijkstra
 from pathpyG.statistics.degrees import degree_sequence
 

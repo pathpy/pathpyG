@@ -39,8 +39,8 @@ from typing import (
 
 from math import isnan
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.graph import Graph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.core.path_data import PathData
 
 from networkx import centrality

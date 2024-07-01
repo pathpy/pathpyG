@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 import numpy as np
 
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 
 def test_index_mapping():
     mapping = IndexMap()

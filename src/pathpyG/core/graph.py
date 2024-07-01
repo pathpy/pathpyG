@@ -21,7 +21,7 @@ from torch_geometric.transforms.to_undirected import ToUndirected
 from torch_geometric.utils import is_undirected
 
 from pathpyG.utils.config import config
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 
 
 class Graph:

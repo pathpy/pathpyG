@@ -5,7 +5,7 @@ from torch import IntTensor, equal, tensor
 from pathpyG import config
 
 from pathpyG.core.path_data import PathData
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 
 
 def test_constructor():

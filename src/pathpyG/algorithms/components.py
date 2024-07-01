@@ -12,7 +12,7 @@ from collections import Counter
 import numpy as _np
 from scipy.sparse.csgraph import connected_components as _cc
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 
 def connected_components(graph: Graph, connection='weak') -> (int, _np.ndarray):
 
