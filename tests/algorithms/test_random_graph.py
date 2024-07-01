@@ -5,7 +5,7 @@ import torch
 from torch_geometric.utils import to_undirected, sort_edge_index
 
 import pathpyG as pp
-from pathpyG.algorithms.RandomGraphs import Watts_Strogatz
+from pathpyG.algorithms.random_graphs import Watts_Strogatz
 
 
 def test_watts_strogatz_simple():
