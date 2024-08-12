@@ -5,7 +5,6 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 
-from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
@@ -24,6 +23,13 @@ class MultiOrderModel:
         max_order = max(list(self.layers.keys())) if self.layers else 0
         s = f"MultiOrderModel with max. order {max_order}"
         return s
+    
+    def to(self, device: torch.device) -> MultiOrderModel:
+        """Converts the graph layers to the given device."""
+        for g in self.layers.values():
+            g.to(device)
+        return self
+
 
     @staticmethod
     def aggregate_edge_weight(ho_index: torch.Tensor, edge_weight: torch.Tensor, aggr: str = "src") -> torch.Tensor:
@@ -246,7 +252,7 @@ class MultiOrderModel:
         m = MultiOrderModel()
 
         # We assume that paths are sorted
-        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
+        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(path_data.device)
         edge_index = path_graph.edge_index
         node_sequence = path_graph.node_sequence
         if path_graph.edge_attr is None:
