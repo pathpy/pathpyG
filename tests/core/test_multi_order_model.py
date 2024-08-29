@@ -43,3 +43,10 @@ def test_lift_order_temporal(simple_temporal_graph):
     # for delta=5 we have three time-respecting paths (a,b,1) -> (b,c,5), (b,c,5) -> (c,d,9) and (b,c,5) -> (c,e,9)
     assert event_graph.M == 3
     assert torch.equal(event_graph.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
+
+def test_multi_order_model_from_paths(simple_walks_2):
+    m = MultiOrderModel.from_PathData(simple_walks_2, max_order=2)
+    g1 = m.layers[1]
+    g2 = m.layers[2]
+    assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [2, 2, 3, 4]]))
+    assert torch.equal(g1.data.edge_weight, torch.tensor([2.0, 2.0, 2.0, 2.0]))
