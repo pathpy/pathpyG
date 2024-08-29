@@ -113,7 +113,7 @@ class PathData:
                 edge_index=big_edge_index,
                 node_sequence=idx_seqs,
                 num_nodes=idx_seqs.max().item() + 1,
-                edge_weight=torch.cat([torch.full((length,), w) for length, w in zip(path_lengths, weights)]),
+                edge_weight=torch.cat([torch.full((length-1,), w) for length, w in zip(path_lengths, weights)]),
             )
         )
 

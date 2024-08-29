@@ -249,10 +249,10 @@ class MultiOrderModel:
         path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
         edge_index = path_graph.edge_index
         node_sequence = path_graph.node_sequence
-        if path_graph.edge_attr is None:
+        if path_graph.edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         else:
-            edge_weight = path_graph.edge_attr
+            edge_weight = path_graph.edge_weight
         if mode == "diffusion":
             edge_weight = (
                 edge_weight / degree(edge_index[0], dtype=torch.long, num_nodes=node_sequence.size(0))[edge_index[0]]
