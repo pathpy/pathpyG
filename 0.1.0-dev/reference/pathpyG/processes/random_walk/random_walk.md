@@ -1,0 +1,1 @@
+::: pathpyG.processes.random_walk
