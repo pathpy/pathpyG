@@ -13,7 +13,7 @@ import scipy as sp  # pylint: disable=import-error
 from scipy.sparse import linalg as spl
 from scipy import linalg as spla
 from pandas import DataFrame
-from pathpyG import DAGData
+from pathpyG import PathData
 from pathpyG import Graph
 
 from .sampling import VoseAliasSampling
@@ -47,78 +47,67 @@ class RandomWalk(BaseProcess):
     during the process' evolution. This data frame can be converted to Path and PathCollection objects 
     and it can be visualized using the plot function.
 
-    Examples
-    --------
-    Generate and visualize a single biased random walk with 10 steps on a network
+    Examples:
+        Generate and visualize a single biased random walk with 10 steps on a network
 
-    >>> import pathpyG as pp
-    >>> g = pp.Graph.from_edge_list([['a','b'], ['b','c'], ['c','a'], ['c','d'], ['d','a']])
-    >>> rw = pp.processes.RandomWalk(g, weight='edge_weight')
-    >>> data = rw.run_experiment(steps=10, seed='a')
-    >>> rw.plot(data)
-    [interactive visualization]
+        >>> import pathpyG as pp
+        >>> g = pp.Graph.from_edge_list([['a','b'], ['b','c'], ['c','a'], ['c','d'], ['d','a']])
+        >>> rw = pp.processes.RandomWalk(g, weight='edge_weight')
+        >>> data = rw.run_experiment(steps=10, seed='a')
+        >>> rw.plot(data)
+        [interactive visualization]
 
-    Generate a single random walk with 10 steps starting from node 'a' and 
-    return a WalkData instance
+        Generate a single random walk with 10 steps starting from node 'a' and 
+        return a WalkData instance
 
-    >>> p = rw.get_path(rw.run_experiment(steps=10, runs=['a']))
+        >>> p = rw.get_path(rw.run_experiment(steps=10, runs=['a']))
 
-    Generate one random walk with 10 steps starting from each node and 
-    return a PathCollection instance
+        Generate one random walk with 10 steps starting from each node and 
+        return a PathCollection instance
 
-    >>> pc = rw.get_paths(rw.run_experiment(steps=10, runs=g.nodes))
-    [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b'] 
-    [ 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b', 'c' ]
-    [ 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c' ]
-    [ 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b' ]
+        >>> pc = rw.get_paths(rw.run_experiment(steps=10, runs=g.nodes))
+        [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b'] 
+        [ 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b', 'c' ]
+        [ 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c' ]
+        [ 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b' ]
 
-    Simulate a random walk using the iterator interface, which provides full access 
-    to the state after each simulation step
+        Simulate a random walk using the iterator interface, which provides full access 
+        to the state after each simulation step
 
-    >>> for time, _ in rw.simulation_run(steps=5, seed='a'):
-    >>>     print('Current node = {0}'.format(rw.current_node))
-    >>>     print(rw.visitation_frequencies)
-    Current node = b
-    [0.5 0.5 0.  0. ]
-    Current node = c
-    [0.33333333 0.33333333 0.33333333 0. ]
-    Current node = d
-    [0.25 0.25 0.25 0.25]
-    Current node = a
-    [0.4 0.2 0.2 0.2]
-    Current node = b
-    [0.33333333 0.33333333 0.16666667 0.16666667]
-    Current node = a
-    [0.42857143 0.28571429 0.14285714 0.14285714]
-    Current node = c
-    [0.375 0.25  0.25  0.125]
-    Current node = a
-    [0.44444444 0.22222222 0.22222222 0.11111111]
-    Current node = b
-    [0.4 0.3 0.2 0.1]
-    Current node = a
-    [0.45454545 0.27272727 0.18181818 0.09090909]
+        >>> for time, _ in rw.simulation_run(steps=5, seed='a'):
+        >>>     print('Current node = {0}'.format(rw.current_node))
+        >>>     print(rw.visitation_frequencies)
+        Current node = b
+        [0.5 0.5 0.  0. ]
+        Current node = c
+        [0.33333333 0.33333333 0.33333333 0. ]
+        Current node = d
+        [0.25 0.25 0.25 0.25]
+        Current node = a
+        [0.4 0.2 0.2 0.2]
+        Current node = b
+        [0.33333333 0.33333333 0.16666667 0.16666667]
+        Current node = a
+        [0.42857143 0.28571429 0.14285714 0.14285714]
+        Current node = c
+        [0.375 0.25  0.25  0.125]
+        Current node = a
+        [0.44444444 0.22222222 0.22222222 0.11111111]
+        Current node = b
+        [0.4 0.3 0.2 0.1]
+        Current node = a
+        [0.45454545 0.27272727 0.18181818 0.09090909]
     """
 
     def __init__(self, network: Graph, weight: Optional[Weight] = None, restart_prob: float = 0) -> None:
         """Creates a biased random walk process in a network.
 
-        Parameters
-        ----------
-        network: Network
-            The network instance on which to perform the random walk process. Can also 
-            be an instance of HigherOrderNetwork.
-
-        weight: Weight = None
-            If specified, the given numerical edge attribute will be used to bias
-            the random walk transition probabilities.
-
-        restart_probability: float = 0
-            The per-step probability that a random walker restarts in a random node
-
-        See Also
-        --------
-        VoseAliasSampling, HigherOrderRandomWalk, BaseProcess
+        Args:
+            network: The network instance on which to perform the random walk process. Can also 
+                be an instance of HigherOrderNetwork.
+            weight: If specified, the given numerical edge attribute will be used to bias
+                the random walk transition probabilities.
+            restart_probability: The per-step probability that a random walker restarts in a random node
         """
 
         # transition matrix of random walk
@@ -152,12 +141,8 @@ class RandomWalk(BaseProcess):
         """
         Initializes the random walk state with a given seed/source node
 
-        Parameters
-        ----------
-
-        seed: Union[int, str]
-
-            Id of node in which the random walk will start
+        Args:
+            seed: Id of node in which the random walk will start
         """
         # reset currently visited node (or higher-order node)
         self._current_node = seed
@@ -207,6 +192,7 @@ class RandomWalk(BaseProcess):
         """
         if v in self._network.nodes:
             return v == self._current_node
+        # TODO: Error here!
         elif type(self._network) == HigherOrderGraph:
             return v == self._network.mapping.to_id(self._current_node)[-1]
         else:
@@ -224,10 +210,8 @@ class RandomWalk(BaseProcess):
         """
         Maps the current (visitation) state of nodes to colors for visualization. The state is True for the currently visited node and False for all other nodes.
 
-        Parameters
-        ----------
-
-        state: bool
+        Args: 
+            state: Current visitation state
         """
         if state:
             return 'red'
@@ -242,16 +226,10 @@ class RandomWalk(BaseProcess):
         Returns a transition matrix that describes a random walk process in the
         given network.
 
-        Parameters
-        ----------
-        network: Network
-
-            The network for which the transition matrix will be created.
-
-        weight: Weight
-
-            If specified, the numerical edge attribute that shall be used in the biased
-            transition probabilities of the random walk.
+        Args:
+            network: The network for which the transition matrix will be created.
+            weight: If specified, the numerical edge attribute that shall be used in the biased
+                transition probabilities of the random walk.
 
         """
         if weight is None or weight is False:
@@ -292,11 +270,10 @@ class RandomWalk(BaseProcess):
 
         Returns a vector that contains transition probabilities from a given
         node to all other nodes in the network.
-
         """
         return np.nan_to_num(np.ravel(
             self._transition_matrix[
-                self._network.nodes.to_idx(node), :].todense()))
+                self._network.mapping.to_idx(node), :].todense()))
 
     def visitation_probabilities(self, t, seed: str) -> np.ndarray:
         """Calculates visitation probabilities of nodes after t steps for a given start node
@@ -319,62 +296,32 @@ class RandomWalk(BaseProcess):
     def current_node(self) -> str:
         return self._current_node
 
-    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> DAGData:
+    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> PathData:
         """Returns a path that represents the sequence of (first-order) nodes traversed
         by a single random walk.
 
-        Parameters
-        ----------
+        Args:
+            data: Pandas `DataFrame` containing the trajectory of one or more (higher-order) random walks, generated by a call of `run_experiment`
+            run_uid: Uid of the random walk simulation to be returns as Path (default: 0).
 
-        data: DataFrame
-            Pandas data frame containing the trajectory of one or more (higher-order) random walks, generated by a call of `run_experiment`
-
-        run_uid: Optional[int]=0
-               Uid of the random walk simulation to be returns as Path (default: 0).
-
-        Returns
-        -------
-
-        Path
+        Returns:
             Path object containing the sequence of nodes traversed by the random walk
-
-        See Also
-        --------
-
-        Path
         """
         # list of traversed nodes starting with seed node
         walk_steps = list(data.loc[(data['run_id'] == run_id) & (
             data['state'] == True)]['node'].values)
 
         # generate Path
-        path = DAGData(self._network.mapping)
+        path = PathData(self._network.mapping)
         path.append_walk([walk_steps[i] for i in range(len(walk_steps))])
         return path
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> DAGData:
-        """Returns a DAGData object where each DAG is one walk
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> PathData:
+        """Return a PathData object where each path is one random walk trajectory
 
-        Parameters
-        ----------
-
-        data: DataFrame
-            Pandas data frame containing the trajectory of one or more random walks, generated by 
-            `run_experiment`
-
-        run_ids: Optional[Iterable]=None
-            Uids of the random walk simulations to be included in the PathCollection instance. If None (default), all random walk simulations will be included.
-
-        Returns
-        -------
-
-        DAGData
-            DAGData object where each random walk is represented by one dag.
-
-        See Also
-        --------
-
-        DAGData
+        Args:
+            data: Pandas `DataFrame` containing the trajectory of one or more random walks, generated by `run_experiment`
+            run_ids: UIDs of random walk simulation runs to be included in the `PathData`. If None (default), all runs will be included.
         """
 
         if not run_ids:  # generate paths for all run_ids in the data frame
@@ -382,29 +329,24 @@ class RandomWalk(BaseProcess):
         else:
             runs = run_ids
 
-        walks = DAGData(self._network.mapping)
+        walks = PathData(self._network.mapping)
         for id in runs:
             walk_steps = list(data.loc[(data['run_id'] == id) & (
             data['state'] == True)]['node'].values)
 
-            # add walk to DAGData
-            print(walk_steps)
+            # add walk to PathData
             walks.append_walk(walk_steps)
             
         return walks
 
     def stationary_state(self, **kwargs: Any) -> np.array:
-        """Computes stationary visitation probabilities.
+        """Compute stationary visitation probabilities of random walk.
 
         Computes stationary visitation probabilities of nodes based on the
         leading eigenvector of the transition matrix.
 
-        Parameters
-        ----------
-
-        **kwargs: Any
-
-            Arbitrary key-value pairs to bee passed to the
+        Args:
+            kwargs: Arbitrary key-value pairs to bee passed to the
             scipy.sparse.linalg.eigs function.
         """
         _p = self._stationary_probabilities
@@ -431,7 +373,6 @@ class RandomWalk(BaseProcess):
         probabilities and the stationary probabilities. This quantity converges
         to zero for RandomWalk.t -> np.infty and its magnitude indicates the
         current relaxation of the random walk process.
-
         """
         return self.TVD(self.stationary_state(), self.visitation_frequencies)
 
@@ -462,97 +403,80 @@ class HigherOrderRandomWalk(RandomWalk):
         during the process' evolution. This data frame can be converted to Path and PathCollection objects 
         and it can be visualized using the plot function.
 
-        Examples
-        --------
-        Generate and visualize a single random walk with 10 steps on a higher-order network
+        Examples:
+            Generate and visualize a single random walk with 10 steps on a higher-order network
 
-        >>> import pathpy as pp
-        >>> g = pp.Graph.from_edge_list([['a','b'], ['b','c'], ['c','a'], ['c','d'], ['d','a']])
-        >>> paths = pp.WalkData(g3.mapping)
-        >>> paths.add_walk_seq(['a','b','c'],freq=1)
-        >>> paths.add_walk_seq(['b','c','a'],freq=1)
-        >>> paths.add_walk_seq(['b','c','d'],freq=0.2)
-        >>> paths.add_walk_seq(['c','a','b'],freq=1)
-        >>> paths.add_walk_seq(['c','d','a'],freq=0.2)
-        >>> paths.add_walk_seq(['d','a','b'],freq=1)
-        >>> g_ho = pp.HigherOrderGraph(paths, order =2)
-    
-        >>> rw = pp.processes.HigherOrderRandomWalk(g_ho, weight=True)
-        >>> data = rw.run_experiment(steps=10, runs=[('b','c')])
-        >>> rw.plot(data)
-        [interactive visualization in first-order network]
+            >>> import pathpy as pp
+            >>> g = pp.Graph.from_edge_list([['a','b'], ['b','c'], ['c','a'], ['c','d'], ['d','a']])
+            >>> paths = pp.WalkData(g3.mapping)
+            >>> paths.add_walk_seq(['a','b','c'],freq=1)
+            >>> paths.add_walk_seq(['b','c','a'],freq=1)
+            >>> paths.add_walk_seq(['b','c','d'],freq=0.2)
+            >>> paths.add_walk_seq(['c','a','b'],freq=1)
+            >>> paths.add_walk_seq(['c','d','a'],freq=0.2)
+            >>> paths.add_walk_seq(['d','a','b'],freq=1)
+            >>> g_ho = pp.HigherOrderGraph(paths, order =2)
+        
+            >>> rw = pp.processes.HigherOrderRandomWalk(g_ho, weight=True)
+            >>> data = rw.run_experiment(steps=10, runs=[('b','c')])
+            >>> rw.plot(data)
+            [interactive visualization in first-order network]
 
-        Use `plot` function of base class to visualize random walk in second-order network
+            Use `plot` function of base class to visualize random walk in second-order network
 
-        >>> pp.processes.RandomWalk.plot(rw, data)
-        [interactive visualization in second-order network]
+            >>> pp.processes.RandomWalk.plot(rw, data)
+            [interactive visualization in second-order network]
 
-        Generate a single random walk with 10 steps starting from node 'b-c' and 
-        return a first-order path
+            Generate a single random walk with 10 steps starting from node 'b-c' and 
+            return a first-order path
 
-        >>> p = rw.get_path(rw.run_experiment(steps=10, runs=['b-c']))
-        >>> pprint([v.uid for v in p.nodes ]) 
-        [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b']
+            >>> p = rw.get_path(rw.run_experiment(steps=10, runs=['b-c']))
+            >>> pprint([v.uid for v in p.nodes ]) 
+            [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b']
 
-        Use `get_path` function of base class to return path with second-order nodes
+            Use `get_path` function of base class to return path with second-order nodes
 
-        >>> p = pp.processes.RandomWalk.get_path(rw2, data)
-        >>> print([ v.uid for v in p.nodes ])
+            >>> p = pp.processes.RandomWalk.get_path(rw2, data)
+            >>> print([ v.uid for v in p.nodes ])
 
-        Generate one random walk with 10 steps starting from each node and 
-        return a WalkData instance with first-order paths
+            Generate one random walk with 10 steps starting from each node and 
+            return a WalkData instance with first-order paths
 
-        >>> paths = rw.get_paths(rw.run_experiment(steps=10, runs=g_ho.nodes))
-        >>> pprint([v.uid for v in p.nodes ]) 
-        [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b'] 
-        [ 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b', 'c' ]
-        [ 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c' ]
-        [ 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b' ]
+            >>> paths = rw.get_paths(rw.run_experiment(steps=10, runs=g_ho.nodes))
+            >>> pprint([v.uid for v in p.nodes ]) 
+            [ 'a', 'b', 'c', 'a', 'a', 'b', 'c', 'd', 'a', 'b'] 
+            [ 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b', 'c' ]
+            [ 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c' ]
+            [ 'b', 'c', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'a', 'b' ]
 
-        Simulate a random walk using the iterator interface, which provides full access 
-        to the state after each simulation step
+            Simulate a random walk using the iterator interface, which provides full access 
+            to the state after each simulation step
 
-        >>> for time, _ in rw2.simulation_run(steps=50, seed='b-c'):
-        >>>     print('Current node = {0}'.format(rw2.first_order_node(rw2.current_node)))
-        >>>     print(rw2._first_order_visitation_frequencies)
-        Current node = b
-        [0.33333333 0.33333333 0.33333333 0.        ]
-        Current node = c
-        [0.32142857 0.32142857 0.35714286 0.        ]
-        Current node = a
-        [0.34482759 0.31034483 0.34482759 0.        ]
-        Current node = b
-        [0.33333333 0.33333333 0.33333333 0.        ]
-        Current node = c
-        [0.32258065 0.32258065 0.35483871 0.        ]
-        Current node = a
-
-        See Also
-        --------
-        VoseAliasSampling, RandomWalk, BaseProcess
+            >>> for time, _ in rw2.simulation_run(steps=50, seed='b-c'):
+            >>>     print('Current node = {0}'.format(rw2.first_order_node(rw2.current_node)))
+            >>>     print(rw2._first_order_visitation_frequencies)
+            Current node = b
+            [0.33333333 0.33333333 0.33333333 0.        ]
+            Current node = c
+            [0.32142857 0.32142857 0.35714286 0.        ]
+            Current node = a
+            [0.34482759 0.31034483 0.34482759 0.        ]
+            Current node = b
+            [0.33333333 0.33333333 0.33333333 0.        ]
+            Current node = c
+            [0.32258065 0.32258065 0.35483871 0.        ]
+            Current node = a
     """
 
     def __init__(self, higher_order_network: Graph, first_order_network, weight: Optional[Weight] = None, restart_prob: float = 0) -> None:
         """Creates a biased random walk process in a network.
 
-            Parameters
-            ----------
-            higher_order_network: HigherOrderGraph
-                The higher-order network instance on which to perform the random walk process.
-
-            first_order_network: Network
-                The first-order network instance to be used for mapping the process to first-order nodes
-
-            weight: Weight = None
-                If specified, the given numerical edge attribute will be used to bias
-                the random walk transition probabilities.
-
-            restart_probability: float = 0
-                The per-step probability that a random walker restarts in a random (higher-order) node
-
-            See Also
-            --------
-            RandomWalk, BaseProcess
+            Args:
+                higher_order_network: The higher-order network instance on which to perform the random walk process.
+                first_order_network: The first-order network instance to be used for mapping the process to first-order nodes
+                weight: If specified, the given numerical edge attribute will be used to bias
+                    the random walk transition probabilities.
+                restart_probability: The per-step probability that a random walker restarts in a random (higher-order) node
         """
         self._first_order_network = first_order_network
         RandomWalk.__init__(self, higher_order_network, weight, restart_prob)
@@ -603,14 +527,10 @@ class HigherOrderRandomWalk(RandomWalk):
         """
         Maps a given uid of a node in the higher-order network to the uid of the corresponding first-order node.
 
-        Parameters
-        ----------
-        higher_order_node: tuple
-            Tuple that represents the higher-order node 
+        Args:
+            higher_order_node: Tuple that represents the higher-order node 
 
-        Returns
-        -------
-        str
+        Returns:
             String of the corresponding first-order node
         """
         return higher_order_node[-1]
@@ -629,24 +549,15 @@ class HigherOrderRandomWalk(RandomWalk):
         return (current_node, previous_node)
 
 
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> DAGData:
+    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = 0) -> PathData:
         """Returns paths that represent the sequences of (first-order) nodes traversed by random walks with given run ids.
 
-        Parameters
-        ----------
+        Args:
+            data: Pandas data frame containing the trajectory of one or more (higher-order) random walks, generated by a call of `run_experiment`
+            run_uid: Uid of the random walk simulations to be returned as WalkData (default: 0).
 
-        data: DataFrame
-            Pandas data frame containing the trajectory of one or more (higher-order) random walks, generated by a call of `run_experiment`
-
-        run_uid: Optional[int]=0
-               Uid of the random walk simulations to be returned as WalkData (default: 0).
-
-        Returns
-        -------
-
-        Path
+        Returns:
             WalkData object containing the sequences of nodes traversed by the random walks
-
         """
         # list of traversed nodes starting with seed node
         
@@ -655,7 +566,7 @@ class HigherOrderRandomWalk(RandomWalk):
         else:
             runs = run_ids
         
-        paths = DAGData(mapping = self._first_order_network.mapping)
+        paths = PathData(mapping = self._first_order_network.mapping)
         for run in runs:
             walk_steps = list(data.loc[(data['run_id'] == run) & (
                 data['state'] == True)]['node'].values)
@@ -670,5 +581,3 @@ class HigherOrderRandomWalk(RandomWalk):
                 walk.append(walk_steps[i][-1])
             paths.append_walk(walk)
         return paths
-
-    

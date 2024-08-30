@@ -19,12 +19,13 @@ nav:
     - Docker Installation: docker_installation.md
   - Tutorial:
     - tutorial.md
-    - Basic Concepts: tutorial/basic_concepts.ipynb
-    - Accessing Netzschleuder: tutorial/netzschleuder.ipynb
-    - Paths and Higher-Order Models: tutorial/paths_higher_order.ipynb
+    - Basic Concepts: tutorial/basic_concepts.ipynb    
     - Temporal Graphs: tutorial/temporal_graphs.ipynb
-    - Causality-Aware GNNs: tutorial/dbgnn.ipynb
-    - Interactive Graph Visualisation: tutorial/visualisation.ipynb
+    - Interactive Graph Visualisation: tutorial/visualisation.ipynb    
+    - Graph Learning in Netzschleuder Data: tutorial/netzschleuder.ipynb
+    - Path Data and Higher-Order Models: tutorial/paths_higher_order.ipynb    
+    - Higher-Order Models for Time-Respecting Paths: tutorial/trp_higher_order.ipynb    
+    - Causality-Aware GNNs: tutorial/dbgnn.ipynb    
     - Develop your own plot Functions: plot_tutorial.md
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 

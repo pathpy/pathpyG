@@ -8,9 +8,10 @@ from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index, sca
 
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
-from pathpyG.core.DAGData import DAGData
+from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
+from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 
 class MultiOrderModel:
@@ -146,7 +147,7 @@ class MultiOrderModel:
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
         in the from_temporal_graph (filtering non-time-respecting paths of order 2)
-        or from_DAGs (reindexing with dataloader) functions.
+        or from_PathData (reindexing with dataloader) functions.
 
         Args:
             edge_index: The edge index of the (k-1)-th order graph.
@@ -229,14 +230,14 @@ class MultiOrderModel:
         return m
 
     @staticmethod
-    def from_DAGs(
-        dag_data: DAGData, max_order: int = 1, mode: str = "propagation", cached: bool = True
+    def from_PathData(
+        path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
     ) -> MultiOrderModel:
         """
-        Creates multiple higher-order De Bruijn graphs for paths in DAGData.
+        Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
 
         Args:
-            dag_data: The DAGData object containing the DAGs as list of PyG Data objects
+            path_data: `PathData` object containing paths as list of PyG Data objects
                 with sorted edge indices, node sequences and num_nodes.
             max_order: The maximum order of the MultiOrderModel that should be computed
             mode: The process that we assume. Can be "diffusion" or "propagation".
@@ -245,14 +246,14 @@ class MultiOrderModel:
         """
         m = MultiOrderModel()
 
-        # We assume that the DAGs are sorted and that walks are remapped to a DAG
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
-        edge_index = dag_graph.edge_index
-        node_sequence = dag_graph.node_sequence
-        if dag_graph.edge_weight is None:
+        # We assume that paths are sorted
+        path_graph = next(iter(DataLoader(path_data.paths, batch_size=len(path_data.paths)))).to(config["torch"]["device"])
+        edge_index = path_graph.edge_index
+        node_sequence = path_graph.node_sequence
+        if path_graph.edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         else:
-            edge_weight = dag_graph.edge_weight
+            edge_weight = path_graph.edge_weight
         if mode == "diffusion":
             edge_weight = (
                 edge_weight / degree(edge_index[0], dtype=torch.long, num_nodes=node_sequence.size(0))[edge_index[0]]
@@ -264,7 +265,7 @@ class MultiOrderModel:
         m.layers[1] = MultiOrderModel.aggregate_edge_index(
             edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
         )
-        m.layers[1].mapping = dag_data.mapping
+        m.layers[1].mapping = path_data.mapping
 
         for k in range(2, max_order + 1):
             edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
@@ -279,6 +280,7 @@ class MultiOrderModel:
                 m.layers[k] = gk
 
         return m
+
 
     def get_mon_dof(self, max_order: int = None, assumption: str = "paths") -> int:
         """
@@ -349,6 +351,7 @@ class MultiOrderModel:
 
         return int(dof)
 
+      
     def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
         """
         Compute the zeroth order log likelihood.
@@ -379,6 +382,7 @@ class MultiOrderModel:
         node_emission_probabilities = counts / counts.sum()
         return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
 
+      
     def get_intermediate_order_log_likelihood(self, dag_graph: Data, order: int) -> float:
         """
         Compute the intermediate order log likelihood.
@@ -412,6 +416,7 @@ class MultiOrderModel:
         llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
         return llh_by_subpath.sum().item()
 
+      
     def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
         """
         Compute the likelihood of the walks given a multi-order model.
@@ -457,6 +462,7 @@ class MultiOrderModel:
 
         return llh
 
+      
     def likelihood_ratio_test(
         self,
         dag_graph: Data,
@@ -488,6 +494,7 @@ class MultiOrderModel:
         p = 1 - chi2.cdf(x, dof_diff)
         return (p < significance_threshold), p
 
+      
     def estimate_order(self, dag_data: DAGData, max_order: int = None, significance_threshold: float = 0.01) -> int:
         """
         Selects the optimal maximum order of a multi-order network model for the
@@ -532,6 +539,47 @@ class MultiOrderModel:
 
         return max_accepted_order
 
+      def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
+        """
+        Convert the MultiOrderModel to a De Bruijn graph for the given maximum order.
+        
+        Args:
+            max_order: The maximum order of the De Bruijn graph to be computed.
+            mapping: The mapping to use for the bipartite edge index. One of "last", "first", or "both".
+        """
+        if max_order not in self.layers:
+            raise ValueError(f"Higher-order graph of order {max_order} not found.")
+        
+        g = self.layers[1]
+        g_max_order = self.layers[max_order]
+        num_nodes = g.data.num_nodes
+        num_ho_nodes = g_max_order.data.num_nodes
+        if g.data.x is not None:
+            x = g.data.x
+        else:
+            x = torch.eye(num_nodes, num_nodes)
+        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes)
+        edge_index = g.data.edge_index
+        edge_index_max_order = g_max_order.data.edge_index
+        edge_weight = g.data.edge_weight
+        edge_weight_max_order = g_max_order.data.edge_weight
+        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping)
+        
+        if g.data.y is not None:
+            y = g.data.y
+        
+        return Data(
+            num_nodes=num_nodes,
+            num_ho_nodes=num_ho_nodes,
+            x=x,
+            x_h=x_max_order,
+            edge_index=edge_index,
+            edge_index_higher_order=edge_index_max_order,
+            edge_weights=edge_weight.float(),
+            edge_weights_higher_order=edge_weight_max_order.float(),
+            bipartite_edge_index=bipartite_edge_index,
+            y=y if 'y' in locals() else None
+        )
 
 def compute_weighted_outdegrees(graph: Graph) -> torch.Tensor:
     """
@@ -562,3 +610,4 @@ def compute_transition_probabilities(graph: Graph) -> torch.Tensor:
     weighted_outdegree = compute_weighted_outdegrees(graph)
     source_ids = graph.data.edge_index[0]
     return graph.data.edge_weight / weighted_outdegree[source_ids]
+
