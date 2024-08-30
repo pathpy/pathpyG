@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
@@ -111,13 +112,12 @@ class MultiOrderModel:
         """
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-
+            
+        unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
         # If first order, then the indices in the node sequence are the inverse idx we would need already
         if node_sequence.size(1) == 1:
-            unique_nodes = torch.arange(node_sequence.max().item() + 1, device=node_sequence.device).unsqueeze(1)
             mapped_edge_index = node_sequence.squeeze()[edge_index]
         else:
-            unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
             mapped_edge_index = inverse_idx[edge_index]
         aggregated_edge_index, edge_weight = coalesce(
             mapped_edge_index,
@@ -130,6 +130,7 @@ class MultiOrderModel:
             num_nodes=unique_nodes.size(0),
             node_sequence=unique_nodes,
             edge_weight=edge_weight,
+            inverse_idx=inverse_idx,
         )
         return Graph(data)
 
@@ -279,6 +280,265 @@ class MultiOrderModel:
                 m.layers[k] = gk
 
         return m
+
+
+    def get_mon_dof(self, max_order: int = None, assumption: str = "paths") -> int:
+        """
+        The degrees of freedom for the kth layer of a multi-order model. This depends on the number of different paths of exactly length `k` in the graph.
+        Therefore, we can obtain these values by summing the entries of the `k`-th power of the binary adjacency matrix of the graph.
+        Finally, we must consider that, due the conservation of probablility, all non-zero rows of the transition matrix of the higher-order network must sum to one.
+        This poses one additional constraint per row that respects the condition, which should be removed from the total count of degrees of freedom.
+
+        Args:
+            m (MultiOrderModel): The multi-order model.
+            max_order (int, optional): The maximum order up to which model layers
+                shall be taken into account. Defaults to None, meaning it considers
+                all available layers.
+            assumption (str, optional): If set to 'paths', only paths in the
+                first-order network topology will be considered for the degree of
+                freedom calculation. If set to 'ngrams', all possible n-grams will
+                be considered, independent of whether they are valid paths in the
+                first-order network or not. Defaults to 'paths'.
+
+        Returns:
+            int: The degrees of freedom for the multi-order model.
+
+        Raises:
+            AssertionError: If max_order is larger than the maximum order of
+                the multi-order network.
+            ValueError: If the assumption is not 'paths' or 'ngrams'.
+        """
+        if max_order is None:
+            max_order = max(self.layers)
+
+        assert max_order <= max(
+            self.layers
+        ), "Error: max_order cannot be larger than maximum order of multi-order network"
+
+        dof = self.layers[1].data.num_nodes - 1  # Degrees of freedom for zeroth order
+
+        if assumption == "paths":
+            # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONERO OUTDEGREES SEPARATELY
+            # TODO: CAN IT BE DONE TOGETHER?
+
+            edge_index = self.layers[1].data.edge_index
+            # Adding dof from Number of paths of length k
+            for k in range(1, max_order + 1):
+                if k > 1:
+                    num_nodes = 0 if edge_index.numel() == 0 else edge_index.max().item() + 1
+                    edge_index = self.lift_order_edge_index(edge_index, num_nodes)
+                # counting number of len k paths
+                num_len_k_paths = edge_index.shape[1]  # edge_index.max().item() +1  # Number of paths of length k
+                dof += num_len_k_paths
+
+            # removing dof from total probability of nonzero degree nodes
+            for k in range(1, max_order + 1):
+                if k == 1:
+                    edge_index_adj = self.layers[1].data.edge_index
+                    edge_index = edge_index_adj
+                else:
+                    edge_index, _ = edge_index @ edge_index_adj
+                num_nonzero_outdegrees = torch.unique(edge_index[0]).size(0)
+                dof -= num_nonzero_outdegrees
+
+        elif assumption == "ngrams":
+            for order in range(1, max_order + 1):
+                dof += (self.layers[1].data.num_nodes ** order) * (self.layers[1].data.num_nodes - 1)
+        else:
+            raise ValueError(
+                f"Unknown assumption {assumption} in input. The only accepted values are 'path' and 'ngram'"
+            )
+
+        return int(dof)
+
+      
+    def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
+        """
+        Compute the zeroth order log likelihood.
+
+        Args:
+            dag_graph (Data): Input DAG graph data.
+
+        Returns:
+            float: Zeroth order log likelihood.
+        """
+        # Get frequencies
+        # TODO: put this tensor directly in dag_graph (intead of edge_weight) and remove the following line
+        # getting the index of the last edge of each path (to be used to extract weights)
+        last_edge_ixs = dag_graph.ptr[1:] - torch.arange(2, dag_graph.ptr.shape[0] + 1)
+        frequencies = dag_graph.edge_weight[last_edge_ixs]
+
+        # Get ixs starting nodes
+        # Q: Is dag_graph.ptr[:-1] enough to get the start_ixs?
+        mask = torch.ones(dag_graph.num_nodes, dtype=bool)
+        mask[dag_graph.edge_index[1]] = False
+        start_ixs = dag_graph.node_sequence.squeeze()[mask]
+
+        # Compute node emission probabilities
+        # TODOL modify once we have zeroth order in mon
+        _, counts = torch.unique(dag_graph.node_sequence, return_counts=True)
+        # WARNING: Only works if all nodes in the first-order graph are also in `node_sequence`
+        # Otherwise the missing nodes will not be included in `counts` which can lead to elements at the wrong index.
+        node_emission_probabilities = counts / counts.sum()
+        return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
+
+      
+    def get_intermediate_order_log_likelihood(self, dag_graph: Data, order: int) -> float:
+        """
+        Compute the intermediate order log likelihood.
+
+        Args:
+            m (MultiOrderModel): Multi-order model.
+            dag_graph (Data): Input DAG graph data.
+            order (int): Order of the intermediate log likelihood.
+
+        Returns:
+            float: Intermediate order log likelihood.
+        """
+        # Get frequencies
+        # TODO: put this tensor directly in dag_graph (intead of edge_weight) and remove the following line
+        # getting the index of the last edge of each path (to be used to extract weights)
+        last_edge_ixs = dag_graph.ptr[1:] - torch.arange(2, dag_graph.ptr.shape[0] + 1)
+        frequencies = dag_graph.edge_weight[last_edge_ixs]
+
+        # Get intermediate HO nodes ixs
+        mask = torch.ones(dag_graph.num_nodes, dtype=bool)
+        mask[dag_graph.edge_index[1]] = False
+        ixs = torch.where(mask)[0]
+        num_ixs = ixs.shape[0]
+        ho_intermediate_ixs = ixs - torch.arange(num_ixs) * order
+
+        # computing loglikelihood of subpaths
+        transition_probabilities = self.layers[order].transition_probabilities()[
+            self.layers[order + 1].data.inverse_idx[ho_intermediate_ixs]
+        ]
+        log_transition_probabilities = torch.log(transition_probabilities)
+        llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
+        return llh_by_subpath.sum().item()
+
+      
+    def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
+        """
+        Compute the likelihood of the walks given a multi-order model.
+
+        Args:
+            m (MultiOrderModel): The multi-order model.
+            dag_graph (Data): Dataset containing the walks.
+            max_order (int, optional): The maximum order up to which model layers
+                shall be taken into account. Defaults to 1.
+
+        Returns:
+            float: The log likelihood of the walks given the multi-order model.
+        """
+        llh = 0
+
+        # Adding likelihood of zeroth order
+        llh += self.get_zeroth_order_log_likelihood(dag_graph)
+
+        # Adding the likelihood for all the intermediate orders
+        for order in range(1, max_order):
+            llh += self.get_intermediate_order_log_likelihood(dag_graph, order)
+
+        # Adding the likelihood of highest/stationary order
+        if max_order > 0:
+            transition_probabilities = self.layers[max_order].transition_probabilities()
+            log_transition_probabilities = torch.log(transition_probabilities)
+            llh_by_subpath = (
+                log_transition_probabilities * self.layers[max_order].data.edge_weight
+            )
+            llh += llh_by_subpath.sum().item()
+        else:
+            # Compute likelihood for zeroth order (to be modified)
+            # TODO: modify once we have zeroth order in mon
+            # (then won t need to compute emission probs from dag_graph -- which also hinders us from computing the lh that a new set of path swas generated by the model)
+            # getting the index of the last edge of each path (to be used to extract weights)
+            last_edge_ixs = dag_graph.ptr[1:] - torch.arange(2, dag_graph.ptr.shape[0] + 1)
+            frequencies = dag_graph.edge_weight[last_edge_ixs]
+            counts = torch.bincount(
+                dag_graph.node_sequence.T[0], frequencies.repeat_interleave(dag_graph.ptr[1:] - dag_graph.ptr[:-1])
+            )
+            node_emission_probabilities = counts / counts.sum()
+            llh = torch.mul(torch.log(node_emission_probabilities), counts).sum().item()
+
+        return llh
+
+      
+    def likelihood_ratio_test(
+        self,
+        dag_graph: Data,
+        max_order_null: int = 0,
+        max_order: int = 1,
+        assumption: str = "paths",
+        significance_threshold: float = 0.01,
+    ) -> tuple:
+        assert (
+            max_order_null < max_order
+        ), "Error: order of null hypothesis must be smaller than order of alternative hypothesis"
+        assert max_order <= max(
+            self.layers
+        ), f"Error: order of hypotheses ({max_order_null} and {max_order}) must be smaller than the maximum order of the MultiOrderModel {max(self.layers)}"
+        # let L0 be the likelihood for the null model and L1 be the likelihood for the alternative model
+
+        # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
+        x = -2 * (
+            self.get_mon_log_likelihood(dag_graph, max_order=max_order_null)
+            - self.get_mon_log_likelihood(dag_graph, max_order=max_order)
+        )
+
+        # we calculate the additional degrees of freedom in the alternative model
+        dof_diff = self.get_mon_dof(max_order, assumption=assumption) - self.get_mon_dof(
+            max_order_null, assumption=assumption
+        )
+
+        # if the p-value is *below* the significance threshold, we reject the null hypothesis
+        p = 1 - chi2.cdf(x, dof_diff)
+        return (p < significance_threshold), p
+
+      
+    def estimate_order(self, dag_data: PathData, max_order: int = None, significance_threshold: float = 0.01) -> int:
+        """
+        Selects the optimal maximum order of a multi-order network model for the
+        observed paths, based on a likelihood ratio test with p-value threshold of p
+        By default, all orders up to the maximum order of the multi-order model will be tested.
+
+        Args:
+            dag_data (DAGData): The path statistics data for which to estimate the optimal order.
+            max_order (int, optional): The maximum order to consider during the estimation process.
+                If not provided, the maximum order of the multi-order model is used.
+            significance_threshold (float, optional): The p-value threshold for the likelihood ratio test.
+                An order is accepted if the improvement in likelihood is significant at this threshold.
+
+        Returns:
+            int: The estimated optimal maximum order for the multi-order network model.
+
+        Raises:
+            AssertionError: If the provided max_order is larger than the maximum order of the multi-order model
+                or if the input DAGData does not have the same set of nodes as the multi-order network
+        """
+        if max_order is None:
+            max_order = max(self.layers)  # THIS
+        assert max_order <= max(
+            self.layers
+        ), "Error: maxOrder cannot be larger than maximum order of multi-order network"
+        assert max_order > 1, "Error: max_order must be larger than one"
+
+        dag_graph = next(iter(DataLoader(dag_data.paths, batch_size=len(dag_data.paths)))).to(config["torch"]["device"])
+        assert set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) == set(
+            dag_data.mapping.node_ids
+        ), "Input DAGData doesn t have the same set of nodes as those of the multi-order network"
+
+        max_accepted_order = 1
+
+        # Test for highest order that passes
+        # likelihood ratio test against null model
+        for k in range(2, max_order + 1):
+            if self.likelihood_ratio_test(
+                dag_graph, max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
+            )[0]:
+                max_accepted_order = k
+
+        return max_accepted_order
+
 
     def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
         """
