@@ -495,7 +495,7 @@ class MultiOrderModel:
         return (p < significance_threshold), p
 
       
-    def estimate_order(self, dag_data: DAGData, max_order: int = None, significance_threshold: float = 0.01) -> int:
+    def estimate_order(self, dag_data: PathData, max_order: int = None, significance_threshold: float = 0.01) -> int:
         """
         Selects the optimal maximum order of a multi-order network model for the
         observed paths, based on a likelihood ratio test with p-value threshold of p
@@ -522,7 +522,7 @@ class MultiOrderModel:
         ), "Error: maxOrder cannot be larger than maximum order of multi-order network"
         assert max_order > 1, "Error: max_order must be larger than one"
 
-        dag_graph = next(iter(DataLoader(dag_data.dags, batch_size=len(dag_data.dags)))).to(config["torch"]["device"])
+        dag_graph = next(iter(DataLoader(dag_data.paths, batch_size=len(dag_data.paths)))).to(config["torch"]["device"])
         assert set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) == set(
             dag_data.mapping.node_ids
         ), "Input DAGData doesn t have the same set of nodes as those of the multi-order network"
