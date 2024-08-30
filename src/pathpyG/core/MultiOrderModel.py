@@ -539,7 +539,7 @@ class MultiOrderModel:
 
         return max_accepted_order
 
-      def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
+    def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
         """
         Convert the MultiOrderModel to a De Bruijn graph for the given maximum order.
         
@@ -610,4 +610,3 @@ def compute_transition_probabilities(graph: Graph) -> torch.Tensor:
     weighted_outdegree = compute_weighted_outdegrees(graph)
     source_ids = graph.data.edge_index[0]
     return graph.data.edge_weight / weighted_outdegree[source_ids]
-
