@@ -4,7 +4,7 @@ from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
-from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index, scatter
+from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
 
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
@@ -409,7 +409,7 @@ class MultiOrderModel:
         ho_intermediate_ixs = ixs - torch.arange(num_ixs) * order
 
         # computing loglikelihood of subpaths
-        transition_probabilities = compute_transition_probabilities(self.layers[order])[
+        transition_probabilities = self.layers[order].transition_probabilities()[
             self.layers[order + 1].data.inverse_idx[ho_intermediate_ixs]
         ]
         log_transition_probabilities = torch.log(transition_probabilities)
@@ -441,7 +441,7 @@ class MultiOrderModel:
 
         # Adding the likelihood of highest/stationary order
         if max_order > 0:
-            transition_probabilities = compute_transition_probabilities(self.layers[max_order])
+            transition_probabilities = self.layers[max_order].transition_probabilities()
             log_transition_probabilities = torch.log(transition_probabilities)
             llh_by_subpath = (
                 log_transition_probabilities * self.layers[max_order].data.edge_weight
@@ -539,6 +539,7 @@ class MultiOrderModel:
 
         return max_accepted_order
 
+
     def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
         """
         Convert the MultiOrderModel to a De Bruijn graph for the given maximum order.
@@ -580,33 +581,3 @@ class MultiOrderModel:
             bipartite_edge_index=bipartite_edge_index,
             y=y if 'y' in locals() else None
         )
-
-def compute_weighted_outdegrees(graph: Graph) -> torch.Tensor:
-    """
-    Compute the weighted outdegrees of each node in the graph.
-
-    Args:
-        graph (Graph): pathpy graph object.
-
-    Returns:
-        tensor: Weighted outdegrees of nodes.
-    """
-    weighted_outdegree = scatter(
-        graph.data.edge_weight, graph.data.edge_index[0], dim=0, dim_size=graph.data.num_nodes, reduce="sum"
-    )
-    return weighted_outdegree
-
-
-def compute_transition_probabilities(graph: Graph) -> torch.Tensor:
-    """
-    Compute transition probabilities based on weighted outdegrees.
-
-    Args:
-        graph (Graph): pathpy graph object.
-
-    Returns:
-        tensor: Transition probabilities.
-    """
-    weighted_outdegree = compute_weighted_outdegrees(graph)
-    source_ids = graph.data.edge_index[0]
-    return graph.data.edge_weight / weighted_outdegree[source_ids]

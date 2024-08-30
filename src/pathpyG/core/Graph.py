@@ -18,7 +18,7 @@ import torch_geometric.utils
 from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.transforms.to_undirected import ToUndirected
-from torch_geometric.utils import is_undirected
+from torch_geometric.utils import is_undirected, scatter
 
 from pathpyG.utils.config import config
 from pathpyG.core.IndexMap import IndexMap
@@ -387,6 +387,34 @@ class Graph:
                 self.data.edge_index[0], num_nodes=self.N, dtype=torch.int
             )
         return {self.mapping.to_id(i): d[i].item() for i in range(self.N)}
+
+    def weighted_outdegrees(self) -> torch.Tensor:
+        """
+        Compute the weighted outdegrees of each node in the graph.
+
+        Args:
+            graph (Graph): pathpy graph object.
+
+        Returns:
+            tensor: Weighted outdegrees of nodes.
+        """
+        weighted_outdegree = scatter(
+            self.data.edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
+        )
+        return weighted_outdegree
+
+
+    def transition_probabilities(self) -> torch.Tensor:
+        """
+        Compute transition probabilities based on weighted outdegrees.
+
+        Returns:
+            tensor: Transition probabilities.
+        """
+        weighted_outdegree = self.weighted_outdegrees()
+        source_ids = self.data.edge_index[0]
+        return self.data.edge_weight / weighted_outdegree[source_ids]
+
 
     def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
         """Return Laplacian matrix for a given graph.
