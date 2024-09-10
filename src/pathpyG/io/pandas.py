@@ -140,6 +140,9 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
     if 'v' not in df:
         print('data frame must have a column `v`')
         return
+    if df.duplicated(subset=['v']).any():
+        print('data frame cannot contain multiple attribute values for single node')
+        return
     # extract indices of node attributes in tensor
     node_idx = [g.mapping.to_idx(x) for x in df['v']]
     for attr in df.columns:
@@ -151,9 +154,15 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph):
     """Add edge attributes from pandas data frame to existing graph, where source/target node
     IDs or indices are given in columns `v` and `w`  and edge attributes x are given in columns `edge_x`
     """
+
+    # TODO: handle cases where not all nodes have attributes
     if 'v' not in df or 'w' not in df:
         print('data frame must have columns `v` and `w`')
         return
+    if df.duplicated(subset=['v', 'w']).any():
+        print('data frame cannot contain multiple attribute values for single edge')
+        return
+
     # extract indices of source/target node of edges
     src = [g.mapping.to_idx(x) for x in df['v']]
     tgt = [g.mapping.to_idx(x) for x in df['w']]
