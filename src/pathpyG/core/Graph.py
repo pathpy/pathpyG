@@ -175,6 +175,14 @@ class Graph:
             mapping=mapping
         )
 
+
+    @staticmethod
+    def from_csv(filename: str, sep: str = '', header: bool = True, is_undirected: bool = False, multiedges: bool = False) -> Graph:
+        """Read temporal graph from csv file, using pandas module"""
+        from pathpyG.io.pandas import read_csv_graph
+        return read_csv_graph(filename, sep=sep, header=header, is_undirected=is_undirected, multiedges=multiedges)
+
+
     def to_undirected(self) -> Graph:
         """
         Returns an undirected version of a directed graph.

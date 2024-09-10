@@ -85,10 +85,10 @@ class TemporalGraph(Graph):
         )
 
     @staticmethod
-    def from_csv(file, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
+    def from_csv(filename: str, sep: str = '', header: bool = True, is_undirected: bool = False, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
         """Read temporal graph from csv file, using pandas module"""
-        from pathpyG.io.pandas import read_csv
-        return read_csv(file, timestamp_format=timestamp_format, time_rescale=time_rescale)
+        from pathpyG.io.pandas import read_csv_temporal_graph
+        return read_csv_temporal_graph(filename, sep=sep, header=header, is_undirected=is_undirected, timestamp_format=timestamp_format, time_rescale=time_rescale)
 
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
