@@ -15,7 +15,6 @@ from pathpyG import Graph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.config import config
 
-
 class TemporalGraph(Graph):
     def __init__(self, data: TemporalData, mapping: IndexMap = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
@@ -87,20 +86,9 @@ class TemporalGraph(Graph):
 
     @staticmethod
     def from_csv(file, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
-        tedges = []
-        with open(file, "r", encoding="utf-8") as f:
-            for line in f:
-                fields = line.strip().split(",")
-                timestamp = fields[2]
-                if timestamp.isdigit():
-                    t = int(timestamp)
-                else:
-                    # if it is a string, we use the timestamp format to convert
-                    # it to a UNIX timestamp
-                    x = datetime.datetime.strptime(timestamp, timestamp_format)
-                    t = int(mktime(x.timetuple()))
-                tedges.append((fields[0], fields[1], int(t/time_rescale)))
-        return TemporalGraph.from_edge_list(tedges)
+        """Read temporal graph from csv file, using pandas module"""
+        from pathpyG.io.pandas import read_csv
+        return read_csv(file, timestamp_format=timestamp_format, time_rescale=time_rescale)
 
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
