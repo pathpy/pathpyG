@@ -16,7 +16,6 @@ from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.utils.config import config
 
 
-# TODO: Update documentation! Some of the classes mentioned below do not exist anymore.
 def _parse_property_value(data: bytes, ptr: int, type_index: int, endianness: str) -> Tuple[Optional[Any], int]:
     """
     Parse a property value as well as the number of processed bytes.
@@ -115,16 +114,13 @@ def _parse_property_value(data: bytes, ptr: int, type_index: int, endianness: st
 def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     """
     Decodes data in graphtool binary format and returns a [`Graph`][pathpyG.Graph]. For a documentation of
-    hte graphtool binary format, see see doc at https://graph-tool.skewed.de/static/doc/gt_format.html
+    the graphtool binary format, see see doc at https://graph-tool.skewed.de/static/doc/gt_format.html
 
     Args:
-        data: Array of bys to be decoded
-        ignore_temporal: If False, this function will return a static or temporal network depending
-            on whether edges contain a time attribute. If True, pathpy will not interpret
-            time attributes and thus always return a static network.
+        data: Array of bytes to be decoded
 
     Returns:
-        Network or TemporalNetwork: a static or temporal network object
+        Graph: a static graph
     """
 
     # check magic bytes
@@ -188,7 +184,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
         ptr += 8
 
         # add edges to record
-        for j in range(num_neighbors):
+        for _ in range(num_neighbors):
             w = struct.unpack(graphtool_endianness + fmt, data[ptr:ptr+d])[0]
             ptr += d
             sources.append(v)
@@ -204,11 +200,11 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     property_maps = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
     ptr += 8
 
-    for i in range(property_maps):
+    for _ in range(property_maps):
         key_type = struct.unpack(graphtool_endianness + 'B', data[ptr:ptr+1])[0]
         ptr += 1
 
-        property_len  = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+        property_len = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
         ptr += 8
 
         property_name = data[ptr:ptr+property_len].decode('ascii')
@@ -288,7 +284,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     #             n.nodes[v][p] = node_attributes[v][p]
 
 
-def read_graphtool(file: str, ignore_temporal: bool=False, multiedges: bool=False) -> Optional[Union[Graph, TemporalGraph]]:
+def read_graphtool(file: str, multiedges: bool = False) -> Graph:
     """
     Read a file in graphtool binary format.
 
@@ -311,7 +307,7 @@ def read_graphtool(file: str, ignore_temporal: bool=False, multiedges: bool=Fals
 
 
 
-def list_netzschleuder_records(base_url: str='https://networks.skewed.de', **kwargs: Any) -> Union[list, dict]:
+def list_netzschleuder_records(base_url: str = 'https://networks.skewed.de', **kwargs: Any) -> Union[list, dict]:
     """
     Read a list of data sets available at the netzschleuder repository.
 
@@ -324,18 +320,18 @@ def list_netzschleuder_records(base_url: str='https://networks.skewed.de', **kwa
     Examples:
         Return a list of all data sets
 
-        >>> import pathpy as pp
-        >>> pp.io.graphtool.list_netzschleuder_records()
+        >>> import pathpyG as pp
+        >>> pp.io.list_netzschleuder_records()
         ['karate', 'reality_mining', 'sp_hypertext', ...]
 
         Return a list of all data sets with a given tag
 
-        >>> pp.io.graphtool.list_netzschleuder_records(tags='temporal')
+        >>> pp.io.list_netzschleuder_records(tags='temporal')
         ['reality_mining', 'sp_hypertext', ...]
 
         Return a dictionary containing all data set names (keys) as well as all network attributes
 
-        >>> pp.io.graphtool.list_netzschleuder_records(full=True)
+        >>> pp.io.list_netzschleuder_records(full=True)
         { 'reality_mining': [...], 'karate': [...] }
 
 
@@ -356,7 +352,7 @@ def list_netzschleuder_records(base_url: str='https://networks.skewed.de', **kwa
 
 
 
-def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.de') -> dict:
+def read_netzschleuder_record(name: str, base_url: str = 'https://networks.skewed.de') -> dict:
     """
     Read metadata of a single data record with given name from the netzschleuder repository
 
@@ -367,8 +363,8 @@ def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.
     Examples:
         Retrieve metadata of karate club network
         
-        >>> import pathpy as pp
-        >>> metdata = pp.io.graphtool.read_netzschleuder_record('karate')
+        >>> import pathpyG as pp
+        >>> metdata = pp.io.read_netzschleuder_record('karate')
         >>> print(metadata)
         {
             'analyses': {'77': {'average_degree': 4.52... } }
@@ -386,9 +382,8 @@ def read_netzschleuder_record(name: str, base_url: str='https://networks.skewed.
         raise Exception(msg)
 
 
-def read_netzschleuder_network(name: str, net: Optional[str]=None,
-        ignore_temporal: bool=False, multiedges: bool=False,
-        base_url: str='https://networks.skewed.de') -> Union[Graph, TemporalGraph]:
+def read_netzschleuder_network(name: str, net: Optional[str] = None, multiedges: bool = False,
+        base_url: str='https://networks.skewed.de') -> Graph:
     """Read a pathpy network record from the netzschleuder repository.
 
     Args:
@@ -403,32 +398,15 @@ def read_netzschleuder_network(name: str, net: Optional[str]=None,
     Examples:
         Read network '77' from karate club data set
 
-        >>> import pathpy as pp
-        >>> n = pp.io.graphtool.read_netzschleuder_network('karate', '77')
+        >>> import pathpyG as pp
+        >>> n = pp.io.read_netzschleuder_network('karate', '77')
         >>> print(type(n))
         >>> pp.plot(n)
-        pp.Network
-
-        Read a temporal network from a data set containing a single network only
-        (i.e. net can be omitted):
-
-        >>> n = pp.io.graphtool.read_netzschleuder_network('reality_mining')
-        >>> print(type(n))
-        >>> pp.plot(n)
-        pp.TemporalNetwork
-
-        Read temporal network but ignore time attribute of edges:
-
-        >>> n = pp.io.graphtool.read_netzschleuder_network('reality_mining', ignore_temporal=True)
-        >>> print(type(n))
-        >>> pp.plot(n)
-        pp.Network
+        pp.Graph
 
 
     Returns:
-        Depending on whether the network data set contains an edge attribute
-        `time` (and whether ignore_temporal is set to True), this function
-        returns an instance of Network or TemporalNetwork
+        an instance of Graph
 
     """
     try:

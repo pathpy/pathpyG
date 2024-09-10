@@ -1,0 +1,41 @@
+"""This module tests high-level functions of the pandas module."""
+
+import pytest
+
+from torch import tensor, equal
+import numpy as np
+
+from pathpyG.core.Graph import Graph
+from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
+
+
+def test_df_to_graph(df_graph, df_graph_attribute, df_graph_attribute_no_header):
+    g: Graph = df_to_graph(df_graph)
+    assert g.N == 3
+    assert g.M == 3
+
+    g: Graph = df_to_graph(df_graph_attribute)
+    assert g.N == 3
+    assert g.M == 3
+    assert 'edge_weight' in g.edge_attrs()
+    assert (g.data.edge_weight == [2.0, 1.0, 42.0]).all()
+
+    g: Graph = df_to_graph(df_graph_attribute_no_header)
+    assert g.N == 3
+    assert g.M == 3
+    assert 'edge_attr_0' in g.edge_attrs()
+    assert (g.data.edge_attr_0 == [2.0, 1.0, 42.0]).all()
+
+
+def test_df_to_temporal_graph(df_temporal_graph, df_temporal_graph_no_header):
+    g: TemporalGraph = df_to_temporal_graph(df_temporal_graph)
+    assert g.N == 3
+    assert g.M == 3
+    assert equal(g.data.t, tensor([1.0, 2.0, 3.0]))
+
+    g: TemporalGraph = df_to_temporal_graph(df_temporal_graph_no_header)
+    assert g.N == 3
+    assert g.M == 3
+    assert equal(g.data.t, tensor([1.0, 2.0, 3.0]))
+
