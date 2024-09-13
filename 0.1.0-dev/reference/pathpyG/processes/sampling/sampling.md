@@ -1,1 +1,0 @@
-::: pathpyG.processes.sampling

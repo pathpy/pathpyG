@@ -1,1 +1,0 @@
-::: pathpyG.algorithms.weisfeiler_leman
