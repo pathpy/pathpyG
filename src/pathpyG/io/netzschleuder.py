@@ -131,21 +131,22 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
     
     # retrieve properties of data record via API
     properties = json.loads(request.urlopen(f'{base_url}/api/net/{name}').read())
-    print(properties)
+    # print(properties)
 
     timestamps = 'Timestamps' in properties['tags']
 
     if not net:
-        is_directed = properties['analyses']['is_directed']
-        num_nodes = properties['analyses']['num_vertices']
+        analyses = properties['analyses']
         net = name
     else:
-        is_directed = properties['analyses'][net]['is_directed']
-        num_nodes = properties['analyses'][net]['num_vertices']
+        analyses = properties['analyses'][net]         
+    
+    is_directed = analyses['is_directed']
+    num_nodes = analyses['num_vertices']
     
     if format == 'csv': 
         url = f'{base_url}/net/{name}/files/{net}.csv.zip'
-        print(url)
+        # print(url)
         try:
             response = request.urlopen(url)
             # decompress zip into temporary folder
@@ -177,11 +178,14 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
 
                     node_attrs = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
                     node_attrs.rename(columns={'# index': 'index'}, inplace=True)
-                    print(node_attrs)
+                    # print(node_attrs)
                     #print(set(list(node_attrs['v'].astype(str))))
                     #print(set([v for v in g.nodes]))
                     add_node_attributes(node_attrs, g)
                     add_edge_attributes(edges, g)
+
+                    for x in analyses:
+                        g.data[x] = analyses[x]
 
                     return g
             # g = read_csv_graph(edges_file, sep=',', header=True, is_undirected = undirected, multiedges=True)
