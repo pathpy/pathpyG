@@ -122,7 +122,10 @@ class Graph:
 
 
     @staticmethod
-    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None, num_nodes=None) -> Graph:
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]],
+                       is_undirected: bool = False,
+                       mapping: Optional[IndexMap] = None,
+                       num_nodes: Optional[int] = None) -> Graph:
         """Generate a Graph based on an edge list.
         
         Edges can be given as string or integer tuples. If strings are used and no mapping is given,
@@ -155,9 +158,16 @@ class Graph:
             node_ids = set()
             for v, w in edge_list:
                 node_ids.add(v)
-                node_ids.add(w)
+                node_ids.add(w)            
+            numeric_ids = True
+            for x in node_ids:
+                if not x.isnumeric():
+                    numeric_ids = False
             node_list = list(node_ids)
-            node_list.sort()
+            if numeric_ids: # sort numerically
+                node_list.sort(key=int)
+            else: # sort lexicograpbically
+                node_list.sort()
             mapping = IndexMap(node_list)
 
         sources = []

@@ -11,6 +11,7 @@ from urllib.error import HTTPError
 from numpy import array
 import pandas as pd
 import torch
+import numpy as np
 
 import datetime
 from time import mktime
@@ -125,27 +126,71 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
     """Add node attributes from pandas data frame to existing graph, where node
     IDs or indices are given in column `v` and node attributes x are given in columns `node_x`
     """
-    if 'v' not in df:
-        print('data frame must have a column `v`')
+    if 'v' in df:
+        print('Mapping node attributes based on node names in column `v`')
+        attributed_nodes = list(df['v'])
+    elif 'index' in df:
+        print('Mapping node attributes based on node indices in column `index`')
+        attributed_nodes = list(df['index'])
+    else: 
+        print('Data frame must either have `index` or `v` column')
         return
     
-    attributed_nodes = list(df['v'])
-
     # check for duplicated node attributes
     if len(set(attributed_nodes)) < len(attributed_nodes):
         print('data frame cannot contain multiple attribute values for single node')
         return
     
     # check for difference between nodes in graph and nodes in attributes
-    if set(attributed_nodes) != set([v for v in g.nodes]):
-        print('Mismatch between nodes in DataFrame and nodes in graph')
-        return
+    if 'v' in df:
+        if set(attributed_nodes) != set([v for v in g.nodes]):
+            print('Mismatch between nodes in DataFrame and nodes in graph')
+            return
 
-    # extract indices of node attributes in tensor
-    node_idx = [g.mapping.to_idx(x) for x in df['v']]
+        # get indices of nodes in tensor
+        node_idx = [g.mapping.to_idx(x) for x in df['v']]
+    else:
+        if set(attributed_nodes) != set([i for i in range(g.N)]):
+            print('Mismatch between nodes in DataFrame and nodes in graph')
+            return
+
+        # get indices of nodes in tensor
+        node_idx = attributed_nodes
+
+    # assign node property tensors
     for attr in df.columns:
-        if attr.startswith('node_'):
-            g.data[attr] = df[attr].values[node_idx]
+
+        # skip node column
+        if attr == 'v' or attr == 'index':
+            continue
+
+        # prefix attribute names that are not already prefixed
+        prefix = ''
+        if not attr.startswith('node_'):
+            prefix = 'node_'
+        
+        # eval values for array-valued attributes
+        try:
+            from numpy import array
+            values = np.array([eval(x) for x in df[attr].values])
+            g.data[prefix+attr] = torch.from_numpy(values[node_idx])
+            continue            
+        except:
+            pass
+
+        # try to directly construct tensor for scalar values
+        try:
+            g.data[prefix+attr] = torch.from_numpy(df[attr].values[node_idx])
+            continue
+        except:
+            pass
+        
+        # numpy array of strings
+        try:
+            g.data[prefix+attr] = np.array(df[attr].values.astype(str)[node_idx])            
+        except:
+            t = df[attr].dtype
+            print(f'Could not assign node attribute {attr} of type {t}')
 
 
 def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:

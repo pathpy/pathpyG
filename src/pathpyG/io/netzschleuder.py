@@ -18,7 +18,7 @@ import pandas as pd
 from pathpyG.core.Graph import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.utils.config import config
-
+from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
 from pathpyG.io.graphtool import parse_graphtool_format
 from pathpyG.io.pandas import read_csv_graph, read_csv_temporal_graph, add_node_attributes, add_edge_attributes
 
@@ -127,15 +127,24 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
 
     """
  # build URL
-    if not net:
-        net = name
+
     
-    # retrieve properties of network via API
+    # retrieve properties of data record via API
     properties = json.loads(request.urlopen(f'{base_url}/api/net/{name}').read())
     print(properties)
+
+    timestamps = 'Timestamps' in properties['tags']
+
+    if not net:
+        is_directed = properties['analyses']['is_directed']
+        num_nodes = properties['analyses']['num_vertices']
+        net = name
+    else:
+        is_directed = properties['analyses'][net]['is_directed']
+        num_nodes = properties['analyses'][net]['num_vertices']
     
     if format == 'csv': 
-        url = f'{base_url}/net/{name}/files/{name}.csv.zip'
+        url = f'{base_url}/net/{name}/files/{net}.csv.zip'
         print(url)
         try:
             response = request.urlopen(url)
@@ -148,35 +157,36 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
                     print(temp_dir)
 
                     # the gprop file contains lines with property name/value pairs 
-                    gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',')
-                    # nodes.csv contains node indices with node properties (like name)
-                    nprops = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',')
-                    edges = pd.read_csv(f'{temp_dir}/edges.csv', header=0, sep=',')
-                    cols = edges.columns
-                    cols[0] = 'v'
-                    cols[1] = 'w'
-                    edges.rename(columns=cols)
+                    # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+                    # nodes.csv contains node indices with node properties (like name)                    
+                    edges = pd.read_csv(f'{temp_dir}/edges.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
 
-                    print(gprops)
-                    print(nprops)
-                    print(edges)
+                    # rename columns
+                    edges.rename(columns={'# source': 'v', 'target': 'w'}, inplace=True)                    
+                    if timestamps:
+                        edges.rename(columns={'time': 't'}, inplace=True)                    
+                    # print(edges)
+
+                    if timestamps:
+                        g = df_to_temporal_graph(df=edges, multiedges=True, is_undirected=not is_directed, num_nodes=num_nodes)
+                    else:
+                        g = df_to_graph(df=edges, multiedges=True, num_nodes=num_nodes)
+                        if not is_directed:
+                            g = g.to_undirected()
 
 
-            # # the edges file contains lines with comma-separated source, target and edge properties 
-            # edges_file = ""
-            
-            # # the nodes file maps indices to comma-separated node properties
-            # nodes_file = ""
-            # node_attr = pd.read_csv(nodes_file, sep=',')
+                    node_attrs = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+                    node_attrs.rename(columns={'# index': 'index'}, inplace=True)
+                    print(node_attrs)
+                    #print(set(list(node_attrs['v'].astype(str))))
+                    #print(set([v for v in g.nodes]))
+                    add_node_attributes(node_attrs, g)
+                    add_edge_attributes(edges, g)
 
-                    undirected = not properties['analyses']['is_directed']
-                    print(undirected)
-            g = 
+                    return g
             # g = read_csv_graph(edges_file, sep=',', header=True, is_undirected = undirected, multiedges=True)
 
             # add_node_attributes(node_attr, g)
-
-            return None
         except HTTPError:
             msg = 'Could not connect to netzschleuder repository at {0}'.format(base_url)
             raise Exception(msg)
