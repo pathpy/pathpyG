@@ -19,13 +19,13 @@ def test_df_to_graph(df_graph, df_graph_attribute, df_graph_attribute_no_header)
     assert g.N == 3
     assert g.M == 3
     assert 'edge_weight' in g.edge_attrs()
-    assert (g.data.edge_weight == [2.0, 1.0, 42.0]).all()
+    assert equal(g.data.edge_weight, tensor([2.0, 1.0, 42.0]))
 
     g: Graph = df_to_graph(df_graph_attribute_no_header)
     assert g.N == 3
     assert g.M == 3
     assert 'edge_attr_0' in g.edge_attrs()
-    assert (g.data.edge_attr_0 == [2.0, 1.0, 42.0]).all()
+    assert equal(g.data.edge_attr_0, tensor([2.0, 1.0, 42.0]))
 
 
 def test_df_to_temporal_graph(df_temporal_graph, df_temporal_graph_no_header):
