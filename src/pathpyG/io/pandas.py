@@ -51,7 +51,7 @@ def df_to_graph(df: pd.DataFrame,
             'v' and 'w' respectively. If no column names are used the first two columns 
             are interpreted as source and target.
 
-        is_udirected: Optional[bool]=True
+        is_undirected: Optional[bool]=True
 
             whether or not to interpret edges as undirected
 
@@ -115,7 +115,7 @@ def df_to_graph(df: pd.DataFrame,
               'a multiedge and/or directed network.', sum(counter.values()))
 
     # create graph
-    g = Graph.from_edge_list(edges, is_undirected=is_undirected)
+    g = Graph.from_edge_list(edges, is_undirected=is_undirected, **kwargs)
 
     # assign edge attributes
     add_edge_attributes(df, g)
@@ -224,8 +224,35 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
         x = torch.where((g.data.edge_index[0,:]==src[i]) & (g.data.edge_index[1,:]==tgt[i]))[0].item()
         edge_idx.append(x)
     for attr in df.columns:
-        if attr.startswith('edge_'):
-            g.data[attr] = df[attr].values[edge_idx]
+        if attr != 'v' and attr != 'w':
+            prefix = ''
+            if not attr.startswith('edge_'):
+                prefix = 'edge_'
+
+            # eval values for array-valued attributes
+            try:
+                from numpy import array
+                values = np.array([eval(x) for x in df[attr].values])
+                g.data[prefix+attr] = torch.from_numpy(values[edge_idx])
+                continue
+            except:
+                pass
+
+            # try to directly construct tensor for scalar values
+            try:
+                g.data[prefix+attr] = torch.from_numpy(df[attr].values[edge_idx])
+                continue
+            except:
+                pass
+            
+            # numpy array of strings
+            try:
+                g.data[prefix+attr] = np.array(df[attr].values.astype(str)[edge_idx])
+            except:
+                t = df[attr].dtype
+                print(f'Could not assign edge attribute {attr} of type {t}')
+
+            # g.data[prefix+attr] = df[attr].values[edge_idx]
 
 
 def df_to_temporal_graph(df: pd.DataFrame,
@@ -297,7 +324,7 @@ def df_to_temporal_graph(df: pd.DataFrame,
             t = int(mktime(x.timetuple()))
         tedges.append((_v, _w, int(t/time_rescale)))
 
-    g = TemporalGraph.from_edge_list(tedges)
+    g = TemporalGraph.from_edge_list(tedges, **kwargs)
     
     if is_undirected:
         return g.to_undirected()
