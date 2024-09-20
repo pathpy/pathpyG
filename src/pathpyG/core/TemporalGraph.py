@@ -57,7 +57,7 @@ class TemporalGraph(Graph):
         self.end_time = t_sorted.max().item()
 
     @staticmethod
-    def from_edge_list(edge_list, num_nodes: Optional[int]) -> TemporalGraph:
+    def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:
         sources = []
         targets = []
         ts = []
@@ -70,6 +70,9 @@ class TemporalGraph(Graph):
             sources.append(index_map.to_idx(v))
             targets.append(index_map.to_idx(w))
             ts.append(t)
+
+        if not num_nodes:
+            num_nodes = len(set(sources+targets))
 
         return TemporalGraph(
             data=TemporalData(
