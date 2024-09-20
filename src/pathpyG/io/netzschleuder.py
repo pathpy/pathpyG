@@ -128,86 +128,91 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
     """
  # build URL
 
-    
-    # retrieve properties of data record via API
-    properties = json.loads(request.urlopen(f'{base_url}/api/net/{name}').read())
-    # print(properties)
+    try:
+        # retrieve properties of data record via API
+        properties = json.loads(request.urlopen(f'{base_url}/api/net/{name}').read())
+        # print(properties)
 
-    timestamps = 'Timestamps' in properties['tags']
+        timestamps = 'Timestamps' in properties['tags']
 
-    if not net:
-        analyses = properties['analyses']
-        net = name
-    else:
-        analyses = properties['analyses'][net]         
-    
-    is_directed = analyses['is_directed']
-    num_nodes = analyses['num_vertices']
-    
-    if format == 'csv': 
-        url = f'{base_url}/net/{name}/files/{net}.csv.zip'
+        if not net:
+            analyses = properties['analyses']
+            net = name
+        else:
+            analyses = properties['analyses'][net]         
+        
         try:
-            response = request.urlopen(url)
-
-            # decompress zip into temporary folder
-            data = BytesIO(response.read())
-
-            with zipfile.ZipFile(data, 'r') as zip_ref:
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    zip_ref.extractall(path=temp_dir)
-
-                    # the gprop file contains lines with property name/value pairs 
-                    # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
-
-                    # nodes.csv contains node indices with node properties (like name)                    
-                    edges = pd.read_csv(f'{temp_dir}/edges.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
-
-                    # rename columns
-                    edges.rename(columns={'# source': 'v', 'target': 'w'}, inplace=True)
-                    if timestamps:
-                        edges.rename(columns={'time': 't'}, inplace=True)
-
-                    # construct graph and assign edge attributes
-                    if timestamps:
-                        g = df_to_temporal_graph(df=edges, is_undirected=not is_directed, num_nodes=num_nodes)
-                    else:
-                        g = df_to_graph(df=edges, multiedges=True, num_nodes=num_nodes)
-                        if not is_directed:
-                            g = g.to_undirected()
-
-                    node_attrs = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
-                    node_attrs.rename(columns={'# index': 'index'}, inplace=True)
-
-                    add_node_attributes(node_attrs, g)
-
-                    # add graph-level attributes
-                    for x in analyses:
-                        g.data['analyses_'+x] = analyses[x]
-
-                    return g
-
-        except HTTPError:
-            msg = 'Could not connect to netzschleuder repository at {0}'.format(base_url)
-            raise Exception(msg)
-
-    elif format == 'gt':
-        try:
-            import zstandard as zstd
-
-            url = '/net/{0}/files/{1}.gt.zst'.format(name, net)
+            is_directed = analyses['is_directed']
+            num_nodes = analyses['num_vertices']
+        except KeyError:
+            raise Exception(f'Record {name} contains multiple networks, please specify network name.')
+        
+        if format == 'csv': 
+            url = f'{base_url}/net/{name}/files/{net}.csv.zip'
             try:
-                f = request.urlopen(base_url + url)
-                # decompress data
-                dctx = zstd.ZstdDecompressor()
-                reader = dctx.stream_reader(f)
-                decompressed = reader.readall()
+                response = request.urlopen(url)
 
-                # parse graphtool binary format
-                return parse_graphtool_format(bytes(decompressed))
+                # decompress zip into temporary folder
+                data = BytesIO(response.read())
+
+                with zipfile.ZipFile(data, 'r') as zip_ref:
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        zip_ref.extractall(path=temp_dir)
+
+                        # the gprop file contains lines with property name/value pairs 
+                        # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+
+                        # nodes.csv contains node indices with node properties (like name)                    
+                        edges = pd.read_csv(f'{temp_dir}/edges.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+
+                        # rename columns
+                        edges.rename(columns={'# source': 'v', 'target': 'w'}, inplace=True)
+                        if timestamps:
+                            edges.rename(columns={'time': 't'}, inplace=True)
+
+                        # construct graph and assign edge attributes
+                        if timestamps:
+                            g = df_to_temporal_graph(df=edges, is_undirected=not is_directed, num_nodes=num_nodes)
+                        else:
+                            g = df_to_graph(df=edges, multiedges=True, num_nodes=num_nodes)
+                            if not is_directed:
+                                g = g.to_undirected()
+
+                        node_attrs = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+                        node_attrs.rename(columns={'# index': 'index'}, inplace=True)
+
+                        add_node_attributes(node_attrs, g)
+
+                        # add graph-level attributes
+                        for x in analyses:
+                            g.data['analyses_'+x] = analyses[x]
+
+                        return g
             except HTTPError:
-                msg = 'Could not connect to netzschleuder repository at {0}'.format(base_url)
+                msg = f'Could not retrieve netzschleuder record at {url}'
                 raise Exception(msg)
-        except ModuleNotFoundError:
-            msg = 'Package zstandard is required to decompress graphtool files. Please install module, e.g., using "pip install zstandard.'
-            # LOG.error(msg)
-            raise Exception(msg)
+
+        elif format == 'gt':
+            try:
+                import zstandard as zstd
+
+                url = f'/net/{name}/files/{net}.gt.zst'
+                try:
+                    f = request.urlopen(base_url + url)
+                    # decompress data
+                    dctx = zstd.ZstdDecompressor()
+                    reader = dctx.stream_reader(f)
+                    decompressed = reader.readall()
+
+                    # parse graphtool binary format
+                    return parse_graphtool_format(bytes(decompressed))
+                except HTTPError:
+                    msg = f'Could not retrieve netzschleuder record at {url}'
+                    raise Exception(msg)
+            except ModuleNotFoundError:
+                msg = 'Package zstandard is required to decompress graphtool files. Please install module, e.g., using "pip install zstandard.'
+                # LOG.error(msg)
+                raise Exception(msg)
+    except HTTPError:
+        msg = f'Could not retrieve netzschleuder record at {base_url}/api/net/{name}'
+        raise Exception(msg)
