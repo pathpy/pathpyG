@@ -215,14 +215,15 @@ class Graph:
         # unfortunately, the application of a transform creates a new edge_index of type tensor
         # so we have to recreate the EdgeIndex tensor and sort it again
 
-        e = EdgeIndex(data=d.edge_index, is_undirected=True)
+        e = EdgeIndex(data=d.edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True)
         d.edge_index = e
+        d.num_nodes = self.data.num_nodes
         return Graph(d, self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
-        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
-        return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(self.data.edge_index.device))
+        return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
