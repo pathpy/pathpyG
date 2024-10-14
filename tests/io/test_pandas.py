@@ -32,10 +32,10 @@ def test_df_to_temporal_graph(df_temporal_graph, df_temporal_graph_no_header):
     g: TemporalGraph = df_to_temporal_graph(df_temporal_graph)
     assert g.N == 3
     assert g.M == 3
-    assert equal(g.data.t, tensor([1.0, 2.0, 3.0]))
+    assert equal(g.data.time, tensor([1.0, 2.0, 3.0]))
 
     g: TemporalGraph = df_to_temporal_graph(df_temporal_graph_no_header)
     assert g.N == 3
     assert g.M == 3
-    assert equal(g.data.t, tensor([1.0, 2.0, 3.0]))
+    assert equal(g.data.time, tensor([1.0, 2.0, 3.0]))
 

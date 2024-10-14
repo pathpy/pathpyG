@@ -29,9 +29,9 @@ def test_to_static_graph(long_temporal_graph):
 
 def test_get_window(long_temporal_graph):
     t_1 = long_temporal_graph.get_window(1, 9)
-    assert t_1.N == 7
+    # N stays the same
+    assert t_1.N == 9
     assert t_1.M == 8
     t_2 = long_temporal_graph.get_window(9, 13)
-    # N defined by largest node index!
-    assert t_2.N == 8
+    assert t_2.N == 9
     assert t_2.M == 4

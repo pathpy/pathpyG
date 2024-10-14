@@ -1,14 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
-import json
-import pickle
-import struct
-from collections import defaultdict, Counter
-from urllib import request
-from urllib.error import HTTPError
+from collections import Counter
 
-from numpy import array
 import pandas as pd
 import torch
 import numpy as np
@@ -171,16 +165,15 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
         
         # eval values for array-valued attributes
         try:
-            from numpy import array
             values = np.array([eval(x) for x in df[attr].values])
-            g.data[prefix+attr] = torch.from_numpy(values[node_idx])
+            g.data[prefix+attr] = torch.from_numpy(values[node_idx]).to(device=g.data.edge_index.device)
             continue            
         except:
             pass
 
         # try to directly construct tensor for scalar values
         try:
-            g.data[prefix+attr] = torch.from_numpy(df[attr].values[node_idx])
+            g.data[prefix+attr] = torch.from_numpy(df[attr].values[node_idx]).to(device=g.data.edge_index.device)
             continue
         except:
             pass
@@ -231,16 +224,15 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
 
             # eval values for array-valued attributes
             try:
-                from numpy import array
                 values = np.array([eval(x) for x in df[attr].values])
-                g.data[prefix+attr] = torch.from_numpy(values[edge_idx])
+                g.data[prefix+attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
                 continue
             except:
                 pass
 
             # try to directly construct tensor for scalar values
             try:
-                g.data[prefix+attr] = torch.from_numpy(df[attr].values[edge_idx])
+                g.data[prefix+attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
                 continue
             except:
                 pass

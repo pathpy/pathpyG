@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Union, List, Tuple
-from collections import defaultdict
-from torch_geometric.utils import degree, sort_edge_index
 
 import numpy as np
 from tqdm import tqdm
@@ -12,8 +10,6 @@ from scipy.sparse.csgraph import dijkstra
 
 from pathpyG import Graph
 from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.IndexMap import IndexMap
-from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 from pathpyG import config
 
@@ -22,7 +18,7 @@ device = config['torch']['device']
 def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
     # first-order edge index
-    edge_index, timestamps = g.data.edge_index, g.data.t
+    edge_index, timestamps = g.data.edge_index, g.data.time
 
     indices = torch.arange(0, edge_index.size(1), device=g.data.edge_index.device)
 

@@ -4,7 +4,7 @@ from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
-from torch_geometric.utils import cumsum, coalesce, degree, sort_edge_index
+from torch_geometric.utils import cumsum, coalesce, degree
 
 from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
@@ -12,6 +12,7 @@ from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
+from pathpyG.algorithms.temporal import lift_order_temporal
 
 
 class MultiOrderModel:
@@ -180,7 +181,8 @@ class MultiOrderModel:
     ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
         m = MultiOrderModel()
-        edge_index, timestamps = sort_edge_index(g.data.edge_index, g.data.t)
+        data = g.data.sort_by_time()
+        edge_index= data.edge_index
         node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
         if weight in g.data:
             edge_weight = g.data[weight]
@@ -193,19 +195,10 @@ class MultiOrderModel:
             m.layers[1].mapping = g.mapping
 
         if max_order > 1:
-            # Compute null model
-            null_model_edge_index, null_model_edge_weight = MultiOrderModel.lift_order_edge_index_weighted(
-                edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr="src"
-            )
-            # Update node sequences
             node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
-            # Remove non-time-respecting higher-order edges
-            time_diff = timestamps[null_model_edge_index[1]] - timestamps[null_model_edge_index[0]]
-            non_negative_mask = time_diff > 0
-            delta_mask = time_diff <= delta
-            time_respecting_mask = non_negative_mask & delta_mask
-            edge_index = null_model_edge_index[:, time_respecting_mask]
-            edge_weight = null_model_edge_weight[time_respecting_mask]
+            edge_index = lift_order_temporal(g, delta)
+            edge_weight = MultiOrderModel.aggregate_edge_weight(edge_index, edge_weight, "src")
+
             # Aggregate
             if cached or max_order == 2:
                 m.layers[2] = MultiOrderModel.aggregate_edge_index(
@@ -318,7 +311,7 @@ class MultiOrderModel:
         dof = self.layers[1].data.num_nodes - 1  # Degrees of freedom for zeroth order
 
         if assumption == "paths":
-            # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONERO OUTDEGREES SEPARATELY
+            # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONZERO OUTDEGREES SEPARATELY
             # TODO: CAN IT BE DONE TOGETHER?
 
             edge_index = self.layers[1].data.edge_index
@@ -334,10 +327,12 @@ class MultiOrderModel:
             # removing dof from total probability of nonzero degree nodes
             for k in range(1, max_order + 1):
                 if k == 1:
-                    edge_index_adj = self.layers[1].data.edge_index
+                    # edge_index of temporal graph is sorted by time by default
+                    # For matrix multiplication, we need to sort it by row
+                    edge_index_adj = self.layers[1].data.edge_index.sort_by("row")[0]
                     edge_index = edge_index_adj
                 else:
-                    edge_index, _ = edge_index @ edge_index_adj
+                    edge_index, _ = edge_index.matmul(edge_index_adj)
                 num_nonzero_outdegrees = torch.unique(edge_index[0]).size(0)
                 dof -= num_nonzero_outdegrees
 

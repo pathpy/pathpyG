@@ -222,7 +222,7 @@ class Graph:
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
-        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(self.data.edge_index.device))
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index.as_tensor(), torch.ones(self.M, device=self.data.edge_index.device))
         return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
 
     @staticmethod
@@ -373,10 +373,10 @@ class Graph:
             edge_attr: the edge attribute that shall be used as edge weight
         """
         if edge_attr is None:
-            return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index)
+            return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index.as_tensor())
         else:
             return torch_geometric.utils.to_scipy_sparse_matrix(
-                self.data.edge_index, edge_attr=self.data[edge_attr], num_nodes=self.N
+                self.data.edge_index.as_tensor(), edge_attr=self.data[edge_attr], num_nodes=self.N
             )
 
     @property
@@ -449,12 +449,12 @@ class Graph:
         """
         if edge_attr is None:
             index, weight =torch_geometric.utils.get_laplacian(
-                self.data.edge_index, normalization=normalization
+                self.data.edge_index.as_tensor(), normalization=normalization
             )
             return torch_geometric.utils.to_scipy_sparse_matrix(index, weight)
         else:
             index, weight = torch_geometric.utils.get_laplacian(
-                self.data.edge_index,
+                self.data.edge_index.as_tensor(),
                 normalization=normalization,
                 edge_weight=self.data[edge_attr],
             )
@@ -547,11 +547,11 @@ class Graph:
 
     def is_directed(self) -> bool:
         """Return whether graph is directed."""
-        return not is_undirected(self.data.edge_index)        
+        return not self.data.edge_index.is_undirected
 
     def is_undirected(self) -> bool:
         """Return whether graph is undirected."""
-        return is_undirected(self.data.edge_index)
+        return self.data.edge_index.is_undirected
 
     def has_self_loops(self) -> bool:
         """Return whether graph contains self-loops."""
