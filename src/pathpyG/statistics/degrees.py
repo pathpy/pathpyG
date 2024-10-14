@@ -48,6 +48,9 @@ def degree_raw_moment(graph: Graph, k: int = 1) -> float:
         mom += x**k * p_k[x]
     return mom
 
+def mean_degree(graph: Graph) -> float:
+    return _np.mean(degree_sequence(graph))
+
 def degree_central_moment(graph: Graph, k: int = 1) -> float:
     """Calculates the k-th central moment of the degree distribution.
 
@@ -61,6 +64,33 @@ def degree_central_moment(graph: Graph, k: int = 1) -> float:
     for x in p_k:
         m += (x - mean)**k * p_k[x]
     return m
+
+
+def degree_assortativity(g: Graph, mode='total'):
+    A = g.get_sparse_adj_matrix().todense()
+    m = _np.sum(A)
+
+    d = g.degrees()
+    if g.is_directed() and mode == 'in':
+        d = g.in_degrees
+    elif g.is_directed() and mode == 'out':
+        d = g.out_degrees
+    elif g.is_directed and mode == 'total':
+        d = g.degrees()
+    elif not g.is_directed():
+        m = m/2.
+
+    cov = 0.
+    var = 0.
+    for i in g.nodes:
+        for j in g.nodes:
+            cov += (A[g.mapping.to_idx(i), g.mapping.to_idx(j)] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
+            if i != j:
+                var -= (d[i]*d[j])/(2*m) * d[i] * d[j]
+            else:
+                var += (d[i] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
+    return cov/var
+
 
 def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarray) -> float | _np.ndarray:
     """Returns the generating function of the (weighted) degree distribution of a network,
