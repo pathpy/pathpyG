@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from collections import Counter
 
-from numpy import array, number
 import pandas as pd
 import torch
+import numpy as np
 
 import datetime
 from time import mktime
@@ -45,7 +45,7 @@ def df_to_graph(df: pd.DataFrame,
             'v' and 'w' respectively. If no column names are used the first two columns 
             are interpreted as source and target.
 
-        is_udirected: Optional[bool]=True
+        is_undirected: Optional[bool]=True
 
             whether or not to interpret edges as undirected
 
@@ -109,7 +109,7 @@ def df_to_graph(df: pd.DataFrame,
               'a multiedge and/or directed network.', sum(counter.values()))
 
     # create graph
-    g = Graph.from_edge_list(edges, is_undirected=is_undirected)
+    g = Graph.from_edge_list(edges, is_undirected=is_undirected, **kwargs)
 
     # assign edge attributes
     add_edge_attributes(df, g)
@@ -120,29 +120,70 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
     """Add node attributes from pandas data frame to existing graph, where node
     IDs or indices are given in column `v` and node attributes x are given in columns `node_x`
     """
-    if 'v' not in df:
-        print('data frame must have a column `v`')
+    if 'v' in df:
+        print('Mapping node attributes based on node names in column `v`')
+        attributed_nodes = list(df['v'])
+    elif 'index' in df:
+        print('Mapping node attributes based on node indices in column `index`')
+        attributed_nodes = list(df['index'])
+    else: 
+        print('Data frame must either have `index` or `v` column')
         return
     
-    attributed_nodes = list(df['v'])
-
     # check for duplicated node attributes
     if len(set(attributed_nodes)) < len(attributed_nodes):
         print('data frame cannot contain multiple attribute values for single node')
         return
     
     # check for difference between nodes in graph and nodes in attributes
-    if set(attributed_nodes) != set([v for v in g.nodes]):
-        print('Mismatch between nodes in DataFrame and nodes in graph')
-        return
+    if 'v' in df:
+        if set(attributed_nodes) != set([v for v in g.nodes]):
+            print('Mismatch between nodes in DataFrame and nodes in graph')
+            return
 
-    # extract indices of node attributes in tensor
-    node_idx = [g.mapping.to_idx(x) for x in df['v']]
+        # get indices of nodes in tensor
+        node_idx = [g.mapping.to_idx(x) for x in df['v']]
+    else:
+        if set(attributed_nodes) != set([i for i in range(g.N)]):
+            print('Mismatch between nodes in DataFrame and nodes in graph')
+            return
+
+        # get indices of nodes in tensor
+        node_idx = attributed_nodes
+
+    # assign node property tensors
     for attr in df.columns:
-        if attr.startswith('node_'):
-            g.data[attr] = df[attr].values[node_idx]
-            if g.data[attr].dtype == number:
-                g.data[attr] = torch.tensor(g.data[attr], device=g.data.edge_index.device)
+
+        # skip node column
+        if attr == 'v' or attr == 'index':
+            continue
+
+        # prefix attribute names that are not already prefixed
+        prefix = ''
+        if not attr.startswith('node_'):
+            prefix = 'node_'
+        
+        # eval values for array-valued attributes
+        try:
+            values = np.array([eval(x) for x in df[attr].values])
+            g.data[prefix+attr] = torch.from_numpy(values[node_idx]).to(device=g.data.edge_index.device)
+            continue            
+        except:
+            pass
+
+        # try to directly construct tensor for scalar values
+        try:
+            g.data[prefix+attr] = torch.from_numpy(df[attr].values[node_idx]).to(device=g.data.edge_index.device)
+            continue
+        except:
+            pass
+        
+        # numpy array of strings
+        try:
+            g.data[prefix+attr] = np.array(df[attr].values.astype(str)[node_idx])            
+        except:
+            t = df[attr].dtype
+            print(f'Could not assign node attribute {attr} of type {t}')
 
 
 def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
@@ -176,10 +217,34 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
         x = torch.where((g.data.edge_index[0,:]==src[i]) & (g.data.edge_index[1,:]==tgt[i]))[0].item()
         edge_idx.append(x)
     for attr in df.columns:
-        if attr.startswith('edge_'):
-            g.data[attr] = df[attr].values[edge_idx]
-            if g.data[attr].dtype == number:
-                g.data[attr] = torch.tensor(g.data[attr], device=g.data.edge_index.device)
+        if attr != 'v' and attr != 'w':
+            prefix = ''
+            if not attr.startswith('edge_'):
+                prefix = 'edge_'
+
+            # eval values for array-valued attributes
+            try:
+                values = np.array([eval(x) for x in df[attr].values])
+                g.data[prefix+attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
+                continue
+            except:
+                pass
+
+            # try to directly construct tensor for scalar values
+            try:
+                g.data[prefix+attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
+                continue
+            except:
+                pass
+            
+            # numpy array of strings
+            try:
+                g.data[prefix+attr] = np.array(df[attr].values.astype(str)[edge_idx])
+            except:
+                t = df[attr].dtype
+                print(f'Could not assign edge attribute {attr} of type {t}')
+
+            # g.data[prefix+attr] = df[attr].values[edge_idx]
 
 
 def df_to_temporal_graph(df: pd.DataFrame,
@@ -251,7 +316,7 @@ def df_to_temporal_graph(df: pd.DataFrame,
             t = int(mktime(x.timetuple()))
         tedges.append((_v, _w, int(t/time_rescale)))
 
-    g = TemporalGraph.from_edge_list(tedges)
+    g = TemporalGraph.from_edge_list(tedges, **kwargs)
     
     if is_undirected:
         return g.to_undirected()

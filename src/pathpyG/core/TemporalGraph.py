@@ -46,13 +46,8 @@ class TemporalGraph(Graph):
         self.start_time = self.data.time[0].item()
         self.end_time = self.data.time[-1].item()
 
-        # # initialize adjacency matrix
-        # self._sparse_adj_matrix = torch_geometric.utils.to_scipy_sparse_matrix(
-        #     self.data.edge_index
-        # ).tocsr()
-
     @staticmethod
-    def from_edge_list(edge_list) -> TemporalGraph:
+    def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:
         sources = []
         targets = []
         ts = []
@@ -66,10 +61,14 @@ class TemporalGraph(Graph):
             targets.append(index_map.to_idx(w))
             ts.append(t)
 
+        if not num_nodes:
+            num_nodes = len(set(sources+targets))
+
         return TemporalGraph(
             data=Data(
                 edge_index=torch.stack((torch.Tensor(sources), torch.Tensor(targets))).long(),
-                time=torch.Tensor(ts)
+                time=torch.Tensor(ts),
+                num_nodes=num_nodes
             ),
             mapping=index_map
         )
@@ -180,14 +179,13 @@ class TemporalGraph(Graph):
                 s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         if len(self.data.edge_attrs()) > 1:
             s += "\nEdge attributes\n"
-            for a in self.data.edge_attrs():
-                if a != "edge_index":
-                    s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
+            for a in self.data.edge_attrs():                
+                s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         if len(self.data.keys()) > len(self.data.edge_attrs()) + len(
             self.data.node_attrs()
         ):
             s += "\nGraph attributes\n"
             for a in self.data.keys():
-                if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
+                if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a) and a != 'src' and a != 'dst' and a != 't':
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
