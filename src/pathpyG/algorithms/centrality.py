@@ -54,6 +54,8 @@ from torch import tensor
 
 from torch_geometric.utils import to_networkx, degree
 
+from pathpyG.utils import to_numpy
+
 
 def path_node_traversals(paths: PathData) -> Counter:
     """Calculate the number of times any path traverses each of the nodes.
@@ -222,7 +224,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
 
     event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
 
-    e_i = g.data.edge_index.numpy()
+    e_i = to_numpy(g.data.edge_index)
 
     fo_nodes = dict()
     for v in range(g.M+g.N):

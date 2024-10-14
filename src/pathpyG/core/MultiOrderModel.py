@@ -318,7 +318,7 @@ class MultiOrderModel:
         dof = self.layers[1].data.num_nodes - 1  # Degrees of freedom for zeroth order
 
         if assumption == "paths":
-            # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONERO OUTDEGREES SEPARATELY
+            # COMPUTING CONTRIBUTION FROM NUM PATHS AND NONZERO OUTDEGREES SEPARATELY
             # TODO: CAN IT BE DONE TOGETHER?
 
             edge_index = self.layers[1].data.edge_index
@@ -334,10 +334,12 @@ class MultiOrderModel:
             # removing dof from total probability of nonzero degree nodes
             for k in range(1, max_order + 1):
                 if k == 1:
-                    edge_index_adj = self.layers[1].data.edge_index
+                    # edge_index of temporal graph is sorted by time by default
+                    # For matrix multiplication, we need to sort it by row
+                    edge_index_adj = self.layers[1].data.edge_index.sort_by("row")[0]
                     edge_index = edge_index_adj
                 else:
-                    edge_index, _ = edge_index @ edge_index_adj
+                    edge_index, _ = edge_index.matmul(edge_index_adj)
                 num_nonzero_outdegrees = torch.unique(edge_index[0]).size(0)
                 dof -= num_nonzero_outdegrees
 

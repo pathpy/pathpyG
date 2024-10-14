@@ -22,7 +22,7 @@ device = config['torch']['device']
 def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
     # first-order edge index
-    edge_index, timestamps = g.data.edge_index, g.data.t
+    edge_index, timestamps = g.data.edge_index, g.data.time
 
     indices = torch.arange(0, edge_index.size(1), device=g.data.edge_index.device)
 

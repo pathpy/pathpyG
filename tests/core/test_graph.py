@@ -89,7 +89,7 @@ def test_from_edge_list_undirected():
 
 def test_to_undirected(simple_graph):
     g_u = simple_graph.to_undirected()
-    assert g_u.data.is_undirected()
+    assert g_u.data.edge_index.is_undirected
 
 
 def test_weighted_graph(simple_graph_multi_edges):
