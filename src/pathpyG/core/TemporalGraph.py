@@ -167,12 +167,12 @@ class TemporalGraph(Graph):
         s = "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]\n".format(
             self.data.num_nodes,
             self.data.edge_index.unique(dim=1).size(dim=1),
-            self.data.num_events,
+            self.data.edge_index.size(1),
             self.start_time,
             self.end_time,
         )
 
-        attr_types = Graph.attr_types(self.data.timeo_dict())
+        attr_types = Graph.attr_types(self.data.to_dict())
 
         if len(self.data.node_attrs()) > 0:
             s += "\nNode attributes\n"

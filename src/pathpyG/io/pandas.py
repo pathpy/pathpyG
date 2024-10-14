@@ -1,14 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
-import json
-import pickle
-import struct
-from collections import defaultdict, Counter
-from urllib import request
-from urllib.error import HTTPError
+from collections import Counter
 
-from numpy import array
+from numpy import array, number
 import pandas as pd
 import torch
 
@@ -146,6 +141,8 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
     for attr in df.columns:
         if attr.startswith('node_'):
             g.data[attr] = df[attr].values[node_idx]
+            if g.data[attr].dtype == number:
+                g.data[attr] = torch.tensor(g.data[attr], device=g.data.edge_index.device)
 
 
 def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
@@ -181,6 +178,8 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
     for attr in df.columns:
         if attr.startswith('edge_'):
             g.data[attr] = df[attr].values[edge_idx]
+            if g.data[attr].dtype == number:
+                g.data[attr] = torch.tensor(g.data[attr], device=g.data.edge_index.device)
 
 
 def df_to_temporal_graph(df: pd.DataFrame,
