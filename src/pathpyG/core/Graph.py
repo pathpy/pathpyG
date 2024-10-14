@@ -122,7 +122,10 @@ class Graph:
 
 
     @staticmethod
-    def from_edge_list(edge_list: Iterable[Tuple[str, str]], is_undirected: bool = False, mapping: IndexMap = None, num_nodes=None) -> Graph:
+    def from_edge_list(edge_list: Iterable[Tuple[str, str]],
+                       is_undirected: bool = False,
+                       mapping: Optional[IndexMap] = None,
+                       num_nodes: Optional[int] = None) -> Graph:
         """Generate a Graph based on an edge list.
         
         Edges can be given as string or integer tuples. If strings are used and no mapping is given,
@@ -155,9 +158,16 @@ class Graph:
             node_ids = set()
             for v, w in edge_list:
                 node_ids.add(v)
-                node_ids.add(w)
+                node_ids.add(w)            
+            numeric_ids = True
+            for x in node_ids:
+                if not x.isnumeric():
+                    numeric_ids = False
             node_list = list(node_ids)
-            node_list.sort()
+            if numeric_ids: # sort numerically
+                node_list.sort(key=int)
+            else: # sort lexicograpbically
+                node_list.sort()
             mapping = IndexMap(node_list)
 
         sources = []
@@ -205,14 +215,15 @@ class Graph:
         # unfortunately, the application of a transform creates a new edge_index of type tensor
         # so we have to recreate the EdgeIndex tensor and sort it again
 
-        e = EdgeIndex(data=d.edge_index, is_undirected=True)
+        e = EdgeIndex(data=d.edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True)
         d.edge_index = e
+        d.num_nodes = self.data.num_nodes
         return Graph(d, self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute"""
-        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(config["torch"]["device"]))
-        return Graph(Data(edge_index=i, edge_weight=w), mapping=self.mapping)
+        i, w = torch_geometric.utils.coalesce(self.data.edge_index, torch.ones(self.M).to(self.data.edge_index.device))
+        return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
 
     @staticmethod
     def attr_types(attr: Dict) -> Dict:
