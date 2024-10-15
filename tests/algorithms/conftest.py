@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.IndexMap import IndexMap

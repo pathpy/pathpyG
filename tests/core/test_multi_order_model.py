@@ -82,9 +82,7 @@ def test_likelihood_ratio_test():
     toy_paths_ho = PathData(IndexMap(list("abcde")))
     toy_paths_ho.append_walk(("a", "c", "d"))
     toy_paths_ho.append_walk(("b", "c", "e"))
-    dag_graph = next(
-        iter(DataLoader(toy_paths_ho.paths, batch_size=len(toy_paths_ho.paths)))
-    )  # .to(pp.config["torch"]["device"])
+    dag_graph = toy_paths_ho.data
     max_order = 2
     m = MultiOrderModel.from_PathData(toy_paths_ho, max_order=max_order)
 
@@ -107,7 +105,7 @@ def test_log_likelihood():
     toy_paths_ho.append_walk(("b", "c", "e"))
     max_order = 2
     m = MultiOrderModel.from_PathData(toy_paths_ho, max_order=max_order, mode="propagation")
-    dag_graph = next(iter(DataLoader(toy_paths_ho.paths, batch_size=len(toy_paths_ho.paths))))
+    dag_graph = toy_paths_ho.data
     assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=0), np.log(1 / 6) * 4 + np.log(2 / 6) * 2)
     assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(1 / 6) * 2 + 0 + 2 * np.log(1 / 2))
     assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=2), np.log(1 / 6) * 2 + 0 + 0)
@@ -120,9 +118,7 @@ def test_log_likelihood():
     toy_paths.append_walk(("b", "c", "d"))
     max_order = 2
     m = MultiOrderModel.from_PathData(toy_paths, max_order=max_order, mode="propagation")
-    dag_graph = next(
-        iter(DataLoader(toy_paths.paths, batch_size=len(toy_paths.paths)))
-    )  # .to(pp.config["torch"]["device"])
+    dag_graph = toy_paths.data
     assert np.isclose(
         m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
         np.log(2 / 12) * 8 + np.log(4 / 12) * 4,
@@ -138,9 +134,7 @@ def test_log_likelihood():
     toy_paths.append_walk(("a", "b", "c"))
     max_order = 2
     m = MultiOrderModel.from_PathData(toy_paths, max_order=max_order, mode="propagation")
-    dag_graph = next(
-        iter(DataLoader(toy_paths.paths, batch_size=len(toy_paths.paths)))
-    )  # .to(pp.config["torch"]["device"])
+    dag_graph = toy_paths.data
     assert np.isclose(
         m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
         np.log(3 / 6) * 3 + np.log(2 / 6) * 2 + np.log(1 / 6) * 1,

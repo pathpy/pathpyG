@@ -10,7 +10,7 @@ from pathpyG.core.Graph import Graph
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 
 def check_transitions(g, paths: PathData):
-    for i in range(len(paths.paths)):
+    for i in range(paths.num_paths):
         w = paths.get_walk(i)
         for j in range(len(w)-1):
             assert g.is_edge(w[j], w[j+1])
