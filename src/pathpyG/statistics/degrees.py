@@ -75,7 +75,7 @@ def degree_assortativity(g: Graph, mode='total'):
         d = g.in_degrees
     elif g.is_directed() and mode == 'out':
         d = g.out_degrees
-    elif g.is_directed and mode == 'total':
+    elif g.is_directed() and mode == 'total':
         d = g.degrees()
     elif not g.is_directed():
         m = m/2.
