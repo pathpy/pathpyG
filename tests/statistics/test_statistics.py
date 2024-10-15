@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy  as _np
 
-from pathpyG.statistics import degree_distribution, degree_raw_moment, degree_sequence, degree_central_moment, degree_generating_function, mean_degree
+from pathpyG.statistics import degree_distribution, degree_raw_moment, degree_sequence, degree_central_moment, degree_generating_function, mean_degree, degree_assortativity
 from pathpyG.statistics.clustering import avg_clustering_coefficient, local_clustering_coefficient, closed_triads
 
 
@@ -62,3 +62,7 @@ def test_closed_triads_undirected(toy_example_graph):
 def test_closed_triads_directed(toy_example_graph_directed):
     assert closed_triads(toy_example_graph_directed, 'a') == set()
     assert closed_triads(toy_example_graph_directed, 'd') == set([('e', 'f')])
+
+
+def test_degree_assortativity(toy_example_graph):
+    assert _np.isclose(degree_assortativity(toy_example_graph), -0.26, atol=1e-2)
