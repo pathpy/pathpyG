@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-import torch
 
 from pathpyG.core.Graph import Graph
 from pathpyG.core.IndexMap import IndexMap
@@ -12,7 +11,8 @@ from pathpyG.core.path_data import PathData
 @pytest.fixture
 def simple_graph() -> Graph:
     """Return a simple undirected graph."""
-    return Graph.from_edge_list([('a', 'b'), ('b', 'a'), ('b', 'c'), ('c', 'b'), ('a', 'c'), ('c', 'a')], is_undirected=True)
+    return Graph.from_edge_list([('a', 'b'), ('b', 'a'), ('b', 'c'), ('c', 'b'), ('a', 'c'), ('c', 'a')],
+                                is_undirected=True)
 
 
 @pytest.fixture
@@ -23,7 +23,17 @@ def simple_graph_sp() -> Graph:
 
 @pytest.fixture
 def toy_example_graph() -> Graph:
-    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'), ('f', 'g'), ('g', 'd'), ('d', 'f'), ('b', 'd')]).to_undirected()
+    """Return an undirected toy example graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'), ('f', 'g'), ('g', 'd'),
+                                 ('d', 'f'), ('b', 'd')]).to_undirected()
+
+
+@pytest.fixture
+def toy_example_graph_directed() -> Graph:
+    """Return a directed toy example graph."""
+    return Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'), ('f', 'g'), ('g', 'd'),
+                                 ('d', 'f'), ('b', 'd')])
+
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:
@@ -34,6 +44,7 @@ def simple_temporal_graph() -> TemporalGraph:
 
 @pytest.fixture
 def simple_walks() -> PathData:
+    """Return a set of walks."""
     paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E', 'F']))
     paths.append_walk(('C', 'B', 'D', 'F'), weight=1.0)
     paths.append_walk(('A', 'B', 'D'), weight=1.0)
