@@ -16,6 +16,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Optional
 )
 
 import scipy.special
@@ -108,14 +109,13 @@ def G_nm(n: int, m: int, mapping: IndexMap | None = None, self_loops: bool = Fal
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
 
 
-
-def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph | None:
+def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph:
     """Generate a random graph whose number of nodes, edges, edge directedness and node IDs
     match the corresponding values of a given network instance. Useful to generate a randomized
     version of a network.
 
     Args:
-        graph: A given network used to determine number of nodes, edges, node uids, and edge directedness    
+        graph: A given network used to determine number of nodes, edges, node uids, and edge directedness
         self_loops: Whether or not the generated network can contain loops.
         multi_edges: Whether or not multiple edges can be added to the same node pair
 
@@ -258,7 +258,7 @@ def generate_degree_sequence(n, distribution: Dict[float, float] | scipy.stats.r
         raise NotImplementedError()
 
 
-def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: IndexMap = None) -> Graph:
+def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: Optional[IndexMap] = None) -> Graph:
     """Generate a random undirected graph based on the stochastic block model
     
     Args:
@@ -284,6 +284,6 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: IndexMap = None
                 edges.append((mapping.to_id(u), mapping.to_id(v)))
                 edges.append((mapping.to_id(v), mapping.to_id(u)))
 
-    G = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n)
-    G.data.node_label = torch.tensor(z)
-    return G
+    g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n)
+    g.data.node_label = torch.tensor(z)
+    return g
