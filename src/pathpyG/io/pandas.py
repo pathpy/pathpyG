@@ -461,7 +461,7 @@ def read_csv_temporal_graph(filename: str,
         df = pd.read_csv(filename, header=0, sep=sep)
     else:
         df = pd.read_csv(filename, header=None, sep=sep)
-    return df_to_temporal_graph(df, is_undirected=is_undirected, timestamp_fromat=timestamp_format, time_rescale=time_rescale, **kwargs)
+    return df_to_temporal_graph(df, is_undirected=is_undirected, timestamp_format=timestamp_format, time_rescale=time_rescale, **kwargs)
 
 
 def write_csv(graph: Union[Graph, TemporalGraph],

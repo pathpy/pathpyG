@@ -46,29 +46,24 @@ from pathpyG.core.path_data import PathData
 from networkx import centrality
 from tqdm import tqdm
 
-from collections import defaultdict, Counter, deque
+from collections import defaultdict, deque
 from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temporal
 import numpy as _np
 import torch
-from torch import tensor
 
-from torch_geometric.utils import to_networkx, degree
+from torch_geometric.utils import to_networkx
 
 from pathpyG.utils import to_numpy
 
 
-def path_node_traversals(paths: PathData) -> Counter:
+def path_node_traversals(paths: PathData) -> dict:
     """Calculate the number of times any path traverses each of the nodes.
 
     Args:
         paths: `PathData` object that contains observations of paths in a graph
     """
-    traversals = Counter()
-    for i in range(paths.num_paths):
-        w = paths.get_walk(i)
-        for v in w:
-            traversals[v] += paths.paths[i].edge_weight.max().item()
-    return traversals
+    unique_node_seq, traversal_counts = torch.unique(paths.data.node_sequence, return_counts=True)
+    return {paths.mapping.to_id(node): count.item() for node, count in zip(unique_node_seq, traversal_counts)}
 
 
 def map_to_nodes(g: Graph, c: Dict) -> Dict:
