@@ -12,7 +12,6 @@ def local_clustering_coefficient(g: Graph, u: str) -> float:
 
     # Compute number of directly connected neighbour pairs
     k_u = len(closed_triads(g, u))
-    print(k_u)
 
     # Normalise fraction based on number of possible edges
     if g.is_directed():
