@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn8-runtime
 WORKDIR /workspaces/pathpyG
 RUN apt-get update
 RUN apt-get -y install git
