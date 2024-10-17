@@ -2,7 +2,7 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
-	"name": "pathpyG-torch2.1.0-cuda12.1",
+	"name": "pathpyG-torch2.4.0-cuda12.1",
 	"customizations": {
 		"vscode": {
 			"extensions": [
