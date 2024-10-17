@@ -22,26 +22,20 @@ class PathData:
     """Class that can be used to store multiple observations of
     node sequences representing paths or walks
 
-    Example:
-        ```py
-        import pathpyG as pp
-        import torch
-
-        pp.config['torch']['device'] = 'cuda'
-
-        # Generate toy example graph
-        g = pp.Graph.from_edge_list([('a', 'c'),
-                             ('b', 'c'),
-                             ('c', 'd'),
-                             ('c', 'e')])
-
-        # Store observations of walks using the index mapping
-        # from the graph above
-        paths = pp.PathData(g.mapping)
-        paths.append_walk(('a', 'c', 'd'), weight=2.0)
-        paths.append_walk(('b', 'c', 'e'), weight=2.0)
-        print(paths)
-        ```
+    Examples:
+        >>> import pathpyG as pp
+        >>> # Generate toy example graph
+        >>> g = pp.Graph.from_edge_list([('a', 'c'),
+        >>>                      ('b', 'c'),
+        >>>                      ('c', 'd'),
+        >>>                      ('c', 'e')])
+        >>> # Store observations of walks using the index mapping
+        >>> # from the graph above
+        >>> paths = pp.PathData(g.mapping)
+        >>> paths.append_walk(('a', 'c', 'd'), weight=2.0)
+        >>> paths.append_walk(('b', 'c', 'e'), weight=2.0)
+        >>> print(paths)
+        PathData with 2 paths with total weight 4.0
     """
 
     def __init__(self, mapping: IndexMap | None = None) -> None:
@@ -79,6 +73,8 @@ class PathData:
             edge_index: Edge index of the new path(s)
             node_sequence: Node sequence of the new path(s)
             weights: Weights of the new path(s)
+            num_edges: Number of edges in the new path(s)
+            num_nodes: Number of nodes in the new path(s)
         """
         new_edge_index = edge_index + self.data.num_nodes
         self.data.edge_index = torch.cat([self.data.edge_index, new_edge_index], dim=1)
@@ -91,20 +87,16 @@ class PathData:
     def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
         """Add an observation of a walk based on a list or tuple of node IDs or indices
 
-        Example:
-                ```py
-                import torch
-                import pathpyG as pp
+        Args:
+            node_seq: List or tuple of node IDs
+            weight: Weight of the walk
 
-                g = pp.Graph.from_edge_list([('a', 'c'),
-                        ('b', 'c'),
-                        ('c', 'd'),
-                        ('c', 'e')])
-
-                walks = pp.PathData(g.mapping)
-                walks.append_walk(('a', 'c', 'd'), weight=2.0)
-                paths.append_walk(('b', 'c', 'e'), weight=1.0)
-                ```
+        Examples:
+            >>> import pathpyG as pp
+            >>> mapping = pp.IndexMap(['a', 'b', 'c', 'd', 'e'])
+            >>> walks = pp.PathData(mapping)
+            >>> walks.append_walk(('a', 'c', 'd'), weight=2.0)
+            >>> paths.append_walk(('b', 'c', 'e'), weight=1.0)
         """
         idx_seq = self.mapping.to_idxs(node_seq).unsqueeze(1)
         idx = torch.arange(len(node_seq), device=self.data.edge_index.device)
@@ -119,7 +111,18 @@ class PathData:
         )
 
     def append_walks(self, node_seqs: list | tuple, weights: list | tuple) -> None:
-        """Add multiple observations of walks based on lists or tuples of node IDs or indices"""
+        """Add multiple observations of walks based on lists or tuples of node IDs or indices
+
+        Args:
+            node_seqs: List or tuple of lists or tuples of node IDs
+            weights: List or tuple of weights for each walk
+
+        Examples:
+            >>> import pathpyG as pp
+            >>> mapping = pp.IndexMap(['a', 'b', 'c', 'd', 'e'])
+            >>> walks = pp.PathData(mapping)
+            >>> walks.append_walks([['a', 'c', 'd'], ['b', 'c', 'e']], [2.0, 1.0])
+        """
         idx_seqs = torch.cat([self.mapping.to_idxs(seq) for seq in node_seqs]).unsqueeze(1)
         dag_num_nodes = torch.tensor([len(seq) for seq in node_seqs], device=self.data.edge_index.device)
 
@@ -143,6 +146,22 @@ class PathData:
         )
 
     def get_walk(self, i: int) -> tuple:
+        """Return the i-th walk (based on when it was appended) as a tuple of node IDs
+
+        Args:
+            i: Index of the walk to retrieve
+
+        Returns:
+            Tuple of node IDs representing the i-th walk
+
+        Examples:
+            >>> import pathpyG as pp
+            >>> mapping = pp.IndexMap(['a', 'b', 'c', 'd', 'e'])
+            >>> walks = pp.PathData(mapping)
+            >>> walks.append_walk(('a', 'c', 'd'), weight=2.0)
+            >>> walks.get_walk(0)
+            ('a', 'c', 'd')
+        """
         start = self.data.dag_num_nodes[:i].sum().item()
         end = start + self.data.dag_num_nodes[i].item()
         return tuple(self.mapping.to_ids(self.data.node_sequence[start:end].squeeze()))
