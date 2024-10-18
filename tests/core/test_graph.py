@@ -289,45 +289,48 @@ def test_get_graph_attr(simple_graph):
     assert simple_graph["graph_feature"].item() == 42
 
 
-# def test_set_node_attr(simple_graph):
-#     simple_graph["node_class"] = torch.tensor([[1], [2], [3]])
-#     assert simple_graph["node_class"].shape == (3, 1)
-#     assert torch.equal(simple_graph["node_class"], torch.tensor([[1], [2], [3]]))
-#     assert simple_graph["node_class", "a"].item() == 1
-#     assert simple_graph["node_class", "b"].item() == 2
-#     assert simple_graph["node_class", "c"].item() == 3
+def test_set_node_attr(simple_graph):
+    simple_graph["node_class"] = torch.tensor([[1], [2], [3]])
+    assert simple_graph["node_class"].shape == (3, 1)
+    assert torch.equal(simple_graph["node_class"], torch.tensor([[1], [2], [3]]))
+    assert simple_graph["node_class", "a"].item() == 1
+    assert simple_graph["node_class", "b"].item() == 2
+    assert simple_graph["node_class", "c"].item() == 3
 
-#     simple_graph["node_class", "a"] = 42
-#     assert simple_graph["node_class", "a"].item() == 42
+    simple_graph["node_class", "a"] = 42
+    assert simple_graph["node_class", "a"].item() == 42
 
-#     with pytest.raises(ValueError):
-#         simple_graph["node_class", "d"] = 42
+    with pytest.raises(KeyError):
+        simple_graph["node_class", "d"] = 42
 
-#     with pytest.raises(ValueError):
-#         simple_graph["node_class_1", "a"] = 42
-
-
-# def test_set_edge_attr(simple_graph):
-#     simple_graph["edge_weight"] = torch.tensor([[1], [1], [2]])
-#     assert simple_graph["edge_weight"].shape == (3, 1)
-#     assert torch.equal(simple_graph["edge_weight"], torch.tensor([[1], [1], [2]]))
-#     assert simple_graph["edge_weight", "a", "b"].item() == 1
-#     assert simple_graph["edge_weight", "b", "c"].item() == 1
-#     assert simple_graph["edge_weight", "a", "c"].item() == 2
-
-#     simple_graph["edge_weight", "a", "b"] = 42
-#     assert simple_graph["edge_weight", "a", "b"].item() == 42
-
-#     with pytest.raises(ValueError):
-#         simple_graph["edge_weight", "a", "d"] = 42
-
-#     with pytest.raises(ValueError):
-#         simple_graph["edge_weight_1", "a", "b"] = 42
+    with pytest.raises(KeyError):
+        simple_graph["node_class_1", "a"] = 42
 
 
-# def test_set_graph_attr(simple_graph):
-#     simple_graph["graph_feature"] = torch.tensor([42])
-#     assert simple_graph["graph_feature"].item() == 42
+def test_set_edge_attr(simple_graph):
+    simple_graph["edge_weight"] = torch.tensor([[1], [1], [2]])
+    assert simple_graph["edge_weight"].shape == (3, 1)
+    assert torch.equal(simple_graph["edge_weight"], torch.tensor([[1], [1], [2]]))
+    assert simple_graph["edge_weight", "a", "b"].item() == 1
+    assert simple_graph["edge_weight", "a", "c"].item() == 1
+    assert simple_graph["edge_weight", "b", "c"].item() == 2
+
+    simple_graph["edge_weight", "a", "b"] = 42
+    assert simple_graph["edge_weight", "a", "b"].item() == 42
+
+    with pytest.raises(KeyError):
+        simple_graph["edge_weight", "a", "d"] = 42
+
+    with pytest.raises(KeyError):
+        simple_graph["edge_weight_1", "a", "b"] = 42
+
+
+def test_set_graph_attr(simple_graph):
+    simple_graph["graph_feature"] = torch.tensor([42])
+    assert simple_graph["graph_feature"].item() == 42
+
+    with pytest.raises(KeyError):
+        simple_graph["graph_feature", "a"] = 42
 
 
 def test_N(simple_graph):
