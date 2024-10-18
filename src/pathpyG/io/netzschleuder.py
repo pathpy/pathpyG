@@ -2,25 +2,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import json
-import pickle
-import struct
-from collections import defaultdict
 from urllib import request
 from urllib.error import HTTPError
 import tempfile
 import zipfile
 from io import BytesIO
 
-from numpy import array
-import torch
 import pandas as pd
 
 from pathpyG.core.graph import Graph
-from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.utils.config import config
 from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
 from pathpyG.io.graphtool import parse_graphtool_format
-from pathpyG.io.pandas import read_csv_graph, read_csv_temporal_graph, add_node_attributes, add_edge_attributes
+from pathpyG.io.pandas import add_node_attributes
 
 
 def list_netzschleuder_records(base_url: str = 'https://networks.skewed.de', **kwargs: Any) -> Union[list, dict]:

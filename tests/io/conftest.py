@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 import pandas as pd
 
 @pytest.fixture

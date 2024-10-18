@@ -5,8 +5,8 @@ import pytest
 from torch import tensor, equal
 import numpy as np
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.graph import Graph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
 
 
