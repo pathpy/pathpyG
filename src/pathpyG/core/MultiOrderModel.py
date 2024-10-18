@@ -3,16 +3,20 @@ from __future__ import annotations
 from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
-from torch_geometric.utils import cumsum, coalesce, degree
+from torch_geometric.utils import degree
 
-from pathpyG.utils.config import config
 from pathpyG.core.Graph import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.TemporalGraph import TemporalGraph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 from pathpyG.algorithms.temporal import lift_order_temporal
+from pathpyG.algorithms.lift_order import (
+    aggregate_node_attributes,
+    lift_order_edge_index,
+    lift_order_edge_index_weighted,
+    aggregate_edge_index,
+)
 
 
 class MultiOrderModel:
@@ -28,114 +32,6 @@ class MultiOrderModel:
         return s
 
     @staticmethod
-    def aggregate_edge_weight(ho_index: torch.Tensor, edge_weight: torch.Tensor, aggr: str = "src") -> torch.Tensor:
-        """
-        Aggregate edge weights of a (k-1)-th order graph for a kth-order graph.
-
-        Args:
-            ho_index: The higher-order edge index of the higher-order graph.
-            edge_weight: The edge weights of the (k-1)th order graph.
-            aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
-        """
-        if aggr == "src":
-            ho_edge_weight = edge_weight[ho_index[0]]
-        elif aggr == "dst":
-            ho_edge_weight = edge_weight[ho_index[1]]
-        elif aggr == "max":
-            ho_edge_weight = torch.maximum(edge_weight[ho_index[0]], edge_weight[ho_index[1]])
-        elif aggr == "mul":
-            ho_edge_weight = edge_weight[ho_index[0]] * edge_weight[ho_index[1]]
-        else:
-            raise ValueError(f"Unknown aggregation method {aggr}")
-        return ho_edge_weight
-
-    @staticmethod
-    def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int) -> torch.Tensor:
-        """
-        Do a line graph transformation on the edge index to lift the order of the graph by one.
-        Assumes that the edge index is sorted.
-
-        Args:
-            edge_index: A **sorted** edge index tensor of shape (2, num_edges).
-            num_nodes: The number of nodes in the graph.
-        """
-        outdegree = degree(edge_index[0], dtype=torch.long, num_nodes=num_nodes)
-        # Map outdegree to each destination node to create an edge for each combination
-        # of incoming and outgoing edges for each destination node
-        outdegree_per_dst = outdegree[edge_index[1]]
-        num_new_edges = outdegree_per_dst.sum()
-        # Create sources of the new higher-order edges
-        ho_edge_srcs = torch.repeat_interleave(outdegree_per_dst)
-
-        # Create destination nodes that start the indexing after the cumulative sum of the outdegree
-        # of all previous nodes in the ordered sequence of nodes
-        ptrs = cumsum(outdegree, dim=0)[:-1]
-        ho_edge_dsts = torch.repeat_interleave(ptrs[edge_index[1]], outdegree_per_dst)
-        idx_correction = torch.arange(num_new_edges, dtype=torch.long, device=edge_index.device)
-        idx_correction -= cumsum(outdegree_per_dst, dim=0)[ho_edge_srcs]
-        ho_edge_dsts += idx_correction
-        return torch.stack([ho_edge_srcs, ho_edge_dsts], dim=0)
-
-    @staticmethod
-    def lift_order_edge_index_weighted(
-        edge_index: torch.Tensor, edge_weight: torch.Tensor, num_nodes: int, aggr: str = "src"
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Do a line graph transformation on the edge index to lift the order of the graph by one.
-        Additionally, aggregate the edge weights of the (k-1)-th order graph to the (k)-th order graph.
-        Assumes that the edge index is sorted.
-
-        Args:
-            edge_index: A **sorted** edge index tensor of shape (2, num_edges).
-            edge_weight: The edge weights of the (k-1)th order graph.
-            num_nodes: The number of nodes in the graph.
-            aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
-        """
-        ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes)
-        ho_edge_weight = MultiOrderModel.aggregate_edge_weight(ho_index, edge_weight, aggr)
-
-        return ho_index, ho_edge_weight
-
-    @staticmethod
-    def aggregate_edge_index(
-        edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None
-    ) -> Graph:
-        """
-        Aggregate the possibly duplicated edges in the (higher-order) edge index and return a graph object
-        containing the (higher-order) edge index without duplicates and the node sequences.
-        The edge weights of duplicated edges are summed up.
-
-        Args:
-            edge_index: The edge index of a (higher-order) graph where each source and destination node
-                corresponds to a node which is an edge in the (k-1)-th order graph.
-            node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to.
-            edge_weight: The edge weights corresponding to the edge index.
-        """
-        if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-            
-        unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
-        # If first order, then the indices in the node sequence are the inverse idx we would need already
-        if node_sequence.size(1) == 1:
-            mapped_edge_index = node_sequence.squeeze()[edge_index]
-        else:
-            mapped_edge_index = inverse_idx[edge_index]
-        aggregated_edge_index, edge_weight = coalesce(
-            mapped_edge_index,
-            edge_attr=edge_weight,
-            num_nodes=unique_nodes.size(0),
-            reduce="sum",
-        )
-        data = Data(
-            edge_index=aggregated_edge_index,
-            num_nodes=unique_nodes.size(0),
-            node_sequence=unique_nodes,
-            edge_weight=edge_weight,
-            inverse_idx=inverse_idx,
-        )
-        return Graph(data)
-
-    @staticmethod
     def iterate_lift_order(
         edge_index: torch.Tensor,
         node_sequence: torch.Tensor,
@@ -147,8 +43,7 @@ class MultiOrderModel:
         """Lift order by one and save the result in the layers dictionary of the object.
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
-        in the from_temporal_graph (filtering non-time-respecting paths of order 2)
-        or from_PathData (reindexing with dataloader) functions.
+        in the from_temporal_graph (filtering non-time-respecting paths of order 2).
 
         Args:
             edge_index: The edge index of the (k-1)-th order graph.
@@ -160,16 +55,16 @@ class MultiOrderModel:
         """
         # Lift order
         if edge_weight is None:
-            ho_index = MultiOrderModel.lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
+            ho_index = lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
         else:
-            ho_index, edge_weight = MultiOrderModel.lift_order_edge_index_weighted(
+            ho_index, edge_weight = lift_order_edge_index_weighted(
                 edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
             )
         node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
 
         # Aggregate
         if save:
-            gk = MultiOrderModel.aggregate_edge_index(ho_index, node_sequence, edge_weight)
+            gk = aggregate_edge_index(ho_index, node_sequence, edge_weight)
             gk.mapping = IndexMap([tuple(mapping.to_ids(v.cpu())) for v in gk.data.node_sequence])
         else:
             gk = None
@@ -179,17 +74,31 @@ class MultiOrderModel:
     def from_temporal_graph(
         g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = "edge_weight", cached: bool = True
     ) -> MultiOrderModel:
-        """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph."""
+        """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph.
+
+        Args:
+            g: The temporal graph.
+            delta: The maximum time difference between two consecutive edges in a path.
+            max_order: The maximum order of the MultiOrderModel that should be computed.
+            weight: The edge attribute to use as edge weight.
+            cached: Whether to save the aggregated higher-order graphs smaller than max order in the MultiOrderModel.
+
+        Returns:
+            MultiOrderModel: The MultiOrderModel.
+        """
         m = MultiOrderModel()
-        data = g.data.sort_by_time()
-        edge_index= data.edge_index
-        node_sequence = torch.arange(g.data.num_nodes, device=edge_index.device).unsqueeze(1)
-        if weight in g.data:
-            edge_weight = g.data[weight]
+        if not g.data.is_sorted_by_time():
+            data = g.data.sort_by_time()
+        else:
+            data = g.data
+        edge_index = data.edge_index
+        node_sequence = torch.arange(data.num_nodes, device=edge_index.device).unsqueeze(1)
+        if weight in data:
+            edge_weight = data[weight]
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         if cached or max_order == 1:
-            m.layers[1] = MultiOrderModel.aggregate_edge_index(
+            m.layers[1] = aggregate_edge_index(
                 edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
             )
             m.layers[1].mapping = g.mapping
@@ -197,11 +106,11 @@ class MultiOrderModel:
         if max_order > 1:
             node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
             edge_index = lift_order_temporal(g, delta)
-            edge_weight = MultiOrderModel.aggregate_edge_weight(edge_index, edge_weight, "src")
+            edge_weight = aggregate_node_attributes(edge_index, edge_weight, "src")
 
             # Aggregate
             if cached or max_order == 2:
-                m.layers[2] = MultiOrderModel.aggregate_edge_index(
+                m.layers[2] = aggregate_edge_index(
                     edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
                 )
                 m.layers[2].mapping = IndexMap(
@@ -236,6 +145,9 @@ class MultiOrderModel:
             mode: The process that we assume. Can be "diffusion" or "propagation".
             cached: Whether to save the aggregated higher-order graphs smaller than max order
                 in the MultiOrderModel.
+
+        Returns:
+            MultiOrderModel: The MultiOrderModel.
         """
         m = MultiOrderModel()
 
@@ -252,9 +164,7 @@ class MultiOrderModel:
         elif mode == "propagation":
             aggr = "src"
 
-        m.layers[1] = MultiOrderModel.aggregate_edge_index(
-            edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
-        )
+        m.layers[1] = aggregate_edge_index(edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight)
         m.layers[1].mapping = path_data.mapping
 
         for k in range(2, max_order + 1):
@@ -270,7 +180,6 @@ class MultiOrderModel:
                 m.layers[k] = gk
 
         return m
-
 
     def get_mon_dof(self, max_order: int = None, assumption: str = "paths") -> int:
         """
@@ -316,7 +225,7 @@ class MultiOrderModel:
             for k in range(1, max_order + 1):
                 if k > 1:
                     num_nodes = 0 if edge_index.numel() == 0 else edge_index.max().item() + 1
-                    edge_index = self.lift_order_edge_index(edge_index, num_nodes)
+                    edge_index = lift_order_edge_index(edge_index, num_nodes)
                 # counting number of len k paths
                 num_len_k_paths = edge_index.shape[1]  # edge_index.max().item() +1  # Number of paths of length k
                 dof += num_len_k_paths
@@ -343,7 +252,6 @@ class MultiOrderModel:
 
         return int(dof)
 
-      
     def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
         """
         Compute the zeroth order log likelihood.
@@ -372,7 +280,6 @@ class MultiOrderModel:
         node_emission_probabilities = counts / counts.sum()
         return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
 
-      
     def get_intermediate_order_log_likelihood(self, dag_graph: Data, order: int) -> float:
         """
         Compute the intermediate order log likelihood.
@@ -403,7 +310,6 @@ class MultiOrderModel:
         llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
         return llh_by_subpath.sum().item()
 
-      
     def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
         """
         Compute the likelihood of the walks given a multi-order model.
@@ -430,9 +336,7 @@ class MultiOrderModel:
         if max_order > 0:
             transition_probabilities = self.layers[max_order].transition_probabilities()
             log_transition_probabilities = torch.log(transition_probabilities)
-            llh_by_subpath = (
-                log_transition_probabilities * self.layers[max_order].data.edge_weight
-            )
+            llh_by_subpath = log_transition_probabilities * self.layers[max_order].data.edge_weight
             llh += llh_by_subpath.sum().item()
         else:
             # Compute likelihood for zeroth order (to be modified)
@@ -455,6 +359,24 @@ class MultiOrderModel:
         assumption: str = "paths",
         significance_threshold: float = 0.01,
     ) -> tuple:
+        """
+        Perform a likelihood ratio test to compare two models of different order.
+        
+        Args:
+            dag_graph (Data): The input DAG graph data.
+            max_order_null (int, optional): The maximum order of the null hypothesis model.
+                Defaults to 0.
+            max_order (int, optional): The maximum order of the alternative hypothesis model.
+                Defaults to 1.
+            assumption (str, optional): The assumption to use for the degrees of freedom calculation.
+                Can be 'paths' or 'ngrams'. Defaults to 'paths'.
+            significance_threshold (float, optional): The significance threshold for the test.
+                Defaults to 0.01.
+
+        Returns:
+            tuple: A tuple containing a boolean indicating whether the null hypothesis is rejected
+                and the p-value of the test.
+        """
         assert (
             max_order_null < max_order
         ), "Error: order of null hypothesis must be smaller than order of alternative hypothesis"
@@ -478,7 +400,6 @@ class MultiOrderModel:
         p = 1 - chi2.cdf(x, dof_diff)
         return (p < significance_threshold), p
 
-      
     def estimate_order(self, dag_data: PathData, max_order: int = None, significance_threshold: float = 0.01) -> int:
         """
         Selects the optimal maximum order of a multi-order network model for the
@@ -523,18 +444,21 @@ class MultiOrderModel:
 
         return max_accepted_order
 
-
-    def to_dbgnn_data(self, max_order: int = 2, mapping: str = 'last') -> Data:
+    def to_dbgnn_data(self, max_order: int = 2, mapping: str = "last") -> Data:
         """
-        Convert the MultiOrderModel to a De Bruijn graph for the given maximum order.
-        
+        Convert the MultiOrderModel to a De Bruijn graph for the given maximum order
+        that can be used in `pathpyG.nn.dbgnn.DBGNN`.
+
         Args:
             max_order: The maximum order of the De Bruijn graph to be computed.
             mapping: The mapping to use for the bipartite edge index. One of "last", "first", or "both".
+
+        Returns:
+            Data: The De Bruijn graph data.
         """
         if max_order not in self.layers:
             raise ValueError(f"Higher-order graph of order {max_order} not found.")
-        
+
         g = self.layers[1]
         g_max_order = self.layers[max_order]
         num_nodes = g.data.num_nodes
@@ -549,10 +473,10 @@ class MultiOrderModel:
         edge_weight = g.data.edge_weight
         edge_weight_max_order = g_max_order.data.edge_weight
         bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping)
-        
+
         if g.data.y is not None:
             y = g.data.y
-        
+
         return Data(
             num_nodes=num_nodes,
             num_ho_nodes=num_ho_nodes,
@@ -563,5 +487,5 @@ class MultiOrderModel:
             edge_weights=edge_weight.float(),
             edge_weights_higher_order=edge_weight_max_order.float(),
             bipartite_edge_index=bipartite_edge_index,
-            y=y if 'y' in locals() else None
+            y=y if "y" in locals() else None,
         )
