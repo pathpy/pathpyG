@@ -5,10 +5,10 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import degree
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.core.path_data import PathData
-from pathpyG.core.TemporalGraph import TemporalGraph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 from pathpyG.algorithms.temporal import lift_order_temporal
 from pathpyG.algorithms.lift_order import (

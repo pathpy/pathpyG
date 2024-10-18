@@ -19,8 +19,8 @@ import scipy.special
 import numpy as _np
 import torch
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.graph import Graph
+from pathpyG.core.index_map import IndexMap
 
 
 def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_loops: bool = False) -> int | float:

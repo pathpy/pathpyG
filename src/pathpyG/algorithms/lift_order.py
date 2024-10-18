@@ -4,7 +4,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import degree, cumsum, coalesce
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 
 
 def aggregate_node_attributes(

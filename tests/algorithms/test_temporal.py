@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import torch
 from torch_geometric import EdgeIndex
-import numpy as np
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temporal
 
 

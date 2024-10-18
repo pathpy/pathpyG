@@ -14,7 +14,7 @@ from typing import (
 import numpy as _np
 from scipy.sparse.csgraph import dijkstra
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 
 
 def shortest_paths_dijkstra(graph: Graph) -> (_np.ndarray, _np.ndarray):

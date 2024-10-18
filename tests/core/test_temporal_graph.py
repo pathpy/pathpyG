@@ -5,7 +5,7 @@ import torch
 from torch import equal
 from torch_geometric.data import Data
 
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
 

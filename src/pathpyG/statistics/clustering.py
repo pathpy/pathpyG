@@ -4,7 +4,7 @@ from typing import (
     Set
 )
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 import numpy as _np
 
 

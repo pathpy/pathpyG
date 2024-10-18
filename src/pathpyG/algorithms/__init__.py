@@ -37,6 +37,6 @@ from pathpyG.algorithms.random_graphs import Watts_Strogatz
 from pathpyG.algorithms import generative_models
 from pathpyG.algorithms import shortest_paths
 from pathpyG.algorithms.components import connected_components, largest_connected_component
-from pathpyG.algorithms.RollingTimeWindow import RollingTimeWindow
+from pathpyG.algorithms.rolling_time_window import RollingTimeWindow
 from pathpyG.algorithms.weisfeiler_leman import WeisfeilerLeman_test
 

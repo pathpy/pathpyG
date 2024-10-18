@@ -3,11 +3,11 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.graph import Graph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.core.path_data import PathData
 from pathpyG import config
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 # to run benchmarks, do the following:
 # > pip install pytest-benchmark

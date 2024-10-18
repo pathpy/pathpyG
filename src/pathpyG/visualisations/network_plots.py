@@ -20,8 +20,8 @@ from pathpyG.visualisations.layout import layout as network_layout
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
-    from pathpyG.core.Graph import Graph
-    from pathpyG.core.TemporalGraph import TemporalGraph
+    from pathpyG.core.graph import Graph
+    from pathpyG.core.temporal_graph import TemporalGraph
 
 
 # create logger

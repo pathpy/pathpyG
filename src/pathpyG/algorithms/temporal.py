@@ -9,7 +9,7 @@ import torch
 from scipy.sparse.csgraph import dijkstra
 
 from pathpyG import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.temporal_graph import TemporalGraph
 
 from pathpyG import config
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as _np
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.statistics.node_similarities import overlap_coefficient, LeichtHolmeNewman_index, jaccard_similarity, common_neighbors, adamic_adar_index, cosine_similarity, katz_index
 
 

@@ -6,9 +6,9 @@ from torch_geometric import EdgeIndex
 import numpy as np
 from scipy.stats import chi2
 
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 
 def test_multi_order_model_init():

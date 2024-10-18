@@ -12,8 +12,8 @@
 # pylint: disable=unused-import
 from typing import Optional, Any
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.graph import Graph
+from pathpyG.core.temporal_graph import TemporalGraph
 
 from pathpyG.visualisations.plot import PathPyPlot
 from pathpyG.visualisations.network_plots import NetworkPlot

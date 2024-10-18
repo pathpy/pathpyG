@@ -10,8 +10,8 @@ import numpy as np
 import datetime
 from time import mktime
 
-from pathpyG.core.Graph import Graph
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.graph import Graph
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils.config import config
 
 

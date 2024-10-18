@@ -6,8 +6,8 @@ from torch import IntTensor, equal, tensor
 from pathpyG import config
 from pathpyG.processes.random_walk import RandomWalk, HigherOrderRandomWalk
 from pathpyG.core.path_data import PathData
-from pathpyG.core.Graph import Graph
-from pathpyG.core.MultiOrderModel import MultiOrderModel
+from pathpyG.core.graph import Graph
+from pathpyG.core.multi_order_model import MultiOrderModel
 
 def check_transitions(g, paths: PathData):
     for i in range(paths.num_paths):

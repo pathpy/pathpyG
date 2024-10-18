@@ -8,7 +8,7 @@ from torch_geometric.data import Data
 from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
-from pathpyG.core.IndexMap import IndexMap
+from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.config import config
 
 
