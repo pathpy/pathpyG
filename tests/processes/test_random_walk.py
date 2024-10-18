@@ -10,7 +10,7 @@ from pathpyG.core.graph import Graph
 from pathpyG.core.multi_order_model import MultiOrderModel
 
 def check_transitions(g, paths: PathData):
-    for i in range(len(paths.paths)):
+    for i in range(paths.num_paths):
         w = paths.get_walk(i)
         for j in range(len(w)-1):
             assert g.is_edge(w[j], w[j+1])
@@ -31,6 +31,7 @@ def test_transition_matrix(simple_graph):
     rw = RandomWalk(simple_graph)
 
     assert (rw.transition_matrix.data == 1.).all()
+    assert rw.transition_probabilities("a")[1] == 1.0
 
 def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]):
     g = simple_second_order_graph[0]
@@ -43,3 +44,5 @@ def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]
     assert len(data) == g2.N * steps * 2 + g2.N * g2.N
     paths = rw.get_paths(data)
     check_transitions(g, paths)
+
+    # rw.first_order_stationary_state()

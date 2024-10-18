@@ -30,14 +30,6 @@ To ensure version consistency, we use a [Development Container](https://containe
     pip install -e '.[dev,test,doc]'
     ```
 
-### Git pre-commit hooks
-
-If you are wondering why every commit you make takes so long, it is because we run a couple of checks on your code before it is committed. These checks are configured as pre-commit hooks and are running automatically when you commit your code. The checks are documented in detail in `pre-commit-config.yaml`.  
-They are installed by default in the Dev Container setup. If you installed the package manually, you can set up the hooks by running the following command:
-```bash
-pre-commit install
-```
-
 ## Documentation
 
 This project uses [`MkDocs`](https://www.mkdocs.org/) for documentation. It is a static site generator that creates the necessary `html`-files automatically from the `markdown`-files and [:jupyter_logo: Jupyter](https://jupyter.org/) notebooks in the `docs/`-directory and the `Python`-files in `src/`. The documentation is hosted on GitHub Pages.

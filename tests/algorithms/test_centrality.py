@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import torch
-
-from pathpyG.core.graph import Graph
-from pathpyG.visualisations.hist_plots import hist
 from pathpyG.algorithms import centrality
 from pathpyG.algorithms.centrality import (
     path_node_traversals,

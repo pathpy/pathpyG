@@ -10,60 +10,107 @@ from collections import defaultdict
 from pathpyG.core.graph import Graph
 import numpy as _np
 
-def degree_sequence(graph: Graph) -> _np.array:
-    """Calculates the degree sequence of a network.
+
+def degree_sequence(g: Graph, mode: str = 'total') -> _np.array:
+    """Calculates the degree sequence of an undirected network.
 
     Args:
         graph: The `Graph` object for which degrees are calculated
     """
-    assert graph.is_undirected()
+    d = g.degrees()
+    if g.is_directed() and mode == 'in':
+        d = g.in_degrees
+    elif g.is_directed() and mode == 'out':
+        d = g.out_degrees
+    elif g.is_directed() and mode == 'total':
+        d = g.degrees()
 
-    _degrees = _np.zeros(graph.N, dtype=float)
-    d = graph.degrees()
-    for v in graph.nodes:
-        _degrees[graph.mapping.to_idx(v)] = d[v]
+    _degrees = _np.zeros(g.N, dtype=float)
+    for v in g.nodes:
+        _degrees[g.mapping.to_idx(v)] = d[v]
     return _degrees
 
-def degree_distribution(g: Graph) -> Dict[int, float]:
+
+def degree_distribution(g: Graph, mode: str = 'total') -> Dict[int, float]:
     """Calculates the degree distribution of a graph
     """
-    assert g.is_undirected()
+    d = g.degrees()
+    if g.is_directed() and mode == 'in':
+        d = g.in_degrees
+    elif g.is_directed() and mode == 'out':
+        d = g.out_degrees
+    elif g.is_directed() and mode == 'total':
+        d = g.degrees()
 
     cnt: defaultdict = defaultdict(float)
-    d = g.degrees()
     for v in g.nodes:
         cnt[d[v]] += 1.0 / g.N
     return cnt
 
-def degree_raw_moment(graph: Graph, k: int = 1) -> float:
+
+def degree_raw_moment(graph: Graph, k: int = 1, mode: str = 'total') -> float:
     """Calculates the k-th raw moment of the degree distribution of a network
 
     Args:
         graph:  The graph in which to calculate the k-th raw moment
 
     """
-    p_k = degree_distribution(graph)
+    p_k = degree_distribution(graph, mode=mode)
     mom = 0.0
     for x in p_k:
         mom += x**k * p_k[x]
     return mom
 
-def degree_central_moment(graph: Graph, k: int = 1) -> float:
+
+def mean_degree(graph: Graph, mode: str = 'total') -> float:
+    return _np.mean(degree_sequence(graph, mode=mode))
+
+
+def degree_central_moment(graph: Graph, k: int = 1, mode: str = 'total') -> float:
     """Calculates the k-th central moment of the degree distribution.
 
     Args:
         graph: The graph for which to calculate the k-th central moment
 
     """
-    p_k = degree_distribution(graph)
-    mean = _np.mean(degree_sequence(graph))
+    p_k = degree_distribution(graph, mode=mode)
+    mean = _np.mean(degree_sequence(graph, mode=mode))
     m = 0.
     for x in p_k:
         m += (x - mean)**k * p_k[x]
     return m
 
-def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarray) -> float | _np.ndarray:
-    """Returns the generating function of the (weighted) degree distribution of a network,
+
+def degree_assortativity(g: Graph, mode: str = 'total') -> float:
+    """Calculate the degree assortativity"""
+
+    A = g.get_sparse_adj_matrix().todense()
+    m = _np.sum(A)
+
+    d = g.degrees()
+    if g.is_directed() and mode == 'in':
+        d = g.in_degrees
+    elif g.is_directed() and mode == 'out':
+        d = g.out_degrees
+    elif g.is_directed() and mode == 'total':
+        d = g.degrees()
+    elif not g.is_directed():
+        m = m/2.
+
+    cov = 0.
+    var = 0.
+    for i in g.nodes:
+        for j in g.nodes:
+            cov += (A[g.mapping.to_idx(i), g.mapping.to_idx(j)] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
+            if i != j:
+                var -= (d[i]*d[j])/(2*m) * d[i] * d[j]
+            else:
+                var += (d[i] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
+    return cov/var
+
+
+def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarray, mode: str = 'total') -> float | _np.ndarray:
+    """Returns the generating function of the degree distribution of a network,
         calculated for either a single argument x or a list or numpy array of arguments x
 
 
@@ -118,7 +165,7 @@ def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarra
     ```
     """
 
-    p_k = degree_distribution(graph)
+    p_k = degree_distribution(graph, mode=mode)
 
     if isinstance(x, float):
         x_range = [x]

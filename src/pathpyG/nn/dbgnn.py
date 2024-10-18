@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import torch
@@ -6,12 +5,10 @@ from torch.nn import Linear, ModuleList, Module
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GCNConv
 
-from pathpyG.core.graph import Graph
-from pathpyG.core.multi_order_model import MultiOrderModel
 
 class BipartiteGraphOperator(MessagePassing):
     def __init__(self, in_ch, out_ch):
-        super(BipartiteGraphOperator, self).__init__('add')
+        super(BipartiteGraphOperator, self).__init__("add")
         self.lin1 = Linear(in_ch, out_ch)
         self.lin2 = Linear(in_ch, out_ch)
 
@@ -22,6 +19,7 @@ class BipartiteGraphOperator(MessagePassing):
     def message(self, x_i, x_j):
         return x_i + x_j
 
+
 class DBGNN(Module):
     """Implementation of time-aware graph neural network DBGNN ([Reference paper](https://openreview.net/pdf?id=Dbkqs1EhTr)).
 
@@ -31,13 +29,8 @@ class DBGNN(Module):
         hidden_dims: number of hidden dimensions per each layer in the first/higher order network
         p_dropout: drop-out probability
     """
-    def __init__(
-        self,
-        num_classes: int,
-        num_features: list[int],
-        hidden_dims: list[int],
-        p_dropout: float = 0.0
-    ):
+
+    def __init__(self, num_classes: int, num_features: list[int], hidden_dims: list[int], p_dropout: float = 0.0):
         super().__init__()
 
         self.num_features = num_features
@@ -53,18 +46,16 @@ class DBGNN(Module):
         self.first_order_layers = ModuleList()
         self.first_order_layers.append(GCNConv(self.num_features[0], self.hidden_dims[0]))
 
-        for dim in range(1, len(self.hidden_dims)-1):
+        for dim in range(1, len(self.hidden_dims) - 1):
             # higher-order layers
-            self.higher_order_layers.append(GCNConv(self.hidden_dims[dim-1], self.hidden_dims[dim]))
+            self.higher_order_layers.append(GCNConv(self.hidden_dims[dim - 1], self.hidden_dims[dim]))
             # first-order layers
-            self.first_order_layers.append(GCNConv(self.hidden_dims[dim-1], self.hidden_dims[dim]))
+            self.first_order_layers.append(GCNConv(self.hidden_dims[dim - 1], self.hidden_dims[dim]))
 
         self.bipartite_layer = BipartiteGraphOperator(self.hidden_dims[-2], self.hidden_dims[-1])
 
         # Linear layer
         self.lin = torch.nn.Linear(self.hidden_dims[-1], num_classes)
-
-
 
     def forward(self, data):
 
@@ -84,7 +75,9 @@ class DBGNN(Module):
         x_h = F.dropout(x_h, p=self.p_dropout, training=self.training)
 
         # Bipartite message passing
-        x = torch.nn.functional.elu(self.bipartite_layer((x_h, x), data.bipartite_edge_index, N = data.num_ho_nodes, M= data.num_nodes))
+        x = torch.nn.functional.elu(
+            self.bipartite_layer((x_h, x), data.bipartite_edge_index, N=data.num_ho_nodes, M=data.num_nodes)
+        )
         x = F.dropout(x, p=self.p_dropout, training=self.training)
 
         # Linear layer

@@ -3,14 +3,14 @@ from typing import Tuple, List, Dict
 
 from pathpyG.core.graph import Graph
 
-def WeisfeilerLeman_test(g1: Graph, g2: Graph) -> Tuple[bool, List[str], List[str]]:
+def WeisfeilerLeman_test(g1: Graph, g2: Graph, features_g1: dict = None, features_g2: dict = None) -> Tuple[bool, List[str], List[str]]:
     """Run Weisfeiler-Leman isomorphism test on two graphs.
     
     The algorithm heuristically checks whether two graphs are isomorphic. If it returns False,
     we can be sure that the graphs are non-isomoprhic. If the test returns True we did not find
     conclusive evidence that they are not isomorphic, i.e. the graphs may or may not be isomophic.
 
-    Note that the two graphs must have IndexMap mappings that assign different node IDs to the nodes
+    The two graphs must have IndexMap mappings that assign different node IDs to the nodes
     in both graphs. The function will raise an error if the node labels of both graphs overlap.
 
     The function returns a tuple (bool, list, list), where the first entry is the result of the test
@@ -27,7 +27,11 @@ def WeisfeilerLeman_test(g1: Graph, g2: Graph) -> Tuple[bool, List[str], List[st
         raise Exception('node identifiers of graphs must not overlap')
     g_combined = g1 + g2
     # initialize labels of all nodes to zero
-    fingerprint: Dict[str | int, str] = {v: '0' for v in g_combined.nodes}
+    if features_g1 is None or features_g2 is None:       
+        fingerprint: Dict[str | int, str] = {v: '0' for v in g_combined.nodes}
+    else:
+        fingerprint = features_g1.copy()
+        fingerprint.update(features_g2)
     labels = {} 
     label_count = 1
     stop = False

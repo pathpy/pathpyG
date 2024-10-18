@@ -30,6 +30,14 @@ def simple_walks() -> PathData:
     paths.append_walk(('B', 'C', 'E'))
     return paths
 
+@pytest.fixture
+def simple_walks_2() -> PathData:
+    """Return a simple example for path data."""
+    paths = PathData(mapping=IndexMap(['A', 'B', 'C', 'D', 'E']))
+    paths.append_walk(('A', 'C', 'D'), weight=2.0)
+    paths.append_walk(('B', 'C', 'E'), weight=2.0)
+    return paths
+
 
 @pytest.fixture
 def simple_temporal_graph() -> TemporalGraph:
