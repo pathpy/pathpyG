@@ -1,7 +1,8 @@
 import numpy as _np
+import scipy
 
 from pathpyG.core.IndexMap import IndexMap
-from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges, G_np_randomize, G_nm_randomize, G_np_MLE
+from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges, G_np_randomize, G_nm_randomize, G_np_MLE, generate_degree_sequence
 
 
 def test_G_nm():
@@ -114,3 +115,23 @@ def test_graphic_sequence():
     assert is_graphic_Erdos_Gallai([1, 3, 0, 2]) is False
     assert is_graphic_Erdos_Gallai([3, 2, 2, 1]) is True
 
+
+def test_generate_degree_sequence():
+    degree_prob_dict = {1: 0.1, 2: 0.2, 3: 0.3, 4: 0.4}
+    degree_sequence = generate_degree_sequence(100, degree_prob_dict)
+    assert len(degree_sequence) == 100
+
+    xk = _np.arange(7)
+    pk = (0.1, 0.2, 0.3, 0.1, 0.1, 0.0, 0.2)
+
+    custm = scipy.stats.rv_discrete(name='custm', values=(xk, pk))
+    degree_sequence = generate_degree_sequence(100, custm)
+    assert len(degree_sequence) == 100
+
+    binom_dist = scipy.stats.binom(n=10, p=0.5)
+    degree_sequence = generate_degree_sequence(100, binom_dist)
+    assert len(degree_sequence) == 100
+
+    norm_dist = scipy.stats.norm(loc=3, scale=1)
+    degree_sequence = generate_degree_sequence(100, norm_dist)
+    assert len(degree_sequence) == 100
