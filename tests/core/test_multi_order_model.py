@@ -10,6 +10,7 @@ from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.path_data import PathData
 from pathpyG.core.MultiOrderModel import MultiOrderModel
 
+
 def test_multi_order_model_init():
     model = MultiOrderModel()
     assert model.layers == {}
@@ -26,9 +27,19 @@ def test_multi_order_model_str():
     assert str(model) == "MultiOrderModel with max. order 5"
 
 
-def test_multi_order_iterate_lift_order():
-    # ToDo:
-    assert False
+def test_iterate_lift_order(simple_graph_multi_edges):
+    ho_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
+        edge_index=simple_graph_multi_edges.data.edge_index,
+        node_sequence=torch.arange(simple_graph_multi_edges.N).unsqueeze(1),
+        mapping=simple_graph_multi_edges.mapping,
+        save=True,
+    )
+    assert ho_index.tolist() == [[0, 2], [3, 3]]
+    assert node_sequence.tolist() == [[0, 1], [0, 2], [0, 1], [1, 2]]
+    assert edge_weight is None
+    assert gk.data.edge_index.as_tensor().tolist() == [[0], [2]]
+    assert gk.data.node_sequence.tolist() == [[0, 1], [0, 2], [1, 2]]
+    assert gk.data.edge_weight.tolist() == [2.0]
 
 
 def test_dof():
@@ -86,6 +97,7 @@ def test_likelihood_ratio_test():
     assert np.isclose(p_01_code, p_01)
     assert bool_code_12 == (p_12 < significance_threshold)
     assert np.isclose(p_12_code, p_12)
+
 
 def test_log_likelihood():
     toy_paths_ho = PathData(IndexMap(list("abcde")))
@@ -149,6 +161,7 @@ def test_estimate_order():
     m = MultiOrderModel.from_PathData(toy_paths_ho, max_order=max_order)
     assert m.estimate_order(toy_paths_ho, max_order=2, significance_threshold=significance_threshold) == 2
 
+
 def test_multi_order_model_from_paths(simple_walks_2):
     m = MultiOrderModel.from_PathData(simple_walks_2, max_order=2)
     g1 = m.layers[1]
@@ -159,9 +172,19 @@ def test_multi_order_model_from_paths(simple_walks_2):
     assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1], [2, 3]]))
     assert torch.equal(g2.data.edge_weight, torch.tensor([2.0, 2.0]))
 
+
 def test_multi_order_from_temporal_graph(simple_temporal_graph):
-    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=2, delta=4)
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4)
     g1 = m.layers[1]
     g2 = m.layers[2]
+    g3 = m.layers[3]
     assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
     assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
+    assert torch.equal(g3.data.edge_index, EdgeIndex([[0, 0], [1, 2]]))
+
+
+def test_to_DBGNN_data(simple_temporal_graph):
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4)
+    data = m.to_dbgnn_data(max_order=3)
+    assert torch.equal(data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
+    assert torch.equal(data.edge_index_higher_order, EdgeIndex([[0, 0], [1, 2]]))

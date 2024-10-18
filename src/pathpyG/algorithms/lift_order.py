@@ -26,7 +26,7 @@ def aggregate_node_attributes(
         edge_index: The edge index of the graph.
         node_attribute: The node attribute tensor.
         aggr: The aggregation method to use. One of "src", "dst", "max", "mul" or "add".
-    
+
     Returns:
         The aggregated node attributes for each edge.
     """
@@ -54,7 +54,7 @@ def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int) -> torch.Ten
     Args:
         edge_index: A **sorted** edge index tensor of shape (2, num_edges).
         num_nodes: The number of nodes in the graph.
-    
+
     Returns:
         The edge index of the lifted (line) graph.
     """
@@ -90,7 +90,7 @@ def lift_order_edge_index_weighted(
         edge_weight: The edge weights of the (k-1)th order graph.
         num_nodes: The number of nodes in the graph.
         aggr: The aggregation method to use. One of "src", "dst", "max", "mul" or "add".
-    
+
     Returns:
         A tuple containing the edge index of the lifted (line) graph and the aggregated edge weights.
     """

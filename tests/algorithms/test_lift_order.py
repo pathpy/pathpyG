@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from pathpyG.algorithms.lift_order import (
@@ -26,6 +27,8 @@ def test_aggregate_node_attributes():
     assert aggr_attributes.tolist() == [2, 6, 3, 12, 4]
     aggr_attributes = aggregate_node_attributes(edge_index=edge_index, node_attribute=node_attribute, aggr="add")
     assert aggr_attributes.tolist() == [3, 5, 4, 7, 5]
+    with pytest.raises(ValueError):
+        aggregate_node_attributes(edge_index=edge_index, node_attribute=node_attribute, aggr="unknown")
 
 
 def test_lift_order_edge_index():
