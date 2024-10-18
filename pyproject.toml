@@ -121,6 +121,8 @@ per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py fil
 
 [tool.pylint.format] # Linter
 max-line-length = 120
+# Disable information about: Unnecessary "else" after "return", remove the "else" and de-indent the code inside 
+disable = "R1705"
 
 [tool.pyright]
 reportGeneralTypeIssues = false
