@@ -2,8 +2,6 @@
 
 import torch
 from torch_geometric import EdgeIndex
-from torch_geometric.loader import DataLoader
-from torch import IntTensor
 
 import numpy as np
 from scipy.stats import chi2
@@ -11,8 +9,7 @@ from scipy.stats import chi2
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.core.path_data import PathData
 from pathpyG.core.MultiOrderModel import MultiOrderModel
-from pathpyG.core.Graph import Graph
-from pathpyG.algorithms.temporal import lift_order_temporal
+
 
 def test_multi_order_model_init():
     model = MultiOrderModel()
@@ -30,17 +27,19 @@ def test_multi_order_model_str():
     assert str(model) == "MultiOrderModel with max. order 5"
 
 
-def test_multi_order_model_lift_order_edge_index():
-    # Inspired by https://github.com/pyg-team/pytorch_geometric/blob/master/test/transforms/test_line_graph.py
-    # Directed.
-    edge_index = torch.tensor(
-        [
-            [0, 1, 2, 2, 3],
-            [1, 2, 0, 3, 0],
-        ]
+def test_iterate_lift_order(simple_graph_multi_edges):
+    ho_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
+        edge_index=simple_graph_multi_edges.data.edge_index,
+        node_sequence=torch.arange(simple_graph_multi_edges.N).unsqueeze(1),
+        mapping=simple_graph_multi_edges.mapping,
+        save=True,
     )
-    ho_index = MultiOrderModel.lift_order_edge_index(edge_index=edge_index, num_nodes=4)
-    assert ho_index.tolist() == [[0, 1, 1, 2, 3, 4], [1, 2, 3, 0, 4, 0]]
+    assert ho_index.tolist() == [[0, 2], [3, 3]]
+    assert node_sequence.tolist() == [[0, 1], [0, 2], [0, 1], [1, 2]]
+    assert edge_weight is None
+    assert gk.data.edge_index.as_tensor().tolist() == [[0], [2]]
+    assert gk.data.node_sequence.tolist() == [[0, 1], [0, 2], [1, 2]]
+    assert gk.data.edge_weight.tolist() == [2.0]
 
 
 def test_dof():
@@ -98,6 +97,7 @@ def test_likelihood_ratio_test():
     assert np.isclose(p_01_code, p_01)
     assert bool_code_12 == (p_12 < significance_threshold)
     assert np.isclose(p_12_code, p_12)
+
 
 def test_log_likelihood():
     toy_paths_ho = PathData(IndexMap(list("abcde")))
@@ -161,13 +161,6 @@ def test_estimate_order():
     m = MultiOrderModel.from_PathData(toy_paths_ho, max_order=max_order)
     assert m.estimate_order(toy_paths_ho, max_order=2, significance_threshold=significance_threshold) == 2
 
-def test_lift_order_temporal(simple_temporal_graph):
-    edge_index = lift_order_temporal(simple_temporal_graph, delta=5)
-    event_graph = Graph.from_edge_index(edge_index)
-    assert event_graph.N == simple_temporal_graph.M
-    # for delta=5 we have three time-respecting paths (a,b,1) -> (b,c,5), (b,c,5) -> (c,d,9) and (b,c,5) -> (c,e,9)
-    assert event_graph.M == 3
-    assert torch.equal(event_graph.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
 
 def test_multi_order_model_from_paths(simple_walks_2):
     m = MultiOrderModel.from_PathData(simple_walks_2, max_order=2)
@@ -175,3 +168,23 @@ def test_multi_order_model_from_paths(simple_walks_2):
     g2 = m.layers[2]
     assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [2, 2, 3, 4]]))
     assert torch.equal(g1.data.edge_weight, torch.tensor([2.0, 2.0, 2.0, 2.0]))
+
+    assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1], [2, 3]]))
+    assert torch.equal(g2.data.edge_weight, torch.tensor([2.0, 2.0]))
+
+
+def test_multi_order_from_temporal_graph(simple_temporal_graph):
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4)
+    g1 = m.layers[1]
+    g2 = m.layers[2]
+    g3 = m.layers[3]
+    assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
+    assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
+    assert torch.equal(g3.data.edge_index, EdgeIndex([[0, 0], [1, 2]]))
+
+
+def test_to_DBGNN_data(simple_temporal_graph):
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4)
+    data = m.to_dbgnn_data(max_order=3)
+    assert torch.equal(data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
+    assert torch.equal(data.edge_index_higher_order, EdgeIndex([[0, 0], [1, 2]]))

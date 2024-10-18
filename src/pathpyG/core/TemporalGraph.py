@@ -11,11 +11,12 @@ from pathpyG import Graph
 from pathpyG.core.IndexMap import IndexMap
 from pathpyG.utils.config import config
 
+
 class TemporalGraph(Graph):
     def __init__(self, data: Data, mapping: IndexMap = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
-        
-        
+
+
         Example:
             ```py
             from pytorch_geometric.data import TemporalData
@@ -27,7 +28,9 @@ class TemporalGraph(Graph):
             ```
         """
         if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = data.edge_index = EdgeIndex(data=data.edge_index, sparse_size=(data.num_nodes, data.num_nodes))
+            data.edge_index = data.edge_index = EdgeIndex(
+                data=data.edge_index.contiguous(), sparse_size=(data.num_nodes, data.num_nodes)
+            )
 
         # reorder temporal data
         self.data = data.sort_by_time()
@@ -39,8 +42,7 @@ class TemporalGraph(Graph):
 
         # create mapping between edge index and edge tuples
         self.edge_to_index = {
-            (e[0].item(), e[1].item()): i
-            for i, e in enumerate([e for e in self.data.edge_index.t()])
+            (e[0].item(), e[1].item()): i for i, e in enumerate([e for e in self.data.edge_index.t()])
         }
 
         self.start_time = self.data.time[0].item()
@@ -62,22 +64,43 @@ class TemporalGraph(Graph):
             ts.append(t)
 
         if not num_nodes:
-            num_nodes = len(set(sources+targets))
+            num_nodes = len(set(sources + targets))
 
         return TemporalGraph(
             data=Data(
                 edge_index=torch.stack((torch.Tensor(sources), torch.Tensor(targets))).long(),
                 time=torch.Tensor(ts),
-                num_nodes=num_nodes
+                num_nodes=num_nodes,
             ),
-            mapping=index_map
+            mapping=index_map,
         )
 
     @staticmethod
-    def from_csv(filename: str, sep: str = '', header: bool = True, is_undirected: bool = False, timestamp_format='%Y-%m-%d %H:%M:%S', time_rescale=1) -> TemporalGraph:
+    def from_csv(
+        filename: str,
+        sep: str = ",",
+        header: bool = True,
+        is_undirected: bool = False,
+        timestamp_format="%Y-%m-%d %H:%M:%S",
+        time_rescale: int = 1,
+    ) -> TemporalGraph:
         """Read temporal graph from csv file, using pandas module"""
         from pathpyG.io.pandas import read_csv_temporal_graph
-        return read_csv_temporal_graph(filename, sep=sep, header=header, is_undirected=is_undirected, timestamp_format=timestamp_format, time_rescale=time_rescale)
+
+        return read_csv_temporal_graph(
+            filename,
+            sep=sep,
+            header=header,
+            is_undirected=is_undirected,
+            timestamp_format=timestamp_format,
+            time_rescale=time_rescale,
+        )
+
+    def to_csv(self, filename: str, sep: str = ",", header: bool = True) -> None:
+        """Write temporal graph to csv file, using pandas module"""
+        from pathpyG.io.pandas import write_csv
+
+        write_csv(self, filename, sep=sep, header=header)
 
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
@@ -86,27 +109,28 @@ class TemporalGraph(Graph):
         for e in self.data.edge_index.t():
             yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item()), self.data.time[i].item()  # type: ignore
             i += 1
-    
+
     def shuffle_time(self) -> None:
         """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""
         self.data.time = self.data.time[torch.randperm(len(self.data.time))]
 
-    def to_static_graph(self, weighted=False, time_window: Optional[Tuple[int,int]]=None) -> Graph:
-        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph.
-        """
+    def to_static_graph(self, weighted: bool = False, time_window: Optional[Tuple[int, int]] = None) -> Graph:
+        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph."""
         if time_window is not None:
             idx = (self.data.time >= time_window[0]).logical_and(self.data.time < time_window[1]).nonzero().ravel()
             edge_index = self.data.edge_index[:, idx]
         else:
             edge_index = self.data.edge_index
 
-        n = edge_index.max().item()+1
+        n = edge_index.max().item() + 1
 
         if weighted:
-            i, w = torch_geometric.utils.coalesce(edge_index.as_tensor(), torch.ones(edge_index.size(1), device=self.data.edge_index.device))
-            return Graph(Data(edge_index=EdgeIndex(data=i, sparse_size=(n,n)), edge_weight=w), self.mapping)
+            i, w = torch_geometric.utils.coalesce(
+                edge_index.as_tensor(), torch.ones(edge_index.size(1), device=self.data.edge_index.device)
+            )
+            return Graph(Data(edge_index=EdgeIndex(data=i, sparse_size=(n, n)), edge_weight=w), self.mapping)
         else:
-            return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n,n)), self.mapping)
+            return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n, n)), self.mapping)
 
     def to_undirected(self) -> TemporalGraph:
         """
@@ -128,36 +152,24 @@ class TemporalGraph(Graph):
         rev_edge_index = self.data.edge_index.flip([0])
         edge_index = torch.cat([self.data.edge_index, rev_edge_index], dim=1)
         times = torch.cat([self.data.time, self.data.time])
-        return TemporalGraph(
-            data=Data(
-                edge_index=edge_index,
-                time=times
-            ),
-            mapping=self.mapping
-        )        
+        return TemporalGraph(data=Data(edge_index=edge_index, time=times), mapping=self.mapping)
 
     def get_window(self, start: int, end: int) -> TemporalGraph:
-        """Returns an instance of the TemporalGraph that captures all time-stamped 
+        """Returns an instance of the TemporalGraph that captures all time-stamped
         edges in a given window defined by start and (non-inclusive) end, where start
         and end refer to the index of the first and last event in the time-ordered list of events."""
 
         return TemporalGraph(
-            data=Data(
-                edge_index=self.data.edge_index[:, start:end],
-                time=self.data.time[start:end]
-            ),
-            mapping=self.mapping
+            data=Data(edge_index=self.data.edge_index[:, start:end], time=self.data.time[start:end]),
+            mapping=self.mapping,
         )
 
     def get_snapshot(self, start: int, end: int) -> TemporalGraph:
-        """Returns an instance of the TemporalGraph that captures all time-stamped 
+        """Returns an instance of the TemporalGraph that captures all time-stamped
         edges in a given time window defined by start and (non-inclusive) end, where start
         and end refer to the time stamps"""
 
-        return TemporalGraph(
-            data=self.data.snapshot(start, end),
-            mapping=self.mapping
-        )
+        return TemporalGraph(data=self.data.snapshot(start, end), mapping=self.mapping)
 
     def __str__(self) -> str:
         """
@@ -179,13 +191,17 @@ class TemporalGraph(Graph):
                 s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         if len(self.data.edge_attrs()) > 1:
             s += "\nEdge attributes\n"
-            for a in self.data.edge_attrs():                
+            for a in self.data.edge_attrs():
                 s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.keys()) > len(self.data.edge_attrs()) + len(
-            self.data.node_attrs()
-        ):
+        if len(self.data.keys()) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
             s += "\nGraph attributes\n"
             for a in self.data.keys():
-                if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a) and a != 'src' and a != 'dst' and a != 't':
+                if (
+                    not self.data.is_node_attr(a)
+                    and not self.data.is_edge_attr(a)
+                    and a != "src"
+                    and a != "dst"
+                    and a != "t"
+                ):
                     s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
         return s
