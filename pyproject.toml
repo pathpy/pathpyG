@@ -73,8 +73,8 @@ Tracker = "https://github.com/pathpy/pathpyG/issues"
 ########################################################################################
 
 [build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
 
 [tool.flit.module]
 name = "pathpyG"
