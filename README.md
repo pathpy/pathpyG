@@ -17,13 +17,13 @@ Documentation
 
 Online documentation is available at [pathpy.net](https://www.pathpy.net).
 
-The docs include a [tutorial](https://www.pathpy.net/0.0.2-dev/tutorial/), an [API reference](https://www.pathpy.net/0.0.2-dev/reference/pathpyG/), and other useful information.
+The docs include a tutorials, an API reference, and other useful information.
 
 
 Dependencies
 ------------
 
-pathpyG supports Python 3.7+.
+pathpyG supports Python 3.10+.
 
 Installation requires [numpy](http://www.numpy.org/), [scipy](https://www.scipy.org/), [torch](hhttps://pytorch.org/), and [torch-geometric](https://pytorch-geometric.readthedocs.io/en/latest/).
 
