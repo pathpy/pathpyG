@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List, Union
+from warnings import warn
 
 import torch
 import numpy as np
@@ -14,16 +15,20 @@ class IndexMap:
         Args:
             node_ids: List of node IDs to initialize mapping.
         """
+        self.node_ids = None
+        self.id_to_idx = {}
+        self.higher_order = False  # Whether the IDs are tuples
         if node_ids is not None:
-            assert len(node_ids) == len(set(node_ids)), "node_id entries must be unique"
-            # first-order: nodes = integer indices
-            self.node_ids: np.ndarray = np.array(node_ids)
-            self.id_to_idx: Dict[str, int] = {v: i for i, v in enumerate(node_ids)}
-            self.has_ids = True
-        else:
-            self.node_ids = np.array([])
-            self.id_to_idx = {}
-            self.has_ids = False
+            self.add_ids(node_ids)
+
+    @property
+    def has_ids(self) -> bool:
+        """Return whether mapping has IDs.
+
+        Returns:
+            Whether mapping has IDs.
+        """
+        return self.node_ids is not None
 
     def num_ids(self) -> int:
         """Return number of IDs.
@@ -31,9 +36,11 @@ class IndexMap:
         Returns:
             Number of IDs.
         """
+        if self.node_ids is None:
+            return 0
         return len(self.node_ids)
 
-    def add_id(self, node_id: str) -> None:
+    def add_id(self, node_id: any) -> None:
         """Assigns additional ID to next consecutive index.
 
         Args:
@@ -41,23 +48,39 @@ class IndexMap:
         """
         if node_id not in self.id_to_idx:
             idx = self.num_ids()
-            self.node_ids = np.append(self.node_ids, node_id)
+            if isinstance(node_id, (list, tuple)):
+                self.higher_order = True
+                node_id = np.array(node_id)
+            self.node_ids = (
+                np.concatenate((self.node_ids, np.array([node_id])))
+                if self.node_ids is not None
+                else np.array([node_id])
+            )
             self.id_to_idx[node_id] = idx
-            self.has_ids = True
+        else:
+            warn("ID is already present in the mapping. It is not added again.")
 
     def add_ids(self, node_ids: list | np.ndarray) -> None:
-        """Assigns additional IDs to next consecutive indices.
+        """Assigns additional IDs to next consecutive indices. The order of IDs is preserved.
 
         Args:
             node_ids: IDs to assign
         """
         cur_num_ids = self.num_ids()
-        node_ids = np.array(node_ids)
-        mask = np.isin(node_ids, self.node_ids)
-        new_ids = np.unique(node_ids[~mask])
-        self.node_ids = np.append(self.node_ids, new_ids)
-        self.id_to_idx.update({v: i + cur_num_ids for i, v in enumerate(new_ids)})
-        self.has_ids = True
+        if isinstance(node_ids, list) and isinstance(node_ids[0], (list, tuple)):
+            self.higher_order = True
+
+        if not isinstance(node_ids, np.ndarray):
+            node_ids = np.array(node_ids)
+
+        all_ids = np.concatenate((self.node_ids, node_ids)) if self.node_ids is not None else node_ids
+        unique_ids = np.unique(all_ids, axis=0 if self.higher_order else None)
+
+        if len(unique_ids) != len(all_ids):
+            raise ValueError("IDs are not unique or already present in the mapping.")
+
+        self.node_ids = all_ids
+        self.id_to_idx.update({tuple(v) if self.higher_order else v: i + cur_num_ids for i, v in enumerate(node_ids)})
 
     def to_id(self, idx: int) -> Union[int, str, tuple]:
         """Map index to ID if mapping is defined, return index otherwise.
@@ -74,7 +97,7 @@ class IndexMap:
             return tuple(self.node_ids[idx])
         return idx
 
-    def to_ids(self, idxs: list | tuple) -> list:
+    def to_ids(self, idxs: list | tuple | np.ndarray) -> list:
         """Map list of indices to IDs if mapping is defined, return indices otherwise.
 
         Args:
@@ -84,6 +107,8 @@ class IndexMap:
             IDs if mapping is defined, indices otherwise.
         """
         if self.has_ids:
+            if not isinstance(idxs, np.ndarray):
+                idxs = np.array(idxs)
             return self.node_ids[idxs].tolist()
         return idxs
 
@@ -97,10 +122,12 @@ class IndexMap:
             Index if mapping is defined, argument otherwise.
         """
         if self.has_ids:
+            if self.higher_order:
+                node = tuple(node)
             return self.id_to_idx[node]
         return node
 
-    def to_idxs(self, nodes: list | tuple) -> torch.Tensor:
+    def to_idxs(self, nodes: list | tuple | np.ndarray) -> torch.Tensor:
         """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise.
 
         Args:
@@ -110,7 +137,12 @@ class IndexMap:
             Indices if mapping is defined, arguments otherwise.
         """
         if self.has_ids:
-            return torch.tensor([self.id_to_idx[node] for node in nodes])
+            if not isinstance(nodes, np.ndarray):
+                nodes = np.array(nodes)
+            if self.higher_order:
+                return torch.tensor([self.id_to_idx[tuple(node)] for node in nodes])
+            else:
+                return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()]).reshape(nodes.shape)
         return torch.tensor(nodes)
 
     def __str__(self) -> str:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 import numpy as np
 
@@ -25,7 +26,8 @@ def test_index_mapping():
     assert mapping.num_ids() == 1
     assert mapping.node_ids == ["a"]
 
-    mapping.add_id("a")
+    with pytest.warns(Warning):
+        mapping.add_id("a")
 
     assert mapping.num_ids() == 1
     assert mapping.node_ids == ["a"]
@@ -47,22 +49,31 @@ def test_index_mapping_bulk():
     assert mapping.to_idxs(["a", "b", "c", "d", "e"]).tolist() == [0, 1, 2, 3, 4]
     assert mapping.to_ids([0, 1, 2, 3, 4]) == ["a", "b", "c", "d", "e"]
 
-    mapping.add_ids(("a", "a", "f", "f"))
+    with pytest.warns(Warning):
+        mapping.add_ids(("a", "a", "f", "f"))
     assert mapping.num_ids() == 6
     assert (mapping.node_ids == ["a", "b", "c", "d", "e", "f"]).all()
     assert mapping.to_idxs(["a", "b", "c", "d", "e", "f"]).tolist() == [0, 1, 2, 3, 4, 5]
     assert mapping.to_ids([0, 1, 2, 3, 4, 5]) == ["a", "b", "c", "d", "e", "f"]
 
-    mapping.add_id("a")
+    with pytest.warns(Warning):
+        mapping.add_id("a")
     assert mapping.num_ids() == 6
     assert (mapping.node_ids == ["a", "b", "c", "d", "e", "f"]).all()
     assert mapping.to_idxs(("a", "b", "c", "d", "e", "f")).tolist() == [0, 1, 2, 3, 4, 5]
     assert mapping.to_ids(torch.tensor([0, 1, 2, 3, 4, 5])) == ["a", "b", "c", "d", "e", "f"]
     assert mapping.to_idxs(np.array(["a", "b", "c", "d", "e", "f"])).tolist() == [0, 1, 2, 3, 4, 5]
 
+    mapping.add_ids(np.array(["h", "i", "g"]))
+    assert mapping.num_ids() == 9
+    assert (mapping.node_ids == ["a", "b", "c", "d", "e", "f", "h", "i", "g"]).all()
+    assert mapping.to_idxs(["a", "b", "c", "d", "e", "f", "h", "i", "g"]).tolist() == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
 
 def test_integer_ids():
     mapping = IndexMap([0, 2, 3, 1, 4])
+    print(mapping.node_ids)
+    print(mapping.id_to_idx)
 
     assert mapping.to_idx(0) == 0
     assert mapping.to_idx(1) == 3
@@ -97,3 +108,15 @@ def test_float_ids():
 
     assert mapping.to_ids([0, 1, 7]) == [0.0, 2.0, 9.0]
     assert (mapping.to_idxs([0.0, 1.0, 2.0]) == torch.tensor([0, 3, 1])).all()
+
+
+def test_bulk_ids():
+    node_ids = np.array(["a", "c", "b", "d", "a", "e"])
+    with pytest.warns(Warning):
+        mapping = IndexMap(node_ids)
+
+    assert mapping.to_idx("a") == 0
+    assert mapping.to_idx("c") == 1
+
+    assert mapping.to_ids(torch.tensor([[0, 1], [2, 3], [0, 4]])) == [["a", "c"], ["b", "d"], ["a", "e"]]
+    assert (mapping.to_idxs([["a", "c"], ["b", "d"], ["a", "e"]]) == torch.tensor([[0, 1], [2, 3], [0, 4]])).all()
