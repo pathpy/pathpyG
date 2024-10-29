@@ -64,7 +64,7 @@ doc = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/pathpy/pathpyG/blob/main/README.md" # TODO: Update to official documentation
+Documentation = "https://www.pathpy.net"
 Source = "https://github.com/pathpy/pathpyG"
 Tracker = "https://github.com/pathpy/pathpyG/issues"
 
@@ -73,8 +73,8 @@ Tracker = "https://github.com/pathpy/pathpyG/issues"
 ########################################################################################
 
 [build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [tool.flit.module]
 name = "pathpyG"
