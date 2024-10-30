@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, Generator
 
+import numpy as np
+
 import torch
 import torch_geometric
 import torch_geometric.utils
@@ -9,11 +11,10 @@ from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG.core.index_map import IndexMap
-from pathpyG.utils.config import config
 
 
 class TemporalGraph(Graph):
-    def __init__(self, data: Data, mapping: IndexMap = None) -> None:
+    def __init__(self, data: Data, mapping: IndexMap | None = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
 
 
@@ -50,25 +51,18 @@ class TemporalGraph(Graph):
 
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:
-        sources = []
-        targets = []
-        ts = []
+        edge_array = np.array(edge_list)
+        ts = edge_array[:, 2].astype(np.number)
 
-        index_map = IndexMap()
-
-        for v, w, t in edge_list:
-            index_map.add_id(v)
-            index_map.add_id(w)
-            sources.append(index_map.to_idx(v))
-            targets.append(index_map.to_idx(w))
-            ts.append(t)
+        index_map = IndexMap(np.unique(edge_array[:, :2]))
+        edge_index = index_map.to_idxs(edge_array[:, :2].T)
 
         if not num_nodes:
-            num_nodes = len(set(sources + targets))
+            num_nodes = index_map.num_ids()
 
         return TemporalGraph(
             data=Data(
-                edge_index=torch.stack((torch.Tensor(sources), torch.Tensor(targets))).long(),
+                edge_index=edge_index,
                 time=torch.Tensor(ts),
                 num_nodes=num_nodes,
             ),
@@ -105,10 +99,8 @@ class TemporalGraph(Graph):
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
         """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
-        i = 0
-        for e in self.data.edge_index.t():
-            yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item()), self.data.time[i].item()  # type: ignore
-            i += 1
+        for e, t in zip(self.data.edge_index.t(), self.data.time):
+            yield *self.mapping.to_ids(e), t.item()
 
     def shuffle_time(self) -> None:
         """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""

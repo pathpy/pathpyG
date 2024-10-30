@@ -70,6 +70,24 @@ def test_from_edge_list():
     assert isinstance(g.edge_to_index, dict)
     assert torch.equal(g.data.edge_index, EdgeIndex([[0,1,2], [1,2,0]]))
 
+    edge_list = [
+        ("a", "c"),
+        ("b", "c"),
+    ]
+    g = Graph.from_edge_list(edge_list)
+    assert g.mapping.to_idx('a') == 0
+    assert g.mapping.to_idx('b') == 1
+    assert g.mapping.to_idx('c') == 2
+
+    edge_list = [
+        (1, 12),
+        (2, 1),
+    ]
+    g = Graph.from_edge_list(edge_list)
+    assert g.mapping.to_idx(1) == 0
+    assert g.mapping.to_idx(2) == 1
+    assert g.mapping.to_idx(12) == 2
+
 
 def test_from_edge_list_undirected():
     edge_list = [

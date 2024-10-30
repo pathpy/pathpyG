@@ -21,6 +21,7 @@ def test_init():
 def test_from_edge_list():
     tedges = [("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)]
     tgraph = TemporalGraph.from_edge_list(tedges)
+    print(tgraph.data.time)
     assert tgraph.N == 5
     assert tgraph.M == 4
     assert tgraph.start_time == 1

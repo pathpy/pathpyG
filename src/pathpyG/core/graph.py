@@ -11,6 +11,8 @@ from typing import (
     Generator,
 )
 
+import numpy as np
+
 import torch
 
 import torch_geometric
@@ -153,35 +155,15 @@ class Graph:
         """
 
         if mapping is None:
-            node_ids = set()
-            for v, w in edge_list:
-                node_ids.add(v)
-                node_ids.add(w)
-            numeric_ids = True
-            for x in node_ids:
-                if not x.isnumeric():
-                    numeric_ids = False
-            node_list = list(node_ids)
-            if numeric_ids:  # sort numerically
-                node_list.sort(key=int)
-            else:  # sort lexicograpbically
-                node_list.sort()
-            mapping = IndexMap(node_list)
-
-        sources = []
-        targets = []
-        for v, w in edge_list:
-            sources.append(mapping.to_idx(v))
-            targets.append(mapping.to_idx(w))
+            mapping = IndexMap(np.unique(edge_list))
 
         if num_nodes is None:
             num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
-            [sources, targets],
+            mapping.to_idxs(edge_list).T.contiguous(),
             sparse_size=(num_nodes, num_nodes),
             is_undirected=is_undirected,
-            device=config["torch"]["device"],
         )
         return Graph(Data(edge_index=edge_index, num_nodes=num_nodes), mapping=mapping)
 

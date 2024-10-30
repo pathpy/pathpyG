@@ -168,7 +168,7 @@ class PathData:
 
     def map_node_seq(self, node_seq: list | tuple) -> list:
         """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs"""
-        return self.mapping.to_ids(node_seq)
+        return self.mapping.to_ids(node_seq).tolist()
 
     def __str__(self) -> str:
         """Return a string representation of the PathData object."""
@@ -188,7 +188,7 @@ class PathData:
                 weights = [1.0] * len(paths)
 
         mapping = IndexMap()
-        mapping.add_ids(np.concatenate([np.array(path) for path in paths]))
+        mapping.add_ids(np.unique(np.hstack(paths)))
 
         pathdata = PathData(mapping)
         pathdata.append_walks(node_seqs=paths, weights=weights)
