@@ -138,8 +138,6 @@ class IndexMap:
         if self.has_ids:
             if self.id_shape != (-1,):
                 node = tuple(node)
-            elif isinstance(node, str) and np.issubdtype(self.node_ids.dtype, int) and node.isnumeric():
-                node = int(node)
             return self.id_to_idx[node]
         else:
             return node
@@ -157,10 +155,7 @@ class IndexMap:
             if not isinstance(nodes, np.ndarray):
                 nodes = np.array(nodes)
 
-            if np.issubdtype(self.node_ids.dtype, int) and np.issubdtype(nodes.dtype, str) and np.char.isnumeric(nodes).all():
-                nodes = nodes.astype(int)
             shape = nodes.shape
-
             if self.id_shape == (-1,):
                 return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()]).reshape(shape)
             else:
