@@ -88,6 +88,18 @@ def test_from_edge_list():
     assert g.mapping.to_idx(2) == 1
     assert g.mapping.to_idx(12) == 2
 
+    edge_list = [
+        ("1", "12"),
+        ("2", "1"),
+        ("21", "3")
+    ]
+    g = Graph.from_edge_list(edge_list)
+    assert g.mapping.to_idx('1') == 0
+    assert g.mapping.to_idx('2') == 1
+    assert g.mapping.to_idx('3') == 2
+    assert g.mapping.to_idx('12') == 3
+    assert g.mapping.to_idx('21') == 4
+
 
 def test_from_edge_list_undirected():
     edge_list = [

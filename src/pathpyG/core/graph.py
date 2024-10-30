@@ -155,7 +155,10 @@ class Graph:
         """
 
         if mapping is None:
-            mapping = IndexMap(np.unique(edge_list))
+            edge_array = np.array(edge_list)
+            if np.issubdtype(edge_array.dtype, str) and np.char.isnumeric(edge_array).all():
+                edge_array = edge_array.astype(int)
+            mapping = IndexMap(np.unique(edge_array))
 
         if num_nodes is None:
             num_nodes = mapping.num_ids()
