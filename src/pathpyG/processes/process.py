@@ -1,26 +1,26 @@
 """Base classes for simulation of dynamical processes"""
 
 import abc
-from collections import defaultdict
-from typing import Iterable, TYPE_CHECKING, Any, Optional, List, Dict, Tuple, Union, Set
+from typing import Generator, Iterable, Any, Optional, Tuple, Union
 
 from pandas import DataFrame
 
 from pathpyG import Graph
 from tqdm import tqdm
 
-class BaseProcess:
-    """Abstract base class for all implementations of discrete-time dynamical processes.
-    """
 
-    def __init__(self, network: Graph):
+class BaseProcess:
+    """Abstract base class for all implementations of discrete-time dynamical processes."""
+
+    def __init__(self, graph: Graph):
         """initialize process."""
-        self._network = network
+        self._graph = graph
         self.init(self.random_seed())
 
     @property
-    def network(self) -> Graph:
-        return self._network
+    def graph(self) -> Graph:
+        """Returns the graph on which the process is simulated."""
+        return self._graph
 
     @abc.abstractmethod
     def init(self, seed: Any) -> None:
@@ -32,24 +32,28 @@ class BaseProcess:
 
     @abc.abstractmethod
     def step(self) -> Iterable[str]:
-        """Abstract method to simulate a single step of the process. Returns 
+        """Abstract method to simulate a single step of the process. Returns
         an iterable of node uids whose state has been changed in this step."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def time(self) -> int:
         """Abstract property returning the current time."""
 
     @abc.abstractmethod
-    def state_to_color(self, Any) -> Union[Tuple[int, int, int], str]:
+    def state_to_color(self, states: Any) -> Union[Tuple[int, int, int], str]:
         """Abstract method mapping node states to RGB colors or color names."""
 
     @abc.abstractmethod
-    def node_state(self, v: str) -> Any:
+    def node_state(self, v: str | int) -> Any:
         """Abstract method returning the current state of a given node."""
 
-    def simulation_run(self, steps: int, seed: Optional[Any] = None) -> Tuple[int, Set[str]]:
-        """Abstract generator method that initializes the process, runs a number of steps and yields a tuple consisting of the current time and the set of nodes whose state has changed in each step."""
-        if seed == None:
+    def simulation_run(
+        self, steps: int, seed: Optional[Any] = None
+    ) -> Generator[tuple[int, Iterable[str]], None, None]:
+        """Abstract generator method that initializes the process, runs a number of steps and yields a tuple consisting
+        of the current time and the set of nodes whose state has changed in each step."""
+        if seed is None:
             self.init(self.random_seed())
         else:
             self.init(seed)
@@ -64,182 +68,34 @@ class BaseProcess:
         """Perform one or more simulation runs of the process with a given number of steps."""
 
         # Generate initializations for different runs
-        seeds: List = list()
-        if type(runs) == int:
-            for s in range(runs):
+        seeds = []
+        if isinstance(runs, int):
+            for _ in range(runs):
                 seeds.append(self.random_seed())
-        else:
+        elif isinstance(runs, Iterable):
             for s in runs:
                 seeds.append(s)
+        else:
+            raise ValueError("Parameter runs must be an integer or an iterable of seeds.")
 
-        results = list()
+        results = []
         run_id: int = 0
         for seed in tqdm(seeds):
 
             # initialize seed state and record initial state
             self.init(seed)
-            for v in self.network.nodes:
-                results.append({'run_id': run_id, 'seed': seed,
-                               'time': self.time, 'node': v, 'state': self.node_state(v)})
+            for v in self.graph.nodes:
+                results.append(
+                    {"run_id": run_id, "seed": seed, "time": self.time, "node": v, "state": self.node_state(v)}
+                )
 
             # simulate the given number of steps
             for time, updated_nodes in self.simulation_run(steps, seed):
-                # print(updated_nodes)
                 # record the new state of each changed node
                 for v in updated_nodes:
-                    results.append({'run_id': run_id, 'seed': seed,
-                                   'time': time, 'node': v, 'state': self.node_state(v)})
+                    results.append(
+                        {"run_id": run_id, "seed": seed, "time": time, "node": v, "state": self.node_state(v)}
+                    )
             run_id += 1
 
-        return DataFrame.from_dict(results)
-
-    #TODO : add plot method
-    # def plot(self, data: DataFrame, run_id: int = 0, timescale: Optional[int] = 1, **kwargs):
-    #     """
-    #     Display an interactive plot of the evolution of a process based on a recorded simulation experiment
-
-    #     Parameters
-    #     ----------
-    #     data: DataFrame
-    #         A pandas dataframe containing the state changes recorded in a simulation of the process, as generated by function `run_experiment`
-
-    #     run_id: Optional[int]=0
-    #         The integer identifier of the simulation run contained in `data` that shall be visualized. 
-    #         If omitted, a default value of zero is used, i.e. the first simulation run in `data` will 
-    #         be visualized. 
-
-    #     timescale: Optional[int]=100
-    #         Determines the speed of the visualisation. For the default value of 100, each simulation step
-    #         will be displayed for 100 timesteps in the visualisation.
-
-    #     **kwargs
-    #         Optional keyword-arguments that will be passed to the plot function of the underlying instance 
-    #         of TemporalNetwork
-
-    #     Examples
-    #     --------
-
-    #     Generate 10 random walks and visualize the walk dynamics of the run with id 3
-
-    #     >>> n = pp.Network(directed=False)
-    #     >>> n.add_edge('a', 'b')
-    #     >>> rw = pp.processes.RandomWalk(n)
-    #     >>> data = rw.run_experiment(steps=100, runs=10)
-    #     >>> rw.plot(data, run_id=3)
-
-    #     See Also:
-    #     ---------
-    #     TemporalNetwork, plot, RandomWalk, HigherOrderRandomWalk, EpidemicSIR
-    #     """
-
-    #     evolution: DataFrame = data.loc[data['run_id'] == run_id]
-
-    #     start_time = evolution.min()['time']
-    #     end_time = evolution.max()['time']
-
-    #     if end_time <= start_time:
-    #         LOG.warning('Run data does not contain time evolution')
-    #         return None
-
-    #     # create network with temporal attributes
-    #     tn = TemporalNetwork(directed=self.network.directed)
-
-    #     # add nodes and set initial state
-    #     for v in self.network.nodes.uids:
-    #         tv = TemporalNode(v)
-    #         tn.add_node(tv)
-    #         tv[start_time, 'color'] = self.state_to_color(evolution.loc[(
-    #             evolution['time'] == start_time) & (evolution['node'] == v)]['state'].values[0])
-
-    #     # if process is simulated on temporal network
-    #     if isinstance(self.network, TemporalNetwork):
-    #         for edge in self.network.edges[start_time:end_time]:
-    #             tn.add_edge(edge.v.uid, edge.w.uid, start=max(
-    #                 edge.start, start_time), end=min(end_time, edge.end))
-
-    #         # update states
-    #         for index, row in evolution.iterrows():
-    #             tn.nodes[row['node']][row['time'],
-    #                                   'color'] = self.state_to_color(row['state'])
-    #     # if process is simulated on static network
-    #     else:
-    #         # add all edges
-    #         for e in self.network.edges:
-    #             tn.add_edge(e.v.uid, e.w.uid, start=start_time,
-    #                         end=end_time*timescale)
-
-    #         # update states
-    #         for index, row in evolution.iterrows():
-    #             tn.nodes[row['node']][row['time']*timescale,
-    #                                   'color'] = self.state_to_color(row['state'])
-    #     return tn.plot(node_color=self.state_to_color(False), **kwargs)
-
-
-
-    #TODO: 
-    
-    # def to_directed_acylic_graph(self, data: DataFrame, run_id: Optional[int] = 0, time_delta: Optional[int] = None, states: Optional[Iterable[Any]] = None) -> DirectedAcyclicGraph:
-    #     """Returns a directed acyclic graph representation of all state changes over time.
-    #     In this graph an edge (v_t' -> w_t) indicates that node w changed to state x at time t after a 
-    #     connected node v previously changed its state to x at time t' < t (i.e. (v,w) exists in the network).
-
-    #     A link (v-t') -> (w-t) in the directed acyclic graph indicates that node v may have causally influenced node w at time t. As an example, for a an SIR epidemic spreading process, the DAG representation captures possible transmission routes.
-
-    #     Parameters
-    #     ----------
-    #     data: DataFrame
-    #         recorded state changes of nodes, as returned by `run_experiment`
-
-    #     run_id: Optional[int]=0
-    #         identifier of simulation run to turn into DAG
-
-    #     time_delta: Optional[int]=None
-    #         maximum time difference of possible influence, i.e. if set to delta, any state changes between connected nodes that are apart further than delta time steps are not considered. If None (default) the last prior state change of any connected node is considered, independent of the 
-    #         time distance
-
-    #     states: Optional[Iterable[Any]]=None
-    #         Only changes to states in this set will be considered. If None (default) all state changes will be considered
-    #     """
-    #     dag = DirectedAcyclicGraph(uid='{0}'.format(run_id))
-    #     run = data.loc[data['run_id'] == run_id]
-
-    #     for index, row in run.iterrows():
-    #         # add temporal node
-    #         state = row['state']
-    #         if states and state not in states:
-    #             continue
-
-    #         w = row['node']
-    #         t = row['time']
-    #         uid = '{0}-{1}'.format(w, t)
-    #         dag.add_node(uid, node_label=w, time=t, state=state)
-
-    #         # find predecessor of node v that last changed its state
-    #         predecessors = []
-    #         for v in self._network.predecessors[w]:
-
-    #             # get all state changes of node v prior to time t
-    #             candidates = run.loc[(run['node'] == v.uid) & (run['time'] < t)]
-
-    #             if len(candidates) > 0:
-
-    #                 # find time stamp and new state of last state change
-    #                 r = candidates['time'].argmax()
-    #                 last_time = candidates.iloc[r]['time']
-    #                 last_state = candidates.iloc[r]['state']
-
-    #                 # check last state change and time difference
-    #                 if last_state in states and (time_delta is None or (t-last_time) < time_delta):
-    #                     pred_uid = '{0}-{1}'.format(v.uid, last_time)
-    #                     if pred_uid not in dag.nodes:
-    #                         predecessors.append(
-    #                             Node(pred_uid, node_label=v.uid, time=last_time, state=last_state))
-    #                     else:
-    #                         predecessors.append(dag.nodes[pred_uid])
-    #                     # predecessors = ['{0}-{1}'.format(v.uid, t_p)]
-    #                 # elif :
-
-    #         for v in predecessors:
-    #             dag.add_edge(v, dag.nodes[uid])
-
-    #     return dag
+        return DataFrame.from_records(results)
