@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch_geometric import EdgeIndex
 
@@ -16,46 +17,77 @@ def test_lift_order_temporal(simple_temporal_graph):
     assert torch.equal(event_graph.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
 
 
-# def test_time_respecting_paths(long_temporal_graph):
-#     paths = time_respecting_paths(long_temporal_graph, delta=5)
-#     assert paths[1] == [['a', 'b'],
-#                         ['b', 'f'],
-#                         ['b', 'i'],
-#                         ['c', 'f'],
-#                         ['c', 'i'],
-#                         ['f', 'h']]
-#     assert paths[3] == [['a', 'b', 'c', 'd'],
-#                         ['a', 'b', 'c', 'e'],
-#                         ['c', 'f', 'a', 'g']]
-#     assert paths[2] == [['a', 'c', 'h'],
-#                         ['a', 'g', 'h']]
+def test_temporal_shortest_paths(long_temporal_graph):
+    dist, pred = temporal_shortest_paths(long_temporal_graph, delta=10)
+    assert dist.shape == (long_temporal_graph.N, long_temporal_graph.N)
+    assert pred.shape == (long_temporal_graph.N, long_temporal_graph.N)
 
+    true_dist = np.array(
+        [
+            [0.0, 1.0, 1.0, 3.0, 3.0, 3.0, 1.0, 2.0, float("inf")],
+            [3.0, 0.0, 1.0, 2.0, 2.0, 1.0, 4.0, 5.0, 1.0],
+            [2.0, float("inf"), 0.0, 1.0, 1.0, 1.0, 3.0, 1.0, 1.0],
+            [
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                0.0,
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+            ],
+            [
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                0.0,
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+            ],
+            [1.0, float("inf"), float("inf"), float("inf"), float("inf"), 0.0, 2.0, 1.0, float("inf")],
+            [
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                0.0,
+                1.0,
+                float("inf"),
+            ],
+            [float("inf"), float("inf"), float("inf"), float("inf"), float("inf"), 1.0, float("inf"), 0.0, 1.0],
+            [
+                float("inf"),
+                1.0,
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                0.0,
+            ],
+        ]
+    )
+    assert np.allclose(dist, true_dist, equal_nan=True)
 
-# def test_temporal_shortest_paths(long_temporal_graph):
-#     sp, sp_lengths, counts = temporal_shortest_paths(long_temporal_graph, delta=5)
-#     assert torch.equal(sp[1], torch.tensor([[0, 1],
-#         [0, 2],
-#         [0, 6],
-#         [1, 2],
-#         [1, 5],
-#         [1, 8],
-#         [2, 3],
-#         [2, 4],
-#         [2, 5],
-#         [2, 7],
-#         [2, 8],
-#         [5, 0],
-#         [5, 7],
-#         [6, 7],
-#         [7, 5],
-#         [7, 8],
-#         [8, 1]]))
-#     assert torch.equal(sp[2], torch.tensor([[0, 2, 7],
-#         [0, 6, 7],
-#         [1, 2, 3],
-#         [1, 2, 4],
-#         [2, 5, 0],
-#         [5, 0, 6]]))
-#     assert torch.equal(sp[3], torch.tensor([[0, 1, 2, 3],
-#         [0, 1, 2, 4],
-#         [2, 5, 0, 6]]))
+    true_pred = np.array(
+        [
+            [0, 0, 0, 2, 2, 2, 0, 2, -1],
+            [5, 1, 1, 2, 2, 1, 0, 6, 1],
+            [5, -1, 2, 2, 2, 2, 0, 2, 2],
+            [-1, -1, -1, 3, -1, -1, -1, -1, -1],
+            [-1, -1, -1, -1, 4, -1, -1, -1, -1],
+            [5, -1, -1, -1, -1, 5, 0, 5, -1],
+            [-1, -1, -1, -1, -1, -1, 6, 6, -1],
+            [-1, -1, -1, -1, -1, 7, -1, 7, 7],
+            [-1, 8, -1, -1, -1, -1, -1, -1, 8],
+        ]
+    )
+    assert np.allclose(pred, true_pred)
