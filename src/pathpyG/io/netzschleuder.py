@@ -92,7 +92,8 @@ def read_netzschleuder_record(name: str, base_url: str = 'https://networks.skewe
 
 
 def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: bool = False,
-        base_url: str='https://networks.skewed.de', format='csv') -> Graph:
+                             time_attr: Optional[str] = None,
+                             base_url: str = 'https://networks.skewed.de', format='csv') -> Graph:
     """Read a pathpyG graph or temporal graph from the netzschleuder repository.
 
     Args:
@@ -140,7 +141,7 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
         except KeyError:
             raise Exception(f'Record {name} contains multiple networks, please specify network name.')
         
-        if format == 'csv': 
+        if format == 'csv':
             url = f'{base_url}/net/{name}/files/{net}.csv.zip'
             try:
                 response = request.urlopen(url)
@@ -160,8 +161,8 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
 
                         # rename columns
                         edges.rename(columns={'# source': 'v', 'target': 'w'}, inplace=True)
-                        if timestamps:
-                            edges.rename(columns={'time': 't'}, inplace=True)
+                        if timestamps and time_attr:
+                            edges.rename(columns={time_attr: 't'}, inplace=True)
 
                         # construct graph and assign edge attributes
                         if timestamps:
