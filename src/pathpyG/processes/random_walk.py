@@ -92,7 +92,7 @@ class RandomWalk(BaseProcess):
         [0.45454545 0.27272727 0.18181818 0.09090909]
     """
 
-    def __init__(self, graph: Graph, q: float, p: float) -> None:
+    def __init__(self, graph: Graph, q: float = 1.0, p: float = 1.0) -> None:
         """Creates a biased random walk process in a network.
 
         Args:
@@ -118,7 +118,7 @@ class RandomWalk(BaseProcess):
             runs = torch.tensor(runs)
 
         row, col = self.graph.data.edge_index
-        return random_walk(row, col, start=runs, walk_length=steps, num_nodes=self.graph.N)  # type: ignore
+        return random_walk(row, col, start=runs, walk_length=steps, num_nodes=self.graph.N, coalesced=False)  # type: ignore
 
     def state_to_color(self, state: bool) -> str:
         """
@@ -146,7 +146,7 @@ class RandomWalk(BaseProcess):
             weight: If specified, the numerical edge attribute that shall be used in the biased
                 transition probabilities of the random walk.
         """
-        if p != 1 or q != 1:
+        if p != 1.0 or q != 1.0:
             raise NotImplementedError("Only p=q=1 is supported, for now.")
 
         A = graph.data.edge_index.to_sparse()
@@ -304,7 +304,7 @@ class HigherOrderRandomWalk(RandomWalk):
     """
 
     def __init__(
-        self, higher_order_network: Graph, first_order_network, weight: Optional[Weight] = None, restart_prob: float = 0
+        self, higher_order_network: Graph
     ) -> None:
         """Creates a biased random walk process in a network.
 
@@ -315,21 +315,17 @@ class HigherOrderRandomWalk(RandomWalk):
                 the random walk transition probabilities.
             restart_probability: The per-step probability that a random walker restarts in a random (higher-order) node
         """
-        self._first_order_network = first_order_network
-        RandomWalk.__init__(self, higher_order_network, weight, restart_prob)
-
-    def init(self, seed) -> None:
-
-        # set number of times each first-order node has been visited
-        self._first_order_visitations = np.ravel(np.zeros(shape=(1, self._first_order_network.N)))
-        self._first_order_visitations[self._first_order_network.mapping.to_idx(seed[-1])] = 1
-        RandomWalk.init(self, seed)
+        # Hacky way to get biased random walk based on integer edge weights by duplicating edges
+        duplicated_edge_index = torch.repeat_interleave(higher_order_network.data.edge_index, higher_order_network.data.edge_weight, dim=1)
+        higher_order_network.data.edge_index = duplicated_edge_index
+        RandomWalk.__init__(self, higher_order_network)
 
     @property
-    def first_order_visitation_frequencies(self) -> np.array:
+    def first_order_visitation_frequencies(self, rw: torch.Tensor) -> np.array:
         """Returns current normalized visitation frequencies of first-order nodes based on the history of
         the higher-order random walk. Initially, all visitation probabilities are zero except for the last node of the higher-order seed node.
         """
+        
         return np.nan_to_num(self._first_order_visitations / (self._t + 1))
 
     def first_order_stationary_state(self, **kwargs) -> np.array:
