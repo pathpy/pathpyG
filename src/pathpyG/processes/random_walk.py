@@ -1,13 +1,13 @@
 """Classes to simlate random walks on static, temporal, and higher-order networks."""
 
 from __future__ import annotations
-
+from functools import lru_cache
 from typing import Any, Iterable, Optional, Union
 
+import torch
+from torch_cluster import random_walk
 import numpy as np
 import scipy as sp  # pylint: disable=import-error
-from scipy.sparse import linalg as spl
-from scipy import linalg as spla
 from pandas import DataFrame
 from pathpyG import PathData
 from pathpyG import Graph
@@ -92,7 +92,7 @@ class RandomWalk(BaseProcess):
         [0.45454545 0.27272727 0.18181818 0.09090909]
     """
 
-    def __init__(self, network: Graph, weight: Optional[Weight] = None, restart_prob: float = 0) -> None:
+    def __init__(self, graph: Graph, q: float, p: float) -> None:
         """Creates a biased random walk process in a network.
 
         Args:
@@ -104,99 +104,21 @@ class RandomWalk(BaseProcess):
         """
 
         # transition matrix of random walk
-        self._transition_matrix = RandomWalk.compute_transition_matrix(network, weight, restart_prob)
+        self._transition_matrix = RandomWalk.compute_transition_matrix(graph, q=q, p=p)
 
-        # initialize Vose Alias Samplers
+        self._graph = graph
 
-        self.samplers = {
-            v: VoseAliasSampling(
-                np.nan_to_num(np.ravel(self._transition_matrix[network.mapping.to_idx(v), :].todense()))
-            )
-            for v in network.nodes
-        }
-
-        # compute eigenvectors and eigenvalues of transition matrix
-        if network.N > 2:
-            _, eigenvectors = spl.eigs(self._transition_matrix.transpose(), k=1, which="LM")
-            pi = eigenvectors.reshape(
-                eigenvectors.size,
-            )
-        else:
-            eigenvals, eigenvectors = spla.eig(self._transition_matrix.transpose().toarray())
-            x = np.argsort(-eigenvals)
-            pi = eigenvectors[x][:, 0]
-
-        # calculate stationary visitation probabilities
-        self._stationary_probabilities = np.real(pi / np.sum(pi))
-
-        self._network = network
-        self.init(self.random_seed())
-
-    def init(self, seed: str) -> None:
+    def run_experiment(self, steps: int, runs: int | Iterable | torch.Tensor | None = 1) -> torch.Tensor:
         """
-        Initializes the random walk state with a given seed/source node
-
-        Args:
-            seed: Id of node in which the random walk will start
+    
         """
-        # reset currently visited node (or higher-order node)
-        self._current_node = seed
+        if isinstance(runs, int):
+            runs = torch.arange(runs)
+        elif isinstance(runs, Iterable):
+            runs = torch.tensor(runs)
 
-        # set time
-        self._t = 0
-
-        # set number of times each node has been visited
-        self._visitations = np.ravel(np.zeros(shape=(1, self._network.N)))
-        self._visitations[self._network.mapping.to_idx(seed)] = 1
-
-    def random_seed(self) -> Any:
-        """
-        Returns a random node from the network, chosen uniformly at random
-        """
-        x = np.random.choice(range(self._network.N))
-        return self._network.mapping.to_id(x)
-
-    def step(self) -> Iterable[str]:
-        """
-        Function that will be called for each step of the random walk. This function
-        returns a tuple, where the first entry is the id of the currently visited node and the second entry is the id of the previously visited node.
-        """
-
-        # determine next node
-        next_node = self.network.mapping.to_id(self.samplers[self._current_node].sample())
-        # TODO: assertion will not hold if restart_prob > 0
-        # assert (self._current_node, next_node) in self._network.edges, 'Assertion Error: {0} not in edge list'.format(
-        #     (self._current_node, next_node))
-
-        previous_node = self._current_node
-        self._current_node = next_node
-
-        # increment visitations and current time
-        self._visitations[self._network.mapping.to_idx(self._current_node)] += 1
-        self._t += 1
-
-        # return tuple of changed nodes, where the first node is the currently visited node
-        return (self._current_node, previous_node)
-
-    def node_state(self, v) -> bool:
-        """
-        Returns a boolean variable indicating whether the walker is currently
-        visiting (first-order) node v
-        """
-        if v in self._network.nodes:
-            return v == self._current_node
-        # TODO: Error here!
-        elif type(self._network) == HigherOrderGraph:
-            return v == self._network.mapping.to_id(self._current_node)[-1]
-        else:
-            raise NotImplementedError("Random walk not implemented for network of type {0}".format(type(self._network)))
-
-    @property
-    def time(self) -> int:
-        """
-        The current time of the random walk process, i.e. the number of steps taken since the start node.
-        """
-        return self._t
+        row, col = self.graph.data.edge_index
+        return random_walk(row, col, start=runs, walk_length=steps, num_nodes=self.graph.N)  # type: ignore
 
     def state_to_color(self, state: bool) -> str:
         """
@@ -212,8 +134,8 @@ class RandomWalk(BaseProcess):
 
     @staticmethod
     def compute_transition_matrix(
-        network: Graph, weight: Optional[Weight] = None, restart_prob: float = 0
-    ) -> sp.sparse.csr_matrix:
+        graph: Graph, q: float, p: float
+    ) -> torch.Tensor:
         """Returns the transition matrix of a (biased) random walk in the given network.
 
         Returns a transition matrix that describes a random walk process in the
@@ -223,114 +145,38 @@ class RandomWalk(BaseProcess):
             network: The network for which the transition matrix will be created.
             weight: If specified, the numerical edge attribute that shall be used in the biased
                 transition probabilities of the random walk.
-
         """
-        if weight is None or weight is False:
-            A = network.get_sparse_adj_matrix().todense()
-        elif weight is True:
-            A = network.get_sparse_adj_matrix(edge_attr="edge_weight").todense()
-        else:
-            A = network.get_sparse_adj_matrix(edge_attr=weight).todense()
-        D = A.sum(axis=1)
-        n = network.N
-        T = sp.sparse.lil_matrix((n, n))
-        zero_deg = 0
-        for i in range(n):
-            if D[i] == 0:
-                zero_deg += 1
-            for j in range(n):
-                if D[i] > 0:
-                    T[i, j] = restart_prob * (1.0 / n) + (1 - restart_prob) * A[i, j] / D[i]
-                else:
-                    if restart_prob > 0:
-                        T[i, j] = 1.0 / n
-                    else:
-                        T[i, j] = 0.0
-        # if zero_deg > 0:
-        #     LOG.warning(
-        #         'Network contains {0} nodes with zero out-degree'.format(zero_deg))
-        return T.tocsr()
+        if p != 1 or q != 1:
+            raise NotImplementedError("Only p=q=1 is supported, for now.")
+
+        A = graph.data.edge_index.to_sparse()
+        D = A.sum()
+        return A / D
 
     @property
     def transition_matrix(self) -> sp.sparse.csr_matrix:
         """Returns the transition matrix of the random walk"""
         return self._transition_matrix
 
-    def transition_probabilities(self, node: str) -> np.array:
-        """Returns a vector that contains transition probabilities.
+    def transition_probabilities(self, node: str) -> torch.Tensor:
+        """Returns a tensor that contains transition probabilities.
 
         Returns a vector that contains transition probabilities from a given
         node to all other nodes in the network.
         """
-        return np.nan_to_num(np.ravel(self._transition_matrix[self._network.mapping.to_idx(node), :].todense()))
+        return torch.nan_to_num(self._transition_matrix[self._graph.mapping.to_idx(node)])
 
-    def visitation_probabilities(self, t, seed: str) -> np.ndarray:
+    def visitation_probabilities(self, t, seed_node: str) -> np.ndarray:
         """Calculates visitation probabilities of nodes after t steps for a given start node
 
         Initially, all visitation probabilities are zero except for the start node.
         """
-        assert seed in self._network.nodes
+        initial_dist = torch.zeros(self._graph.N)
+        initial_dist[self._graph.mapping.to_idx(seed_node)] = 1.0
+        return torch.dot(initial_dist, (self._transition_matrix**t).todense())  # type: ignore
 
-        initial_dist = np.zeros(self._network.N)
-        initial_dist[self._network.mapping.to_idx(seed)] = 1.0
-        return np.dot(initial_dist, (self._transition_matrix**t).todense())
-
-    def transition_matrix_pd(self) -> DataFrame:
-        """
-        Returns the transition matrix as pandas DataFrame with proper row/column labels.
-        """
-        return DataFrame(
-            self.transition_matrix.todense(),
-            columns=[v for v in self._network.nodes],
-            index=[v for v in self._network.nodes],
-        )
-
-    @property
-    def current_node(self) -> str:
-        return self._current_node
-
-    def get_path(self, data: DataFrame, run_id: Optional[int] = 0, first_order: Optional[bool] = True) -> PathData:
-        """Returns a path that represents the sequence of (first-order) nodes traversed
-        by a single random walk.
-
-        Args:
-            data: Pandas `DataFrame` containing the trajectory of one or more (higher-order) random walks, generated by a call of `run_experiment`
-            run_uid: Uid of the random walk simulation to be returns as Path (default: 0).
-
-        Returns:
-            Path object containing the sequence of nodes traversed by the random walk
-        """
-        # list of traversed nodes starting with seed node
-        walk_steps = list(data.loc[(data["run_id"] == run_id) & (data["state"] == True)]["node"].values)
-
-        # generate Path
-        path = PathData(self._network.mapping)
-        path.append_walk([walk_steps[i] for i in range(len(walk_steps))])
-        return path
-
-    def get_paths(self, data: DataFrame, run_ids: Optional[Iterable] = None) -> PathData:
-        """Return a PathData object where each path is one random walk trajectory
-
-        Args:
-            data: Pandas `DataFrame` containing the trajectory of one or more random walks, generated by `run_experiment`
-            run_ids: UIDs of random walk simulation runs to be included in the `PathData`. If None (default), all runs will be included.
-        """
-
-        if not run_ids:  # generate paths for all run_ids in the data frame
-            runs = data["run_id"].unique()
-        else:
-            runs = run_ids
-
-        walks = PathData(self._network.mapping)
-        for id in runs:
-            walk_steps = list(data.loc[(data["run_id"] == id) & (data["state"] == True)]["node"].values)
-
-            # add walk to PathData
-            walks.append_walk(walk_steps)
-
-        return walks
-
-    def stationary_state(self, **kwargs: Any) -> np.array:
+    @lru_cache(maxsize=1)
+    def stationary_state(self, **kwargs: Any) -> torch.Tensor:
         """Compute stationary visitation probabilities of random walk.
 
         Computes stationary visitation probabilities of nodes based on the
@@ -340,24 +186,22 @@ class RandomWalk(BaseProcess):
             kwargs: Arbitrary key-value pairs to bee passed to the
             scipy.sparse.linalg.eigs function.
         """
-        _p = self._stationary_probabilities
-        if kwargs:
-            _, eigenvectors = sp.sparse.linalg.eigs(self._transition_matrix.transpose(), k=1, which="LM", **kwargs)
-            pi = eigenvectors.reshape(
-                eigenvectors.size,
-            )
-            _p = np.real(pi / np.sum(pi))
-        return _p
+        _, eigenvectors = sp.sparse.linalg.eigs(self._transition_matrix.T.numpy(), k=1, which="LM", **kwargs)
+        pi = eigenvectors.reshape(
+            eigenvectors.size,
+        )
+        _p = np.real(pi / np.sum(pi))
+        return torch.tensor(_p)
 
-    @property
-    def visitation_frequencies(self) -> np.array:
+    def visitation_frequencies(self, rw: torch.Tensor) -> torch.Tensor:
         """Returns current normalized visitation frequencies of nodes based on the history of
         the random walk. Initially, all visitation probabilities are zero except for the start node.
         """
-        return np.nan_to_num(self._visitations / (self._t + 1))
+        t = rw.size(0)
+        _, counts = torch.unique(rw, return_counts=True)
+        return counts / t
 
-    @property
-    def total_variation_distance(self) -> float:
+    def total_variation_distance(self, rw: torch.Tensor) -> float:
         """Returns the total variation distance between stationary
         visitation probabilities and the current visitation frequencies
 
@@ -366,12 +210,12 @@ class RandomWalk(BaseProcess):
         to zero for RandomWalk.t -> np.infty and its magnitude indicates the
         current relaxation of the random walk process.
         """
-        return self.TVD(self.stationary_state(), self.visitation_frequencies)
+        return self.TVD(self.stationary_state(), self.visitation_frequencies(rw))
 
     @staticmethod
-    def TVD(a: np.array, b: np.array) -> float:
+    def TVD(a: torch.Tensor, b: torch.Tensor) -> float:
         """Calculates the total variation distance between two probability vectors"""
-        return np.abs(a - b).sum() / 2.0
+        return (torch.abs(a - b).sum() / 2.0).item()
 
 
 class HigherOrderRandomWalk(RandomWalk):
