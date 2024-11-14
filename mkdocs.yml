@@ -26,6 +26,7 @@ nav:
     - Path Data and Higher-Order Models: tutorial/paths_higher_order.ipynb    
     - Higher-Order Models for Time-Respecting Paths: tutorial/trp_higher_order.ipynb    
     - Causality-Aware GNNs: tutorial/dbgnn.ipynb    
+    - DBGNN vs GCN vs TGN: tutorial/dbgnn_vs_tgn.ipynb
     - Develop your own plot Functions: plot_tutorial.md
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
