@@ -28,7 +28,6 @@ dependencies = [
     'matplotlib',           # Plotting library
     'seaborn',              # High-level plotting library
     "jupyter",           # To run the tutorial notebooks
-    "toml",                 # interface for parsing TOML (avialibe from 3.11+)
 ]
 
 [project.optional-dependencies]

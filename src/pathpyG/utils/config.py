@@ -2,7 +2,14 @@
 
 import os
 import sys
-import tomllib
+
+# Official workaround: https://github.com/hukkin/tomli
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
+import pip._vendor.tomli as tomllib
 from pathlib import Path
 
 
