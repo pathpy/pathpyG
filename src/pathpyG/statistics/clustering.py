@@ -1,8 +1,5 @@
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING,
-    Set
-)
+from typing import TYPE_CHECKING, Set
 
 from pathpyG.core.graph import Graph
 import numpy as _np
@@ -16,17 +13,17 @@ def local_clustering_coefficient(g: Graph, u: str) -> float:
     # Normalise fraction based on number of possible edges
     if g.is_directed():
         if g.out_degrees[u] > 1:
-            return k_u/(g.out_degrees[u]*(g.out_degrees[u]-1))
-        return 0.
+            return k_u / (g.out_degrees[u] * (g.out_degrees[u] - 1))
+        return 0.0
     else:
         k_u /= 2
         if g.degrees()[u] > 1:
-            return 2*k_u/(g.degrees()[u]*(g.degrees()[u]-1))
-        return 0.
+            return 2 * k_u / (g.degrees()[u] * (g.degrees()[u] - 1))
+        return 0.0
 
 
 def avg_clustering_coefficient(g: Graph) -> float:
-    return _np.mean([ local_clustering_coefficient(g, v) for v in g.nodes ])
+    return _np.mean([local_clustering_coefficient(g, v) for v in g.nodes])
 
 
 def closed_triads(g: Graph, v: str) -> Set:
@@ -49,7 +46,7 @@ def closed_triads(g: Graph, v: str) -> Set:
         for y in g.successors(x):
             edges.add((x, y))
 
-    for (x, y) in edges:
+    for x, y in edges:
         if y in g.successors(v):
             c_triads.add((x, y))
     return c_triads

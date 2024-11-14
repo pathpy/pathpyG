@@ -13,7 +13,9 @@ from pathpyG.utils import to_numpy
 def test_watts_strogatz_simple():
     g = Watts_Strogatz(5, 1, 0.0)
     assert g.m == 10
-    assert (to_numpy(g.data.edge_index) == np.array([[0, 0, 1, 1, 2, 2, 3, 3, 4, 4], [1, 4, 0, 2, 1, 3, 2, 4, 0, 3]])).all()
+    assert (
+        to_numpy(g.data.edge_index) == np.array([[0, 0, 1, 1, 2, 2, 3, 3, 4, 4], [1, 4, 0, 2, 1, 3, 2, 4, 0, 3]])
+    ).all()
 
     torch.manual_seed(1)
     g = Watts_Strogatz(5, 1, 0.5, allow_duplicate_edges=False, allow_self_loops=False)

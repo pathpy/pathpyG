@@ -28,80 +28,80 @@ def _parse_property_value(data: bytes, ptr: int, type_index: int, endianness: st
     if type_index == 0:
         return (bool(data[ptr]), 1)
     elif type_index == 1:
-        return (struct.unpack(endianness + 'h', data[ptr:ptr+2])[0], 2)
+        return (struct.unpack(endianness + "h", data[ptr : ptr + 2])[0], 2)
     elif type_index == 2:
-        return (struct.unpack(endianness + 'i', data[ptr:ptr+4])[0], 4)
+        return (struct.unpack(endianness + "i", data[ptr : ptr + 4])[0], 4)
     elif type_index == 3:
-        return (struct.unpack(endianness + 'q', data[ptr:ptr+8])[0], 8)
+        return (struct.unpack(endianness + "q", data[ptr : ptr + 8])[0], 8)
     elif type_index == 4:
-        return (struct.unpack(endianness + 'd', data[ptr:ptr+8])[0], 8)
+        return (struct.unpack(endianness + "d", data[ptr : ptr + 8])[0], 8)
     elif type_index == 5:
-        print('pathpy does not support properties with type long double. Properties have been dropped.')
+        print("pathpy does not support properties with type long double. Properties have been dropped.")
         return (None, 16)
     elif type_index == 6:
-        str_len = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
-        str = data[ptr+8:ptr+8+str_len].decode('utf-8')
+        str_len = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
+        str = data[ptr + 8 : ptr + 8 + str_len].decode("utf-8")
         return (str, 8 + str_len)
     elif type_index == 7:
-        num_values = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_values = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         vals = []
         for i in range(num_values):
-            vals.append(bool(data[ptr+offset:ptr+offset+1]))
+            vals.append(bool(data[ptr + offset : ptr + offset + 1]))
             offset += 1
         return (array(vals), 8 + num_values)
     elif type_index == 8:
-        num_values = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_values = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         vals = []
         for i in range(num_values):
-            vals.append(struct.unpack(endianness + 'h', data[ptr+offset:ptr+offset+2])[0])
+            vals.append(struct.unpack(endianness + "h", data[ptr + offset : ptr + offset + 2])[0])
             offset += 4
-        return (array(vals), 8 + 2*num_values)
+        return (array(vals), 8 + 2 * num_values)
     elif type_index == 9:
-        num_values = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_values = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         vals = []
         for i in range(num_values):
-            vals.append(struct.unpack(endianness + 'i', data[ptr+offset:ptr+offset+4])[0])
+            vals.append(struct.unpack(endianness + "i", data[ptr + offset : ptr + offset + 4])[0])
             offset += 4
-        return (array(vals), 8 + 4*num_values)
+        return (array(vals), 8 + 4 * num_values)
     elif type_index == 10:
-        num_values = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_values = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         vals = []
         for i in range(num_values):
-            vals.append(struct.unpack(endianness + 'Q', data[ptr+offset:ptr+offset+8])[0])
+            vals.append(struct.unpack(endianness + "Q", data[ptr + offset : ptr + offset + 8])[0])
             offset += 8
-        return (None, 8 + 8*num_values)
+        return (None, 8 + 8 * num_values)
     elif type_index == 11:
-        num_values = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_values = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         vals = []
         for i in range(num_values):
-            vals.append(struct.unpack(endianness + 'd', data[ptr+offset:ptr+offset+8])[0])
+            vals.append(struct.unpack(endianness + "d", data[ptr + offset : ptr + offset + 8])[0])
             offset += 8
-        return (array(vals), 8 + 8*num_values)
+        return (array(vals), 8 + 8 * num_values)
     elif type_index == 12:
-        val_len = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
-        print('pathpyG does not support properties with type vector<long double>. Properties have been dropped.')
-        return (None, 8 + 16*val_len)
+        val_len = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
+        print("pathpyG does not support properties with type vector<long double>. Properties have been dropped.")
+        return (None, 8 + 16 * val_len)
     elif type_index == 13:
-        num_strings = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
+        num_strings = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
         offset = 8
         strs = []
         for i in range(num_strings):
-            str_len = struct.unpack(endianness + 'Q', data[ptr+offset:ptr+offset+8])[0]
+            str_len = struct.unpack(endianness + "Q", data[ptr + offset : ptr + offset + 8])[0]
             offset += 8
-            strs.append(data[ptr+offset:ptr+offset+str_len].decode('utf-8'))
+            strs.append(data[ptr + offset : ptr + offset + str_len].decode("utf-8"))
             offset += str_len
 
         return (strs, offset)
     elif type_index == 14:
-        val_len = struct.unpack(endianness + 'Q', data[ptr:ptr+8])[0]
-        return (pickle.loads(data[ptr+8:ptr+8+val_len]), 8 + val_len)
+        val_len = struct.unpack(endianness + "Q", data[ptr : ptr + 8])[0]
+        return (pickle.loads(data[ptr + 8 : ptr + 8 + val_len]), 8 + val_len)
     else:
-        msg = 'Unknown type index {0} while parsing graphtool file'.format(type_index)
+        msg = "Unknown type index {0} while parsing graphtool file".format(type_index)
         print(msg)
         raise Exception(msg)
 
@@ -119,9 +119,9 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     """
 
     # check magic bytes
-    if data[0:6] != b'\xe2\x9b\xbe\x20\x67\x74':
-        print('Invalid graphtool file. Wrong magic bytes.')
-        raise Exception('Invalid graphtool file. Wrong magic bytes.')
+    if data[0:6] != b"\xe2\x9b\xbe\x20\x67\x74":
+        print("Invalid graphtool file. Wrong magic bytes.")
+        raise Exception("Invalid graphtool file. Wrong magic bytes.")
     ptr = 6
 
     # read graphtool version byte
@@ -130,17 +130,17 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
 
     # read endianness
     if bool(data[ptr]):
-        graphtool_endianness = '>'
+        graphtool_endianness = ">"
     else:
-        graphtool_endianness = '<'
+        graphtool_endianness = "<"
     ptr += 1
 
     # read length of comment
-    str_len = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+    str_len = struct.unpack(graphtool_endianness + "Q", data[ptr : ptr + 8])[0]
     ptr += 8
 
     # read string comment
-    comment = data[ptr:ptr+str_len].decode('ascii')
+    comment = data[ptr : ptr + str_len].decode("ascii")
     ptr += str_len
 
     # read network directedness
@@ -148,7 +148,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     ptr += 1
 
     # read number of nodes
-    n_nodes = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+    n_nodes = struct.unpack(graphtool_endianness + "Q", data[ptr : ptr + 8])[0]
     ptr += 8
 
     # create pandas dataframe
@@ -156,17 +156,17 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     # n = Network(directed = directed, multiedges=True)
 
     # determine binary representation of neighbour lists
-    if n_nodes<2**8:
-        fmt = 'B'
+    if n_nodes < 2**8:
+        fmt = "B"
         d = 1
-    elif n_nodes<2**16:
-        fmt = 'H'
+    elif n_nodes < 2**16:
+        fmt = "H"
         d = 2
-    elif n_nodes<2**32:
-        fmt = 'I'
+    elif n_nodes < 2**32:
+        fmt = "I"
         d = 4
     else:
-        fmt = 'Q'
+        fmt = "Q"
         d = 8
 
     sources = []
@@ -175,12 +175,12 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     n_edges = 0
     for v in range(n_nodes):
         # read number of neighbors
-        num_neighbors = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+        num_neighbors = struct.unpack(graphtool_endianness + "Q", data[ptr : ptr + 8])[0]
         ptr += 8
 
         # add edges to record
         for _ in range(num_neighbors):
-            w = struct.unpack(graphtool_endianness + fmt, data[ptr:ptr+d])[0]
+            w = struct.unpack(graphtool_endianness + fmt, data[ptr : ptr + d])[0]
             ptr += d
             sources.append(v)
             targets.append(w)
@@ -192,34 +192,34 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     edge_attr = dict()
 
     # parse property maps
-    property_maps = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+    property_maps = struct.unpack(graphtool_endianness + "Q", data[ptr : ptr + 8])[0]
     ptr += 8
 
     for _ in range(property_maps):
-        key_type = struct.unpack(graphtool_endianness + 'B', data[ptr:ptr+1])[0]
+        key_type = struct.unpack(graphtool_endianness + "B", data[ptr : ptr + 1])[0]
         ptr += 1
 
-        property_len = struct.unpack(graphtool_endianness + 'Q', data[ptr:ptr+8])[0]
+        property_len = struct.unpack(graphtool_endianness + "Q", data[ptr : ptr + 8])[0]
         ptr += 8
 
-        property_name = data[ptr:ptr+property_len].decode('ascii')
+        property_name = data[ptr : ptr + property_len].decode("ascii")
         ptr += property_len
 
-        property_type = struct.unpack(graphtool_endianness + 'B', data[ptr:ptr+1])[0]
+        property_type = struct.unpack(graphtool_endianness + "B", data[ptr : ptr + 1])[0]
         ptr += 1
 
-        if key_type == 0: # graph-level property
+        if key_type == 0:  # graph-level property
             res = _parse_property_value(data, ptr, property_type, graphtool_endianness)
             graph_attr[property_name] = res[0]
             ptr += res[1]
-        elif key_type == 1: # node-level property
+        elif key_type == 1:  # node-level property
             if property_name not in node_attr:
                 node_attr[property_name] = []
             for v in range(n_nodes):
                 res = _parse_property_value(data, ptr, property_type, graphtool_endianness)
                 node_attr[property_name].append([res[0]])
                 ptr += res[1]
-        elif key_type == 2: # edge-level property
+        elif key_type == 2:  # edge-level property
             if property_name not in edge_attr:
                 edge_attr[property_name] = []
             for e in range(n_edges):
@@ -227,7 +227,7 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
                 edge_attr[property_name].append(res[0])
                 ptr += res[1]
         else:
-            print('Unknown key type {0}'.format(key_type))
+            print("Unknown key type {0}".format(key_type))
 
     # LOG.info('Version \t= {0}'.format(graphtool_version))
     # LOG.info('Endianness \t= {0}'.format(graphtool_endianness))
@@ -243,34 +243,31 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
 
     # create graph from pandas dataframe
 
-
     # if 'time' in edge_attribute_names and not ignore_temporal:
     #     raise Exception('')
     #     n = to_temporal_network(network_data, directed=directed, **network_attributes)
     # else:
-
 
     if id_node_attr:
         mapping = pp.IndexMap(node_attr[id_node_attr])
     else:
         mapping = None
 
-    g = Graph.from_edge_index(torch.LongTensor([sources, targets]).to(config['torch']['device']), mapping=mapping)
+    g = Graph.from_edge_index(torch.LongTensor([sources, targets]).to(config["torch"]["device"]), mapping=mapping)
     for a in node_attr:
-        if not a.startswith('node_'):
+        if not a.startswith("node_"):
             # print(node_attr[a])
             # g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float).to(config['torch']['device'])
-            g.data['node_{0}'.format(a)] = node_attr[a]
+            g.data["node_{0}".format(a)] = node_attr[a]
     for a in edge_attr:
-        if not a.startswith('edge_'):
-            g.data['edge_{0}'.format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config['torch']['device'])
+        if not a.startswith("edge_"):
+            g.data["edge_{0}".format(a)] = torch.tensor(edge_attr[a], dtype=torch.float).to(config["torch"]["device"])
     for a in graph_attr:
         g.data[a] = graph_attr[a]
-        
+
     if not directed:
         return g.to_undirected()
     return g
-
 
     # for v in node_attributes:
     #     for p in node_attributes[v]:
@@ -286,10 +283,11 @@ def read_graphtool(file: str, multiedges: bool = False) -> Graph:
     Args:
         file: Path to graphtool file to be read
     """
-    with open(file, 'rb') as f:
-        if '.zst' in file:
+    with open(file, "rb") as f:
+        if ".zst" in file:
             try:
                 import zstandard as zstd
+
                 dctx = zstd.ZstdDecompressor()
                 data = f.read()
                 return parse_graphtool_format(dctx.decompress(data, max_output_size=len(data)))
@@ -299,5 +297,3 @@ def read_graphtool(file: str, multiedges: bool = False) -> Graph:
                 raise Exception(msg)
         else:
             return parse_graphtool_format(f.read(), multiedges)
-
-

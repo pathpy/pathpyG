@@ -1,9 +1,5 @@
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict
-)
+from typing import TYPE_CHECKING, Any, Dict
 
 from collections import defaultdict
 
@@ -11,18 +7,18 @@ from pathpyG.core.graph import Graph
 import numpy as _np
 
 
-def degree_sequence(g: Graph, mode: str = 'total') -> _np.array:
+def degree_sequence(g: Graph, mode: str = "total") -> _np.array:
     """Calculates the degree sequence of an undirected network.
 
     Args:
         graph: The `Graph` object for which degrees are calculated
     """
     d = g.degrees()
-    if g.is_directed() and mode == 'in':
+    if g.is_directed() and mode == "in":
         d = g.in_degrees
-    elif g.is_directed() and mode == 'out':
+    elif g.is_directed() and mode == "out":
         d = g.out_degrees
-    elif g.is_directed() and mode == 'total':
+    elif g.is_directed() and mode == "total":
         d = g.degrees()
 
     _degrees = _np.zeros(g.n, dtype=float)
@@ -31,15 +27,14 @@ def degree_sequence(g: Graph, mode: str = 'total') -> _np.array:
     return _degrees
 
 
-def degree_distribution(g: Graph, mode: str = 'total') -> Dict[int, float]:
-    """Calculates the degree distribution of a graph
-    """
+def degree_distribution(g: Graph, mode: str = "total") -> Dict[int, float]:
+    """Calculates the degree distribution of a graph"""
     d = g.degrees()
-    if g.is_directed() and mode == 'in':
+    if g.is_directed() and mode == "in":
         d = g.in_degrees
-    elif g.is_directed() and mode == 'out':
+    elif g.is_directed() and mode == "out":
         d = g.out_degrees
-    elif g.is_directed() and mode == 'total':
+    elif g.is_directed() and mode == "total":
         d = g.degrees()
 
     cnt: defaultdict = defaultdict(float)
@@ -48,7 +43,7 @@ def degree_distribution(g: Graph, mode: str = 'total') -> Dict[int, float]:
     return cnt
 
 
-def degree_raw_moment(graph: Graph, k: int = 1, mode: str = 'total') -> float:
+def degree_raw_moment(graph: Graph, k: int = 1, mode: str = "total") -> float:
     """Calculates the k-th raw moment of the degree distribution of a network
 
     Args:
@@ -62,11 +57,11 @@ def degree_raw_moment(graph: Graph, k: int = 1, mode: str = 'total') -> float:
     return mom
 
 
-def mean_degree(graph: Graph, mode: str = 'total') -> float:
+def mean_degree(graph: Graph, mode: str = "total") -> float:
     return _np.mean(degree_sequence(graph, mode=mode))
 
 
-def degree_central_moment(graph: Graph, k: int = 1, mode: str = 'total') -> float:
+def degree_central_moment(graph: Graph, k: int = 1, mode: str = "total") -> float:
     """Calculates the k-th central moment of the degree distribution.
 
     Args:
@@ -75,41 +70,43 @@ def degree_central_moment(graph: Graph, k: int = 1, mode: str = 'total') -> floa
     """
     p_k = degree_distribution(graph, mode=mode)
     mean = _np.mean(degree_sequence(graph, mode=mode))
-    m = 0.
+    m = 0.0
     for x in p_k:
-        m += (x - mean)**k * p_k[x]
+        m += (x - mean) ** k * p_k[x]
     return m
 
 
-def degree_assortativity(g: Graph, mode: str = 'total') -> float:
+def degree_assortativity(g: Graph, mode: str = "total") -> float:
     """Calculate the degree assortativity"""
 
     A = g.sparse_adj_matrix().todense()
     m = _np.sum(A)
 
     d = g.degrees()
-    if g.is_directed() and mode == 'in':
+    if g.is_directed() and mode == "in":
         d = g.in_degrees
-    elif g.is_directed() and mode == 'out':
+    elif g.is_directed() and mode == "out":
         d = g.out_degrees
-    elif g.is_directed() and mode == 'total':
+    elif g.is_directed() and mode == "total":
         d = g.degrees()
     elif not g.is_directed():
-        m = m/2.
+        m = m / 2.0
 
-    cov = 0.
-    var = 0.
+    cov = 0.0
+    var = 0.0
     for i in g.nodes:
         for j in g.nodes:
-            cov += (A[g.mapping.to_idx(i), g.mapping.to_idx(j)] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
+            cov += (A[g.mapping.to_idx(i), g.mapping.to_idx(j)] - (d[i] * d[j]) / (2 * m)) * d[i] * d[j]
             if i != j:
-                var -= (d[i]*d[j])/(2*m) * d[i] * d[j]
+                var -= (d[i] * d[j]) / (2 * m) * d[i] * d[j]
             else:
-                var += (d[i] - (d[i]*d[j])/(2*m)) * d[i] * d[j]
-    return cov/var
+                var += (d[i] - (d[i] * d[j]) / (2 * m)) * d[i] * d[j]
+    return cov / var
 
 
-def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarray, mode: str = 'total') -> float | _np.ndarray:
+def degree_generating_function(
+    graph: Graph, x: float | list[float] | _np.ndarray, mode: str = "total"
+) -> float | _np.ndarray:
     """Returns the generating function of the degree distribution of a network,
         calculated for either a single argument x or a list or numpy array of arguments x
 
@@ -140,7 +137,7 @@ def degree_generating_function(graph: Graph, x: float | list[float] | _np.ndarra
         import pathpyG as pp
         import numpy as np
         import matplotlib.pyplot as plt
-    
+
         g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c'), ('c', 'd'),
                                     ('d', 'e'), ('d', 'f'), ('e', 'f')]).to_undirected()
 

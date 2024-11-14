@@ -3,7 +3,6 @@
 The functions  in this module allow to compute shortest paths
 in static networks."""
 
-
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
@@ -39,4 +38,4 @@ def avg_path_length(graph: Graph) -> float:
     m = graph.sparse_adj_matrix()
 
     dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
-    return _np.sum(dist) / (graph.n * (graph.n-1))
+    return _np.sum(dist) / (graph.n * (graph.n - 1))

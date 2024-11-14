@@ -92,9 +92,8 @@ class Graph:
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
         # create node_sequence mapping for higher-order graphs
-        if 'node_sequence' not in self.data:
+        if "node_sequence" not in self.data:
             self.data.node_sequence = torch.arange(data.num_nodes).reshape(-1, 1)
-        
 
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes: int = None) -> Graph:
@@ -266,7 +265,7 @@ class Graph:
         if self.order > 1:
             return list(map(tuple, node_list))
         return node_list
-    
+
     @property
     def edges(self) -> list:
         """Return all edges in the graph.
@@ -632,8 +631,8 @@ class Graph:
             Graph with 5 nodes and 4 edges
         """
 
-        if self.order>1:
-            raise NotImplementedError('Add operator can only be applied to order 1 graphs')
+        if self.order > 1:
+            raise NotImplementedError("Add operator can only be applied to order 1 graphs")
 
         d1 = self.data.clone()
         m1 = self.mapping
@@ -693,18 +692,13 @@ class Graph:
         else:
             s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
 
-        attribute_info = {
-            'Node Attributes': {},
-            'Edge Attributes': {},
-            'Graph Attributes': {}
-
-        }
+        attribute_info = {"Node Attributes": {}, "Edge Attributes": {}, "Graph Attributes": {}}
         for a in self.node_attrs():
-            attribute_info['Node Attributes'][a] = attr_types[a]
+            attribute_info["Node Attributes"][a] = attr_types[a]
         for a in self.edge_attrs():
-            attribute_info['Edge Attributes'][a] = attr_types[a]
+            attribute_info["Edge Attributes"][a] = attr_types[a]
         for a in self.data.keys():
             if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
-                attribute_info['Graph Attributes'][a] = attr_types[a]
-        s += pformat(attribute_info, indent=4, width = 160)
+                attribute_info["Graph Attributes"][a] = attr_types[a]
+        s += pformat(attribute_info, indent=4, width=160)
         return s

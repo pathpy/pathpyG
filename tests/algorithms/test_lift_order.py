@@ -73,13 +73,7 @@ def test_aggregate_edge_index():
             [4, 5],  # Node 3
         ]
     )
-    g = aggregate_edge_index(
-        edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence
-    )
+    g = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
     assert g.data.edge_index.as_tensor().tolist() == [[0, 0, 1], [1, 2, 0]]
     assert g.data.edge_weight.tolist() == [3, 3, 4]
-    assert g.data.node_sequence.tolist() == [
-        [1, 2],
-        [2, 3],
-        [4, 5]
-    ]
+    assert g.data.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]

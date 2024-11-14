@@ -173,18 +173,13 @@ class TemporalGraph(Graph):
 
         from pprint import pformat
 
-        attribute_info = {
-            'Node Attributes': {},
-            'Edge Attributes': {},
-            'Graph Attributes': {}
-
-        }
+        attribute_info = {"Node Attributes": {}, "Edge Attributes": {}, "Graph Attributes": {}}
         for a in self.node_attrs():
-            attribute_info['Node Attributes'][a] = attr_types[a]
+            attribute_info["Node Attributes"][a] = attr_types[a]
         for a in self.edge_attrs():
-            attribute_info['Edge Attributes'][a] = attr_types[a]
+            attribute_info["Edge Attributes"][a] = attr_types[a]
         for a in self.data.keys():
             if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
-                attribute_info['Graph Attributes'][a] = attr_types[a]
-        s += pformat(attribute_info, indent=4, width = 160)
+                attribute_info["Graph Attributes"][a] = attr_types[a]
+        s += pformat(attribute_info, indent=4, width=160)
         return s

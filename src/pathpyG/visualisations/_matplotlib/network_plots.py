@@ -1,4 +1,5 @@
 """Network plots with matplotlib."""
+
 # =============================================================================
 # File      : network_plots.py -- Network plots with matplotlib
 # Author    : Jürgen Hackl <hackl@princeton.edu>

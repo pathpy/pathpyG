@@ -1,6 +1,5 @@
 """Iterator interface for rolling time window analysis in temporal graphs."""
 
-
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Union, List
 from collections import defaultdict
@@ -14,8 +13,7 @@ from pathpyG import config
 
 
 class RollingTimeWindow:
-    """An iterable rolling time window that can be used to perform time slice analysis of temporal graphs.
-    """
+    """An iterable rolling time window that can be used to perform time slice analysis of temporal graphs."""
 
     def __init__(self, temporal_graph, window_size, step_size=1, return_window=False, weighted=True):
         """Initialize a RollingTimeWindow instance that can be used to
@@ -26,7 +24,7 @@ class RollingTimeWindow:
             temporal_graph: TemporalGraphinstance that will be used to generate the
                 sequence of time-slice networks.
             window_size: The width of the rolling time window used to create time-slice networks.
-            step_size: The step size in time units by which the starting 
+            step_size: The step size in time units by which the starting
                 time of the rolling window will be incremented on each iteration.
             return_window: Whether or not the iterator shall return the current time window as a second return value. Default is False.
             weighted: Whether or not to return a weighted graph
@@ -59,7 +57,7 @@ class RollingTimeWindow:
 
     def __next__(self):
         if self.current_time <= self.g.end_time:
-            time_window = (self.current_time, self.current_time+self.window_size)
+            time_window = (self.current_time, self.current_time + self.window_size)
             s = self.g.to_static_graph(weighted=self.weighted, time_window=time_window)
             self.current_time += self.step_size
             if self.return_window:

@@ -2,7 +2,16 @@ import numpy as _np
 import scipy
 
 from pathpyG.core.index_map import IndexMap
-from pathpyG.algorithms.generative_models import G_nm, G_np, is_graphic_Erdos_Gallai, max_edges, G_np_randomize, G_nm_randomize, G_np_MLE, generate_degree_sequence
+from pathpyG.algorithms.generative_models import (
+    G_nm,
+    G_np,
+    is_graphic_Erdos_Gallai,
+    max_edges,
+    G_np_randomize,
+    G_nm_randomize,
+    G_np_MLE,
+    generate_degree_sequence,
+)
 
 
 def test_G_nm():
@@ -39,7 +48,7 @@ def test_G_nm():
     m_4 = G_nm(n=n, m=m, self_loops=True)
     assert m_4.n == n
     # since self-loops only exist in one direction we have 2 * m - n <= M <= 2 * m
-    assert m_4.m >= 2*m - n and m_4.m <= 2 * m
+    assert m_4.m >= 2 * m - n and m_4.m <= 2 * m
     assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])
     assert m_4.is_directed() is False
 
@@ -54,7 +63,7 @@ def test_G_np():
     # no multiple edges
     assert len(set([(v, w) for v, w in m_1.edges])) == len([(v, w) for v, w in m_1.edges])
     assert m_1.is_directed() is False
-    assert m_1.m/2 <= max_edges(n)
+    assert m_1.m / 2 <= max_edges(n)
 
     # test undirected graph w/o multi-edges, w/o self-loops and with custom IDs
     m_2 = G_np(n=n, p=p, mapping=IndexMap([str(i) for i in range(n)]))
@@ -62,11 +71,11 @@ def test_G_np():
     # no multiple edges
     assert len(set([(v, w) for v, w in m_2.edges])) == len([(v, w) for v, w in m_2.edges])
     assert m_2.is_directed() is False
-    assert m_2.m/2 <= max_edges(n)
+    assert m_2.m / 2 <= max_edges(n)
 
     # test directed graph w/o multi-edges, w/o self-loops
     m_3 = G_np(n=n, p=p, directed=True)
-    assert m_3.n == n    
+    assert m_3.n == n
     assert len(set([(v, w) for v, w in m_3.edges])) == len([(v, w) for v, w in m_3.edges])
     assert m_3.is_directed() is True
     assert m_3.m <= max_edges(n, directed=True)
@@ -74,7 +83,7 @@ def test_G_np():
     # test undirected graph w/o multi-edges and with self-loops
     m_4 = G_np(n=n, p=p, self_loops=True)
     assert m_4.n == n
-    assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])    
+    assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])
     assert m_4.is_directed() is False
     assert m_4.m <= max_edges(n, directed=False, self_loops=True)
 
@@ -88,7 +97,7 @@ def test_G_nm_randomize():
     assert g_r.n == g.n
     assert g_r.mapping == g.mapping
     assert g_r.m == g_r.m
- 
+
 
 def test_G_np_randomize():
     n = 100
@@ -124,7 +133,7 @@ def test_generate_degree_sequence():
     xk = _np.arange(7)
     pk = (0.1, 0.2, 0.3, 0.1, 0.1, 0.0, 0.2)
 
-    custm = scipy.stats.rv_discrete(name='custm', values=(xk, pk))
+    custm = scipy.stats.rv_discrete(name="custm", values=(xk, pk))
     degree_sequence = generate_degree_sequence(100, custm)
     assert len(degree_sequence) == 100
 
