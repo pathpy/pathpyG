@@ -194,8 +194,6 @@ def test_paths_indexing():
     This test was create to test that start indexes (ixs_start_paths_ho) of paths in get_intermediate_order_log_likelihood work correcly.
     Paths 'shrink' when encoded throgh higher-order nodes, and ixs_start_paths_ho has to correctly account for it.
     """
-    # import numpy as np
-    # import pathpyG as pp
     paths_list = [
         ("d","b","c"),
         ("a","b","c"),
