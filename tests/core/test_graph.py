@@ -169,18 +169,18 @@ def test_edges(simple_graph):
 
 
 def test_successors(simple_graph):
-    s = [v for v in simple_graph.successors("a")]
+    s = simple_graph.successors("a")
     assert s == ["b", "c"]
 
-    s = [v for v in simple_graph.successors("c")]
+    s = simple_graph.successors("c")
     assert len(s) == 0
 
 
 def test_predecessors(simple_graph):
-    s = [v for v in simple_graph.predecessors("b")]
+    s = simple_graph.predecessors("b")
     assert s == ["a"]
 
-    s = [v for v in simple_graph.predecessors("a")]
+    s = simple_graph.predecessors("a")
     assert len(s) == 0
 
 
@@ -193,14 +193,14 @@ def test_is_edge(simple_graph):
     assert not simple_graph.is_edge("c", "b")
 
 
-def test_get_sparse_adj_matrix(simple_graph):
-    adj = simple_graph.get_sparse_adj_matrix()
+def test_sparse_adj_matrix(simple_graph):
+    adj = simple_graph.sparse_adj_matrix()
     assert adj.shape == (3, 3)
     assert adj.nnz == 3
 
     edge_weight = torch.tensor([[1], [1], [2]])
     simple_graph.data["edge_weight"] = edge_weight
-    weighted_adj = simple_graph.get_sparse_adj_matrix("edge_weight")
+    weighted_adj = simple_graph.sparse_adj_matrix("edge_weight")
     assert weighted_adj.shape == (3, 3)
     assert weighted_adj.nnz == 3
     assert isinstance(weighted_adj, s.coo_matrix)
@@ -235,8 +235,8 @@ def test_out_degrees(simple_graph):
     assert out_degrees["c"] == 0
 
 
-def test_get_laplacian(simple_graph):
-    laplacian = simple_graph.get_laplacian()
+def test_laplacian(simple_graph):
+    laplacian = simple_graph.laplacian()
     assert laplacian.shape == (3, 3)
     assert laplacian.nnz == 6
     assert isinstance(laplacian, s.coo_matrix)

@@ -80,7 +80,7 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, n
 
     # create sparse scipy matrix
     event_graph = Graph.from_edge_index(edge_index, num_nodes=g.m + 2 * g.n)
-    m = event_graph.get_sparse_adj_matrix()
+    m = event_graph.sparse_adj_matrix()
 
     # print(f"Created temporal event DAG with {event_graph.n} nodes and {event_graph.m} edges")
 

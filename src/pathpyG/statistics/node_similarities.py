@@ -57,21 +57,21 @@ def cosine_similarity(graph: Graph, v, w) -> float:
     if graph.degrees()[v] == 0 or graph.degrees()[w] == 0:
         return 0
     else:
-        A = graph.get_sparse_adj_matrix().todense()
+        A = graph.sparse_adj_matrix().todense()
         v_v = A[graph.mapping.to_idx(v)].A1
         v_w = A[graph.mapping.to_idx(w)].A1
         return _np.dot(v_v, v_w)/(_np.linalg.norm(v_v)*_np.linalg.norm(v_w))
     
 
 def katz_index(graph: Graph, v, w, beta) -> float:
-    A = graph.get_sparse_adj_matrix()
+    A = graph.sparse_adj_matrix()
     I = _sp.sparse.identity(graph.n)
     S = _sp.sparse.linalg.inv(I - beta * A) - I
     return S[graph.mapping.to_idx(v), graph.mapping.to_idx(w)]
 
 
 def LeichtHolmeNewman_index(graph: Graph, v, w, alpha) -> float:
-    A = graph.get_sparse_adj_matrix()
+    A = graph.sparse_adj_matrix()
     ev = _sp.sparse.linalg.eigs(A, which="LM", k=2, return_eigenvectors=False)
     if graph.is_directed():
         m = graph.m

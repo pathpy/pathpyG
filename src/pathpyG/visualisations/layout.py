@@ -195,7 +195,7 @@ def layout(network, **kwds):
             _w = True
         else:
             _w = False
-        adjacency_matrix = network.get_sparse_adj_matrix()
+        adjacency_matrix = network.sparse_adj_matrix()
     # elif isinstance(network, tuple):
     #     # log.debug('The network is of type "list".')
     #     nodes = network[0]

@@ -84,7 +84,7 @@ def degree_central_moment(graph: Graph, k: int = 1, mode: str = 'total') -> floa
 def degree_assortativity(g: Graph, mode: str = 'total') -> float:
     """Calculate the degree assortativity"""
 
-    A = g.get_sparse_adj_matrix().todense()
+    A = g.sparse_adj_matrix().todense()
     m = _np.sum(A)
 
     d = g.degrees()

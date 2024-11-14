@@ -16,12 +16,12 @@ from pathpyG.core.graph import Graph
 
 def connected_components(graph: Graph, connection='weak') -> (int, _np.ndarray):
 
-    m = graph.get_sparse_adj_matrix()
+    m = graph.sparse_adj_matrix()
     n, labels = _cc(m, directed=graph.is_directed(), connection=connection, return_labels=True)
     return n, labels
 
 def largest_connected_component(graph: Graph, connection='weak') -> Graph:
-    m = graph.get_sparse_adj_matrix()
+    m = graph.sparse_adj_matrix()
     n, labels = _cc(m, directed=graph.is_directed(), connection=connection, return_labels=True)
     
     # find largest component C

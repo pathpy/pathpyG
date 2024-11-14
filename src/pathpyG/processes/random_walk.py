@@ -233,11 +233,11 @@ class RandomWalk(BaseProcess):
 
         """
         if weight is None or weight is False:
-            A = network.get_sparse_adj_matrix().todense()
+            A = network.sparse_adj_matrix().todense()
         elif weight is True:
-            A = network.get_sparse_adj_matrix(edge_attr='edge_weight').todense()
+            A = network.sparse_adj_matrix(edge_attr='edge_weight').todense()
         else:
-            A = network.get_sparse_adj_matrix(edge_attr=weight).todense()
+            A = network.sparse_adj_matrix(edge_attr=weight).todense()
         D = A.sum(axis=1)
         n = network.n
         T = sp.sparse.lil_matrix((n, n))

@@ -255,13 +255,12 @@ class Graph:
         """
         Return indices or IDs of all nodes in the graph.
 
-        This method returns a generator object that yields all nodes.
-        If an IndexMap is used, nodes
-        are returned as str IDs. If no IndexMap is used, nodes
-        are returned as integer indices.
+        This method returns a list object that contains all nodes.
+        If an IndexMap is used, nodes are returned as string IDs.
+        If no IndexMap is used, nodes are returned as integer indices.
 
         Returns:
-            generator: generator object yielding all nodes using IDs or indices (if no mapping is used)
+            list: list of all nodes using IDs or indices (if no mapping is used)
         """
         node_list = self.mapping.to_ids(np.arange(self.n)).tolist()
         if self.order > 1:
@@ -269,18 +268,21 @@ class Graph:
         return node_list
     
     @property
-    def edges(self) -> np.ndarray:
+    def edges(self) -> list:
         """Return all edges in the graph.
 
-        This method returns a generator object that yields all edges.
-        If an IndexMap is used to map node indices to string IDs, edges
-        are returned as tuples of str IDs. If no mapping is used, edges
-        are returned as tuples of integer indices.
+        This method returns a list object that contains all edges, where each
+        edge is a tuple of two elements. If an IndexMap is used to map node
+        indices to string IDs, edges are returned as tuples of string IDs.
+        If no mapping is used, edges are returned as tuples of integer indices.
 
         Returns:
-            generator: generator object yielding all edges using IDs or indices (if no mapping is used)
+            list: list object yielding all edges using IDs or indices (if no mapping is used)
         """
-        return self.mapping.to_ids(self.data.edge_index.t())
+        edge_list = self.mapping.to_ids(self.data.edge_index.t()).tolist()
+        if self.order > 1:
+            return [tuple(map(tuple, x)) for x in edge_list]
+        return list(map(tuple, edge_list))
 
     def get_successors(self, row_idx: int) -> torch.Tensor:
         """Return a tensor containing the indices of all successor nodes for a given node identified by an index.
@@ -315,7 +317,7 @@ class Graph:
         else:
             return torch.tensor([], device=self.data.edge_index.device)
 
-    def successors(self, node: Union[int, str] | tuple) -> Generator[Union[int, str] | tuple, None, None]:
+    def successors(self, node: Union[int, str] | tuple) -> list:
         """Return all successors of a given node.
 
         This method returns a generator object that yields all successors of a
@@ -326,14 +328,17 @@ class Graph:
             node:   Index or string ID of node for which successors shall be returned.
 
         Returns:
-            generator: generator object yielding all successors of the node identified
+            list: list with all successors of the node identified
                 by `node` using ID or index (if no mapping is used)
         """
 
-        for j in self.get_successors(self.mapping.to_idx(node)):  # type: ignore
-            yield self.mapping.to_id(j.item())
+        node_list = self.mapping.to_ids(self.get_successors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-    def predecessors(self, node: Union[str, int] | tuple) -> Generator[Union[int, str] | tuple, None, None]:
+        if self.order > 1:
+            return list(map(tuple, node_list))
+        return node_list
+
+    def predecessors(self, node: Union[str, int] | tuple) -> list:
         """Return the predecessors of a given node.
 
         This method returns a generator object that yields all predecessors of a
@@ -344,11 +349,14 @@ class Graph:
             node:   Index or string ID of node for which predecessors shall be returned.
 
         Returns:
-            generator: generator object yielding all predecessors of the node identified
+            list: list with all predecessors of the node identified
                 by `node` using ID or index (if no mapping is used)
         """
-        for i in self.get_predecessors(self.mapping.to_idx(node)):  # type: ignore
-            yield self.mapping.to_id(i.item())
+        node_list = self.mapping.to_ids(self.get_predecessors(self.mapping.to_idx(node))).tolist()  # type: ignore
+
+        if self.order > 1:
+            return list(map(tuple, node_list))
+        return node_list
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
         """Return whether edge $(v,w)$ exists in the graph.
@@ -369,7 +377,7 @@ class Graph:
 
         return self.mapping.to_idx(w) in self.col[row_start:row_end]
 
-    def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
+    def sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
         """Return sparse adjacency matrix representation of (weighted) graph.
 
         Args:
@@ -446,10 +454,10 @@ class Graph:
         source_ids = self.data.edge_index[0]
         return self.data.edge_weight / weighted_outdegree[source_ids]
 
-    def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
+    def laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
         """Return Laplacian matrix for a given graph.
 
-        This wrapper method will use [`torch_geometric.utils.get_laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.get_laplacian)
+        This wrapper method will use [`torch_geometric.utils.laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.laplacian)
         to return a Laplcian matrix representation of a given graph.
 
         Args:

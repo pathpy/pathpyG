@@ -19,7 +19,7 @@ from pathpyG.core.graph import Graph
 
 def shortest_paths_dijkstra(graph: Graph) -> (_np.ndarray, _np.ndarray):
 
-    m = graph.get_sparse_adj_matrix()
+    m = graph.sparse_adj_matrix()
 
     dist, pred = dijkstra(m, directed=graph.is_directed(), return_predecessors=True, unweighted=True)
 
@@ -28,7 +28,7 @@ def shortest_paths_dijkstra(graph: Graph) -> (_np.ndarray, _np.ndarray):
 
 def diameter(graph: Graph) -> float:
 
-    m = graph.get_sparse_adj_matrix()
+    m = graph.sparse_adj_matrix()
 
     dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
     return _np.max(dist)
@@ -36,7 +36,7 @@ def diameter(graph: Graph) -> float:
 
 def avg_path_length(graph: Graph) -> float:
 
-    m = graph.get_sparse_adj_matrix()
+    m = graph.sparse_adj_matrix()
 
     dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
     return _np.sum(dist) / (graph.n * (graph.n-1))
