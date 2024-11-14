@@ -438,9 +438,9 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
     edges = set()
 
     if node_ids is None or len(node_ids) != n:
-        node_uids = []
+        node_ids = []
         for i in range(n):
-            node_uids.append(str(i))
+            node_ids.append(str(i))
 
     # generate edge stubs based on degree sequence
     stubs = []
