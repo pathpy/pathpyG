@@ -17,6 +17,9 @@ class TemporalGraph(Graph):
     def __init__(self, data: Data, mapping: IndexMap | None = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
 
+        Args:
+            data: xxx
+            mapping: xxx
 
         Example:
             ```py
@@ -69,49 +72,30 @@ class TemporalGraph(Graph):
             mapping=index_map,
         )
 
-    @staticmethod
-    def from_csv(
-        filename: str,
-        sep: str = ",",
-        header: bool = True,
-        is_undirected: bool = False,
-        timestamp_format="%Y-%m-%d %H:%M:%S",
-        time_rescale: int = 1,
-    ) -> TemporalGraph:
-        """Read temporal graph from csv file, using pandas module"""
-        from pathpyG.io.pandas import read_csv_temporal_graph
-
-        return read_csv_temporal_graph(
-            filename,
-            sep=sep,
-            header=header,
-            is_undirected=is_undirected,
-            timestamp_format=timestamp_format,
-            time_rescale=time_rescale,
-        )
-
-    def to_csv(self, filename: str, sep: str = ",", header: bool = True) -> None:
-        """Write temporal graph to csv file, using pandas module"""
-        from pathpyG.io.pandas import write_csv
-
-        write_csv(self, filename, sep=sep, header=header)
-
     @property
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
         """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
-        for e, t in zip(self.data.edge_index.t(), self.data.time):
-            yield *self.mapping.to_ids(e), t.item()
+        return [(*self.mapping.to_ids(e), t.item()) for e, t in zip(self.data.edge_index.t(), self.data.time)]
 
     @property
     def order(self) -> int:
+        """Return order 1, since all temporal graphs must be order one."""
         return 1
 
     def shuffle_time(self) -> None:
-        """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""
+        """Randomly shuffle the temporal order of edges by randomly permuting timestamps."""
         self.data.time = self.data.time[torch.randperm(len(self.data.time))]
 
     def to_static_graph(self, weighted: bool = False, time_window: Optional[Tuple[int, int]] = None) -> Graph:
-        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph."""
+        """Return weighted time-aggregated instance of [`Graph`][pathpyG.Graph] graph.
+
+        Args:
+            weighted: whether or not to return a weighted time-aggregated graph
+            time_window: A tuple with start and end time of the aggregation window
+
+        Returns:
+            Graph: A static graph object
+        """
         if time_window is not None:
             idx = (self.data.time >= time_window[0]).logical_and(self.data.time < time_window[1]).nonzero().ravel()
             edge_index = self.data.edge_index[:, idx]
@@ -129,8 +113,7 @@ class TemporalGraph(Graph):
             return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n, n)), self.mapping)
 
     def to_undirected(self) -> TemporalGraph:
-        """
-        Returns an undirected version of a directed graph.
+        """Return an undirected version of a directed graph.
 
         This method transforms the current graph instance into an undirected graph by
         adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
@@ -150,26 +133,26 @@ class TemporalGraph(Graph):
         times = torch.cat([self.data.time, self.data.time])
         return TemporalGraph(data=Data(edge_index=edge_index, time=times), mapping=self.mapping)
 
-    def get_window(self, start: int, end: int) -> TemporalGraph:
-        """Returns an instance of the TemporalGraph that captures all time-stamped
-        edges in a given window defined by start and (non-inclusive) end, where start
+    def get_batch(self, start_idx: int, end_idx: int) -> TemporalGraph:
+        """Return an instance of the TemporalGraph that captures all time-stamped
+        edges in a given batch defined by start and (non-inclusive) end, where start
         and end refer to the index of the first and last event in the time-ordered list of events."""
 
         return TemporalGraph(
-            data=Data(edge_index=self.data.edge_index[:, start:end], time=self.data.time[start:end]),
+            data=Data(edge_index=self.data.edge_index[:, start_idx:end_idx], time=self.data.time[start_idx:end_idx]),
             mapping=self.mapping,
         )
 
-    def get_snapshot(self, start: int, end: int) -> TemporalGraph:
-        """Returns an instance of the TemporalGraph that captures all time-stamped
+    def get_window(self, start_time: int, end_time: int) -> TemporalGraph:
+        """Return an instance of the TemporalGraph that captures all time-stamped
         edges in a given time window defined by start and (non-inclusive) end, where start
         and end refer to the time stamps"""
 
-        return TemporalGraph(data=self.data.snapshot(start, end), mapping=self.mapping)
+        return TemporalGraph(data=self.data.snapshot(start_time, end_time), mapping=self.mapping)
 
     def __str__(self) -> str:
         """
-        Returns a string representation of the graph
+        Return a string representation of the graph
         """
         s = "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]\n".format(
             self.data.num_nodes,

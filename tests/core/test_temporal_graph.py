@@ -27,14 +27,6 @@ def test_from_edge_list():
     assert tgraph.data.edge_index.shape == (2, 4)
 
 
-def test_csv(tmp_path, long_temporal_graph):
-    path = tmp_path / "test.csv"
-    long_temporal_graph.to_csv(path)
-    tgraph = TemporalGraph.from_csv(path)
-    assert tgraph.n == 9
-    assert tgraph.m == 20
-
-
 def test_N(long_temporal_graph):
     assert long_temporal_graph.n == 9
 
@@ -78,20 +70,20 @@ def test_to_undirected(long_temporal_graph):
     assert g.m == long_temporal_graph.m * 2
 
 
-def test_get_window(long_temporal_graph):
-    t_1 = long_temporal_graph.get_window(1, 9)
+def test_get_batch(long_temporal_graph):
+    t_1 = long_temporal_graph.get_batch(1, 9)
     # N stays the same
     assert t_1.n == 9
     assert t_1.m == 8
-    t_2 = long_temporal_graph.get_window(9, 13)
+    t_2 = long_temporal_graph.get_batch(9, 13)
     assert t_2.n == 9
     assert t_2.m == 4
 
 
-def test_get_snapshot(long_temporal_graph):
-    t_1 = long_temporal_graph.get_snapshot(1, 9)
+def test_get_window(long_temporal_graph):
+    t_1 = long_temporal_graph.get_window(1, 9)
     assert t_1.m == 4
-    t_2 = long_temporal_graph.get_snapshot(9, 13)
+    t_2 = long_temporal_graph.get_window(9, 13)
     assert t_2.m == 4
 
 

@@ -631,6 +631,10 @@ class Graph:
             >>> print(g1 + g2)
             Graph with 5 nodes and 4 edges
         """
+
+        if self.order>1:
+            raise NotImplementedError('Add operator can only be applied to order 1 graphs')
+
         d1 = self.data.clone()
         m1 = self.mapping
 
