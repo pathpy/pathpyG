@@ -12,9 +12,9 @@ pathpyG
 [![Testing Status][testing-image]][testing-url]
 [![Linting Status][linting-image]][linting-url]
 
-pathpyG provides methods for GPU-accelerated Next-Generation Network Analytics and Graph Learning for Time Series Data on Temporal Networks.
+pathpyG provides methods for GPU-accelerated Next-Generation Network Analytics and Graph Learning in Time Series Data on Temporal Networks.
 
-The foundation of pathpyG are recent research results on the modelling of causal structures in temporal graph data based on higher-order De Bruijn graph models which generalize commonly used graph models. This perspective has been developed at ETH Zürich, University of Zürich, Princeton University and Julius-Maximilians-Universität Würzburg. Recent works include: 
+pathpyG builds on recent research on the modelling of causal structures in time series data based on higher-order De Bruijn graph models that generalize common graphs. This perspective has been developed at ETH Zürich, University of Zürich, Princeton University and Julius-Maximilians-Universität Würzburg. Recently published works include: 
 
 - F Heeg, I Scholtes: [Using Time-Aware Graph Neural Networks to Predict Temporal Centralities in Dynamic Graphs](https://arxiv.org/abs/2310.15865), NeurIPS 2024, December 2024
 - L Qarkaxhija, V Perri, I Scholtes: [De Bruijn goes Neural: Causality-Aware Graph Neural Networks for Time Series Data on Dynamic Graphs](https://proceedings.mlr.press/v198/qarkaxhija22a.html), Proceedings of the First Learning on Graphs Conference, PMLR 198:51:1-51:21, December 2022
