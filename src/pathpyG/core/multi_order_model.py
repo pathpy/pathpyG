@@ -361,7 +361,7 @@ class MultiOrderModel:
     ) -> tuple:
         """
         Perform a likelihood ratio test to compare two models of different order.
-        
+
         Args:
             dag_graph (Data): The input DAG graph data.
             max_order_null (int, optional): The maximum order of the null hypothesis model.

@@ -38,7 +38,7 @@ def test_dbgnn(simple_walks):
     g2 = m.layers[2]
     data.y = torch.tensor([g1.mapping.to_idx(i) // 10 for i in g1.mapping.node_ids])
 
-    model = DBGNN(num_features=[g1.N, g2.N], num_classes=len(data.y.unique()), hidden_dims=[16, 32, 8], p_dropout=0.4)
+    model = DBGNN(num_features=[g1.n, g2.n], num_classes=len(data.y.unique()), hidden_dims=[16, 32, 8], p_dropout=0.4)
 
     out = model(data)
     assert out is not None

@@ -91,6 +91,10 @@ class Graph:
         ((self.row_ptr, self.col), _) = self.data.edge_index.get_csr()
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
+        # create node_sequence mapping for higher-order graphs
+        if "node_sequence" not in self.data:
+            self.data.node_sequence = torch.arange(data.num_nodes).reshape(-1, 1)
+
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes: int = None) -> Graph:
         """Construct a graph from a torch Tensor containing an edge index. An optional mapping can
@@ -100,7 +104,7 @@ class Graph:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
             mapping: `IndexMap` object that maps node indices to string identifiers
             num_nodes: optional number of nodes (default: None). If None, the number of nodes will be
-                inferred based on the maximum node index in the edge index
+                inferred based on the maximum node index in the edge index, i.e. there will be no isolated nodes.
 
         Examples:
             You can create a graph from an edge index tensor as follows:
@@ -171,23 +175,6 @@ class Graph:
         )
         return Graph(Data(edge_index=edge_index, num_nodes=num_nodes), mapping=mapping)
 
-    @staticmethod
-    def from_csv(
-        filename: str, sep: str = "", header: bool = True, is_undirected: bool = False, multiedges: bool = False
-    ) -> Graph:
-        """Read temporal graph from csv file, using pandas module
-
-        Args:
-            filename: path to csv file
-            sep: separator used in csv file
-            header: whether csv file contains a header
-            is_undirected: whether graph is undirected
-            multiedges: whether graph contains multiple edges between the same nodes
-        """
-        from pathpyG.io.pandas import read_csv_graph
-
-        return read_csv_graph(filename, sep=sep, header=header, is_undirected=is_undirected, multiedges=multiedges)
-
     def to_undirected(self) -> Graph:
         """
         Returns an undirected version of a directed graph.
@@ -226,50 +213,27 @@ class Graph:
             Graph: Graph with coalesced edges
         """
         i, w = torch_geometric.utils.coalesce(
-            self.data.edge_index.as_tensor(), torch.ones(self.M, device=self.data.edge_index.device)
+            self.data.edge_index.as_tensor(), torch.ones(self.m, device=self.data.edge_index.device)
         )
         return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
 
-    @staticmethod
-    def attr_types(attr: Dict) -> Dict:
-        """
-        Return name, type, and size of all node, edge, and graph attributes.
-
-        This method returns a dictionary that contains the name (key), as well as
-        the type and size of all attributes.
-
-        Args:
-            attr: dictionary of attributes
-
-        Returns:
-            dict: dictionary containing type and size of all attributes in `attr`
-        """
-        a = {}
-        for k in attr:
-            t = type(attr[k])
-            if t == torch.Tensor:
-                a[k] = str(t) + " -> " + str(attr[k].size())
-            else:
-                a[k] = str(t)
-        return a
-
-    def node_attrs(self) -> List:
+    def node_attrs(self) -> List[str]:
         """
         Return a list of node attributes.
 
         This method returns a list containing the names of all node-level attributes,
-        ignoring the special `node_id` attribute.
+        ignoring the special `node_sequence` attribute.
 
         Returns:
             list: list of node attributes
         """
         attrs = []
         for k in self.data.keys():
-            if k != "node_id" and k.startswith("node_"):
+            if k != "node_sequence" and k.startswith("node_"):
                 attrs.append(k)
         return attrs
 
-    def edge_attrs(self) -> List:
+    def edge_attrs(self) -> List[str]:
         """
         Return a list of edge attributes.
 
@@ -286,35 +250,38 @@ class Graph:
         return attrs
 
     @property
-    def nodes(self) -> Generator[Union[int, str], None, None]:
+    def nodes(self) -> list:
         """
         Return indices or IDs of all nodes in the graph.
 
-        This method returns a generator object that yields all nodes.
-        If an IndexMap is used, nodes
-        are returned as str IDs. If no IndexMap is used, nodes
-        are returned as integer indices.
+        This method returns a list object that contains all nodes.
+        If an IndexMap is used, nodes are returned as string IDs.
+        If no IndexMap is used, nodes are returned as integer indices.
 
         Returns:
-            generator: generator object yielding all nodes using IDs or indices (if no mapping is used)
+            list: list of all nodes using IDs or indices (if no mapping is used)
         """
-        for i in range(self.N):
-            yield self.mapping.to_id(i)
+        node_list = self.mapping.to_ids(np.arange(self.n)).tolist()
+        if self.order > 1:
+            return list(map(tuple, node_list))
+        return node_list
 
     @property
-    def edges(self) -> Generator[Union[Tuple[int, int], Tuple[str, str]], None, None]:
+    def edges(self) -> list:
         """Return all edges in the graph.
 
-        This method returns a generator object that yields all edges.
-        If an IndexMap is used to map node indices to string IDs, edges
-        are returned as tuples of str IDs. If no mapping is used, edges
-        are returned as tuples of integer indices.
+        This method returns a list object that contains all edges, where each
+        edge is a tuple of two elements. If an IndexMap is used to map node
+        indices to string IDs, edges are returned as tuples of string IDs.
+        If no mapping is used, edges are returned as tuples of integer indices.
 
         Returns:
-            generator: generator object yielding all edges using IDs or indices (if no mapping is used)
+            list: list object yielding all edges using IDs or indices (if no mapping is used)
         """
-        for e in self.data.edge_index.t():
-            yield self.mapping.to_id(e[0].item()), self.mapping.to_id(e[1].item())
+        edge_list = self.mapping.to_ids(self.data.edge_index.t()).tolist()
+        if self.order > 1:
+            return [tuple(map(tuple, x)) for x in edge_list]
+        return list(map(tuple, edge_list))
 
     def get_successors(self, row_idx: int) -> torch.Tensor:
         """Return a tensor containing the indices of all successor nodes for a given node identified by an index.
@@ -349,7 +316,7 @@ class Graph:
         else:
             return torch.tensor([], device=self.data.edge_index.device)
 
-    def successors(self, node: Union[int, str] | tuple) -> Generator[Union[int, str] | tuple, None, None]:
+    def successors(self, node: Union[int, str] | tuple) -> list:
         """Return all successors of a given node.
 
         This method returns a generator object that yields all successors of a
@@ -360,14 +327,17 @@ class Graph:
             node:   Index or string ID of node for which successors shall be returned.
 
         Returns:
-            generator: generator object yielding all successors of the node identified
+            list: list with all successors of the node identified
                 by `node` using ID or index (if no mapping is used)
         """
 
-        for j in self.get_successors(self.mapping.to_idx(node)):  # type: ignore
-            yield self.mapping.to_id(j.item())
+        node_list = self.mapping.to_ids(self.get_successors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-    def predecessors(self, node: Union[str, int] | tuple) -> Generator[Union[int, str] | tuple, None, None]:
+        if self.order > 1:
+            return list(map(tuple, node_list))
+        return node_list
+
+    def predecessors(self, node: Union[str, int] | tuple) -> list:
         """Return the predecessors of a given node.
 
         This method returns a generator object that yields all predecessors of a
@@ -378,11 +348,14 @@ class Graph:
             node:   Index or string ID of node for which predecessors shall be returned.
 
         Returns:
-            generator: generator object yielding all predecessors of the node identified
+            list: list with all predecessors of the node identified
                 by `node` using ID or index (if no mapping is used)
         """
-        for i in self.get_predecessors(self.mapping.to_idx(node)):  # type: ignore
-            yield self.mapping.to_id(i.item())
+        node_list = self.mapping.to_ids(self.get_predecessors(self.mapping.to_idx(node))).tolist()  # type: ignore
+
+        if self.order > 1:
+            return list(map(tuple, node_list))
+        return node_list
 
     def is_edge(self, v: Union[str, int], w: Union[str, int]) -> bool:
         """Return whether edge $(v,w)$ exists in the graph.
@@ -403,7 +376,7 @@ class Graph:
 
         return self.mapping.to_idx(w) in self.col[row_start:row_end]
 
-    def get_sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
+    def sparse_adj_matrix(self, edge_attr: Any = None) -> Any:
         """Return sparse adjacency matrix representation of (weighted) graph.
 
         Args:
@@ -416,7 +389,7 @@ class Graph:
             return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index.as_tensor())
         else:
             return torch_geometric.utils.to_scipy_sparse_matrix(
-                self.data.edge_index.as_tensor(), edge_attr=self.data[edge_attr], num_nodes=self.N
+                self.data.edge_index.as_tensor(), edge_attr=self.data[edge_attr], num_nodes=self.n
             )
 
     @property
@@ -449,10 +422,10 @@ class Graph:
             dict: dictionary containing degrees of nodes
         """
         if mode == "in":
-            d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.N, dtype=torch.int)
+            d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.n, dtype=torch.int)
         else:
-            d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.N, dtype=torch.int)
-        return {self.mapping.to_id(i): d[i].item() for i in range(self.N)}
+            d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
+        return {self.mapping.to_id(i): d[i].item() for i in range(self.n)}
 
     def weighted_outdegrees(self) -> torch.Tensor:
         """
@@ -480,10 +453,10 @@ class Graph:
         source_ids = self.data.edge_index[0]
         return self.data.edge_weight / weighted_outdegree[source_ids]
 
-    def get_laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
+    def laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
         """Return Laplacian matrix for a given graph.
 
-        This wrapper method will use [`torch_geometric.utils.get_laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.get_laplacian)
+        This wrapper method will use [`torch_geometric.utils.laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.laplacian)
         to return a Laplcian matrix representation of a given graph.
 
         Args:
@@ -535,11 +508,11 @@ class Graph:
         """
         if not isinstance(key, tuple):
             if key.startswith("node_"):
-                if val.size(0) != self.N:
+                if val.size(0) != self.n:
                     raise ValueError("Attribute must have same length as number of nodes")
                 self.data[key] = val
             elif key.startswith("edge_"):
-                if val.size(0) != self.M:
+                if val.size(0) != self.m:
                     raise ValueError("Attribute must have same length as number of edges")
                 self.data[key] = val
             else:
@@ -562,7 +535,7 @@ class Graph:
             raise KeyError("node and edge specific attributes should be prefixed with 'node_' or 'edge_'")
 
     @property
-    def N(self) -> int:
+    def n(self) -> int:
         """
         Return number of nodes.
 
@@ -572,7 +545,7 @@ class Graph:
         return self.data.num_nodes  # type: ignore
 
     @property
-    def M(self) -> int:
+    def m(self) -> int:
         """
         Return number of edges.
 
@@ -582,6 +555,16 @@ class Graph:
             int: number of edges in the graph
         """
         return self.data.num_edges  # type: ignore
+
+    @property
+    def order(self) -> int:
+        """
+        Return order of graph.
+
+        Returns:
+            int: order of the (De Bruijn) graph
+        """
+        return self.data.node_sequence.size(1)  # type: ignore
 
     def is_directed(self) -> bool:
         """Return whether graph is directed.
@@ -619,7 +602,6 @@ class Graph:
         Node IDs of graphs to be combined can be disjoint, partly overlapping or non-overlapping.
 
         Examples:
-
             Adding two graphs without node IDs:
 
             >>> g1 = pp.Graph.from_edge_index(torch.Tensor([[0,1,1],[1,2,3]]))
@@ -648,6 +630,10 @@ class Graph:
             >>> print(g1 + g2)
             Graph with 5 nodes and 4 edges
         """
+
+        if self.order > 1:
+            raise NotImplementedError("Add operator can only be applied to order 1 graphs")
+
         d1 = self.data.clone()
         m1 = self.mapping
 
@@ -659,7 +645,7 @@ class Graph:
         additional_nodes = set(m2.node_ids).difference(m1.node_ids)
 
         d2_idx_translation = {}
-        node_ids = [""] * (self.N + len(additional_nodes))
+        node_ids = [""] * (self.n + len(additional_nodes))
         # keep mappings of nodes in g1
         for v in m1.node_ids:
             node_ids[m1.to_idx(v)] = v
@@ -670,7 +656,7 @@ class Graph:
             d2_idx_translation[m2.to_idx(v)] = m1.to_idx(v)
         # add mapping for nodes in g2 that are not in g1 and correct indices in g2
         for v in additional_nodes:
-            new_idx = m2.to_idx(v) + self.N - len(overlap)
+            new_idx = m2.to_idx(v) + self.n - len(overlap)
             node_ids[new_idx] = v
             d2_idx_translation[m2.to_idx(v)] = new_idx
         # apply index translation to d2
@@ -683,31 +669,36 @@ class Graph:
         d2.edge_index = key[index].reshape(d2.edge_index.shape)
         d = d1.concat(d2)
         mapping = IndexMap(node_ids)
-        d.num_nodes = self.N + len(additional_nodes)
+        d.num_nodes = self.n + len(additional_nodes)
         d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
         return Graph(d, mapping=mapping)
 
     def __str__(self) -> str:
         """Return a string representation of the graph."""
 
-        attr_types = Graph.attr_types(self.data.to_dict())
+        attr = self.data.to_dict()
+        attr_types = {}
+        for k in attr:
+            t = type(attr[k])
+            if t == torch.Tensor:
+                attr_types[k] = str(t) + " -> " + str(attr[k].size())
+            else:
+                attr_types[k] = str(t)
+
+        from pprint import pformat
 
         if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} (directed) edges\n".format(self.N, self.M)
+            s = "Undirected graph with {0} nodes and {1} (directed) edges\n".format(self.n, self.m)
         else:
-            s = "Directed graph with {0} nodes and {1} edges\n".format(self.N, self.M)
-        if len(self.data.node_attrs()) > 0:
-            s += "\nNode attributes\n"
-            for a in self.data.node_attrs():
-                s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.edge_attrs()) > 1:
-            s += "\nEdge attributes\n"
-            for a in self.data.edge_attrs():
-                if a != "edge_index":
-                    s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.keys()) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
-            s += "\nGraph attributes\n"
-            for a in self.data.keys():
-                if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
-                    s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
+            s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
+
+        attribute_info = {"Node Attributes": {}, "Edge Attributes": {}, "Graph Attributes": {}}
+        for a in self.node_attrs():
+            attribute_info["Node Attributes"][a] = attr_types[a]
+        for a in self.edge_attrs():
+            attribute_info["Edge Attributes"][a] = attr_types[a]
+        for a in self.data.keys():
+            if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
+                attribute_info["Graph Attributes"][a] = attr_types[a]
+        s += pformat(attribute_info, indent=4, width=160)
         return s

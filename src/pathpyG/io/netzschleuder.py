@@ -16,7 +16,7 @@ from pathpyG.io.graphtool import parse_graphtool_format
 from pathpyG.io.pandas import add_node_attributes
 
 
-def list_netzschleuder_records(base_url: str = 'https://networks.skewed.de', **kwargs: Any) -> Union[list, dict]:
+def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **kwargs: Any) -> Union[list, dict]:
     """
     Read a list of data sets available at the netzschleuder repository.
 
@@ -48,20 +48,19 @@ def list_netzschleuder_records(base_url: str = 'https://networks.skewed.de', **k
         Either a list of data set names or a dictionary containing all data set names and network attributes.
 
     """
-    url = '/api/nets'
+    url = "/api/nets"
     for k, v in kwargs.items():
-        url += '?{0}={1}'.format(k, v)
+        url += "?{0}={1}".format(k, v)
     try:
         f = request.urlopen(base_url + url).read()
         return json.loads(f)
     except HTTPError:
-        msg = 'Could not connect to netzschleuder repository at {0}'.format(base_url)
+        msg = "Could not connect to netzschleuder repository at {0}".format(base_url)
         # LOG.error(msg)
         raise Exception(msg)
 
 
-
-def read_netzschleuder_record(name: str, base_url: str = 'https://networks.skewed.de') -> dict:
+def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewed.de") -> dict:
     """
     Read metadata of a single data record with given name from the netzschleuder repository
 
@@ -71,7 +70,7 @@ def read_netzschleuder_record(name: str, base_url: str = 'https://networks.skewe
 
     Examples:
         Retrieve metadata of karate club network
-        
+
         >>> import pathpyG as pp
         >>> metdata = pp.io.read_netzschleuder_record('karate')
         >>> print(metadata)
@@ -82,18 +81,23 @@ def read_netzschleuder_record(name: str, base_url: str = 'https://networks.skewe
     Returns:
         Dictionary containing key-value pairs of metadata
     """
-    url = '/api/net/{0}'.format(name)
+    url = "/api/net/{0}".format(name)
     try:
         return json.loads(request.urlopen(base_url + url).read())
     except HTTPError:
-        msg = 'Could not connect to netzschleuder repository at {0}'.format(base_url)
-        #LOG.error(msg)
+        msg = "Could not connect to netzschleuder repository at {0}".format(base_url)
+        # LOG.error(msg)
         raise Exception(msg)
 
 
-def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: bool = False,
-                             time_attr: Optional[str] = None,
-                             base_url: str = 'https://networks.skewed.de', format='csv') -> Graph:
+def read_netzschleuder_graph(
+    name: str,
+    net: Optional[str] = None,
+    multiedges: bool = False,
+    time_attr: Optional[str] = None,
+    base_url: str = "https://networks.skewed.de",
+    format="csv",
+) -> Graph:
     """Read a pathpyG graph or temporal graph from the netzschleuder repository.
 
     Args:
@@ -120,49 +124,51 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
         an instance of Graph
 
     """
- # build URL
+    # build URL
 
     try:
         # retrieve properties of data record via API
-        properties = json.loads(request.urlopen(f'{base_url}/api/net/{name}').read())
+        properties = json.loads(request.urlopen(f"{base_url}/api/net/{name}").read())
         # print(properties)
 
-        timestamps = 'Timestamps' in properties['tags']
+        timestamps = "Timestamps" in properties["tags"]
 
         if not net:
-            analyses = properties['analyses']
+            analyses = properties["analyses"]
             net = name
         else:
-            analyses = properties['analyses'][net]         
-        
+            analyses = properties["analyses"][net]
+
         try:
-            is_directed = analyses['is_directed']
-            num_nodes = analyses['num_vertices']
+            is_directed = analyses["is_directed"]
+            num_nodes = analyses["num_vertices"]
         except KeyError:
-            raise Exception(f'Record {name} contains multiple networks, please specify network name.')
-        
-        if format == 'csv':
-            url = f'{base_url}/net/{name}/files/{net}.csv.zip'
+            raise Exception(f"Record {name} contains multiple networks, please specify network name.")
+
+        if format == "csv":
+            url = f"{base_url}/net/{name}/files/{net}.csv.zip"
             try:
                 response = request.urlopen(url)
 
                 # decompress zip into temporary folder
                 data = BytesIO(response.read())
 
-                with zipfile.ZipFile(data, 'r') as zip_ref:
+                with zipfile.ZipFile(data, "r") as zip_ref:
                     with tempfile.TemporaryDirectory() as temp_dir:
                         zip_ref.extractall(path=temp_dir)
 
-                        # the gprop file contains lines with property name/value pairs 
+                        # the gprop file contains lines with property name/value pairs
                         # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
 
-                        # nodes.csv contains node indices with node properties (like name)                    
-                        edges = pd.read_csv(f'{temp_dir}/edges.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+                        # nodes.csv contains node indices with node properties (like name)
+                        edges = pd.read_csv(
+                            f"{temp_dir}/edges.csv", header=0, sep=",", skip_blank_lines=True, skipinitialspace=True
+                        )
 
                         # rename columns
-                        edges.rename(columns={'# source': 'v', 'target': 'w'}, inplace=True)
+                        edges.rename(columns={"# source": "v", "target": "w"}, inplace=True)
                         if timestamps and time_attr:
-                            edges.rename(columns={time_attr: 't'}, inplace=True)
+                            edges.rename(columns={time_attr: "t"}, inplace=True)
 
                         # construct graph and assign edge attributes
                         if timestamps:
@@ -172,25 +178,27 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
                             if not is_directed:
                                 g = g.to_undirected()
 
-                        node_attrs = pd.read_csv(f'{temp_dir}/nodes.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
-                        node_attrs.rename(columns={'# index': 'index'}, inplace=True)
+                        node_attrs = pd.read_csv(
+                            f"{temp_dir}/nodes.csv", header=0, sep=",", skip_blank_lines=True, skipinitialspace=True
+                        )
+                        node_attrs.rename(columns={"# index": "index"}, inplace=True)
 
                         add_node_attributes(node_attrs, g)
 
                         # add graph-level attributes
                         for x in analyses:
-                            g.data['analyses_'+x] = analyses[x]
+                            g.data["analyses_" + x] = analyses[x]
 
                         return g
             except HTTPError:
-                msg = f'Could not retrieve netzschleuder record at {url}'
+                msg = f"Could not retrieve netzschleuder record at {url}"
                 raise Exception(msg)
 
-        elif format == 'gt':
+        elif format == "gt":
             try:
                 import zstandard as zstd
 
-                url = f'/net/{name}/files/{net}.gt.zst'
+                url = f"/net/{name}/files/{net}.gt.zst"
                 try:
                     f = request.urlopen(base_url + url)
                     # decompress data
@@ -201,12 +209,12 @@ def read_netzschleuder_graph(name: str, net: Optional[str] = None, multiedges: b
                     # parse graphtool binary format
                     return parse_graphtool_format(bytes(decompressed))
                 except HTTPError:
-                    msg = f'Could not retrieve netzschleuder record at {url}'
+                    msg = f"Could not retrieve netzschleuder record at {url}"
                     raise Exception(msg)
             except ModuleNotFoundError:
                 msg = 'Package zstandard is required to decompress graphtool files. Please install module, e.g., using "pip install zstandard.'
                 # LOG.error(msg)
                 raise Exception(msg)
     except HTTPError:
-        msg = f'Could not retrieve netzschleuder record at {base_url}/api/net/{name}'
+        msg = f"Could not retrieve netzschleuder record at {base_url}/api/net/{name}"
         raise Exception(msg)

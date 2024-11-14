@@ -1,7 +1,7 @@
 """IndexMap class for mapping node indices to IDs."""
 
 from __future__ import annotations
-from typing import List, Union, Any
+from typing import List, Union, Any, Tuple
 
 import torch
 import numpy as np
@@ -289,7 +289,7 @@ class IndexMap:
         else:
             return idxs  # type: ignore
 
-    def to_idx(self, node: Union[str, int]) -> int:
+    def to_idx(self, node: str | int | tuple[str] | tuple[int]) -> int | tuple[int]:
         """Map argument (ID or index) to index if mapping is defined, return argument otherwise.
 
         Args:
@@ -311,12 +311,13 @@ class IndexMap:
             >>> print(index_map.to_idx(1))
             1
         """
+        n: str | int | tuple[str] | tuple[int] = node
         if self.has_ids:
             if self.id_shape != (-1,):
-                node = tuple(node)
-            return self.id_to_idx[node]
+                n = tuple(n)
+            return self.id_to_idx[n]
         else:
-            return node
+            return n
 
     def to_idxs(self, nodes: list | tuple | np.ndarray) -> torch.Tensor:
         """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise. The shape

@@ -1,4 +1,5 @@
 """Generic matplotlib plot class."""
+
 # =============================================================================
 # File      : core.py -- Plots with matplotlib backend
 # Author    : Jürgen Hackl <hackl@princeton.edu>

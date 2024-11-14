@@ -11,16 +11,16 @@ from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temp
 def test_lift_order_temporal(simple_temporal_graph):
     edge_index = lift_order_temporal(simple_temporal_graph, delta=5)
     event_graph = Graph.from_edge_index(edge_index)
-    assert event_graph.N == simple_temporal_graph.M
+    assert event_graph.n == simple_temporal_graph.m
     # for delta=5 we have three time-respecting paths (a,b,1) -> (b,c,5), (b,c,5) -> (c,d,9) and (b,c,5) -> (c,e,9)
-    assert event_graph.M == 3
+    assert event_graph.m == 3
     assert torch.equal(event_graph.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
 
 
 def test_temporal_shortest_paths(long_temporal_graph):
     dist, pred = temporal_shortest_paths(long_temporal_graph, delta=10)
-    assert dist.shape == (long_temporal_graph.N, long_temporal_graph.N)
-    assert pred.shape == (long_temporal_graph.N, long_temporal_graph.N)
+    assert dist.shape == (long_temporal_graph.n, long_temporal_graph.n)
+    assert pred.shape == (long_temporal_graph.n, long_temporal_graph.n)
 
     true_dist = np.array(
         [
