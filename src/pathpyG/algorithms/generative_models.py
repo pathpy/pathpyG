@@ -471,7 +471,7 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
 def molloy_reed_randomize(g: Graph) -> Optional[Graph]:
     """Generates a random realization of a given network based on the observed degree sequence.
     """
-    if g.is_directed:
+    if g.is_directed():
         raise NotImplementedError('molloy_reed_randomize is only implemented for undirected graphs')
     # degrees are listed in order of node indices
     degrees = degree(g.data.edge_index[1], num_nodes=g.n, dtype=torch.int).tolist()
