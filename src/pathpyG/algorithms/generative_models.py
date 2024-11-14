@@ -476,7 +476,7 @@ def molloy_reed_randomize(g: Graph) -> Optional[Graph]:
     # degrees are listed in order of node indices
     degrees = degree(g.data.edge_index[1], num_nodes=g.n, dtype=torch.int).tolist()
 
-    return molloy_reed(degrees, node_ids=g.mapping.node_ids.tolist())
+    return molloy_reed(degrees, node_ids=g.nodes).to_undirected()
 
 
 def k_regular_random(k: int, n: Optional[int] = None, node_ids: Optional[list] = None) -> Optional[Graph]:
