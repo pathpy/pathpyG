@@ -61,6 +61,18 @@ def mean_degree(graph: Graph, mode: str = "total") -> float:
     return _np.mean(degree_sequence(graph, mode=mode))
 
 
+def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink=False) -> float:
+    neighbor_degrees = []
+    for v in graph.nodes:
+        for w in graph.successors(v):
+            if exclude_backlink:
+                neighbor_degrees.append(
+                    graph.degrees(mode=mode)[w] - 1)
+            else:
+                neighbor_degrees.append(graph.weighted_outdegrees()[w])
+    return _np.mean(neighbor_degrees)
+
+
 def degree_central_moment(graph: Graph, k: int = 1, mode: str = "total") -> float:
     """Calculates the k-th central moment of the degree distribution.
 
