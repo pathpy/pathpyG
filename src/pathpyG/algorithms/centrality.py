@@ -209,7 +209,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
 
     # Add indices of first-order nodes as src of paths in augmented
     # temporal event DAG
-    src_edges_src = g.data.edge_index[0] + g.M
+    src_edges_src = g.data.edge_index[0] + g.m
     src_edges_dst = torch.arange(0, g.data.edge_index.size(1))
 
     # add edges from first-order source nodes to edge events
@@ -217,16 +217,16 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
     edge_index = torch.cat([edge_index, src_edges], dim=1)
     src_indices = torch.unique(src_edges_src).tolist()
 
-    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.M+g.N)
+    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.m+g.n)
 
     e_i = to_numpy(g.data.edge_index)
 
     fo_nodes = dict()
-    for v in range(g.M+g.N):
-        if v < g.M:  # return first-order target node otherwise
+    for v in range(g.m+g.n):
+        if v < g.m:  # return first-order target node otherwise
             fo_nodes[v] = e_i[1, v]
         else:
-            fo_nodes[v] = v - g.M
+            fo_nodes[v] = v - g.m
 
     bw: defaultdict[int, float] = defaultdict(lambda: 0.0)
 
@@ -331,7 +331,7 @@ def temporal_closeness_centrality(g: TemporalGraph, delta: int) -> dict[str, flo
     centralities = dict()
     dist, _ = temporal_shortest_paths(g, delta)
     for x in g.nodes:
-        centralities[x] = sum((g.N - 1) / dist[_np.arange(g.N) != g.mapping.to_idx(x), g.mapping.to_idx(x)])
+        centralities[x] = sum((g.n - 1) / dist[_np.arange(g.n) != g.mapping.to_idx(x), g.mapping.to_idx(x)])
 
     return centralities
 

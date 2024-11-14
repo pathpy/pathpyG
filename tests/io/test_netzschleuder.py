@@ -60,7 +60,7 @@ def test_read_netzschleuder_graph_temporal():
 
     g = read_netzschleuder_graph(name="email_company", time_attr='time')
     assert isinstance(g, TemporalGraph)
-    assert g.N == 167
-    assert g.M == 82927
+    assert g.n == 167
+    assert g.m == 82927
     assert g.start_time == 1262454016.0
     assert g.end_time == 1285884544.0

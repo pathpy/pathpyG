@@ -39,4 +39,4 @@ def avg_path_length(graph: Graph) -> float:
     m = graph.get_sparse_adj_matrix()
 
     dist = dijkstra(m, directed=graph.is_directed(), return_predecessors=False, unweighted=True)
-    return _np.sum(dist) / (graph.N * (graph.N-1))
+    return _np.sum(dist) / (graph.n * (graph.n-1))

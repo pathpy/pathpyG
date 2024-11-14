@@ -144,7 +144,7 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
         # get indices of nodes in tensor
         node_idx = [g.mapping.to_idx(x) for x in df['v']]
     else:
-        if set(attributed_nodes) != set([i for i in range(g.N)]):
+        if set(attributed_nodes) != set([i for i in range(g.n)]):
             print('Mismatch between nodes in DataFrame and nodes in graph')
             return
 

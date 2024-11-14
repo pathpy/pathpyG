@@ -16,7 +16,7 @@ def test_lcc_undirected_1():
     # undirected graph with two connectecd components
     n = Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'), ('f', 'g'), ('g', 'd'), ('d', 'f')]).to_undirected()
     lcc = largest_connected_component(n)
-    assert lcc.N == 4
+    assert lcc.n == 4
     assert set(lcc.mapping.node_ids) == set(['d', 'e', 'f', 'g'])
 
 def test_connected_components_undirected_2():
@@ -32,7 +32,7 @@ def test_lcc_undirected_2():
     n = Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'),
                               ('f', 'g'), ('g', 'd'), ('d', 'f'), ('c', 'd')]).to_undirected()
     lcc = largest_connected_component(n)
-    assert lcc.N == 7
+    assert lcc.n == 7
     assert set(lcc.mapping.node_ids) == set(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 
 def test_connected_components_directed_1():
@@ -52,11 +52,11 @@ def test_lcc_directed_1():
     g = Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'),
                               ('f', 'g'), ('g', 'd'), ('d', 'f'), ('c', 'd')])
     lcc = largest_connected_component(g, connection='weak')
-    assert lcc.N == 7
+    assert lcc.n == 7
     assert set(lcc.mapping.node_ids) == set(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 
     lcc = largest_connected_component(g, connection='strong')
-    assert lcc.N == 4
+    assert lcc.n == 4
     assert set(lcc.mapping.node_ids) == set(['d', 'e', 'f', 'g'])
 
 def test_connected_components_directed_2():
@@ -76,9 +76,9 @@ def test_lcc_directed_2():
     g = Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a'), ('d', 'e'), ('e', 'f'),
                               ('f', 'g'), ('g', 'd'), ('d', 'f')])
     lcc = largest_connected_component(g, connection='weak')
-    assert lcc.N == 4
+    assert lcc.n == 4
     assert set(lcc.mapping.node_ids) == set(['d', 'e', 'f', 'g'])
 
     lcc = largest_connected_component(g, connection='strong')
-    assert lcc.N == 4
+    assert lcc.n == 4
     assert set(lcc.mapping.node_ids) == set(['d', 'e', 'f', 'g'])

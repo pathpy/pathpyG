@@ -121,7 +121,7 @@ class RandomWalk(BaseProcess):
                 network.mapping.to_idx(v), :].todense()))) for v in network.nodes}
 
         # compute eigenvectors and eigenvalues of transition matrix
-        if network.N > 2:
+        if network.n > 2:
             _, eigenvectors = spl.eigs(
                 self._transition_matrix.transpose(), k=1, which='LM')
             pi = eigenvectors.reshape(eigenvectors.size, )
@@ -152,14 +152,14 @@ class RandomWalk(BaseProcess):
 
         # set number of times each node has been visited
         self._visitations = np.ravel(
-            np.zeros(shape=(1, self._network.N)))
+            np.zeros(shape=(1, self._network.n)))
         self._visitations[self._network.mapping.to_idx(seed)] = 1
 
     def random_seed(self) -> Any:
         """
         Returns a random node from the network, chosen uniformly at random
         """
-        x = np.random.choice(range(self._network.N))
+        x = np.random.choice(range(self._network.n))
         return self._network.mapping.to_id(x)
 
     def step(self) -> Iterable[str]:
@@ -239,7 +239,7 @@ class RandomWalk(BaseProcess):
         else:
             A = network.get_sparse_adj_matrix(edge_attr=weight).todense()
         D = A.sum(axis=1)
-        n = network.N
+        n = network.n
         T = sp.sparse.lil_matrix((n, n))
         zero_deg = 0
         for i in range(n):
@@ -282,7 +282,7 @@ class RandomWalk(BaseProcess):
         """
         assert seed in self._network.nodes
 
-        initial_dist = np.zeros(self._network.N)
+        initial_dist = np.zeros(self._network.n)
         initial_dist[self._network.mapping.to_idx(seed)] = 1.0
         return np.dot(initial_dist, (self._transition_matrix**t).todense())
 
@@ -485,7 +485,7 @@ class HigherOrderRandomWalk(RandomWalk):
         
         # set number of times each first-order node has been visited
         self._first_order_visitations = np.ravel(
-            np.zeros(shape=(1, self._first_order_network.N)))
+            np.zeros(shape=(1, self._first_order_network.n)))
         self._first_order_visitations[self._first_order_network.mapping.to_idx(seed[-1])] = 1
         RandomWalk.init(self, seed)
 
@@ -501,7 +501,7 @@ class HigherOrderRandomWalk(RandomWalk):
         the higher-order random walk. Initially, all visitation probabilities are zero except for the last node of the higher-order seed node.
         """
         first_order_stationary_state = np.ravel(
-            np.zeros(shape=(1, self._first_order_network.N)))
+            np.zeros(shape=(1, self._first_order_network.n)))
         higher_order_stationary_dist = RandomWalk.stationary_state(
             self, **kwargs)
         for v in self._network.nodes:

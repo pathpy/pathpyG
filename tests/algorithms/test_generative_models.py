@@ -11,35 +11,35 @@ def test_G_nm():
     n = 100
     m = 200
     m_1 = G_nm(n=n, m=m)
-    assert m_1.N == n
+    assert m_1.n == n
     # 400 directed edges for undirected graph
-    assert m_1.M == 2 * m
+    assert m_1.m == 2 * m
     # no multiple edges
     assert len(set([(v, w) for v, w in m_1.edges])) == len([(v, w) for v, w in m_1.edges])
     assert m_1.is_directed() is False
 
     # test undirected graph w/o multi-edges, w/o self-loops and with custom IDs
     m_2 = G_nm(n=n, m=m, mapping=IndexMap([str(i) for i in range(n)]))
-    assert m_2.N == n
+    assert m_2.n == n
     # 400 directed edges for undirected graph
-    assert m_2.M == 2 * m
+    assert m_2.m == 2 * m
     # no multiple edges
     assert len(set([(v, w) for v, w in m_2.edges])) == len([(v, w) for v, w in m_2.edges])
     assert m_2.is_directed() is False
 
     # test directed graph w/o multi-edges, w/o self-loops
     m_3 = G_nm(n=n, m=m, directed=True)
-    assert m_3.N == n
+    assert m_3.n == n
     # 200 directed edges
-    assert m_3.M == m
+    assert m_3.m == m
     assert len(set([(v, w) for v, w in m_3.edges])) == len([(v, w) for v, w in m_3.edges])
     assert m_3.is_directed() is True
 
     # test undirected graph w/o multi-edges and with self-loops
     m_4 = G_nm(n=n, m=m, self_loops=True)
-    assert m_4.N == n
+    assert m_4.n == n
     # since self-loops only exist in one direction we have 2 * m - n <= M <= 2 * m
-    assert m_4.M >= 2*m - n and m_4.M <= 2 * m
+    assert m_4.m >= 2*m - n and m_4.m <= 2 * m
     assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])
     assert m_4.is_directed() is False
 
@@ -50,33 +50,33 @@ def test_G_np():
     n = 100
     p = 0.001
     m_1 = G_np(n=n, p=p)
-    assert m_1.N == n
+    assert m_1.n == n
     # no multiple edges
     assert len(set([(v, w) for v, w in m_1.edges])) == len([(v, w) for v, w in m_1.edges])
     assert m_1.is_directed() is False
-    assert m_1.M/2 <= max_edges(n)
+    assert m_1.m/2 <= max_edges(n)
 
     # test undirected graph w/o multi-edges, w/o self-loops and with custom IDs
     m_2 = G_np(n=n, p=p, mapping=IndexMap([str(i) for i in range(n)]))
-    assert m_2.N == n
+    assert m_2.n == n
     # no multiple edges
     assert len(set([(v, w) for v, w in m_2.edges])) == len([(v, w) for v, w in m_2.edges])
     assert m_2.is_directed() is False
-    assert m_2.M/2 <= max_edges(n)
+    assert m_2.m/2 <= max_edges(n)
 
     # test directed graph w/o multi-edges, w/o self-loops
     m_3 = G_np(n=n, p=p, directed=True)
-    assert m_3.N == n    
+    assert m_3.n == n    
     assert len(set([(v, w) for v, w in m_3.edges])) == len([(v, w) for v, w in m_3.edges])
     assert m_3.is_directed() is True
-    assert m_3.M <= max_edges(n, directed=True)
+    assert m_3.m <= max_edges(n, directed=True)
 
     # test undirected graph w/o multi-edges and with self-loops
     m_4 = G_np(n=n, p=p, self_loops=True)
-    assert m_4.N == n
+    assert m_4.n == n
     assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])    
     assert m_4.is_directed() is False
-    assert m_4.M <= max_edges(n, directed=False, self_loops=True)
+    assert m_4.m <= max_edges(n, directed=False, self_loops=True)
 
 
 def test_G_nm_randomize():
@@ -85,9 +85,9 @@ def test_G_nm_randomize():
 
     g = G_np(n, m)
     g_r = G_nm_randomize(g)
-    assert g_r.N == g.N
+    assert g_r.n == g.n
     assert g_r.mapping == g.mapping
-    assert g_r.M == g_r.M
+    assert g_r.m == g_r.m
  
 
 def test_G_np_randomize():
@@ -96,7 +96,7 @@ def test_G_np_randomize():
 
     g = G_np(n, p)
     g_r = G_np_randomize(g)
-    assert g_r.N == g.N
+    assert g_r.n == g.n
     assert g_r.mapping == g.mapping
 
 

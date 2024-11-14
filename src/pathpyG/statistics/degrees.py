@@ -25,7 +25,7 @@ def degree_sequence(g: Graph, mode: str = 'total') -> _np.array:
     elif g.is_directed() and mode == 'total':
         d = g.degrees()
 
-    _degrees = _np.zeros(g.N, dtype=float)
+    _degrees = _np.zeros(g.n, dtype=float)
     for v in g.nodes:
         _degrees[g.mapping.to_idx(v)] = d[v]
     return _degrees
@@ -44,7 +44,7 @@ def degree_distribution(g: Graph, mode: str = 'total') -> Dict[int, float]:
 
     cnt: defaultdict = defaultdict(float)
     for v in g.nodes:
-        cnt[d[v]] += 1.0 / g.N
+        cnt[d[v]] += 1.0 / g.n
     return cnt
 
 

@@ -21,7 +21,7 @@ def test_init():
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
-    assert g.data.node_sequence.size() == (g.N, 1)
+    assert g.data.node_sequence.size() == (g.n, 1)
     assert g.order == 1
 
 
@@ -125,16 +125,11 @@ def test_to_undirected(simple_graph):
 
 
 def test_weighted_graph(simple_graph_multi_edges):
-    assert simple_graph_multi_edges.M == 4
+    assert simple_graph_multi_edges.m == 4
     weighted_graph = simple_graph_multi_edges.to_weighted_graph()
     assert weighted_graph.data.num_edges == 3
     assert weighted_graph.data.num_nodes == 3
     assert weighted_graph["edge_weight", "a", "b"] == 2
-
-
-def test_attr_types(simple_graph):
-    attr_types = Graph.attr_types(simple_graph.data.to_dict())
-    assert isinstance(attr_types, dict)
 
 
 def test_node_attrs(simple_graph):
@@ -168,7 +163,7 @@ def test_nodes(simple_graph):
 def test_edges(simple_graph):
     i = 0
     for edge in simple_graph.edges:
-        assert edge in [("a", "b"), ("b", "c"), ("a", "c")]
+        assert tuple(edge) in [("a", "b"), ("b", "c"), ("a", "c")]
         i += 1
     assert i == 3
 
@@ -257,8 +252,8 @@ def test_add_operator_complete_overlap():
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
     g = g1 + g2
-    assert g.N == g1.N
-    assert g.M == g1.M + g2.M
+    assert g.n == g1.n
+    assert g.m == g1.m + g2.m
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
                                                         [1, 1, 2, 3, 2, 3]]))
 
@@ -268,8 +263,8 @@ def test_add_operator_no_overlap():
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['e', 'f', 'g', 'h']))
     g = g1 + g2
-    assert g.N == g1.N + g2.N
-    assert g.M == g1.M + g2.M
+    assert g.n == g1.n + g2.n
+    assert g.m == g1.m + g2.m
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 1, 1, 4, 5, 5],
                                                         [1, 2, 3, 5, 6, 7]]))
 
@@ -279,8 +274,8 @@ def test_add_operator_partial_overlap():
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h']))
     g = g1 + g2
-    assert g.N == 6
-    assert g.M == g1.M + g2.M
+    assert g.n == 6
+    assert g.m == g1.m + g2.m
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
                                                         [1, 1, 2, 3, 4, 5]]))
 
@@ -366,11 +361,11 @@ def test_set_graph_attr(simple_graph):
 
 
 def test_N(simple_graph):
-    assert simple_graph.N == 3
+    assert simple_graph.n == 3
 
 
 def test_M(simple_graph):
-    assert simple_graph.M == 3
+    assert simple_graph.m == 3
 
 
 def test_is_directed(simple_graph):

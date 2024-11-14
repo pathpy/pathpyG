@@ -102,6 +102,10 @@ class TemporalGraph(Graph):
         for e, t in zip(self.data.edge_index.t(), self.data.time):
             yield *self.mapping.to_ids(e), t.item()
 
+    @property
+    def order(self) -> int:
+        return 1
+
     def shuffle_time(self) -> None:
         """Randomly shuffles the temporal order of edges by randomly permuting timestamps."""
         self.data.time = self.data.time[torch.randperm(len(self.data.time))]
@@ -175,25 +179,29 @@ class TemporalGraph(Graph):
             self.end_time,
         )
 
-        attr_types = Graph.attr_types(self.data.to_dict())
+        attr = self.data.to_dict()
+        attr_types = {}
+        for k in attr:
+            t = type(attr[k])
+            if t == torch.Tensor:
+                attr_types[k] = str(t) + " -> " + str(attr[k].size())
+            else:
+                attr_types[k] = str(t)
 
-        if len(self.data.node_attrs()) > 0:
-            s += "\nNode attributes\n"
-            for a in self.data.node_attrs():
-                s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.edge_attrs()) > 1:
-            s += "\nEdge attributes\n"
-            for a in self.data.edge_attrs():
-                s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
-        if len(self.data.keys()) > len(self.data.edge_attrs()) + len(self.data.node_attrs()):
-            s += "\nGraph attributes\n"
-            for a in self.data.keys():
-                if (
-                    not self.data.is_node_attr(a)
-                    and not self.data.is_edge_attr(a)
-                    and a != "src"
-                    and a != "dst"
-                    and a != "t"
-                ):
-                    s += "\t{0}\t\t{1}\n".format(a, attr_types[a])
+        from pprint import pformat
+
+        attribute_info = {
+            'Node Attributes': {},
+            'Edge Attributes': {},
+            'Graph Attributes': {}
+
+        }
+        for a in self.node_attrs():
+            attribute_info['Node Attributes'][a] = attr_types[a]
+        for a in self.edge_attrs():
+            attribute_info['Edge Attributes'][a] = attr_types[a]
+        for a in self.data.keys():
+            if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
+                attribute_info['Graph Attributes'][a] = attr_types[a]
+        s += pformat(attribute_info, indent=4, width = 160)
         return s

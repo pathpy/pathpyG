@@ -21,7 +21,7 @@ def test_random_walk(simple_graph):
     steps = 20
     data = rw.run_experiment(steps=steps, runs=[v for v in simple_graph.nodes])
 
-    assert len(data) == simple_graph.N * steps * 2 + simple_graph.N * simple_graph.N
+    assert len(data) == simple_graph.n * steps * 2 + simple_graph.n * simple_graph.n
 
     # make sure that all transitions correspond to edges
     paths = rw.get_paths(data)
@@ -39,9 +39,9 @@ def test_higher_order_random_walk(simple_second_order_graph: Tuple[Graph, Graph]
     print(g2.mapping)
     rw = HigherOrderRandomWalk(g2, g, weight=True)
     steps = 100
-    data = rw.run_experiment(steps=steps, runs=list(g2.nodes))
+    data = rw.run_experiment(steps=steps, runs=g2.nodes)
 
-    assert len(data) == g2.N * steps * 2 + g2.N * g2.N
+    assert len(data) == g2.n * steps * 2 + g2.n * g2.n
     paths = rw.get_paths(data)
     check_transitions(g, paths)
 
