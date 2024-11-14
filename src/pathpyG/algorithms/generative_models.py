@@ -435,7 +435,7 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
 
     # create empty network with n nodes
     n = len(degree_sequence)
-    edges = set()
+    edges = list()
 
     if node_ids is None or len(node_ids) != n:
         node_ids = []
@@ -455,13 +455,13 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
         if v == w or (multiedge is False and relax is False and (v, w) in edges):
             # remove random edge and add stubs
             if len(edges) > 0:
-                edge = random.choice(list(edges))
+                edge = random.choice(edges)
                 stubs.append(edge[0])
                 stubs.append(edge[1])
                 edges.remove(edge)
         else:
             if not (v, w) in edges:
-                edges.add((v, w))
+                edges.append((v, w))
             stubs.remove(v)
             stubs.remove(w)
 
