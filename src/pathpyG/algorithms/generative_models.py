@@ -1,23 +1,26 @@
 """Algorithms to generate random graphs
 
-The functions in this module allow to generate graphs based on 
-probabilistic generative models.
+The functions in this module allow to generate graphs based on
+different probabilistic generative models.
 
 Example:
     ```py
     import pathpyG as pp
-
     
+    g = pp.algorithms.generative_models.erdos_renyi_gnm(n=100, m=200)
     ```
 """
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Optional
+import warnings
+import random 
 
 import scipy.special
 
 import numpy as _np
 import torch
+from torch_geometric.utils import degree
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
@@ -33,19 +36,22 @@ def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_lo
         multi_edges: If True, multiple edges between each node pair are allowed. In this case np.inf is returned.
         self_loops: If True, include self-loops.
 
-    Example:
-    ```py
-        # Compute maximum number of edges in directed/undirected network with/without self-loops and 100 nodes
-        import pathpyG as pp
-        print(pp.algorithms.generative_models.max_edges(100)
-        # 4950
+    Examples:
+        Compute maximum number of edges in undirected network without self-loops and 100 nodes
 
-        print(pp.algorithms.generative_models.max_edges(100, directed=True)
+        >>> import pathpyG as pp
+        >>> print(pp.algorithms.generative_models.max_edges(100)
+        4950
+
+        Directed networks without self-loops
+
+        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True)
         9900
 
-        print(pp.algorithms.generative_models.max_edges(100, directed=True, loops=True)
-        # 10000
-    ```
+        Directed networks with self-loops 
+
+        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True, loops=True)
+        10000
     """
 
     if multi_edges:
@@ -60,14 +66,9 @@ def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_lo
         return int(n * (n - 1))
 
 
-def G_nm(
-    n: int,
-    m: int,
-    mapping: IndexMap | None = None,
-    self_loops: bool = False,
-    multi_edges: bool = False,
-    directed: bool = False,
-) -> Graph:
+def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
+                    self_loops: bool = False, multi_edges: bool = False,
+                    directed: bool = False) -> Graph:
     """Generate a random graph with n nodes and m edges based on the G(n,m) model by Pal Eröds and Alfred Renyi.
 
     Args:
@@ -77,6 +78,9 @@ def G_nm(
         self_loops: whether or not to allow self-loops (v,v) to be generated
         multi_edges: whether or not multiple identical edges are allowed
         directed: whether or not to generate a directed graph
+    
+    Returns:
+        Graph: graph object
     """
     assert m <= max_edges(n, directed=directed, self_loops=self_loops, multi_edges=multi_edges)
 
@@ -104,7 +108,7 @@ def G_nm(
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
 
 
-def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph:
+def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph:
     """Generate a random graph whose number of nodes, edges, edge directedness and node IDs
     match the corresponding values of a given network instance. Useful to generate a randomized
     version of a network.
@@ -120,18 +124,24 @@ def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = F
         import pathpyG as pp
         g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('d', 'e')])
         r = pp.algorithms.generative_models.G_nm_randomize(g)
+    ```
     """
     if graph.is_undirected():
         m = int(graph.m / 2)
     else:
         m = graph.m
-    return G_nm(
-        graph.n, m, directed=graph.is_directed(), self_loops=self_loops, multi_edges=multi_edges, mapping=graph.mapping
+    return erdos_renyi_gnm(
+        graph.n, m, directed=graph.is_directed(), 
+        self_loops=self_loops,
+        multi_edges=multi_edges,
+        mapping=graph.mapping
     )
 
 
-def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = False, directed: bool = False) -> Graph:
-    """Generate a random graph with n nodes link probability p on the G(n,p) model by Edgar Nelson Gilbert.
+def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
+                    self_loops: bool = False, directed: bool = False) -> Graph:
+    """Generate an Erdös-Renyi random graph with n nodes and 
+    link probability p, using the G(n,p) model by Edgar Nelson Gilbert.
 
     Args:
         n: the number of nodes of the graph
@@ -163,12 +173,11 @@ def G_np(n: int, p: float, mapping: IndexMap | None = None, self_loops: bool = F
     return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
 
 
-def G_np_randomize(graph: Graph, self_loops: bool = False) -> Graph:
-    """Generate a random microstate based on the G(n,p) model.
+def erdos_renyi_gnp_randomize(graph: Graph, self_loops: bool = False) -> Graph:
+    """Randomize a given graph based on the Erdös-Renyi random graph G(n,p) model.
 
-    The number of nodes,
-    the expected number of edges, the edge directedness and the node uids of the
-    generated network match the corresponding values of a given network instance.
+    The number of nodes, expected number of edges, edge directedness and node uids of the
+    generated graph match the corresponding values of the graph given as parameter.
     """
     if graph.is_directed():
         m = graph.m
@@ -176,27 +185,124 @@ def G_np_randomize(graph: Graph, self_loops: bool = False) -> Graph:
         m = int(graph.m / 2)
     M = max_edges(graph.n, directed=graph.is_directed(), self_loops=self_loops)
     p = m / M
-    return G_np(n=graph.n, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping=graph.mapping)
+    return erdos_renyi_gnp(n=graph.n, p=p, directed=graph.is_directed(), 
+                           self_loops=self_loops, mapping=graph.mapping)
 
 
-def G_np_likelihood(p: float, graph: Graph) -> float:
+def erdos_renyi_gnp_likelihood(p: float, graph: Graph) -> float:
     """Calculate the likelihood of parameter p for a G(n,p) model and a given graph"""
     assert graph.is_directed is False
     return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m / 2)
 
 
-def Gnp_log_likelihood(p: float, graph: Graph) -> float:
+def erdos_renyi_gnp_log_likelihood(p: float, graph: Graph) -> float:
     """Calculate the log-likelihood of parameter p for a G(n,p) model and a given graph"""
     return (graph.m / 2) * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m / 2)) * _np.log10(1 - p)
 
 
-def G_np_MLE(graph: Graph) -> float:
+def erdos_renyi_gnp_mle(graph: Graph) -> float:
     """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given undirected graph"""
     assert graph.is_directed() is False
     return (graph.m / 2) / scipy.special.binom(graph.n, 2)
 
 
-def is_graphic_Erdos_Gallai(degrees: list[int] | _np.ndarray) -> bool:
+def watts_strogatz(
+    n: int,
+    s: int,
+    p: float = 0.0,
+    undirected: bool = True,
+    allow_duplicate_edges: bool = True,
+    allow_self_loops: bool = True,
+    mapping: IndexMap | None = None,
+) -> Graph:
+    """Generate a Watts-Strogatz small-world graph.
+
+    Args:
+        n: The number of nodes in the graph.
+        s: The number of edges to attach from a new node to existing nodes.
+        p: The probability of rewiring each edge.
+        undirected: If True, the graph will be undirected.
+        allow_duplicate_edges: If True, allow duplicate edges in the graph.
+            This is faster but may result in fewer edges than requested in the undirected case
+            or duplicates in the directed case.
+        allow_self_loops: If True, allow self-loops in the graph.
+            This is faster but may result in fewer edges than requested in the undirected case.
+        mapping: A mapping from the node indices to node names.
+
+    Returns:
+        Graph: A Watts-Strogatz small-world graph.
+
+    Examples:
+        ```py
+        g = Watts_Strogatz(100, 4, 0.1, mapping=pp.IndexMap([f"n_{i}" for i in range(100)])
+        ```
+    """
+
+    nodes = torch.arange(n)
+
+    # construct a ring lattice (dimension 1)
+    edges = (
+        torch.stack([torch.stack((nodes, torch.roll(nodes, shifts=-i, dims=0))) for i in range(1, s + 1)], dim=0)
+        .permute(1, 0, 2)
+        .reshape(2, -1)
+    )
+
+    if not allow_duplicate_edges:
+        if n * (n - 1) < edges.shape[1]:
+            raise ValueError(
+                "The number of edges is greater than the number of possible edges in the graph. Set `allow_duplicate_edges=True` to allow this."
+            )
+        elif n * (n - 1) * 0.5 < edges.shape[1] and p > 0.3:
+            warnings.warn(
+                "Avoding duplicate in graphs with high connectivity and high rewiring probability may be slow. Consider setting `allow_duplicate_edges=True`."
+            )
+
+    # Rewire each link with probability p
+    rand_vals = torch.rand(edges.shape[1])
+    rewire_mask = rand_vals < p
+
+    # Generate random nodes excluding the current node for each edge that needs to be rewired, also avoid duplicate edges
+    edges[1, rewire_mask] = torch.randint(n, (rewire_mask.sum(),))
+
+    # In the undirected case, make sure the edges all point in the same direction
+    # to avoid duplicate edges pointing in opposite directions
+    if undirected:
+        edges = edges.sort(dim=0)[0]
+    final_edges = edges
+
+    if not allow_duplicate_edges:
+        # Remove duplicate edges
+        final_edges, counts = edges.unique(dim=1, return_counts=True)
+        if final_edges.shape[0] < edges.shape[1]:
+            for i, edge in enumerate(final_edges[:, counts > 1].T):
+                for _ in range(counts[counts > 1][i] - 1):
+                    while True:
+                        new_edge = torch.tensor([edge[0], torch.randint(n, (1,))]).sort()[0].unsqueeze(1)
+                        # Check if the new edge is already in the final edges
+                        # and add it if not
+                        if (new_edge != final_edges).any(dim=0).all():
+                            final_edges = torch.cat((final_edges, new_edge), dim=1)
+                            break
+
+    if not allow_self_loops:
+        self_loop_edges = final_edges[:, final_edges[0] == final_edges[1]]
+        final_edges = final_edges[:, final_edges[0] != final_edges[1]]
+        for self_loop_edge in self_loop_edges.T:
+            while True:
+                new_edge = torch.tensor([self_loop_edge[0], torch.randint(n, (1,))]).sort()[0].unsqueeze(1)
+                # Check if the new edge is already in the final edges
+                # and add it if not
+                if (new_edge != final_edges).any(dim=0).all() and new_edge[0] != new_edge[1]:
+                    final_edges = torch.cat((final_edges, new_edge), dim=1)
+                    break
+
+    g = Graph.from_edge_index(final_edges, mapping=mapping)
+    if undirected:
+        g = g.to_undirected()
+    return g
+
+
+def is_graphic_erdos_gallai(degrees: list[int] | _np.ndarray) -> bool:
     """Check Erdös and Gallai condition.
 
     Checks whether the condition by Erdös and Gallai (1967) for a graphic degree
@@ -236,12 +342,12 @@ def generate_degree_sequence(
 
         dist = scipy.stats.rv_discrete(name="custom", values=(degrees, probs))
 
-        while not is_graphic_Erdos_Gallai(s):
+        while not is_graphic_erdos_gallai(s):
             s = dist.rvs(size=n, **distribution_args)
         return s
     # use scipy rv objects to generate graphic degree sequence
     elif hasattr(distribution, "rvs"):
-        while not is_graphic_Erdos_Gallai(s):
+        while not is_graphic_erdos_gallai(s):
             s = distribution.rvs(size=n, **distribution_args)
             # Check if the distribution is discrete
             if s.dtype != int:
@@ -280,3 +386,130 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: Optional[IndexM
     g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n)
     g.data.node_label = torch.tensor(z)
     return g
+
+
+
+def molloy_reed(degree_sequence: _np.array | Dict[int, float],
+                multiedge: bool = False,
+                relax: bool = False,
+                node_ids: Optional[list] = None) -> Graph:
+    """Generate Molloy-Reed graph.
+
+    Generates a random undirected network with given degree sequence based on
+    the Molloy-Reed algorithm. The condition proposed by Erdös and Gallai (1967)
+    is used to test whether the degree sequence is graphic, i.e. whether a network
+    with the given degree sequence exists.
+
+    Args:
+        degrees: List of integer node degrees. The number of nodes of the generated
+        network corresponds to len(degrees).
+
+        relax: If True, we conceptually allow self-loops and multi-edges, but do not
+        add them to the network. This implies that the generated graph may not
+        have exactly sum(degrees)/2 edges, but it ensures that the algorithm
+        always finishes.
+
+        node_ids : Optional list of node IDs that will be used for Indexmapping.
+
+    Examples:
+
+    Generate random undirected network with given degree sequence
+
+    >>> import pathpyG as pp
+    >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
+    >>> print(random_network.summary())
+    ...
+
+    Network generation fails for non-graphic degree sequence
+
+    >>> import pathpyG as pp
+    >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
+    >>> print(random_network)
+    None
+
+    """
+
+    # assume that we are given a graphical degree sequence
+    if not is_graphic_erdos_gallai(degree_sequence):
+        return None
+
+    # create empty network with n nodes
+    n = len(degree_sequence)
+    edges = set()
+
+    if node_ids is None or len(node_ids) != n:
+        node_uids = []
+        for i in range(n):
+            node_uids.append(str(i))
+
+    # generate edge stubs based on degree sequence
+    stubs = []
+    for i in range(n):
+        for _ in range(int(degree_sequence[i])):
+            stubs.append(str(node_ids[i]))
+
+    # connect randomly chosen pairs of stubs
+    while (len(stubs) > 0):
+        v, w = _np.random.choice(stubs, 2, replace=False)
+
+        if v == w or (multiedge is False and relax is False and (v, w) in edges):
+            # remove random edge and add stubs
+            if len(edges) > 0:
+                edge = random.choice(list(edges))
+                stubs.append(edge[0])
+                stubs.append(edge[1])
+                edges.remove(edge)
+        else:
+            if not (v, w) in edges:
+                edges.add((v, w))
+            stubs.remove(v)
+            stubs.remove(w)
+
+    return Graph.from_edge_list(edges)
+
+
+def molloy_reed_randomize(g: Graph) -> Optional[Graph]:
+    """Generates a random realization of a given network based on the observed degree sequence.
+    """
+    if g.is_directed:
+        raise NotImplementedError('molloy_reed_randomize is only implemented for undirected graphs')
+    # degrees are listed in order of node indices
+    degrees = degree(g.data.edge_index[1], num_nodes=g.n, dtype=torch.int).tolist()
+
+    return molloy_reed(degrees, node_ids=g.mapping.node_ids.tolist())
+
+
+def k_regular_random(k: int, n: Optional[int] = None, node_ids: Optional[list] = None) -> Optional[Graph]:
+    """Generate a random graph in which all nodes have exactly degree k
+
+    Args:
+        k: degree of all nodes in the generated network.
+        node_ids: Optional list of node uids that will be used.
+
+    Examples:
+        
+        Generate random undirected network with given degree sequence
+
+        >>> import pathpy as pp
+        >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
+        >>> print(random_network.summary())
+        ...
+
+        Network generation fails for non-graphic sequences
+
+        >>> import pathpy as pp
+        >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
+        >>> print(random_network)
+        None
+    """
+    if k < 0:
+        msg = 'Degree parameter k must be non-negative'
+        raise ValueError(msg)
+    if n is None and node_ids is None:
+        msg = 'You must either pass a list of node ids or a number of nodes to generate'
+        raise ValueError(msg)
+
+    if n is None:
+        n = len(node_ids)
+    
+    return molloy_reed([k]*n, multiedge=False, relax=False, node_ids=node_ids)
