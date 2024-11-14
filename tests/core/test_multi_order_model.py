@@ -188,3 +188,35 @@ def test_to_DBGNN_data(simple_temporal_graph):
     data = m.to_dbgnn_data(max_order=3)
     assert torch.equal(data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
     assert torch.equal(data.edge_index_higher_order, EdgeIndex([[0, 0], [1, 2]]))
+
+def test_paths_indexing():
+    """
+    This test was create to test that start indexes (ixs_start_paths_ho) of paths in get_intermediate_order_log_likelihood work correcly.
+    Paths 'shrink' when encoded throgh higher-order nodes, and ixs_start_paths_ho has to correctly account for it.
+    """
+    # import numpy as np
+    # import pathpyG as pp
+    paths_list = [
+        ("d","b","c"),
+        ("a","b","c"),
+        ("a","b","e"),
+        ("d","b","e"),
+        ("a",)
+        ]
+    frequencies = [
+        1,
+        20,
+        1,
+        20,
+        1
+        ]
+    mapping = IndexMap()
+    mapping.add_ids(np.unique(np.hstack(paths_list)))
+    pathdata = PathData(mapping)
+    pathdata.append_walks(node_seqs=paths_list, weights=frequencies)
+    max_order = 3
+    mon = MultiOrderModel.from_PathData(pathdata, max_order=max_order)
+    mon.estimate_order(
+        pathdata,
+        max_order=max_order
+        )
