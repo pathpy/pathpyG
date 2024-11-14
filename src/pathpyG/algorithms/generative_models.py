@@ -465,7 +465,7 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
             stubs.remove(v)
             stubs.remove(w)
 
-    return Graph.from_edge_list(edges)
+    return Graph.from_edge_list(edges).to_undirected()
 
 
 def molloy_reed_randomize(g: Graph) -> Optional[Graph]:
