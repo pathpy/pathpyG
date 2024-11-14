@@ -4,13 +4,14 @@
 # =============================================================================
 # File      : network_plots.py -- Network plots with d3js
 # Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Wed 2023-12-13 10:12 juergen>
+# Time-stamp: <Thu 2024-11-14 14:21 juergen>
 #
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 from __future__ import annotations
 
 import json
+import numpy as np
 
 # import logging
 
@@ -21,7 +22,17 @@ from pathpyG.visualisations._d3js.core import D3jsPlot
 # create logger
 # logger = logging.getLogger("root")
 
-
+class NpEncoder(json.JSONEncoder):
+    """Encode np values to python for json export."""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+    
 class NetworkPlot(D3jsPlot):
     """Network plot class for a static network."""
 
@@ -44,7 +55,8 @@ class NetworkPlot(D3jsPlot):
 
     def to_json(self) -> Any:
         """Convert data to json."""
-        return json.dumps(self.data)
+        print(self.data)
+        return json.dumps(self.data, cls=NpEncoder)
 
 
 class StaticNetworkPlot(NetworkPlot):
