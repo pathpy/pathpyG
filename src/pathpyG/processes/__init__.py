@@ -1,4 +1,5 @@
 """Module for pathpy processes."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -12,6 +13,7 @@
 # pylint: disable=unused-import
 
 from pathpyG.processes.random_walk import RandomWalk
-#from pathpyG.processes.epidemic_spreading import EpidemicSIR
+
+# from pathpyG.processes.epidemic_spreading import EpidemicSIR
 from pathpyG.processes.sampling import VoseAliasSampling
 from pathpyG.processes.random_walk import HigherOrderRandomWalk

@@ -21,6 +21,8 @@ def test_init():
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
+    assert g.data.node_sequence.size() == (g.n, 1)
+    assert g.order == 1
 
 
 def test_init_with_edge_index():
@@ -64,20 +66,20 @@ def test_from_edge_list():
     assert isinstance(g, Graph)
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
-    assert g.mapping.to_idx('a') == 0
-    assert g.mapping.to_idx('b') == 1
-    assert g.mapping.to_idx('c') == 2
+    assert g.mapping.to_idx("a") == 0
+    assert g.mapping.to_idx("b") == 1
+    assert g.mapping.to_idx("c") == 2
     assert isinstance(g.edge_to_index, dict)
-    assert torch.equal(g.data.edge_index, EdgeIndex([[0,1,2], [1,2,0]]))
+    assert torch.equal(g.data.edge_index, EdgeIndex([[0, 1, 2], [1, 2, 0]]))
 
     edge_list = [
         ("a", "c"),
         ("b", "c"),
     ]
     g = Graph.from_edge_list(edge_list)
-    assert g.mapping.to_idx('a') == 0
-    assert g.mapping.to_idx('b') == 1
-    assert g.mapping.to_idx('c') == 2
+    assert g.mapping.to_idx("a") == 0
+    assert g.mapping.to_idx("b") == 1
+    assert g.mapping.to_idx("c") == 2
 
     edge_list = [
         (1, 12),
@@ -88,17 +90,13 @@ def test_from_edge_list():
     assert g.mapping.to_idx(2) == 1
     assert g.mapping.to_idx(12) == 2
 
-    edge_list = [
-        ("1", "12"),
-        ("2", "1"),
-        ("21", "3")
-    ]
+    edge_list = [("1", "12"), ("2", "1"), ("21", "3")]
     g = Graph.from_edge_list(edge_list)
-    assert g.mapping.to_idx('1') == 0
-    assert g.mapping.to_idx('2') == 1
-    assert g.mapping.to_idx('3') == 2
-    assert g.mapping.to_idx('12') == 3
-    assert g.mapping.to_idx('21') == 4
+    assert g.mapping.to_idx("1") == 0
+    assert g.mapping.to_idx("2") == 1
+    assert g.mapping.to_idx("3") == 2
+    assert g.mapping.to_idx("12") == 3
+    assert g.mapping.to_idx("21") == 4
 
 
 def test_from_edge_list_undirected():
@@ -123,16 +121,11 @@ def test_to_undirected(simple_graph):
 
 
 def test_weighted_graph(simple_graph_multi_edges):
-    assert simple_graph_multi_edges.M == 4
+    assert simple_graph_multi_edges.m == 4
     weighted_graph = simple_graph_multi_edges.to_weighted_graph()
     assert weighted_graph.data.num_edges == 3
     assert weighted_graph.data.num_nodes == 3
     assert weighted_graph["edge_weight", "a", "b"] == 2
-
-
-def test_attr_types(simple_graph):
-    attr_types = Graph.attr_types(simple_graph.data.to_dict())
-    assert isinstance(attr_types, dict)
 
 
 def test_node_attrs(simple_graph):
@@ -166,24 +159,24 @@ def test_nodes(simple_graph):
 def test_edges(simple_graph):
     i = 0
     for edge in simple_graph.edges:
-        assert edge in [("a", "b"), ("b", "c"), ("a", "c")]
+        assert tuple(edge) in [("a", "b"), ("b", "c"), ("a", "c")]
         i += 1
     assert i == 3
 
 
 def test_successors(simple_graph):
-    s = [v for v in simple_graph.successors("a")]
+    s = simple_graph.successors("a")
     assert s == ["b", "c"]
 
-    s = [v for v in simple_graph.successors("c")]
+    s = simple_graph.successors("c")
     assert len(s) == 0
 
 
 def test_predecessors(simple_graph):
-    s = [v for v in simple_graph.predecessors("b")]
+    s = simple_graph.predecessors("b")
     assert s == ["a"]
 
-    s = [v for v in simple_graph.predecessors("a")]
+    s = simple_graph.predecessors("a")
     assert len(s) == 0
 
 
@@ -196,14 +189,14 @@ def test_is_edge(simple_graph):
     assert not simple_graph.is_edge("c", "b")
 
 
-def test_get_sparse_adj_matrix(simple_graph):
-    adj = simple_graph.get_sparse_adj_matrix()
+def test_sparse_adj_matrix(simple_graph):
+    adj = simple_graph.sparse_adj_matrix()
     assert adj.shape == (3, 3)
     assert adj.nnz == 3
 
     edge_weight = torch.tensor([[1], [1], [2]])
     simple_graph.data["edge_weight"] = edge_weight
-    weighted_adj = simple_graph.get_sparse_adj_matrix("edge_weight")
+    weighted_adj = simple_graph.sparse_adj_matrix("edge_weight")
     assert weighted_adj.shape == (3, 3)
     assert weighted_adj.nnz == 3
     assert isinstance(weighted_adj, s.coo_matrix)
@@ -238,8 +231,8 @@ def test_out_degrees(simple_graph):
     assert out_degrees["c"] == 0
 
 
-def test_get_laplacian(simple_graph):
-    laplacian = simple_graph.get_laplacian()
+def test_laplacian(simple_graph):
+    laplacian = simple_graph.laplacian()
     assert laplacian.shape == (3, 3)
     assert laplacian.nnz == 6
     assert isinstance(laplacian, s.coo_matrix)
@@ -250,37 +243,35 @@ def test_get_laplacian(simple_graph):
     assert laplacian.data[4] == 1
     assert laplacian.data[5] == 0
 
+
 def test_add_operator_complete_overlap():
     # complete overlap
-    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
-    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
     g = g1 + g2
-    assert g.N == g1.N
-    assert g.M == g1.M + g2.M
-    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
-                                                        [1, 1, 2, 3, 2, 3]]))
+    assert g.n == g1.n
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 2, 3]]))
 
 
 def test_add_operator_no_overlap():
     # no overlap
-    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
-    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['e', 'f', 'g', 'h']))
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["e", "f", "g", "h"]))
     g = g1 + g2
-    assert g.N == g1.N + g2.N
-    assert g.M == g1.M + g2.M
-    assert torch.equal(g.data.edge_index, torch.tensor([[0, 1, 1, 4, 5, 5],
-                                                        [1, 2, 3, 5, 6, 7]]))
+    assert g.n == g1.n + g2.n
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 1, 1, 4, 5, 5], [1, 2, 3, 5, 6, 7]]))
 
 
 def test_add_operator_partial_overlap():
     # partial overlap
-    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd']))
-    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h']))
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "g", "h"]))
     g = g1 + g2
-    assert g.N == 6
-    assert g.M == g1.M + g2.M
-    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1],
-                                                        [1, 1, 2, 3, 4, 5]]))
+    assert g.n == 6
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 4, 5]]))
 
 
 def test_get_node_attr(simple_graph):
@@ -313,6 +304,7 @@ def test_get_edge_attr(simple_graph):
 
     with pytest.raises(KeyError):
         simple_graph["edge_weight_1", "a", "b"].item()
+
 
 def test_get_graph_attr(simple_graph):
     simple_graph.data["graph_feature"] = torch.tensor([42])
@@ -364,11 +356,11 @@ def test_set_graph_attr(simple_graph):
 
 
 def test_N(simple_graph):
-    assert simple_graph.N == 3
+    assert simple_graph.n == 3
 
 
 def test_M(simple_graph):
-    assert simple_graph.M == 3
+    assert simple_graph.m == 3
 
 
 def test_is_directed(simple_graph):

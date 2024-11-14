@@ -1,6 +1,5 @@
 """Config reader."""
 
-
 import os
 import sys
 import tomllib

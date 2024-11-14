@@ -1,4 +1,5 @@
 """Initialize matplotlib plotting functions."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================

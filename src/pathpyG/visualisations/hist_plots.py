@@ -1,4 +1,5 @@
 """Histogram plot classes."""
+
 from __future__ import annotations
 import logging
 
@@ -13,9 +14,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("root")
 
 
-def hist(
-    network: Graph, key: str = "indegrees", bins: int = 10, **kwargs: Any
-) -> HistogramPlot:
+def hist(network: Graph, key: str = "indegrees", bins: int = 10, **kwargs: Any) -> HistogramPlot:
     """Plot a histogram."""
     return HistogramPlot(network, key, bins, **kwargs)
 
@@ -25,9 +24,7 @@ class HistogramPlot(PathPyPlot):
 
     _kind = "hist"
 
-    def __init__(
-        self, network: Graph, key: str = "indegrees", bins: int = 10, **kwargs: Any
-    ) -> None:
+    def __init__(self, network: Graph, key: str = "indegrees", bins: int = 10, **kwargs: Any) -> None:
         """Initialize network plot class."""
         super().__init__()
         self.network = network
