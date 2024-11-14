@@ -122,11 +122,11 @@ def G_nm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = F
         r = pp.algorithms.generative_models.G_nm_randomize(g)
     """
     if graph.is_undirected():
-        m = int(graph.M / 2)
+        m = int(graph.m / 2)
     else:
-        m = graph.M
+        m = graph.m
     return G_nm(
-        graph.N, m, directed=graph.is_directed(), self_loops=self_loops, multi_edges=multi_edges, mapping=graph.mapping
+        graph.n, m, directed=graph.is_directed(), self_loops=self_loops, multi_edges=multi_edges, mapping=graph.mapping
     )
 
 
@@ -171,29 +171,29 @@ def G_np_randomize(graph: Graph, self_loops: bool = False) -> Graph:
     generated network match the corresponding values of a given network instance.
     """
     if graph.is_directed():
-        m = graph.M
+        m = graph.m
     else:
-        m = int(graph.M / 2)
-    M = max_edges(graph.N, directed=graph.is_directed(), self_loops=self_loops)
+        m = int(graph.m / 2)
+    M = max_edges(graph.n, directed=graph.is_directed(), self_loops=self_loops)
     p = m / M
-    return G_np(n=graph.N, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping=graph.mapping)
+    return G_np(n=graph.n, p=p, directed=graph.is_directed(), self_loops=self_loops, mapping=graph.mapping)
 
 
 def G_np_likelihood(p: float, graph: Graph) -> float:
     """Calculate the likelihood of parameter p for a G(n,p) model and a given graph"""
     assert graph.is_directed is False
-    return p**graph.N * (1 - p) ** (scipy.special.binom(graph.N, 2) - graph.M / 2)
+    return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m / 2)
 
 
 def Gnp_log_likelihood(p: float, graph: Graph) -> float:
     """Calculate the log-likelihood of parameter p for a G(n,p) model and a given graph"""
-    return (graph.M / 2) * _np.log10(p) + (scipy.special.binom(graph.N, 2) - (graph.M / 2)) * _np.log10(1 - p)
+    return (graph.m / 2) * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m / 2)) * _np.log10(1 - p)
 
 
 def G_np_MLE(graph: Graph) -> float:
     """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given undirected graph"""
     assert graph.is_directed() is False
-    return (graph.M / 2) / scipy.special.binom(graph.N, 2)
+    return (graph.m / 2) / scipy.special.binom(graph.n, 2)
 
 
 def is_graphic_Erdos_Gallai(degrees: list[int] | _np.ndarray) -> bool:

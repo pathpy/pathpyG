@@ -57,7 +57,7 @@ def layout(network, **kwds):
     # Layout:
 
     The layout can be modified by the following keyword arguments:
-    Note: 
+    Note:
         All layout arguments can be entered with or without `layout_` at the beginning, e.g. `layout_iterations` is equal to `iterations`
 
     Keyword Args:
@@ -70,13 +70,13 @@ def layout(network, **kwds):
             via a string value. Currently, supported are:
 
             - **Random layout**, where the nodes are uniformly at random placed in the
-                unit square. 
+                unit square.
             - **Fruchterman-Reingold force-directed algorithm**. In this algorithm, the
                 nodes are represented by steel rings and the edges are springs between
                 them. The attractive force is analogous to the spring force and the
                 repulsive force is analogous to the electrical force. The basic idea is
                 to minimize the energy of the system by moving the nodes and changing
-                the forces between them. 
+                the forces between them.
 
             The algorithm can be enabled with the keywords:
             | Algorithms | Keywords |
@@ -167,35 +167,37 @@ def layout(network, **kwds):
         'b': array([-3.84803812, -0.71628417])}
     """
     # initialize variables
-    _weight = kwds.get('weight', None)
+    _weight = kwds.get("weight", None)
     if _weight is None:
-        _weight = kwds.get('layout_weight', None)
+        _weight = kwds.get("layout_weight", None)
 
     # check type of network
-    if 'cnet' in str(type(network)):
+    if "cnet" in str(type(network)):
         # log.debug('The network is of type "cnet".')
         nodes = list(network.nodes)
         adjacency_matrix = network.adjacency_matrix(weight=_weight)
 
-    elif 'networkx' in str(type(network)):
+    elif "networkx" in str(type(network)):
         # log.debug('The network is of type "networkx".')
         nodes = list(network.nodes())
         import networkx as nx
-        adjacency_matrix = nx.adjacency_matrix(network, weight=_weight) # type: ignore
-    elif 'igraph' in str(type(network)):
+
+        adjacency_matrix = nx.adjacency_matrix(network, weight=_weight)  # type: ignore
+    elif "igraph" in str(type(network)):
         # log.debug('The network is of type "igraph".')
         nodes = list(range(len(network.vs)))
         from scipy.sparse import coo_matrix
+
         A = np.array(network.get_adjacency(attribute=_weight).data)
         adjacency_matrix = coo_matrix(A)
-    elif 'pathpyG' in str(type(network)):
+    elif "pathpyG" in str(type(network)):
         # log.debug('The network is of type "pathpy".')
         nodes = list(network.nodes)
         if _weight is not None:
             _w = True
         else:
             _w = False
-        adjacency_matrix = network.get_sparse_adj_matrix()
+        adjacency_matrix = network.sparse_adj_matrix()
     # elif isinstance(network, tuple):
     #     # log.debug('The network is of type "list".')
     #     nodes = network[0]
@@ -205,9 +207,11 @@ def layout(network, **kwds):
     #         edges[e] = e
 
     else:
-        print('Type of the network could not be determined.'
-                  ' Currently only "cnet", "networkx","igraph", "pathpy"'
-                  ' and "node/edge list" is supported!')
+        print(
+            "Type of the network could not be determined."
+            ' Currently only "cnet", "networkx","igraph", "pathpy"'
+            ' and "node/edge list" is supported!'
+        )
         raise NotImplementedError
 
     # create layout class
@@ -257,22 +261,25 @@ class Layout(object):
         attr = self.rename_attributes(**attr)
 
         # options for the layouts
-        self.layout_type = attr.get('layout', None)
-        self.k = attr.get('force', None,)
-        self.fixed = attr.get('fixed', None)
-        self.iterations = attr.get('iterations', 50)
-        self.threshold = attr.get('threshold', 1e-4)
-        self.weight = attr.get('weight', None)
-        self.dimension = attr.get('dimension', 2)
-        self.seed = attr.get('seed', None)
-        self.positions = attr.get('positions', None)
-        self.radius = attr.get('radius', 1.0)
-        self.direction = attr.get('direction', 1.0)
-        self.start_angle = attr.get('start_angle', 0.0)
+        self.layout_type = attr.get("layout", None)
+        self.k = attr.get(
+            "force",
+            None,
+        )
+        self.fixed = attr.get("fixed", None)
+        self.iterations = attr.get("iterations", 50)
+        self.threshold = attr.get("threshold", 1e-4)
+        self.weight = attr.get("weight", None)
+        self.dimension = attr.get("dimension", 2)
+        self.seed = attr.get("seed", None)
+        self.positions = attr.get("positions", None)
+        self.radius = attr.get("radius", 1.0)
+        self.direction = attr.get("direction", 1.0)
+        self.start_angle = attr.get("start_angle", 0.0)
 
         # TODO: allow also higher dimensional layouts
         if self.dimension > 2:
-            print('Currently only plots with maximum dimension 2 are supported!')
+            print("Currently only plots with maximum dimension 2 are supported!")
             self.dimension = 2
 
     @staticmethod
@@ -288,13 +295,11 @@ class Layout(object):
         | fixed | `fixed_nodes`, `fixed_vertices`, `fixed_n`, `fixed_v` |
         | positions | `initial_positions`, `node_positions` `vertex_positions`, `n_positions`, `v_positions` |
         """
-        names = {'fixed': ['fixed_nodes', 'fixed_vertices',
-                           'fixed_v', 'fixed_n'],
-                 'positions': ['initial_positions', 'node_positions',
-                               'vertex_positions', 'n_positions',
-                               'v_positions'],
-                 'layout_': ['layout_'],
-                 }
+        names = {
+            "fixed": ["fixed_nodes", "fixed_vertices", "fixed_v", "fixed_n"],
+            "positions": ["initial_positions", "node_positions", "vertex_positions", "n_positions", "v_positions"],
+            "layout_": ["layout_"],
+        }
 
         _kwds = {}
         del_keys = []
@@ -302,8 +307,7 @@ class Layout(object):
             for attr, name_list in names.items():
                 for name in name_list:
                     if name in key and name[0] == key[0]:
-                        _kwds[key.replace(name, attr).replace(
-                            'layout_', '')] = value
+                        _kwds[key.replace(name, attr).replace("layout_", "")] = value
                         del_keys.append(key)
                         break
         # remove the replaced keys from the dict
@@ -315,17 +319,16 @@ class Layout(object):
     def generate_layout(self):
         """Function to pick and generate the right layout."""
         # method names
-        names_rand = ['Random', 'random', 'rand', None]
-        names_fr = ['Fruchterman-Reingold', 'fruchterman_reingold', 'fr',
-                    'spring_layout', 'spring layout', 'FR']
-        names_circular = ['circular', 'circle', 'ring', '1d-lattice', 'lattice-1d']
-        names_grid = ['grid', '2d-lattice', 'lattice-2d']
+        names_rand = ["Random", "random", "rand", None]
+        names_fr = ["Fruchterman-Reingold", "fruchterman_reingold", "fr", "spring_layout", "spring layout", "FR"]
+        names_circular = ["circular", "circle", "ring", "1d-lattice", "lattice-1d"]
+        names_grid = ["grid", "2d-lattice", "lattice-2d"]
         # check which layout should be plotted
         if self.layout_type in names_rand:
             self.layout = self.random()
-        elif self.layout_type in names_circular or (self.layout_type == 'lattice' and self.dimension == 1):
+        elif self.layout_type in names_circular or (self.layout_type == "lattice" and self.dimension == 1):
             self.layout = self.circular()
-        elif self.layout_type in names_grid or (self.layout_type == 'lattice' and self.dimension == 2):
+        elif self.layout_type in names_grid or (self.layout_type == "lattice" and self.dimension == 2):
             self.layout = self.grid()
         elif self.layout_type in names_fr:
             self.layout = self.fruchterman_reingold()
@@ -397,12 +400,11 @@ class Layout(object):
 
         if self.positions is not None:
             # Determine size of existing domain to adjust initial positions
-            _size = max(coord for t in layout.values() for coord in t) # type: ignore
+            _size = max(coord for t in layout.values() for coord in t)  # type: ignore
             if _size == 0:
                 _size = 1
             np.random.seed(self.seed)
-            self.layout = np.random.rand(
-                len(self.nodes), self.dimension) * _size # type: ignore
+            self.layout = np.random.rand(len(self.nodes), self.dimension) * _size  # type: ignore
 
             for i, n in enumerate(self.nodes):
                 if n in self.positions:
@@ -442,7 +444,7 @@ class Layout(object):
         try:
             _n, _ = A.shape
         except AttributeError:
-            print('Fruchterman-Reingold algorithm needs an adjacency matrix as input')
+            print("Fruchterman-Reingold algorithm needs an adjacency matrix as input")
             raise AttributeError
 
         # make sure we have an array instead of a matrix
@@ -451,11 +453,10 @@ class Layout(object):
         if self.layout is None:
             # random initial positions
             np.random.seed(self.seed)
-            layout = np.asarray(np.random.rand(
-                _n, self.dimension), dtype=A.dtype)
+            layout = np.asarray(np.random.rand(_n, self.dimension), dtype=A.dtype)
         else:
             # make sure positions are of same type as matrix
-            layout = self.layout.astype(A.dtype) # type: ignore
+            layout = self.layout.astype(A.dtype)  # type: ignore
 
         # optimal distance between nodes
         if k is None:
@@ -464,31 +465,27 @@ class Layout(object):
         # this is the largest step allowed in the dynamics.
         # We need to calculate this in case our fixed positions force our domain
         # to be much bigger than 1x1
-        t = max(max(layout.T[0]) - min(layout.T[0]),
-                max(layout.T[1]) - min(layout.T[1])) * 0.1
+        t = max(max(layout.T[0]) - min(layout.T[0]), max(layout.T[1]) - min(layout.T[1])) * 0.1
         # simple cooling scheme.
         # linearly step down by dt on each iteration so last iteration is size dt.
         dt = t / float(self.iterations + 1)
-        delta = np.zeros(
-            (layout.shape[0], layout.shape[0], layout.shape[1]), dtype=A.dtype)
+        delta = np.zeros((layout.shape[0], layout.shape[0], layout.shape[1]), dtype=A.dtype)
         # the inscrutable (but fast) version
         # this is still O(V^2)
         # could use multilevel methods to speed this up significantly
-        for iteration in tqdm(range(self.iterations), desc='Calculating Fruchterman-Reingold layout'):
+        for iteration in tqdm(range(self.iterations), desc="Calculating Fruchterman-Reingold layout"):
             # matrix of difference between points
-            delta = layout[:, np.newaxis, :] - layout[np.newaxis, :, :] # type: ignore
+            delta = layout[:, np.newaxis, :] - layout[np.newaxis, :, :]  # type: ignore
             # distance between points
             distance = np.linalg.norm(delta, axis=-1)
             # enforce minimum distance of 0.01
             np.clip(distance, 0.01, None, out=distance)
             # displacement "force"
-            displacement = np.einsum('ijk,ij->ik',
-                                     delta,
-                                     (k * k / distance**2 - A * distance / k))
+            displacement = np.einsum("ijk,ij->ik", delta, (k * k / distance**2 - A * distance / k))
             # update layoutitions
             length = np.linalg.norm(displacement, axis=-1)
             length = np.where(length < 0.01, 0.1, length)
-            delta_layout = np.einsum('ij,i->ij', displacement, t / length)
+            delta_layout = np.einsum("ij,i->ij", displacement, t / length)
             if self.fixed is not None:
                 # don't change positions of fixed nodes
                 delta_layout[self.fixed] = 0.0
@@ -515,14 +512,12 @@ class Layout(object):
         try:
             _n, _ = A.shape
         except AttributeError:
-            print('Fruchterman-Reingold algorithm needs an adjacency '
-                      'matrix as input')
+            print("Fruchterman-Reingold algorithm needs an adjacency " "matrix as input")
             raise AttributeError
         try:
             from scipy.sparse import spdiags, coo_matrix
         except ImportError:
-            print('The sparse Fruchterman-Reingold algorithm needs the '
-                      'scipy package: http://scipy.org/')
+            print("The sparse Fruchterman-Reingold algorithm needs the " "scipy package: http://scipy.org/")
             raise ImportError
         # make sure we have a LIst of Lists representation
         try:
@@ -533,11 +528,10 @@ class Layout(object):
         if self.layout is None:
             # random initial positions
             np.random.seed(self.seed)
-            layout = np.asarray(np.random.rand(
-                _n, self.dimension), dtype=A.dtype)
+            layout = np.asarray(np.random.rand(_n, self.dimension), dtype=A.dtype)
         else:
             # make sure positions are of same type as matrix
-            layout = layout.astype(A.dtype) # type: ignore
+            layout = layout.astype(A.dtype)  # type: ignore
 
         # no fixed nodes
         if self.fixed is None:
@@ -548,8 +542,7 @@ class Layout(object):
             k = np.sqrt(1.0 / _n)
         # the initial "temperature"  is about .1 of domain area (=1x1)
         # this is the largest step allowed in the dynamics.
-        t = max(max(layout.T[0]) - min(layout.T[0]),
-                max(layout.T[1]) - min(layout.T[1])) * 0.1
+        t = max(max(layout.T[0]) - min(layout.T[0]), max(layout.T[1]) - min(layout.T[1])) * 0.1
         # simple cooling scheme.
         # linearly step down by dt on each iteration so last iteration is size dt.
         dt = t / float(self.iterations + 1)
@@ -570,8 +563,7 @@ class Layout(object):
                 # the adjacency matrix row
                 Ai = np.asarray(A.getrowview(i).toarray())
                 # displacement "force"
-                displacement[:, i] +=\
-                    (delta * (k * k / distance**2 - Ai * distance / k)).sum(axis=1)
+                displacement[:, i] += (delta * (k * k / distance**2 - Ai * distance / k)).sum(axis=1)
             # update positions
             length = np.sqrt((displacement**2).sum(axis=0))
             length = np.where(length < 0.01, 0.1, length)
@@ -583,7 +575,6 @@ class Layout(object):
             if err < self.threshold:
                 break
         return layout
-
 
     def circular(self):
         """Position nodes on a circle with given radius.
@@ -604,16 +595,15 @@ class Layout(object):
 
         n = len(self.nodes)
         rad = 2.0 * np.pi / n
-        rotation = (90.0 - self.start_angle*self.direction) * np.pi / 180.0
+        rotation = (90.0 - self.start_angle * self.direction) * np.pi / 180.0
         layout = {}
 
         for i in range(n):
-            x = self.radius * np.cos(rotation - i*rad*self.direction)
-            y = self.radius * np.sin(rotation - i*rad*self.direction)
-            layout[self.nodes[i]] = (x,y)
+            x = self.radius * np.cos(rotation - i * rad * self.direction)
+            y = self.radius * np.sin(rotation - i * rad * self.direction)
+            layout[self.nodes[i]] = (x, y)
 
         return layout
-
 
     def grid(self):
         """Position nodes on a two-dimensional grid
@@ -634,7 +624,7 @@ class Layout(object):
 
         i = 0
         for i in range(n):
-            layout[self.nodes[i]] = ((i%k) *dist, -(np.floor(i/k))*dist)
+            layout[self.nodes[i]] = ((i % k) * dist, -(np.floor(i / k)) * dist)
             i += 1
 
         return layout

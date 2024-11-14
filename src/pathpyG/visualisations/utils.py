@@ -1,4 +1,5 @@
 """Helper functions for plotting."""
+
 # =============================================================================
 # File      : utils.py -- Helpers for the plotting functions
 # Author    : Jürgen Hackl <hackl@princeton.edu>
@@ -35,10 +36,7 @@ class Colormap:
         if vmin == vmax:
             vmin -= 1
             vmax += 1
-        return [
-            self.color_tuple(v)
-            for v in ((x - vmin) / (vmax - vmin) * 100 for x in values)
-        ]
+        return [self.color_tuple(v) for v in ((x - vmin) / (vmax - vmin) * 100 for x in values)]
 
     @staticmethod
     def color_tuple(n: float) -> tuple:

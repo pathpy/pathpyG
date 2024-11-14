@@ -30,7 +30,7 @@ def test_multi_order_model_str():
 def test_iterate_lift_order(simple_graph_multi_edges):
     ho_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
         edge_index=simple_graph_multi_edges.data.edge_index,
-        node_sequence=torch.arange(simple_graph_multi_edges.N).unsqueeze(1),
+        node_sequence=torch.arange(simple_graph_multi_edges.n).unsqueeze(1),
         mapping=simple_graph_multi_edges.mapping,
         save=True,
     )
@@ -40,6 +40,7 @@ def test_iterate_lift_order(simple_graph_multi_edges):
     assert gk.data.edge_index.as_tensor().tolist() == [[0], [2]]
     assert gk.data.node_sequence.tolist() == [[0, 1], [0, 2], [1, 2]]
     assert gk.data.edge_weight.tolist() == [2.0]
+    assert gk.order == 2
 
 
 def test_dof():

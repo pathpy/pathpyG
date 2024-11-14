@@ -1,4 +1,5 @@
 """Network plots with tikz."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -146,16 +147,12 @@ class NetworkPlot(TikzPlot):
 
         # calculate the translation
         translation = (
-            ((width - margins["left"] - margins["right"]) / 2 + margins["left"])
-            - ((x_max - x_min) / 2 + x_min),
-            ((height - margins["top"] - margins["bottom"]) / 2 + margins["bottom"])
-            - ((y_max - y_min) / 2 + y_min),
+            ((width - margins["left"] - margins["right"]) / 2 + margins["left"]) - ((x_max - x_min) / 2 + x_min),
+            ((height - margins["top"] - margins["bottom"]) / 2 + margins["bottom"]) - ((y_max - y_min) / 2 + y_min),
         )
 
         # apply translation to the points
-        _layout = {
-            n: (x + translation[0], y + translation[1]) for n, (x, y) in _layout.items()
-        }
+        _layout = {n: (x + translation[0], y + translation[1]) for n, (x, y) in _layout.items()}
 
         # update node position for the plot
         for node in self.data["nodes"]:
