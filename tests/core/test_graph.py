@@ -21,6 +21,8 @@ def test_init():
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
+    assert g.data.node_sequence.size() == (g.N, 1)
+    assert g.order == 1
 
 
 def test_init_with_edge_index():

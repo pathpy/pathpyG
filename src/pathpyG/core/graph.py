@@ -91,6 +91,11 @@ class Graph:
         ((self.row_ptr, self.col), _) = self.data.edge_index.get_csr()
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
 
+        # create node_sequence mapping for higher-order graphs
+        if 'node_sequence' not in self.data:
+            self.data.node_sequence = torch.arange(data.num_nodes).reshape(-1, 1)
+        
+
     @staticmethod
     def from_edge_index(edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes: int = None) -> Graph:
         """Construct a graph from a torch Tensor containing an edge index. An optional mapping can
@@ -253,23 +258,23 @@ class Graph:
                 a[k] = str(t)
         return a
 
-    def node_attrs(self) -> List:
+    def node_attrs(self) -> List[str]:
         """
         Return a list of node attributes.
 
         This method returns a list containing the names of all node-level attributes,
-        ignoring the special `node_id` attribute.
+        ignoring the special `node_sequence` attribute.
 
         Returns:
             list: list of node attributes
         """
         attrs = []
         for k in self.data.keys():
-            if k != "node_id" and k.startswith("node_"):
+            if k != "node_sequence" and k.startswith("node_"):
                 attrs.append(k)
         return attrs
 
-    def edge_attrs(self) -> List:
+    def edge_attrs(self) -> List[str]:
         """
         Return a list of edge attributes.
 
@@ -582,6 +587,16 @@ class Graph:
             int: number of edges in the graph
         """
         return self.data.num_edges  # type: ignore
+
+    @property
+    def order(self) -> int:
+        """
+        Return number of nodes.
+
+        Returns:
+            int: number of nodes in the graph
+        """
+        return self.data.node_sequence.size(1)  # type: ignore
 
     def is_directed(self) -> bool:
         """Return whether graph is directed.
