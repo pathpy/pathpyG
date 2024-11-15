@@ -3,7 +3,7 @@ from __future__ import annotations
 from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
-from torch_geometric.utils import degree
+from torch_geometric.utils import degree, cumsum
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.path_data import PathData
@@ -294,18 +294,19 @@ class MultiOrderModel:
         """
         # Get frequencies
         frequencies = dag_graph.dag_weight
+        path_lengths = dag_graph.dag_num_nodes
+        # paths shrink by 'order' if we encode them using higher-order nodes
+        paths_lenghts_ho = path_lengths - order
+        # selecting only path that didn t shrink to zero due to higher-order transformation
+        paths_lenghts_ho_filtered = paths_lenghts_ho[paths_lenghts_ho > 0]
+        frequencies = frequencies[paths_lenghts_ho > 0]
+        # start index of the path in the higher order space 
+        ixs_start_paths_ho = cumsum(paths_lenghts_ho_filtered)[:-1]
 
-        # Get intermediate HO nodes ixs
-        mask = torch.ones(dag_graph.num_nodes, dtype=bool)
-        mask[dag_graph.edge_index[1]] = False
-        ixs = torch.where(mask)[0]
-        num_ixs = ixs.shape[0]
-        ho_intermediate_ixs = ixs - torch.arange(num_ixs) * order
-
-        # computing loglikelihood of subpaths
         transition_probabilities = self.layers[order].transition_probabilities()[
-            self.layers[order + 1].data.inverse_idx[ho_intermediate_ixs]
-        ]
+            self.layers[order + 1].data.inverse_idx[ixs_start_paths_ho]
+            ]
+
         log_transition_probabilities = torch.log(transition_probabilities)
         llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
         return llh_by_subpath.sum().item()
