@@ -1,0 +1,53 @@
+device = "cuda"
+
+[environment]
+IDE = "vs code"
+interactive = true
+
+[progress]
+enabled = true
+leave = false
+min_iter = 1000
+
+[torch]
+device = "cuda"
+
+[attributes]
+history = true
+multiple = false
+frequency = "frequency"
+
+[object]
+separator =","
+
+[node]
+color = "CornFlowerBlue"
+size = 15
+
+[edge]
+color = "darkgray"
+width = 2
+curved = true
+
+[path]
+separator = "|"
+replace = "_"
+max_name_length = 5
+
+[hon]
+separator = "="
+replace = "_"
+
+[temporal]
+start = "start"
+end = "end"
+timestamp = "timestamp"
+duration = "duration"
+duration_value = 1
+start_synonyms = ["beginning", "begin"]
+end_synonyms = ["finished", "ending"]
+timestamp_synonyms = ['time', "t"]
+duration_synonyms = ["delta", "dt"]
+active = "active"
+is_active = true
+unit = "s"
