@@ -17,6 +17,7 @@ __version__ = "0.1.0"
 
 from pathpyG.utils.config import config
 from pathpyG.utils.progress import tqdm
+from pathpyG.utils.logger import logger
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
