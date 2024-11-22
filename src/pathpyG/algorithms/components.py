@@ -5,6 +5,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Tuple,
 )
 
 from collections import Counter
@@ -15,7 +16,7 @@ from scipy.sparse.csgraph import connected_components as _cc
 from pathpyG.core.graph import Graph
 
 
-def connected_components(graph: Graph, connection="weak") -> (int, _np.ndarray):
+def connected_components(graph: Graph, connection="weak") -> Tuple[int, _np.ndarray]:
 
     m = graph.sparse_adj_matrix()
     n, labels = _cc(m, directed=graph.is_directed(), connection=connection, return_labels=True)
