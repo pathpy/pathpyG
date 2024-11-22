@@ -387,8 +387,7 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: Optional[IndexM
                 edges.append((mapping.to_id(u), mapping.to_id(v)))
                 edges.append((mapping.to_id(v), mapping.to_id(u)))
 
-    g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n)
-    g.data.node_label = torch.tensor(z)
+    g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n).to_undirected()
     return g
 
 
