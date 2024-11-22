@@ -131,7 +131,7 @@ def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edge
     else:
         m = graph.m
     return erdos_renyi_gnm(
-        graph.n, m, directed=graph.is_directed(), 
+        graph.n, m, directed=graph.is_directed(),
         self_loops=self_loops,
         multi_edges=multi_edges,
         mapping=graph.mapping
@@ -155,6 +155,10 @@ def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
         # make sure that we have indices for all n nodes even if not all
         # nodes have incident edges
         mapping = IndexMap([str(i) for i in range(n)])
+
+    # fast handling of special case p = 0
+    if p == 0.0:
+        return Graph.from_edge_list([], is_undirected=not directed, num_nodes=0)
 
     # connect pairs of nodes with probability p
     for s in range(n):
@@ -395,7 +399,7 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
                 node_ids: Optional[list] = None) -> Graph:
     """Generate Molloy-Reed graph.
 
-    Generates a random undirected network with given degree sequence based on
+    Generates a random undirected network without self-loops, with given degree sequence based on
     the Molloy-Reed algorithm. The condition proposed by Erdös and Gallai (1967)
     is used to test whether the degree sequence is graphic, i.e. whether a network
     with the given degree sequence exists.
@@ -416,52 +420,53 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
     Generate random undirected network with given degree sequence
 
     >>> import pathpyG as pp
-    >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
-    >>> print(random_network.summary())
+    >>> random_network = pp.algorithms.generative_models.molloy_reed([1,0])
+    >>> print(random_network)
     ...
 
     Network generation fails for non-graphic degree sequence
 
     >>> import pathpyG as pp
-    >>> random_network = pp.algorithms.random_graphs.Molloy_Reed([1,0])
-    >>> print(random_network)
-    None
+    >>> random_network = pp.algorithms.generative_models.molloy_reed([1,0])
+    raises AttributeError
 
     """
 
     # assume that we are given a graphical degree sequence
     if not is_graphic_erdos_gallai(degree_sequence):
-        return None
+        raise AttributeError('degree sequence is not graphic')
 
     # create empty network with n nodes
     n = len(degree_sequence)
-    edges = list()
+    edges: list = []
 
     if node_ids is None or len(node_ids) != n:
-        node_ids = []
+        node_ids: list = []
         for i in range(n):
             node_ids.append(i)
 
     # generate edge stubs based on degree sequence
-    stubs = []
+    stubs: list = []
     for i in range(n):
         for _ in range(int(degree_sequence[i])):
             stubs.append(node_ids[i])
 
     # connect randomly chosen pairs of stubs
-    while (len(stubs) > 0):
+    while len(stubs) > 0:
+        # find candidate node pair to connect
         v, w = _np.random.choice(stubs, 2, replace=False)
 
-        if v == w or (multiedge is False and relax is False and (v, w) in edges):
-            # remove random edge and add stubs
+        # we encountered candidate edge that we cannot add
+        if v == w or (((v, w) in edges or (w, v) in edges) and not multiedge and not relax):
+            # break up random edge and add back stubs to avoid
+            # infinite loop
             if len(edges) > 0:
-                edge = random.choice(edges)
-                stubs.append(edge[0])
-                stubs.append(edge[1])
-                edges.remove(edge)
-        else:
-            if not (v, w) in edges:
-                edges.append((v, w))
+                e = random.choice(edges)
+                edges.remove(e)
+                stubs.append(e[0])
+                stubs.append(e[1])
+        elif v != w:
+            edges.append((v, w))
             stubs.remove(v)
             stubs.remove(w)
 

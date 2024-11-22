@@ -8,6 +8,8 @@ from torch_geometric.utils import sort_edge_index
 
 from pathpyG.utils import to_numpy
 
+from pathpyG.statistics.degrees import degree_sequence
+
 from pathpyG.core.index_map import IndexMap
 from pathpyG.algorithms.generative_models import (
     erdos_renyi_gnm,
@@ -17,6 +19,7 @@ from pathpyG.algorithms.generative_models import (
     erdos_renyi_gnp_randomize,
     erdos_renyi_gnm_randomize,
     erdos_renyi_gnp_mle,
+    molloy_reed,
     watts_strogatz,
     generate_degree_sequence,
 )
@@ -94,6 +97,22 @@ def test_erdos_renyi_gnp():
     assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])
     assert m_4.is_directed() is False
     assert m_4.m <= max_edges(n, directed=False, self_loops=True)
+
+
+def test_empty_graphs():
+    g = erdos_renyi_gnp(n=100, p=0)
+    assert g.n == 0
+
+    g = erdos_renyi_gnm(n=100, m=0)
+    assert g.n == 0
+
+    g = molloy_reed([])
+    assert g.n == 0
+
+
+def test_molloy_Reed():
+    g = molloy_reed([2, 4, 3, 4, 3])
+    assert (degree_sequence(g) == np.array([2., 4., 3., 4., 3.])).all()
 
 
 def test_erdos_renyi_gnm_randomize():

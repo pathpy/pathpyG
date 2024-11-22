@@ -158,6 +158,10 @@ class Graph:
             [('a', 'b'), ('a', 'c'), ('b', 'c')]
         """
 
+        # handle empty graph
+        if len(edge_list) == 0:
+            return Graph(Data(edge_index=torch.tensor([[], []], dtype=torch.int32), num_nodes=0), mapping=IndexMap())
+
         if mapping is None:
             edge_array = np.array(edge_list)
             node_ids = np.unique(edge_array)
