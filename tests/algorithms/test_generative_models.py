@@ -1,3 +1,5 @@
+from collections import Counter
+
 import numpy as _np
 import scipy
 
@@ -6,6 +8,7 @@ import torch
 import numpy as np
 from torch_geometric.utils import sort_edge_index
 
+from pathpyG.algorithms.components import connected_components
 from pathpyG.utils import to_numpy
 
 from pathpyG.statistics.degrees import degree_sequence
@@ -18,6 +21,7 @@ from pathpyG.algorithms.generative_models import (
     max_edges,
     erdos_renyi_gnp_randomize,
     erdos_renyi_gnm_randomize,
+    stochastic_block_model,
     erdos_renyi_gnp_mle,
     molloy_reed,
     watts_strogatz,
@@ -237,3 +241,22 @@ def test_watts_strogatz_get_warning():
 
     with pytest.warns(Warning):
         print(watts_strogatz(10, 5, 0.31, allow_duplicate_edges=False))
+
+
+def test_stochastic_block_model():
+    M = np.matrix('0.95 0.15; 0.15 0.85')
+    z = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    g = stochastic_block_model(M, z, IndexMap(list('abcdefgh')))
+
+    assert g.n == 8
+    assert g.is_undirected()
+
+    M = np.matrix('1 0 0; 0 1 0;0 0 1')
+    z = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    g = stochastic_block_model(M, z, IndexMap(list('abcdefghi')))
+
+    assert g.n == 9
+    assert g.m == 18
+    assert g.is_undirected()
+    _, labels = connected_components(g)
+    assert Counter(labels) == {0: 3, 1: 3, 2: 3}
