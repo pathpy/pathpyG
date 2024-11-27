@@ -18,14 +18,14 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
     # first-order edge index
     edge_index, timestamps = g.data.edge_index, g.data.time
 
-    indices = torch.arange(0, edge_index.size(1), device=g.data.edge_index.device)
+    delta = torch.tensor(delta, device=edge_index.device)
+    indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
 
     unique_t = torch.unique(timestamps, sorted=True)
     second_order = []
 
     # lift order: find possible continuations for edges in each time stamp
-    for i in tqdm(range(unique_t.size(0))):
-        t = unique_t[i]
+    for t in tqdm(unique_t):
 
         # find indices of all source edges that occur at unique timestamp t
         src_time_mask = timestamps == t
@@ -33,20 +33,17 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
         # find indices of all edges that can possibly continue edges occurring at time t for the given delta
         dst_time_mask = (timestamps > t) & (timestamps <= t + delta)
-        dst_node_mask = torch.isin(edge_index[0], edge_index[1, src_edge_idx])
-        dst_edge_idx = indices[dst_time_mask & dst_node_mask]
+        dst_edge_idx = indices[dst_time_mask]
 
         if dst_edge_idx.size(0) > 0 and src_edge_idx.size(0) > 0:
 
-            # compute second-order edges between src and dst idx for all edges where dst in src_edges matches src in dst_edges
-            x = torch.cartesian_prod(src_edge_idx, dst_edge_idx).t()
-            # print(x.size(1))
-            src_edges = edge_index[:, x[0]]
-            dst_edges = edge_index[:, x[1]]
-            ho_edge_index = x[:, src_edges[1, :] == dst_edges[0, :]]
+            # compute second-order edges between src and dst idx
+            # for all edges where dst in src_edges (edge_index[1, x[:, 0]]) matches src in dst_edges (edge_index[0, x[:, 1]])
+            x = torch.cartesian_prod(src_edge_idx, dst_edge_idx)
+            ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
             second_order.append(ho_edge_index)
 
-    ho_index = torch.cat(second_order, dim=1)
+    ho_index = torch.cat(second_order, dim=0).t().contiguous()
     return ho_index
 
 
