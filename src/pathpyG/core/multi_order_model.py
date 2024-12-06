@@ -72,7 +72,11 @@ class MultiOrderModel:
 
     @staticmethod
     def from_temporal_graph(
-        g: TemporalGraph, delta: float | int = 1, max_order: int = 1, weight: str = "edge_weight", cached: bool = True
+        g: TemporalGraph, delta: float | int = 1,
+        max_order: int = 1,
+        weight: str = "edge_weight",
+        cached: bool = True,
+        event_graph: torch.Tensor = None
     ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph.
 
@@ -82,9 +86,11 @@ class MultiOrderModel:
             max_order: The maximum order of the MultiOrderModel that should be computed.
             weight: The edge attribute to use as edge weight.
             cached: Whether to save the aggregated higher-order graphs smaller than max order in the MultiOrderModel.
+            event_graph: precomputed event graph edge index for given delta to be used for model generation. Useful to prevent the same event graph 
+            from being computed twice.
 
         Returns:
-            MultiOrderModel: The MultiOrderModel.
+            MultiOrderModel: A multi-order model where each layer is a De Bruijn graph with order k.
         """
         m = MultiOrderModel()
         if not g.data.is_sorted_by_time():
@@ -105,7 +111,10 @@ class MultiOrderModel:
 
         if max_order > 1:
             node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
-            edge_index = lift_order_temporal(g, delta)
+            if event_graph is None:
+                edge_index = lift_order_temporal(g, delta)
+            else:
+                edge_index = event_graph
             edge_weight = aggregate_node_attributes(edge_index, edge_weight, "src")
 
             # Aggregate
