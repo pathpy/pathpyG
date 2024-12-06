@@ -131,7 +131,7 @@ def read_netzschleuder_graph(
         properties = json.loads(request.urlopen(f"{base_url}/api/net/{name}").read())
         # print(properties)
 
-        timestamps = "Timestamps" in properties["tags"]
+        timestamps = not (time_attr is None)
 
         if not net:
             analyses = properties["analyses"]
