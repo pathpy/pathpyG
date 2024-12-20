@@ -390,7 +390,7 @@ class Graph:
             scipy.sparse.coo_matrix: sparse adjacency matrix representation of graph
         """
         if edge_attr is None:
-            return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index.as_tensor())
+            return torch_geometric.utils.to_scipy_sparse_matrix(self.data.edge_index.as_tensor(), num_nodes=self.n)
         else:
             return torch_geometric.utils.to_scipy_sparse_matrix(
                 self.data.edge_index.as_tensor(), edge_attr=self.data[edge_attr], num_nodes=self.n
