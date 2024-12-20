@@ -204,6 +204,16 @@ def test_sparse_adj_matrix(simple_graph):
     assert weighted_adj.data[1] == 1
     assert weighted_adj.data[2] == 2
 
+    g = Graph.from_edge_index(torch.tensor([[0], [1]]), num_nodes=5)
+    adj = g.sparse_adj_matrix()
+    assert adj.shape == (5, 5)
+    assert adj.nnz == 1
+
+    g.data.edge_attr = torch.tensor([[1]])
+    adj = g.sparse_adj_matrix("edge_attr")
+    assert adj.shape == (5, 5)
+    assert adj.nnz == 1
+
 
 def test_degrees(simple_graph):
     in_degrees = simple_graph.degrees("in")
