@@ -37,7 +37,18 @@ class TemporalGraph(Graph):
             )
 
         # reorder temporal data
-        self.data = data.sort_by_time()
+        # TODO: Fix in PyG
+        if data.num_nodes != data.num_edges:
+            self.data = data.sort_by_time()
+        else:
+            sorted_idx = torch.argsort(data.time)
+            data.time = data.time[sorted_idx]
+            for edge_attr in data.edge_attrs():
+                if edge_attr == "edge_index":
+                    data.edge_index = data.edge_index[:, sorted_idx]
+                else:
+                    data[edge_attr] = data[edge_attr][sorted_idx]
+            self.data = data
 
         if mapping is not None:
             self.mapping = mapping
