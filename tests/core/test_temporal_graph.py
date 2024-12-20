@@ -16,6 +16,13 @@ def test_init():
     assert (to_numpy(tgraph.data.edge_index) == np.array([[1, 2, 3, 4], [2, 3, 4, 5]])).all()
     assert equal(tgraph.data.time, torch.tensor([1000, 1010, 1100, 2000]))
 
+    # Case where n == m
+    tdata = Data(edge_index=torch.IntTensor([[0, 1, 2, 3], [1, 2, 3, 2]]), time=torch.Tensor([1000, 1100, 1010, 2000]), edge_weight=torch.Tensor([1, 2, 3, 4]))
+    tgraph = TemporalGraph(tdata)
+    assert (to_numpy(tgraph.data.edge_index) == np.array([[0, 2, 1, 3], [1, 3, 2, 2]])).all()
+    assert equal(tgraph.data.time, torch.tensor([1000, 1010, 1100, 2000]))
+    assert equal(tgraph.data.edge_weight, torch.tensor([1, 3, 2, 4]))
+
 
 def test_from_edge_list():
     tedges = [("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)]
