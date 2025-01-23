@@ -34,7 +34,7 @@ def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = "last") ->
 def generate_second_order_model(g: TemporalGraph, delta: float | int = 1, weight: str = "edge_weight") -> MultiOrderModel:
     """
     Generate a multi-order model with first- and second-order layer from a temporal graph.
-    This method is optimized for the memory footprint of large graphs and may be slower than creating small models with the default apporach.
+    This method is optimized for the memory footprint of large graphs and it may be slower than creating small models with the default approach.
     """
     data = g.data.sort_by_time()
     edge_index1, timestamps1 = data.edge_index, data.time
