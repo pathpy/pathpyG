@@ -8,8 +8,9 @@ from torch_geometric.data import Data
 from pathpyG.algorithms.lift_order import aggregate_edge_index
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
-from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.temporal_graph import TemporalGraph
+
+import pathpyG.core.multi_order_model as mm
 
 
 def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = "last") -> torch.Tensor:
@@ -31,7 +32,7 @@ def generate_bipartite_edge_index(g: Graph, g2: Graph, mapping: str = "last") ->
     return bipartide_edge_index
 
 
-def generate_second_order_model(g: TemporalGraph, delta: float | int = 1, weight: str = "edge_weight") -> MultiOrderModel:
+def generate_second_order_model(g: TemporalGraph, delta: float | int = 1, weight: str = "edge_weight") -> mm.MultiOrderModel:
     """
     Generate a multi-order model with first- and second-order layer from a temporal graph.
     This method is optimized for the memory footprint of large graphs and it may be slower than creating small models with the default approach.
@@ -83,7 +84,7 @@ def generate_second_order_model(g: TemporalGraph, delta: float | int = 1, weight
     )
     
 
-    m = MultiOrderModel()
+    m = mm.MultiOrderModel()
     m.layers[1] = layer1
     m.layers[2] = layer2
     return m
