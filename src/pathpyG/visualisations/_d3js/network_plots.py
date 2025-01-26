@@ -56,7 +56,6 @@ class NetworkPlot(D3jsPlot):
 
     def to_json(self) -> Any:
         """Convert data to json."""
-        print(self.data)
         return json.dumps(self.data, cls=NpEncoder)
 
 
