@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - pipeline-issues
+      - fix/pipeline-issues
   pull_request:
 
 jobs:
