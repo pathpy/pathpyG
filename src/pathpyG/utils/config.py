@@ -9,7 +9,6 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-import pip._vendor.tomli as tomllib
 from pathlib import Path
 
 
