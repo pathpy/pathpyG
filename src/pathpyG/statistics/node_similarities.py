@@ -75,8 +75,8 @@ def LeichtHolmeNewman_index(graph: Graph, v, w, alpha) -> float:
         m = graph.m / 2
     eigenvalues_sorted = _np.sort(_np.absolute(ev))
     lambda_1 = eigenvalues_sorted[1]
-    D = _sp.sparse.diags(degree_sequence(graph))
-    I = _sp.sparse.identity(graph.n)
+    D = _sp.sparse.diags(degree_sequence(graph)).tocsc()
+    I = _sp.sparse.identity(graph.n).tocsc()
     S = (
         2
         * m
