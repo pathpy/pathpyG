@@ -12,6 +12,7 @@ from pathpyG.visualisations.plot import PathPyPlot
 logger = logging.getLogger("root")
 
 
+
 class ManimPlot(PathPyPlot):
     """Base class for Manim Plots."""
 
@@ -21,16 +22,18 @@ class ManimPlot(PathPyPlot):
 
     def save(self, filename: str, **kwargs: Any) -> None:
 
-        raise NotImplementedError # manim is saved in scene ?
+        raise NotImplementedError
 
     def show(self, **kwargs: Any) -> None:
-        raise NotImplementedError 
-        """Render Manim Scene"""
-        ''' import from wherever its created and render '''
-        '''from pathpyG.visualisations._manim.testscene import NetworkScene
+        """renders manim scene to current directory"""
         from manim import config
 
-        scene = NetworkScene(self.data["data"])
-        scene.render('''
+        config.pixel_height = 1080
+        config.pixel_width = 1920
+        config.frame_rate = 30
+        config.quality = "medium_quality"
+        config.output_file = kwargs.get("output_file", None)
+        
+        self.render()
         
 

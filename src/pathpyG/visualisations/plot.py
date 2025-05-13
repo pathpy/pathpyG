@@ -21,7 +21,7 @@ from typing import Optional, Any
 logger = logging.getLogger("root")
 
 # supported backends
-BACKENDS: set = {"d3js", "tikz", "matplotlib","manim"}
+BACKENDS: set = {"d3js", "tikz", "matplotlib", "manim"}
 
 # supported file formats
 FORMATS: dict = {
