@@ -38,7 +38,6 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         """Initialize network plot class."""
         from manim import config as manim_config
 
-        # Set the directory and filename *once* here
         if output_dir:
             manim_config.media_dir = str(Path(output_dir).resolve())
         if output_file:
