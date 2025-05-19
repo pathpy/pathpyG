@@ -6,9 +6,20 @@ from typing import Any
 from pathlib import Path
 from datetime import datetime
 from pathpyG.visualisations.plot import PathPyPlot
+from IPython.display import Video, display
+from IPython import get_ipython
 
 # create logger
 logger = logging.getLogger("root")
+
+
+def in_jupyter_notebook() -> bool:
+    try:
+
+        shell = get_ipython().__class__.__name__
+        return shell == "ZMQInteractiveShell"
+    except (ImportError, AttributeError):
+        return False
 
 
 class ManimPlot(PathPyPlot):
@@ -35,3 +46,10 @@ class ManimPlot(PathPyPlot):
 
         scene = self.__class__(data=self.raw_data, output_dir=output_dir, output_file=output_file, **kwargs)
         scene.render()
+
+        if in_jupyter_notebook():
+            video_path = output_dir / "videos" / "720p30" / f"{output_file}.mp4"
+            if video_path.exists():
+                display(Video(str(video_path), width=580, height=340))
+            else:
+                logger.warning(f"Expected video not found: {video_path}")
