@@ -7,7 +7,7 @@ RUN apt-get -y install git
 RUN apt install gnupg2 -y
 
 # Install dependencies for manim
-RUN apt-get install -y build-essential pkg-config libcairo2-dev ffmpeg sox libpango1.0-dev
+RUN apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
 
 # Install torch
 RUN pip install torch==2.4.1+cu121 --index-url https://download.pytorch.org/whl/cu121
