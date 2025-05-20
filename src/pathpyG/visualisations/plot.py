@@ -21,7 +21,7 @@ from typing import Optional, Any
 logger = logging.getLogger("root")
 
 # supported backends
-BACKENDS: set = {"d3js", "tikz", "matplotlib"}
+BACKENDS: set = {"d3js", "tikz", "matplotlib", "manim"}
 
 # supported file formats
 FORMATS: dict = {
@@ -29,6 +29,8 @@ FORMATS: dict = {
     ".tex": "tikz",
     ".pdf": "tikz",
     ".png": "matplotlib",
+    ".mp4": "manim",
+    ".gif": "manim"
 }
 
 
