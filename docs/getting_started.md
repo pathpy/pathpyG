@@ -35,3 +35,13 @@ If you want to install the latest development version, you can do so via pip dir
 ```bash
 pip install git+https://github.com/pathpy/pathpyG.git
 ```
+
+### Optional Visualisation Backends
+
+We provide multiple visualisation backends for PathpyG. The default backend [D3.js](https://d3js.org/) does not require any additional dependencies. We further provide a [Matplotlib](https://matplotlib.org/) backend that is installed by default. Additionally, we implemented a [Manim](https://www.manim.community/) backend that is not installed by default due to its dependencies that are required for installation. Please refer to the [Manim installation instructions](https://docs.manim.community/en/stable/installation/uv.html) for more information. Once installed, you can use the Manim backend for visualisation by setting the `backend` in the `PathpyG.plot` function to `manim`: 
+```python
+import pathpyg as pp
+
+t_graph = ...
+pp.plot(t_graph, backend='manim')
+```
