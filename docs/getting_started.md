@@ -42,6 +42,6 @@ We provide multiple visualisation backends for PathpyG. The default backend [D3.
 ```python
 import pathpyg as pp
 
-t_graph = ...
+t_graph = TemporalGraph.from_edge_list([('a', 'b', 1),('b', 'a', 3), ('b', 'c', 3)])
 pp.plot(t_graph, backend='manim')
 ```
