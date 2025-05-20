@@ -30,7 +30,19 @@ class NetworkPlot(ManimPlot):
 
 
 class TemporalNetworkPlot(NetworkPlot, Scene):
-    """Network plot class for a temporal network."""
+    """Network plot class for a temporal network.
+    **Temporal properties:**
+
+    - ``start`` : start time of the simulation
+
+    - ``end`` : end time of the simulation
+
+    - ``delta`` : time needed for progressing one time step
+
+    - ``intervals`` : number of numeric intervals
+    
+    -``dynamic_layout_intervals``: specifies after how many time steps a new layout is computed
+    """
 
     _kind = "temporal"
 
@@ -49,6 +61,12 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         manim_config.frame_rate = 15
         manim_config.quality = "medium_quality"
         manim_config.background_color = DARK_GREY
+        
+        self.delta = kwargs.get("delta", 1000)
+        self.start = kwargs.get("start", 0)
+        self.end = kwargs.get("end", None)
+        self.intervals = kwargs.get("intervals", None)
+        self.dynamic_layout_interval = kwargs.get("dynamic_layout_interval", 5)
 
         NetworkPlot.__init__(self, data, **kwargs)
         Scene.__init__(self)
@@ -57,7 +75,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
     def compute_edg_index(self):
         """Compute Edge Index from data for ppG graph"""
         tedges = [(d["source"], d["target"], d["start"]) for d in self.data["edges"]]
-        return tedges
+        max_time = max(d["start"] for d in self.data["edges"])
+        return tedges, max_time
 
     def get_layout(self, graph: pp.TemporalGraph, type: str = "fr", time_window: tuple = None):
         layout_style = {}
@@ -85,17 +104,21 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
     def construct(self):
         """Construct Manim Scene from Graph Data"""
 
-        edge_list = self.compute_edg_index()
+        edge_list, end_time = self.compute_edg_index()
         g = pp.TemporalGraph.from_edge_list(edge_list)  # create ppG Graph
 
-        start = 0  # start time of the simulation
-        end = 31  # end time of the simulation
-        delta = 1000  # time needed for progressing one time step
-        intervals = None  # number of numeric intervals, if None --> intervals = num of timesteps (end - start)
-        dynamic_layout_interval = 5  # specifies after how many time steps a new layout is computed
+        start = self.start  # start time of the simulation
+        end = end_time if self.end is None else self.end  # end time of the simulation
+        delta = self.delta  # time needed for progressing one time step
+        intervals = (
+            self.intervals
+        )  # number of numeric intervals, if None --> intervals = num of timesteps (end - start)
+        dynamic_layout_interval = (
+            self.dynamic_layout_interval
+        )  # specifies after how many time steps a new layout is computed
 
         # if intrervals is not specified, every timestep is an interval
-        if intervals == None:
+        if intervals is None:
             intervals = end - start
 
         delta /= 1000  # convert milliseconds to seconds
