@@ -18,12 +18,15 @@ class ManimTest(unittest.TestCase):
         """Test NetworkPlot class"""
         data = {}  # add example data
         networkplot = NetworkPlot(data)
+        
         self.assertIsInstance(networkplot, NetworkPlot)
         self.assertIsInstance(networkplot.data, dict)
         self.assertIsInstance(networkplot.config, dict)
         self.assertIsInstance(networkplot.raw_data, dict)
+        
         self.assertEqual(networkplot.data, {})
         self.assertEqual(networkplot.raw_data, data)
+        #self.assertEqual(networkplot.config, kwargs)
 
   #def test_manim_temporal_network_plot(self):
   #   """Test TemporalNetworkPlot class"""
