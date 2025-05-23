@@ -441,10 +441,9 @@ class Graph:
         Returns:
             tensor: Weighted outdegrees of nodes.
         """
-        if self.data.edge_weight is None:
+        edge_weight = getattr(self.data, 'edge_weight', None)
+        if edge_weight is None:
             edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
-        else:
-            edge_weight = self.data.edge_weight
         weighted_outdegree = scatter(
             edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
         )
