@@ -241,6 +241,28 @@ def test_out_degrees(simple_graph):
     assert out_degrees["c"] == 0
 
 
+def test_weighted_outdegrees(simple_graph):
+    # Test on graph without defined weights
+    out_degrees = simple_graph.weighted_outdegrees()
+    assert out_degrees.equal(torch.tensor([2, 1, 0]))
+
+    # Test on graph with defined weights
+    simple_graph.data["edge_weight"] = torch.tensor([1, 3, 2])
+    out_degrees = simple_graph.weighted_outdegrees()
+    assert out_degrees.equal(torch.tensor([4, 2, 0]))
+
+
+def test_transition_probabilities(simple_graph):
+    # Test on graph without defined weights
+    transition_probs = simple_graph.transition_probabilities()
+    assert transition_probs.equal(torch.tensor([0.5, 0.5, 1]))
+
+    # Test on graph with defined weights
+    simple_graph.data["edge_weight"] = torch.tensor([1, 3, 2])
+    transition_probs = simple_graph.transition_probabilities()
+    assert transition_probs.equal(torch.tensor([0.25, 0.75, 1]))
+
+
 def test_laplacian(simple_graph):
     laplacian = simple_graph.laplacian()
     assert laplacian.shape == (3, 3)
