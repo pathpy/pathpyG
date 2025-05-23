@@ -458,10 +458,9 @@ class Graph:
         """
         weighted_outdegree = self.weighted_outdegrees()
         source_ids = self.data.edge_index[0]
-        if self.data.edge_weight is None:
+        edge_weight = getattr(self.data, 'edge_weight', None)
+        if edge_weight is None:
             edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
-        else:
-            edge_weight = self.data.edge_weight
         return edge_weight / weighted_outdegree[source_ids]
 
     def laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
