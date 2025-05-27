@@ -63,6 +63,10 @@ doc = [
     "mike"                                       # Tool for versioning the documentation
 ]
 
+vis = [
+    "manim", # Animation engine
+]
+
 [project.urls]
 Documentation = "https://www.pathpy.net"
 Source = "https://github.com/pathpy/pathpyG"
