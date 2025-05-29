@@ -431,6 +431,32 @@ class TemporalNetworkPlot(NetworkPlot):
                     self.network[f"edge_{attribute}", u, v].item() if attribute in categories else None
                 )
 
+    def _compute_node_data(self):
+        """_summary_"""
+        super()._compute_node_data()
+        color_changes_raw = self.config.get("node_color_timed", [])
+
+        color_changes_by_node = defaultdict(list)
+        for entry in color_changes_raw:
+            try:
+                node_id, (time, color) = entry
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"Invalid node_color_timed entry: {entry}") from exc
+
+            if isinstance(color, (int, float)):
+                cmap = self.config.get("node_cmap", Colormap())
+                rgb = cmap([color])[0]
+                color = rgb_to_hex(rgb[:3])
+
+            elif isinstance(color, tuple):
+                color = rgb_to_hex(color)
+
+            color_changes_by_node[node_id].append({"time": time, "color": color})
+
+        for node_id, changes in color_changes_by_node.items():
+            if node_id in self.data.get("nodes", {}):
+                self.data["nodes"][node_id]["color_change"] = sorted(changes, key=lambda x: x["time"])
+
     def _get_node_data(self, nodes: dict, attributes: set, attr: defaultdict, categories: set) -> None:
         """Extract node data from temporal network."""
 
