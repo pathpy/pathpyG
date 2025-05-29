@@ -279,10 +279,6 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             intervals = end - start
 
         delta /= 1000  # convert milliseconds to seconds
-
-        # colors of nodes
-        # color_dict = self.get_colors(g)
-
         layout = self.get_layout(g, "random" if dynamic_layout_interval is not None else "fr")
 
         time_stamps = g.data["time"]
