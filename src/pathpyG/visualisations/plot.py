@@ -30,7 +30,7 @@ FORMATS: dict = {
     ".pdf": "tikz",
     ".png": "matplotlib",
     ".mp4": "manim",
-    ".gif": "manim"
+    ".gif": "manim",
 }
 
 
