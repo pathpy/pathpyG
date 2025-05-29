@@ -19,10 +19,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import matplotlib.colors as mcolors
 import numpy as np
-from manim import *
-from matplotlib.pyplot import get_cmap
+from manim import BLACK, BLUE, GRAY, UL, UP, WHITE, Graph, Line, Scene, Text
 from tqdm import tqdm
 
 import pathpyG as pp
@@ -143,6 +141,12 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         """
         from manim import config as manim_config
 
+        NetworkPlot.__init__(
+            self,
+            data,
+            **kwargs,
+        )
+
         if output_dir:
             manim_config.media_dir = str(output_dir)
         if output_file:
@@ -153,32 +157,25 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         manim_config.pixel_width = 1920
         manim_config.frame_rate = 15
         manim_config.quality = "medium_quality"
-        manim_config.background_color = kwargs.get("background_color", WHITE)
+        manim_config.format = self.config.get("save_as", "mp4")
+        manim_config.background_color = self.config.get("background_color", WHITE)
 
-        self.delta = kwargs.get("delta", 1000)
-        self.start = kwargs.get("start", 0)
-        self.end = kwargs.get("end", None)
-        self.intervals = kwargs.get("intervals", None)
-        self.dynamic_layout_interval = kwargs.get("dynamic_layout_interval", 5)
-        self.node_color = kwargs.get("node_color", BLUE)
-        self.edge_color = kwargs.get("edge_color", GREY)
-        self.node_cmap = kwargs.get("nodes_cmap", get_cmap())
-        self.edge_cmap = kwargs.get("edge_cmap", get_cmap())
-        self.node_opacity = kwargs.get("node_opacity", 1)
-        self.node_size = kwargs.get("node_size", 0.4)
-        self.node_label = kwargs.get("node_label", {})
-        self.node_label_size = kwargs.get("node_label_size", 8)
-        self.edge_label = kwargs.get("edge_label", {})
-        self.edge_size = kwargs.get("edge_size", 0.4)
-        self.edge_opacity = kwargs.get("edge_opacity", 1)
+        self.delta = self.config.get("delta", 1000)
+        self.start = self.config.get("start", 0)
+        self.end = self.config.get("end", None)
+        self.intervals = self.config.get("intervals", None)
+        self.dynamic_layout_interval = self.config.get("dynamic_layout_interval", None)
+        self.font_size = self.config.get("font_size", 8)
 
-        NetworkPlot.__init__(
-            self,
-            data,
-            **kwargs,
-        )
+        # defaults
+        self.node_size = 0.4
+        self.node_opacity = 1
+        self.edge_size = 0.4
+        self.edge_opacity = 1
+
+        self.node_label: dict[Any, Any] = {}
+
         Scene.__init__(self)
-        self.data = data
 
     def compute_edge_index(self) -> tuple:
         """
@@ -193,11 +190,11 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                 - `max_time` (int): The maximum timestamp found in the edge data.
         """
 
-        tedges = [(d["source"], d["target"], d["start"]) for d in self.data["edges"]]
-        max_time = max(d["start"] for d in self.data["edges"])
+        tedges = [(d["source"], d["target"], d["start"]) for d in self.raw_data["edges"]]
+        max_time = max(d["start"] for d in self.raw_data["edges"])
         return tedges, max_time
 
-    def get_layout(self, graph: pp.TemporalGraph, type: str = "fr", time_window: tuple = None) -> dict:
+    def get_layout(self, graph: pp.TemporalGraph, layout_type: str = "fr", time_window: tuple = None) -> dict:
         """
         Compute spatial layout for network nodes using pathpy layout functions.
 
@@ -210,9 +207,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             dict: Mapping from node IDs to 3D positions (x , y , z)
         """
         layout_style = {}
-        layout_style["layout"] = type
+        layout_style["layout"] = layout_type
 
-        layout = pp.layout(graph.to_static_graph(time_window), **layout_style)
+        layout = pp.layout(graph.to_static_graph(time_window), **layout_style, seed=0)
         for key in layout.keys():
             layout[key] = np.append(
                 layout[key], 0.0
@@ -231,116 +228,25 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
 
         return layout
 
-    def get_colors(self, g: pp.TemporalGraph) -> dict:
-        """
-        Compute colors for nodes and edges based on user input and colormaps.
+    def get_color_at_time(self, node_data: dict, time_step: int):
+        """_summary_
 
         Args:
-            g (pp.TemporalGraph): Input temporal graph.
+            node_data (_type_): _description_
+            time_step (_type_): _description_
 
         Returns:
-            dict: Dictionary mapping node/edge identifiers to colors.
+            _type_: _description_
         """
-        color_dict = {}
-        if isinstance(self.node_color, str):
-            for node in g.nodes:
-                color_dict[node] = self.node_color
+        if "color_change" not in node_data:
+            return node_data.get("color", BLUE)
 
-        elif (
-            isinstance(self.node_color, tuple)
-            and len(self.node_color) == 3
-            and all(isinstance(c, (int, float)) for c in self.node_color)
-        ):
-            rbg_norm = tuple(x / 255 for x in self.node_color)
-            for node in g.nodes:
+        changes = [c for c in node_data["color_change"] if c["time"] <= time_step]
+        if not changes:
+            return node_data.get("color", BLUE)
 
-                color_dict[node] = mcolors.to_hex(rbg_norm)
-
-        elif self.node_cmap is not None and isinstance(self.node_color, (int, float)):
-            node_color = self.node_cmap(self.node_color)[:3]
-            node_color = mcolors.to_hex(node_color)
-            for node in g.nodes:
-                color_dict[node] = node_color
-
-        elif isinstance(self.node_color, list) and all(isinstance(item, str) for item in self.node_color):
-            for i, node in enumerate(g.nodes):
-                color_dict[node] = self.node_color[i % len(self.node_color)]
-
-        elif (
-            isinstance(self.node_color, list)
-            and all(isinstance(item, (int, float)) for item in self.node_color)
-            and self.node_cmap is not None
-        ):
-            color_list = []
-            for color in self.node_color:
-                color_list.append(mcolors.to_hex(self.node_cmap(color)[:3]))
-            node_color = color_list
-            for i, node in enumerate(g.nodes):
-                color_dict[node] = node_color[i % len(node_color)]
-
-        elif isinstance(self.node_color, list) and all(isinstance(item, tuple) for item in self.node_color):
-            for node, t, color in self.node_color:
-                if isinstance(color, (int, float)) and self.node_cmap != None:
-
-                    if t == self.start:  # node gets initialized with the right color
-                        color_dict[node] = color
-                    else:
-                        color_dict[(node, t)] = color
-
-        # colors of edges
-        if isinstance(self.edge_color, str):
-            for edge in g.temporal_edges:
-                v, w, t = edge
-                edge = v, w
-                color_dict[(edge, t)] = self.edge_color
-
-        elif (
-            isinstance(self.edge_color, tuple)
-            and len(self.edge_color) == 3
-            and all(isinstance(c, (int, float)) for c in self.edge_color)
-        ):
-            rbg_norm = tuple(x / 255 for x in self.edge_color)
-            for edge in g.temporal_edges:
-                v, w, t = edge
-                edge = v, w
-                color_dict[(edge, t)] = mcolors.to_hex(rbg_norm)
-
-        elif self.edge_cmap is not None and isinstance(self.edge_color, (int, float)):
-            edge_color = self.edge_cmap(self.edge_color)[:3]
-            edge_color = mcolors.to_hex(edge_color)
-            print(edge_color)
-            for edge in g.temporal_edges:
-                v, w, t = edge
-                edge = v, w
-                color_dict[(edge, t)] = edge_color
-
-        elif isinstance(self.edge_color, list) and all(isinstance(item, str) for item in self.edge_color):
-            for i, temporal_edge in enumerate(g.temporal_edges):
-                v, w, t = temporal_edge
-                edge = (v, w)
-                color_dict[(edge, t)] = self.edge_color[i % len(self.edge_color)]
-
-        elif (
-            isinstance(self.edge_color, list)
-            and all(isinstance(item, (int, float)) for item in self.edge_color)
-            and self.node_cmap is not None
-        ):
-            color_list = []
-            for color in self.edge_color:
-                color_list.append(mcolors.to_hex(self.node_cmap(color)[:3]))
-            edge_color = color_list
-            for i, temporal_edge in enumerate(g.temporal_edges):
-                v, w, t = temporal_edge
-                edge = (v, w)
-                color_dict[(edge, t)] = edge_color[i % len(edge_color)]
-
-        elif isinstance(self.edge_color, list) and all(isinstance(item, tuple) for item in self.edge_color):
-            for edge, t, color in self.edge_color:
-                if isinstance(color, (int, float)) and self.node_cmap != None:
-                    color = mcolors.to_hex(self.node_cmap(color)[:3])
-                print(edge)
-                color_dict[(edge, t)] = color
-        return color_dict
+        latest_change = max(changes, key=lambda c: c["time"])
+        return latest_change["color"]
 
     def construct(self):
         """
@@ -351,9 +257,10 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             - Draws and removes temporal edges frame-by-frame
             - Recomputes layout dynamically (if specified)
             - Displays timestamps
-
         """
 
+        nodes_data = self.raw_data["nodes"]
+        edges_data = self.raw_data["edges"]
         edge_list, end_time = self.compute_edge_index()
         g = pp.TemporalGraph.from_edge_list(edge_list)  # create ppG Graph
 
@@ -374,9 +281,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         delta /= 1000  # convert milliseconds to seconds
 
         # colors of nodes
-        color_dict = self.get_colors(g)
+        # color_dict = self.get_colors(g)
 
-        layout = self.get_layout(g, "random" if dynamic_layout_interval != None else "fr")
+        layout = self.get_layout(g, "random" if dynamic_layout_interval is not None else "fr")
 
         time_stamps = g.data["time"]
         time_stamps = [timestamp.item() for timestamp in time_stamps]
@@ -385,29 +292,30 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             time_stamp_dict[t].append((v, w))
 
         graph = Graph(
-            g.nodes,
+            [v["uid"] for v in nodes_data],
             [],
             layout=layout,
             labels=False,
             vertex_config={
-                v: {
-                    "radius": (self.node_size.get(v, 0.4) if isinstance(self.node_size, dict) else self.node_size),
-                    "fill_color": color_dict[v] if isinstance(color_dict, dict) and v in color_dict else BLUE,
-                    "fill_opacity": (
-                        self.node_opacity.get(v, 1) if isinstance(self.node_opacity, dict) else self.node_opacity
-                    ),
+                v["uid"]: {
+                    "radius": v.get("size", self.node_size),
+                    "fill_color": v.get("color", BLUE),
+                    "fill_opacity": (v.get("opacity", self.node_opacity)),
                 }
-                for v in g.nodes
+                for v in nodes_data
             },
         )
         self.add(graph)  # create initial nodes
 
         # add labels
-        for node, label_text in self.node_label.items():
-            label = Text(label_text, font_size=self.node_label_size).set_color(BLACK)
-            label.next_to(graph[node], UP, buff=0.05)
-            self.node_label[node] = label
-            self.add(label)
+        for node_data in nodes_data:
+            node_id = node_data["uid"]
+            label_text = node_data.get("label", None)
+            if label_text is not None:
+                label = Text(label_text, font_size=self.font_size).set_color(BLACK)
+                label.next_to(graph[node_id], UP, buff=0.05)
+                self.node_label[node_id] = label
+                self.add(label)
 
         step_size = int((end - start + 1) / intervals)  # step size based on the number of intervals
         time_window = range(start, end + 1, step_size)
@@ -427,11 +335,12 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             for step in range(time_step, range_stop, 1):
                 # dynamic layout change
                 if (
-                    dynamic_layout_interval != None
+                    dynamic_layout_interval is not None
                     and (step - start) % dynamic_layout_interval == 0
                     and step - start != 0
                     and change
-                ):  # change the layout based on the edges since the last change until the current timestep and only if there were edges in the last interval
+                ):  # change the layout based on the edges since the last change until the current timestep
+                    # and only if there were edges in the last interval
                     change = False
                     new_layout = self.get_layout(g, time_window=(step - dynamic_layout_interval, step))
 
@@ -449,8 +358,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
 
                 # color change
                 for node in g.nodes:
-                    if (node, step) in color_dict:
-                        graph[node].set_fill(color_dict[(node, step)])
+                    node_info = next(nd for nd in nodes_data if nd["uid"] == node)
+                    color = self.get_color_at_time(node_info, step)
+                    graph[node].set_fill(color)
 
             lines = []
             for step in range(time_step, range_stop, 1):  # generate Lines for all the timesteps in the current interval
@@ -459,18 +369,41 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         u, v = edge
                         sender = graph[u].get_center()
                         receiver = graph[v].get_center()
-                        stroke_width = (
-                            self.edge_size.get((edge, step), 0.4)
-                            if isinstance(self.edge_size, dict)
-                            else self.edge_size
-                        )
-                        stroke_opacity = (
-                            self.edge_opacity.get((edge, step), 1)
-                            if isinstance(self.edge_opacity, dict)
-                            else self.edge_opacity
+
+                        s_to_r_vec = receiver - sender  # vector from receiver to sender
+                        r_to_s_vec = sender - receiver  # vector from sender to reiceiver
+                        # normalize vectors
+                        s_to_r_vec = 1 / np.linalg.norm(s_to_r_vec) * s_to_r_vec
+                        r_to_s_vec = 1 / np.linalg.norm(r_to_s_vec) * r_to_s_vec
+
+                        if isinstance(self.node_size, dict):
+                            node_u_size = self.node_size.get(u, 0.4)
+                            node_v_size = self.node_size.get(v, 0.4)
+                        else:
+                            node_u_size = self.node_size
+                            node_v_size = self.node_size
+
+                        sender = graph[u].get_center() + (s_to_r_vec * node_u_size)
+                        receiver = graph[v].get_center() + (r_to_s_vec * node_v_size)
+
+                        edge_info = next(
+                            (
+                                e
+                                for e in edges_data
+                                if e["source"] == u and e["target"] == v and e["start"] <= step <= e["end"]
+                            ),
+                            None,
                         )
 
-                        color = color_dict[(edge, step)] if (edge, step) in color_dict else GRAY
+                        if edge_info:
+                            stroke_width = edge_info.get("size", self.edge_size)
+                            stroke_opacity = edge_info.get("opacity", self.edge_opacity)
+                            color = edge_info.get("color", GRAY)
+                        else:
+                            stroke_width = self.edge_size
+                            stroke_opacity = self.edge_opacity
+                            color = GRAY
+
                         line = Line(
                             sender,
                             receiver,
