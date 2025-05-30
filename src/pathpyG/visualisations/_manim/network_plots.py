@@ -209,7 +209,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         layout_style = {}
         layout_style["layout"] = layout_type
 
-        layout = pp.layout(graph.to_static_graph(time_window), **layout_style, seed=0)
+        layout = pp.layout(graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(), **layout_style, seed=0)
         for key in layout.keys():
             layout[key] = np.append(
                 layout[key], 0.0
