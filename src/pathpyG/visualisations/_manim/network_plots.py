@@ -209,7 +209,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         layout_style = {}
         layout_style["layout"] = layout_type
 
-        layout = pp.layout(graph.to_static_graph(time_window), **layout_style, seed=0)
+        layout = pp.layout(graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(), **layout_style, seed=0)
         for key in layout.keys():
             layout[key] = np.append(
                 layout[key], 0.0
@@ -372,12 +372,10 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         s_to_r_vec = 1 / np.linalg.norm(s_to_r_vec) * s_to_r_vec
                         r_to_s_vec = 1 / np.linalg.norm(r_to_s_vec) * r_to_s_vec
 
-                        if isinstance(self.node_size, dict):
-                            node_u_size = self.node_size.get(u, 0.4)
-                            node_v_size = self.node_size.get(v, 0.4)
-                        else:
-                            node_u_size = self.node_size
-                            node_v_size = self.node_size
+                        node_u_data = next((node for node in nodes_data if node.get("uid") == u), {})
+                        node_u_size = node_u_data.get("size", self.node_size)
+                        node_v_data = next((node for node in nodes_data if node.get("uid") == v), {})
+                        node_v_size = node_v_data.get("size", self.node_size)
 
                         sender = graph[u].get_center() + (s_to_r_vec * node_u_size)
                         receiver = graph[v].get_center() + (r_to_s_vec * node_v_size)
