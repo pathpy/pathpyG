@@ -7,3 +7,5 @@
 - src/pathpyG/visualisations/_d3js/__init__.py
 - src/pathpyG/visualisations/_d3js/network_plots.py
 - src/pathpyG/visualisations/_d3js/core.py
+- src/pathpyG/visualisations/_manim/network_plots.py
+- src/pathpyG/visualisations/_manim/core.py
