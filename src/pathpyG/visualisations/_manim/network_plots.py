@@ -348,7 +348,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                             # also change the positions of the labels
                             if node in self.node_label:
                                 label = self.node_label[node]
-                                animations.append(label.animate.move_to(new_pos + (0, 0.125, 0)))
+                                height = label.height
+                                animations.append(label.animate.move_to(new_pos + (0, 0.125 + height, 0)))
 
                     self.play(*animations, run_time=delta)
 
