@@ -65,7 +65,7 @@ class TemporalGraph(Graph):
 
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:
-        edge_array = np.array(edge_list).astype(int)#changed the type to enable the right ordering in the index_map, before the ordering was lexical over the strings which lead to the wrong ordering, for example '1' '10' '2' instead of '1' '2' '10'
+        edge_array = np.array(edge_list)
         ts = edge_array[:, 2].astype(np.number)
 
         index_map = IndexMap(np.unique(edge_array[:, :2]))

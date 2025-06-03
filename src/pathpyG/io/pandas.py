@@ -198,8 +198,8 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
 
 
         # extract indices of source/target node of edges
-        src = [g.mapping.to_idx(x) for x in df["v"]]
-        tgt = [g.mapping.to_idx(x) for x in df["w"]]
+        src = [g.mapping.to_idx(str(x)) for x in df["v"]]
+        tgt = [g.mapping.to_idx(str(x)) for x in df["w"]]
         time = [x for x in df["t"]]
 
         # unique index for each edge independent of v,w,t because there exist temporal networks with duplicated temporal edges
