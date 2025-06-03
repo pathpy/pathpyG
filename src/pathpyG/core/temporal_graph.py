@@ -65,7 +65,7 @@ class TemporalGraph(Graph):
 
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:
-        edge_array = np.array(edge_list)
+        edge_array = np.array(edge_list).astype(int)#changed the type to enable the right ordering in the index_map, before the ordering was lexical over the strings which lead to the wrong ordering, for example '1' '10' '2' instead of '1' '2' '10'
         ts = edge_array[:, 2].astype(np.number)
 
         index_map = IndexMap(np.unique(edge_array[:, :2]))
@@ -77,7 +77,7 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             data=Data(
                 edge_index=edge_index,
-                time=torch.Tensor(ts),
+                time=torch.tensor(ts, dtype=torch.float64), #before it was float32, where the precision is to low
                 num_nodes=num_nodes,
             ),
             mapping=index_map,

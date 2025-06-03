@@ -189,61 +189,115 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
     """Add edge attributes from pandas data frame to existing graph, where source/target node
     IDs are given in columns `v` and `w`  and edge attributes x are given in columns `edge_x`
     """
+    if "t" in df:
+        if "v" not in df or "w" not in df or "t" not in df:
+            print("data frame must have columns `v` and `w` and `t`")
+            return
 
-    if "v" not in df or "w" not in df:
-        print("data frame must have columns `v` and `w`")
-        return
+        attributed_edges = list(zip(df["v"], df["w"], df["t"]))
 
-    attributed_edges = list(zip(df["v"], df["w"]))
 
-    # check for duplicated edge attributes
-    if len(set(attributed_edges)) < len(attributed_edges):
-        print("data frame contains multiple attribute values for single edge")
-        return
+        # extract indices of source/target node of edges
+        src = [g.mapping.to_idx(x) for x in df["v"]]
+        tgt = [g.mapping.to_idx(x) for x in df["w"]]
+        time = [x for x in df["t"]]
 
-    # check for difference between edges in graph and edges in attributes
-    if set(attributed_edges) != set([(v, w) for v, w in g.edges]):
-        print("Mismatch between edges in DataFrame and edges in graph")
-        return
+        # unique index for each edge independent of v,w,t because there exist temporal networks with duplicated temporal edges
+        edge_idx = list(range(len(src))) 
 
-    # extract indices of source/target node of edges
-    src = [g.mapping.to_idx(x) for x in df["v"]]
-    tgt = [g.mapping.to_idx(x) for x in df["w"]]
+        #sort the edge_index for the case that the data_frame is not sorted
+        paired = list(zip(time, edge_idx))
+        paired.sort(key=lambda x: x[0])
+        edge_idx = [idx for _, idx in paired]
 
-    # find indices of edges in edge_index
-    edge_idx = []
-    for i in range(len(src)):
-        x = torch.where((g.data.edge_index[0, :] == src[i]) & (g.data.edge_index[1, :] == tgt[i]))[0].item()
-        edge_idx.append(x)
-    for attr in df.columns:
-        if attr != "v" and attr != "w":
-            prefix = ""
-            if not attr.startswith("edge_"):
-                prefix = "edge_"
+        for attr in df.columns:
+            if attr != "v" and attr != "w" and attr != "t":
+                prefix = ""
+                if not attr.startswith("edge_"):
+                    prefix = "edge_"
+                
+                # eval values for array-valued attributes
+                try:
+                    values = np.array([eval(x) for x in df[attr].values])
+                    
+                    g.data[prefix + attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
+                    continue
+                except:
+                    pass
+                
+                # try to directly construct tensor for scalar values
+                try:
+                    g.data[prefix + attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
+                    continue
+                except:
+                    pass
 
-            # eval values for array-valued attributes
-            try:
-                values = np.array([eval(x) for x in df[attr].values])
-                g.data[prefix + attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
-                continue
-            except:
-                pass
+                # numpy array of strings
+                try:
+                    g.data[prefix + attr] = np.array(df[attr].values.astype(str)[edge_idx])
+                except:
+                    t = df[attr].dtype
+                    print(f"Could not assign edge attribute {attr} of type {t}")
 
-            # try to directly construct tensor for scalar values
-            try:
-                g.data[prefix + attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
-                continue
-            except:
-                pass
 
-            # numpy array of strings
-            try:
-                g.data[prefix + attr] = np.array(df[attr].values.astype(str)[edge_idx])
-            except:
-                t = df[attr].dtype
-                print(f"Could not assign edge attribute {attr} of type {t}")
 
-            # g.data[prefix+attr] = df[attr].values[edge_idx]
+
+
+    else:
+        if "v" not in df or "w" not in df:
+            print("data frame must have columns `v` and `w`")
+            return
+
+        attributed_edges = list(zip(df["v"], df["w"]))
+
+        # check for duplicated edge attributes
+        if len(set(attributed_edges)) < len(attributed_edges):
+            print("data frame contains multiple attribute values for single edge")
+            return
+
+        # check for difference between edges in graph and edges in attributes
+        if set(attributed_edges) != set([(v, w) for v, w in g.edges]):
+            print("Mismatch between edges in DataFrame and edges in graph")
+            return
+
+        # extract indices of source/target node of edges
+        src = [g.mapping.to_idx(x) for x in df["v"]]
+        tgt = [g.mapping.to_idx(x) for x in df["w"]]
+
+        # find indices of edges in edge_index
+        edge_idx = []
+        for i in range(len(src)):
+            x = torch.where((g.data.edge_index[0, :] == src[i]) & (g.data.edge_index[1, :] == tgt[i]))[0].item()
+            edge_idx.append(x)
+        for attr in df.columns:
+            if attr != "v" and attr != "w":
+                prefix = ""
+                if not attr.startswith("edge_"):
+                    prefix = "edge_"
+
+                # eval values for array-valued attributes
+                try:
+                    values = np.array([eval(x) for x in df[attr].values])
+                    g.data[prefix + attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
+                    continue
+                except:
+                    pass
+
+                # try to directly construct tensor for scalar values
+                try:
+                    g.data[prefix + attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
+                    continue
+                except:
+                    pass
+
+                # numpy array of strings
+                try:
+                    g.data[prefix + attr] = np.array(df[attr].values.astype(str)[edge_idx])
+                except:
+                    t = df[attr].dtype
+                    print(f"Could not assign edge attribute {attr} of type {t}")
+
+                # g.data[prefix+attr] = df[attr].values[edge_idx]
 
 
 def df_to_temporal_graph(
@@ -314,7 +368,7 @@ def df_to_temporal_graph(
         tedges.append((_v, _w, int(t / time_rescale)))
 
     g = TemporalGraph.from_edge_list(tedges, **kwargs)
-
+    add_edge_attributes(df, g)
     if is_undirected:
         return g.to_undirected()
     else:
