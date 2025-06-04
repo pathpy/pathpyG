@@ -77,7 +77,7 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             data=Data(
                 edge_index=edge_index,
-                time=torch.tensor(ts, dtype=torch.float64), #before it was float32, where the precision is to low
+                time=torch.tensor(ts, dtype=torch.long), #before it was float32, where the precision is to low
                 num_nodes=num_nodes,
             ),
             mapping=index_map,
