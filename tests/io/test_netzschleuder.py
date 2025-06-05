@@ -103,6 +103,15 @@ def test_read_netzschleuder_record():
         record = read_netzschleuder_record(record_name, url)
 
 
+def test_read_netzschleuder_graph():
+    """Test the read_netzschleuder_graph() function for timestamped data."""
+
+    g = read_netzschleuder_graph(name="email_company")
+    assert isinstance(g, Graph)
+    assert g.n == 167
+    assert g.m == 5784
+
+
 def test_read_netzschleuder_graph_temporal():
     """Test the read_netzschleuder_graph() function for timestamped data."""
 

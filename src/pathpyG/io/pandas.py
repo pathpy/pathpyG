@@ -1,18 +1,30 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
-from collections import Counter
+import ast
+import re
+import warnings
 
 import pandas as pd
 import torch
 import numpy as np
 
-import datetime
-from time import mktime
-
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.utils.config import config
+
+# Regex to check if the attribute is iterable (e.g., list, dict, etc.)
+_iterable_re = re.compile(r"^\s*[\[\{\(].*[\]\}\)]\s*$")
+_number_re = re.compile(
+    r"""^\s*          # optional leading whitespace
+    [+-]?                              # optional sign
+    (                                  # start group
+        (\d+\.\d*)|(\.\d+)|(\d+)       # float or int
+    )
+    ([eE][+-]?\d+)?                    # optional exponent
+    \s*$                               # optional trailing whitespace
+"""
+)
+_integer_re = re.compile(r"^\s*[+-]?\d+\s*$")
 
 
 def _check_column_name(frame: pd.DataFrame, name: str, synonyms: list) -> pd.DataFrame:
@@ -23,6 +35,30 @@ def _check_column_name(frame: pd.DataFrame, name: str, synonyms: list) -> pd.Dat
                 frame.rename(columns={col: name}, inplace=True)
                 continue
     return frame
+
+
+def _parse_df_column(df: pd.DataFrame, g: Graph, idx: list, attr: str, prefix: str = "") -> None:
+    """Helper function to parse a column in a DataFrame and add it as an attribute to the graph."""
+    if df[attr].dtype == "object":
+        if _iterable_re.match(str(df[attr].values[0])):
+            g.data[prefix + attr] = torch.tensor(
+                [ast.literal_eval(x) for x in df[attr].values[idx]], device=g.data.edge_index.device
+            )
+        elif _number_re.match(str(df[attr].values[0])):
+            # if the attribute is a number, convert it to a tensor
+            if _integer_re.match(str(df[attr].values[0])):
+                g.data[prefix + attr] = torch.tensor(
+                    df[attr].values.astype(int)[idx], device=g.data.edge_index.device
+                )
+            else:
+                g.data[prefix + attr] = torch.tensor(
+                    df[attr].values.astype(float)[idx], device=g.data.edge_index.device
+                )
+        else:
+            # if the attribute is not iterable, convert it to a string
+            g.data[prefix + attr] = np.array(df[attr].values.astype(str)[idx])
+    else:
+        g.data[prefix + attr] = torch.tensor(df[attr].values[idx], device=g.data.edge_index.device)
 
 
 def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool = False, **kwargs: Any) -> Graph:
@@ -65,7 +101,6 @@ def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool 
         print(n)
         ```
     """
-
     # assign column names if no header is present
     no_header = all(isinstance(x, int) for x in df.columns.values.tolist())
 
@@ -77,38 +112,13 @@ def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool 
             col_names += ["edge_attr_{0}".format(i - 2)]
         df.columns = col_names
 
-    df["v"] = df["v"].astype(str)
-    df["w"] = df["w"].astype(str)
-
-    edges: list = []
-    edge_set: set = set()
-
-    # counter for multiple edges
-    counter: Counter = Counter()
-
-    for row in df.to_dict(orient="records"):
-        _v, _w = row.pop("v"), row.pop("w")
-
-        # check if edge was already generated
-        if (_v, _w) in edge_set and not multiedges:
-            counter[(_v, _w)] += 1
-        else:
-            # add edge
-            edges.append((_v, _w))
-            edge_set.add((_v, _w))
-
-    # check for multi-edges
-    if len(counter) > 0:
-        print(
-            "%i edges existed already "
-            "and were not considered. "
-            "To capture those edges, consider creating "
-            "a multiedge and/or directed network.",
-            sum(counter.values()),
-        )
+    edge_df = df[["v", "w"]].drop_duplicates()
+    if not multiedges and (len(edge_df) != len(df)):
+        print("Data frame contains multiple edges, but multiedges is set to False. Removing duplicates.")
+        df = df.drop_duplicates(subset=["v", "w"])
 
     # create graph
-    g = Graph.from_edge_list(edges, is_undirected=is_undirected, **kwargs)
+    g = Graph.from_edge_list(edge_list=edge_df.values, is_undirected=is_undirected, **kwargs)
 
     # assign edge attributes
     add_edge_attributes(df, g)
@@ -116,8 +126,14 @@ def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool 
 
 
 def add_node_attributes(df: pd.DataFrame, g: Graph):
-    """Add node attributes from pandas data frame to existing graph, where node
-    IDs or indices are given in column `v` and node attributes x are given in columns `node_x`
+    """Add node attributes from pandas data frame to existing `Graph`.
+
+    Add node attributes from pandas data frame to existing graph, where node
+    IDs or indices are given in column `v` and node attributes x are given in columns `node_x`.
+
+    Args:
+        df: A DataFrame with rows containing nodes and optional node attributes.
+        g: The graph to which the node attributes should be added.
     """
     if "v" in df:
         print("Mapping node attributes based on node names in column `v`")
@@ -141,7 +157,7 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
             return
 
         # get indices of nodes in tensor
-        node_idx = [g.mapping.to_idx(x) for x in df["v"]]
+        node_idx = g.mapping.to_idxs(attributed_nodes)
     else:
         if set(attributed_nodes) != set([i for i in range(g.n)]):
             print("Mismatch between nodes in DataFrame and nodes in graph")
@@ -158,146 +174,87 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
             continue
 
         # prefix attribute names that are not already prefixed
-        prefix = ""
-        if not attr.startswith("node_"):
+        if attr.startswith("node_"):
+            prefix = ""
+        else:
             prefix = "node_"
 
-        # eval values for array-valued attributes
-        try:
-            values = np.array([eval(x) for x in df[attr].values])
-            g.data[prefix + attr] = torch.from_numpy(values[node_idx]).to(device=g.data.edge_index.device)
-            continue
-        except:
-            pass
-
-        # try to directly construct tensor for scalar values
-        try:
-            g.data[prefix + attr] = torch.from_numpy(df[attr].values[node_idx]).to(device=g.data.edge_index.device)
-            continue
-        except:
-            pass
-
-        # numpy array of strings
-        try:
-            g.data[prefix + attr] = np.array(df[attr].values.astype(str)[node_idx])
-        except:
-            t = df[attr].dtype
-            print(f"Could not assign node attribute {attr} of type {t}")
+        _parse_df_column(
+            df=df,
+            g=g,
+            idx=node_idx,
+            attr=attr,
+            prefix=prefix,
+        )
 
 
-def add_edge_attributes(df: pd.DataFrame, g: Graph) -> None:
-    """Add edge attributes from pandas data frame to existing graph, where source/target node
-    IDs are given in columns `v` and `w`  and edge attributes x are given in columns `edge_x`
+def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None) -> None:
+    """Add (temporal) edge attributes from pandas data frame to existing `Graph`.
+
+    Add edge attributes from `pandas.DataFrame` to existing `Graph`, where source/target node
+    IDs are given in columns `v` and `w`  and edge attributes x are given in columns `edge_x`.
+    If `time_attr` is not None, the dataframe is expected to contain temporal data with a timestamp
+    in a column named as specified in `time_attr`.
+
+    Args:
+        df: A DataFrame with rows containing edges and optional edge attributes.
+        g: The graph to which the edge attributes should be added.
+        time_attr: If not None, the name of the column containing time stamps for temporal edges.
     """
-    if "t" in df:
-        if "v" not in df or "w" not in df or "t" not in df:
-            print("data frame must have columns `v` and `w` and `t`")
-            return
+    assert "v" in df and "w" in df, "Data frame must have columns `v` and `w` for source and target nodes"
 
-        attributed_edges = list(zip(df["v"], df["w"], df["t"]))
+    # extract indices of source/target node of edges
+    src = g.mapping.to_idxs(df["v"].tolist())
+    tgt = g.mapping.to_idxs(df["w"].tolist())
 
+    edge_attrs = list(df.columns)
+    edge_attrs.remove("v")
+    edge_attrs.remove("w")
 
-        # extract indices of source/target node of edges
-        src = [g.mapping.to_idx(str(x)) for x in df["v"]]
-        tgt = [g.mapping.to_idx(str(x)) for x in df["w"]]
-        time = [x for x in df["t"]]
+    if time_attr is not None:
+        assert time_attr in df, f"Data frame must have column `{time_attr}` for time stamps"
 
-        # unique index for each edge independent of v,w,t because there exist temporal networks with duplicated temporal edges
-        edge_idx = list(range(len(src))) 
-
-        #sort the edge_index for the case that the data_frame is not sorted
-        paired = list(zip(time, edge_idx))
-        paired.sort(key=lambda x: x[0])
-        edge_idx = [idx for _, idx in paired]
-
-        for attr in df.columns:
-            if attr != "v" and attr != "w" and attr != "t":
-                prefix = ""
-                if not attr.startswith("edge_"):
-                    prefix = "edge_"
-                
-                # eval values for array-valued attributes
-                try:
-                    values = np.array([eval(x) for x in df[attr].values])
-                    
-                    g.data[prefix + attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
-                    continue
-                except:
-                    pass
-                
-                # try to directly construct tensor for scalar values
-                try:
-                    g.data[prefix + attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
-                    continue
-                except:
-                    pass
-
-                # numpy array of strings
-                try:
-                    g.data[prefix + attr] = np.array(df[attr].values.astype(str)[edge_idx])
-                except:
-                    t = df[attr].dtype
-                    print(f"Could not assign edge attribute {attr} of type {t}")
-
-
-
-
-
-    else:
-        if "v" not in df or "w" not in df:
-            print("data frame must have columns `v` and `w`")
-            return
-
-        attributed_edges = list(zip(df["v"], df["w"]))
-
-        # check for duplicated edge attributes
-        if len(set(attributed_edges)) < len(attributed_edges):
-            print("data frame contains multiple attribute values for single edge")
-            return
-
-        # check for difference between edges in graph and edges in attributes
-        if set(attributed_edges) != set([(v, w) for v, w in g.edges]):
-            print("Mismatch between edges in DataFrame and edges in graph")
-            return
-
-        # extract indices of source/target node of edges
-        src = [g.mapping.to_idx(x) for x in df["v"]]
-        tgt = [g.mapping.to_idx(x) for x in df["w"]]
+        time = df[time_attr].values
+        edge_attrs.remove(time_attr)
 
         # find indices of edges in edge_index
         edge_idx = []
-        for i in range(len(src)):
-            x = torch.where((g.data.edge_index[0, :] == src[i]) & (g.data.edge_index[1, :] == tgt[i]))[0].item()
-            edge_idx.append(x)
-        for attr in df.columns:
-            if attr != "v" and attr != "w":
-                prefix = ""
-                if not attr.startswith("edge_"):
-                    prefix = "edge_"
+        for src_i, tgt_i, time_i in zip(src, tgt, time):
+            matching_idx = torch.where(
+                (g.data.edge_index[0, :] == src_i) & (g.data.edge_index[1, :] == tgt_i) & (g.data.time == time_i)
+            )[0]
+            if matching_idx.numel() == 1:
+                edge_idx.append(matching_idx.item())
+            else:
+                # if the edge is not unique, raise a warning
+                if matching_idx.numel() > 1:
+                    # if there are multiple edges, take the first one
+                    edge_idx.append(matching_idx[0].item()) 
+                warnings.warn(f"Edge ({src_i}, {tgt_i}) exists {matching_idx.numel()} times in the graph", stacklevel=2)
+    else:
+        # find indices of edges in edge_index
+        edge_idx = []
+        for src_i, tgt_i in zip(src, tgt):
+            matching_idx = torch.where((g.data.edge_index[0, :] == src_i) & (g.data.edge_index[1, :] == tgt_i))[0]
+            assert (
+                matching_idx.numel() == 1
+            ), f"Edge ({src_i}, {tgt_i}) either does not exist or is duplicated in the graph"
+            edge_idx.append(matching_idx.item())
 
-                # eval values for array-valued attributes
-                try:
-                    values = np.array([eval(x) for x in df[attr].values])
-                    g.data[prefix + attr] = torch.from_numpy(values[edge_idx]).to(device=g.data.edge_index.device)
-                    continue
-                except:
-                    pass
+    for attr in edge_attrs:
+        if attr.startswith("edge_"):
+            prefix = ""
+        else:
+            prefix = "edge_"
 
-                # try to directly construct tensor for scalar values
-                try:
-                    g.data[prefix + attr] = torch.from_numpy(df[attr].values[edge_idx]).to(device=g.data.edge_index.device)
-                    continue
-                except:
-                    pass
-
-                # numpy array of strings
-                try:
-                    g.data[prefix + attr] = np.array(df[attr].values.astype(str)[edge_idx])
-                except:
-                    t = df[attr].dtype
-                    print(f"Could not assign edge attribute {attr} of type {t}")
-
-                # g.data[prefix+attr] = df[attr].values[edge_idx]
+        # parse column and add to graph
+        _parse_df_column(
+            df=df,
+            g=g,
+            idx=edge_idx,
+            attr=attr,
+            prefix=prefix,
+        )
 
 
 def df_to_temporal_graph(
@@ -355,20 +312,28 @@ def df_to_temporal_graph(
             col_names += ["edge_attr_{0}".format(i - 2)]
         df.columns = col_names
 
-    tedges = []
-    for row in df.to_dict(orient="records"):
-        _v, _w, _t = str(row.pop("v")), str(row.pop("w")), str(row.pop("t"))
-        try:
-            t = float(_t)
-        except:
-            # if time stamp is a string, use timestamp_format to convert
-            # it to UNIX timestamp
-            x = datetime.datetime.strptime(_t, timestamp_format)
-            t = int(mktime(x.timetuple()))
-        tedges.append((_v, _w, int(t / time_rescale)))
+    # optionally parse time stamps
+    if df["t"].dtype == "object":
+        # convert time stamps to seconds since epoch
+        df["t"] = pd.to_datetime(df["t"], format=timestamp_format)
+        # rescale time stamps
+        df["t"] = df["t"].astype("int64") // time_rescale
+    elif df["t"].dtype == "int64" or df["t"].dtype == "float64":
+        # rescale time stamps
+        df["t"] = df["t"] // time_rescale
+    elif pd.api.types.is_datetime64_any_dtype(df["t"]):
+        df["t"] = df["t"].astype("int64") // time_rescale
+    else:
+        raise ValueError(
+            "Column `t` must be of type `object`, `int64`, `float64`, or a datetime type. "
+            f"Found {df['t'].dtype} instead."
+        )
+
+    tedges = df[["v", "w", "t"]].values
+    print(tedges)
 
     g = TemporalGraph.from_edge_list(tedges, **kwargs)
-    add_edge_attributes(df, g)
+    add_edge_attributes(df, g, "t")
     if is_undirected:
         return g.to_undirected()
     else:
