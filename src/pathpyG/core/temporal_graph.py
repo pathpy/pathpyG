@@ -68,6 +68,12 @@ class TemporalGraph(Graph):
         edge_array = np.array(edge_list)
         ts = edge_array[:, 2].astype(np.number)
 
+        # Convert timestamps to tensor
+        if np.issubdtype(ts.dtype, np.integer):
+            ts = torch.tensor(ts, dtype=torch.long)
+        else:
+            ts = torch.tensor(ts, dtype=torch.float32)
+
         index_map = IndexMap(np.unique(edge_array[:, :2]))
         edge_index = index_map.to_idxs(edge_array[:, :2].T)
 
@@ -77,7 +83,7 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             data=Data(
                 edge_index=edge_index,
-                time=torch.Tensor(ts),
+                time=ts,
                 num_nodes=num_nodes,
             ),
             mapping=index_map,
