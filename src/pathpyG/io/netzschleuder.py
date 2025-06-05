@@ -172,7 +172,7 @@ def read_netzschleuder_graph(
 
                         # construct graph and assign edge attributes
                         if timestamps:
-                            g = df_to_temporal_graph(df=edges, is_undirected=not is_directed)
+                            g = df_to_temporal_graph(df=edges, is_undirected=not is_directed, num_nodes=num_nodes)
                         else:
                             g = df_to_graph(df=edges, multiedges=multiedges, is_undirected=not is_directed, num_nodes=num_nodes)
 
