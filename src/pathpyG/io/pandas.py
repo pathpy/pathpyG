@@ -281,7 +281,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
 
 
 def df_to_temporal_graph(
-    df: pd.DataFrame, is_undirected: bool = False, timestamp_format="%Y-%m-%d %H:%M:%S", time_rescale=1, num_nodes: int | None = None
+    df: pd.DataFrame, is_undirected: bool = False, multiedges: bool = False, timestamp_format="%Y-%m-%d %H:%M:%S", time_rescale=1, num_nodes: int | None = None
 ) -> TemporalGraph:
     """Reads a temporal graph from a pandas data frame.
 
@@ -351,6 +351,9 @@ def df_to_temporal_graph(
             "Column `t` must be of type `object`, `int64`, `float64`, or a datetime type. "
             f"Found {df['t'].dtype} instead."
         )
+
+    if not multiedges:
+        df = df.drop_duplicates(subset=["v", "w", "t"])
 
     mapping = IndexMap(node_ids=np.unique(df[["v", "w"]].values))
     data = Data(
