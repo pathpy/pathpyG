@@ -31,24 +31,20 @@ class TemporalGraph(Graph):
             print(t)
             ```
         """
-        if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = data.edge_index = EdgeIndex(
-                data=data.edge_index.contiguous(), sparse_size=(data.num_nodes, data.num_nodes)
+        self.data = data
+        if not isinstance(self.data.edge_index, EdgeIndex):
+            self.data.edge_index = EdgeIndex(
+                data=self.data.edge_index.contiguous(), sparse_size=(self.data.num_nodes, self.data.num_nodes)
             )
 
         # reorder temporal data
-        # TODO: Fix in PyG
-        if data.num_nodes != data.num_edges:
-            self.data = data.sort_by_time()
-        else:
-            sorted_idx = torch.argsort(data.time)
-            data.time = data.time[sorted_idx]
-            for edge_attr in data.edge_attrs():
-                if edge_attr == "edge_index":
-                    data.edge_index = data.edge_index[:, sorted_idx]
-                else:
-                    data[edge_attr] = data[edge_attr][sorted_idx]
-            self.data = data
+        # Note that we do not use `torch_geometric.self.data.Data.sort_by_time` because it cannot sort numpy arrays`
+        sorted_idx = torch.argsort(self.data.time)
+        for edge_attr in set(self.data.edge_attrs()).union(set(["time"])):
+            if edge_attr == "edge_index":
+                self.data.edge_index = self.data.edge_index[:, sorted_idx]
+            else:
+                data[edge_attr] = data[edge_attr][sorted_idx]
 
         if mapping is not None:
             self.mapping = mapping
