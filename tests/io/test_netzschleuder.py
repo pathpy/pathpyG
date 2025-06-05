@@ -116,7 +116,7 @@ def test_read_netzschleuder_graph():
 def test_read_netzschleuder_graph_temporal():
     """Test the read_netzschleuder_graph() function for timestamped data."""
 
-    g = read_netzschleuder_graph(name="email_company", time_attr="time")
+    g = read_netzschleuder_graph(name="email_company", time_attr="time", multiedges=True)
     assert isinstance(g, TemporalGraph)
     assert g.n == 167
     assert g.m == 82927
