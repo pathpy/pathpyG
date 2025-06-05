@@ -2,7 +2,7 @@
 
 import pytest
 
-from torch import tensor, equal
+import torch
 
 from pathpyG import Graph, TemporalGraph
 from pathpyG.io import list_netzschleuder_records, read_netzschleuder_graph, read_netzschleuder_record
@@ -32,11 +32,12 @@ def test_node_attrs():
 
 def test_edge_attrs():
     """Test the extraction of edge attributes"""
-    g = read_netzschleuder_graph("ambassador", "1985_1989")
+    g = read_netzschleuder_graph("ambassador", "1985_1989", multiedges=True)
     assert "edge_weight" in g.edge_attrs()
-    assert equal(
+    print(g.data.edge_weight)
+    assert torch.equal(
         g.data.edge_weight,
-        tensor(
+        torch.tensor(
             [
                 1,
                 1,
@@ -51,15 +52,15 @@ def test_edge_attrs():
                 1,
                 1,
                 3,
-                3,
                 1,
                 1,
                 1,
-                1,
-                3,
                 3,
                 1,
                 3,
+                3,
+                1,
+                1,
                 3,
                 2,
                 1,
@@ -70,7 +71,7 @@ def test_edge_attrs():
                 1,
                 1,
                 1,
-                1,
+                3,
                 1,
                 3,
                 3,
@@ -119,5 +120,6 @@ def test_read_netzschleuder_graph_temporal():
     assert isinstance(g, TemporalGraph)
     assert g.n == 167
     assert g.m == 82927
-    assert g.start_time == 1262454016.0
-    assert g.end_time == 1285884544.0
+    assert g.start_time == 1262454010
+    assert g.end_time == 1285884492
+    assert "edge_weight" in g.edge_attrs()

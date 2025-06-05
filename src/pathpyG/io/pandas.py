@@ -8,9 +8,11 @@ import warnings
 import pandas as pd
 import torch
 import numpy as np
+from torch_geometric.data import Data
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.core.index_map import IndexMap
 
 # Regex to check if the attribute is iterable (e.g., list, dict, etc.)
 _iterable_re = re.compile(r"^\s*[\[\{\(].*[\]\}\)]\s*$")
@@ -37,31 +39,34 @@ def _check_column_name(frame: pd.DataFrame, name: str, synonyms: list) -> pd.Dat
     return frame
 
 
-def _parse_df_column(df: pd.DataFrame, g: Graph, idx: list, attr: str, prefix: str = "") -> None:
+def _parse_df_column(df: pd.DataFrame, data: Data, attr: str, idx: list | None = None, prefix: str = "") -> None:
     """Helper function to parse a column in a DataFrame and add it as an attribute to the graph."""
+    if idx is None:
+        idx = np.arange(len(df))
+
     if df[attr].dtype == "object":
         if _iterable_re.match(str(df[attr].values[0])):
-            g.data[prefix + attr] = torch.tensor(
-                [ast.literal_eval(x) for x in df[attr].values[idx]], device=g.data.edge_index.device
+            data[prefix + attr] = torch.tensor(
+                [ast.literal_eval(x) for x in df[attr].values[idx]], device=data.edge_index.device
             )
         elif _number_re.match(str(df[attr].values[0])):
             # if the attribute is a number, convert it to a tensor
             if _integer_re.match(str(df[attr].values[0])):
-                g.data[prefix + attr] = torch.tensor(
-                    df[attr].values.astype(int)[idx], device=g.data.edge_index.device
+                data[prefix + attr] = torch.tensor(
+                    df[attr].values.astype(int)[idx], device=data.edge_index.device
                 )
             else:
-                g.data[prefix + attr] = torch.tensor(
-                    df[attr].values.astype(float)[idx], device=g.data.edge_index.device
+                data[prefix + attr] = torch.tensor(
+                    df[attr].values.astype(float)[idx], device=data.edge_index.device
                 )
         else:
             # if the attribute is not iterable, convert it to a string
-            g.data[prefix + attr] = np.array(df[attr].values.astype(str)[idx])
+            data[prefix + attr] = np.array(df[attr].values.astype(str)[idx])
     else:
-        g.data[prefix + attr] = torch.tensor(df[attr].values[idx], device=g.data.edge_index.device)
+        data[prefix + attr] = torch.tensor(df[attr].values[idx], device=data.edge_index.device)
 
 
-def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool = False, **kwargs: Any) -> Graph:
+def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool = False, num_nodes: int | None = None) -> Graph:
     """Reads a network from a pandas data frame.
 
     The data frame is expected to have a minimum of two columns
@@ -117,11 +122,29 @@ def df_to_graph(df: pd.DataFrame, is_undirected: bool = False, multiedges: bool 
         print("Data frame contains multiple edges, but multiedges is set to False. Removing duplicates.")
         df = df.drop_duplicates(subset=["v", "w"])
 
-    # create graph
-    g = Graph.from_edge_list(edge_list=edge_df.values, is_undirected=is_undirected, **kwargs)
+    mapping = IndexMap(node_ids=np.unique(df[["v", "w"]].values))
+    data = Data(
+        edge_index=mapping.to_idxs(df[["v", "w"]].values.T),
+        num_nodes=num_nodes if num_nodes is not None else mapping.node_ids.shape[0],
+    )
+    cols = df.columns.tolist()
+    cols.remove("v")
+    cols.remove("w")
+    for col in cols:
+        if col.startswith("edge_"):
+            prefix = ""
+        else:
+            prefix = "edge_"
 
-    # assign edge attributes
-    add_edge_attributes(df, g)
+        _parse_df_column(
+            df=df,
+            data=data,
+            attr=col,
+            prefix=prefix
+        )
+    g = Graph(data=data, mapping=mapping)
+    if is_undirected:
+        g = g.to_undirected()
     return g
 
 
@@ -181,7 +204,7 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
 
         _parse_df_column(
             df=df,
-            g=g,
+            data=g.data,
             idx=node_idx,
             attr=attr,
             prefix=prefix,
@@ -250,7 +273,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         # parse column and add to graph
         _parse_df_column(
             df=df,
-            g=g,
+            data=g.data,
             idx=edge_idx,
             attr=attr,
             prefix=prefix,
@@ -258,7 +281,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
 
 
 def df_to_temporal_graph(
-    df: pd.DataFrame, is_undirected: bool = False, timestamp_format="%Y-%m-%d %H:%M:%S", time_rescale=1, **kwargs: Any
+    df: pd.DataFrame, is_undirected: bool = False, timestamp_format="%Y-%m-%d %H:%M:%S", time_rescale=1, num_nodes: int | None = None
 ) -> TemporalGraph:
     """Reads a temporal graph from a pandas data frame.
 
@@ -329,15 +352,33 @@ def df_to_temporal_graph(
             f"Found {df['t'].dtype} instead."
         )
 
-    tedges = df[["v", "w", "t"]].values
-    print(tedges)
+    mapping = IndexMap(node_ids=np.unique(df[["v", "w"]].values))
+    data = Data(
+        edge_index=mapping.to_idxs(df[["v", "w"]].values.T),
+        time=torch.tensor(df["t"].values),
+        num_nodes=num_nodes if num_nodes is not None else mapping.node_ids.shape[0],
+    )
+    cols = df.columns.tolist()
+    cols.remove("v")
+    cols.remove("w")
+    for col in cols:
+        if col.startswith("edge_"):
+            prefix = ""
+        else:
+            prefix = "edge_"
 
-    g = TemporalGraph.from_edge_list(tedges, **kwargs)
-    add_edge_attributes(df, g, "t")
+        _parse_df_column(
+            df=df,
+            data=data,
+            attr=col,
+            prefix=prefix
+        )
+    g = TemporalGraph(data=data, mapping=mapping)
+    
     if is_undirected:
-        return g.to_undirected()
-    else:
-        return g
+        g = g.to_undirected()
+    
+    return g
 
 
 def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFrame:
