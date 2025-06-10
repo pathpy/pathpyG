@@ -70,73 +70,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             data (dict): Network data
             output_dir (str | Path, optional): Directory to store output.
             output_file (str, optional): Filename for output.
-            **kwargs: Additional keyword arguments to customize the plot. For more detail see below.
-
-
-        # Keyword Arguments to modify the appearance of the plot
-        **General**
-
-        - `delta` (int): Duration of a timestep in milliseconds. Default is `1000`.
-        - `start` (int): Start timestep of the animation. Default is `0`.
-        - `end` (int): End timestep. Default is `None` (last edge time).
-        - `intervals` (int): Number of animation intervals.
-        - `dynamic_layout_interval` (int): Steps between layout recomputations. Default is `5`.
-        - `background_color` (str): A single color string referred to by name or a RGB, for
-            instance `white` or `#a98d19` or Manim Color `WHITE` or `(255,0,0)`. Default is `WHITE`.
-
-        **Nodes:**
-
-        - `node_size` : Sets the radius of the nodes. Can be provided as:
-                single float to apply same sizing to all nodes or a dictionary mapping node identifiers to
-                individual sizes, e.g., `{'1':1, '2':0.5}`
-
-        - `node_color`: The fill color of the node. Possible values are:
-
-            - A single color string referred to by name, HEX, RGB or RGBA code, for
-            instance `red` or `#a98d19`.
-
-            - A sequence of color strings referred to by name, HEX, RGB or RGBA code,
-            which will be used for each point's color recursively. For
-            instance `['green', 'yellow']` all points will be filled in green or
-            yellow, alternatively.
-
-        - `node_cmap` : Colormap for node colors. If node colors are given as int
-        or float values the color will be assigned based on a colormap. Per
-        default the color map goes from red to green. Matplotlib colormaps
-        can be used to style the node colors.
-
-        - `node_opacity` : fill opacity of the node. The default is 1. The range
-        of the number lies between 0 and 1. Where 0 represents a fully
-        transparent fill and 1 a solid fill. It is also possible to provide a dictionary
-        with node identifiers for setting individual opacity, e.g., `{'a': 0.5, 'b'=1}`
-
-
-        **Edges**
-
-        - `edge_size` : Sets the width of the nodes. Can be provided as:
-                single float to apply same sizing to all edges or a dictionary mapping edge identifiers to
-                individual sizes, e.g., `{(('a', 'b'), 2): 6}`
-
-        - `edge_color` : The line color of the edge. Possible values are:
-
-            - A single color string referred to by name, HEX, RGB or RGBA code, for
-            instance `red` or `#a98d19` or `(12,34,102)`, 'PINK'.
-
-            - A sequence of color strings referred to by name, HEX, RGB or RGBA
-            code, which will be used for each point's color recursively. For
-            instance `['green','yellow']` all points will be filled in green or
-            yellow, alternatively.
-
-        - `edge_cmap` : Colormap for edge colors. If node colors are given as int
-        or float values the color will be assigned based on a colormap. Per
-        default the color map goes from red to green. Matplotlib colormaps can be used to style the edge colors.
-
-        - `edge_opacity` : line opacity of the edge. The default is 1. The range
-        of the number lies between 0 and 1. Where 0 represents a fully
-        transparent fill and 1 a solid fill. It is also possible to provide a dictionary
-        with edge identifiers for setting individual opacity, e.g., `{(('a', 'b'), 2): 0.2}`
-
-
+            **kwargs: Additional keyword arguments to customize the plot.
 
         """
         from manim import config as manim_config
@@ -209,7 +143,11 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         layout_style = {}
         layout_style["layout"] = layout_type
 
-        layout = pp.layout(graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(), **layout_style, seed=0)
+        layout = pp.layout(
+            graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(),
+            **layout_style,
+            seed=0,
+        )
         for key in layout.keys():
             layout[key] = np.append(
                 layout[key], 0.0
@@ -229,14 +167,14 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         return layout
 
     def get_color_at_time(self, node_data: dict, time_step: int):
-        """_summary_
+        """Return Color from Dictionary that provides the color changes per node
 
         Args:
-            node_data (_type_): _description_
-            time_step (_type_): _description_
+            node_data (dict): holds all information for a specific node
+            time_step (int): timestep for which a color change might occur
 
         Returns:
-            _type_: _description_
+            The color the node changes to if any.
         """
         if "color_change" not in node_data:
             return node_data.get("color", BLUE)
@@ -348,7 +286,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                             # also change the positions of the labels
                             if node in self.node_label:
                                 label = self.node_label[node]
-                                animations.append(label.animate.move_to(new_pos + (0, 0.125, 0)))
+                                offset = graph[node].height/2 + label.height/2 + 0.05
+                                animations.append(label.animate.move_to(new_pos + offset * UP))
 
                     self.play(*animations, run_time=delta)
 
