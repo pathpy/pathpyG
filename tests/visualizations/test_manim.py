@@ -1,13 +1,13 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import tempfile
 from pathlib import Path
 import pytest
-from manim import Scene, manim_colors
+from manim import Scene, manim_colors, Graph
 from manim import config as manim_config
 from matplotlib.pyplot import get_cmap
-import pathpyG as pp
 import numpy as np
+import pathpyG as pp
 
 from pathpyG.visualisations._manim.core import ManimPlot
 from pathpyG.visualisations._manim.network_plots import NetworkPlot
@@ -41,9 +41,16 @@ class ManimTest(unittest.TestCase):
                       {"source": 2, "target": 1, "start": 5}]
         }
 
-    #def test_manim_plot(self):
-    #   """Test ManimPlot class"""
-        #manimplot = ManimPlot()
+        self.data2 = {
+            "nodes": [
+                {"uid": 0, "label": "A"},
+                {"uid": 1, "label": "B"}
+            ],
+            "edges": [
+                {"source": 0, "target": 1, "start": 0, "end": 2}, 
+                {"source": 1, "target": 0, "start": 1, "end": 3}
+            ]
+        }
 
     def test_manim_network_plot(self):
         """Test for initializing the NetworkPlot class"""
@@ -130,14 +137,14 @@ class ManimTest(unittest.TestCase):
 
         self.assertIsInstance(tempnetworkplot.data, dict)
         self.assertIsInstance(tempnetworkplot.config, dict)
-        self.assertIsInstance(tempnetworkplot.raw_data, dict)#
+        self.assertIsInstance(tempnetworkplot.raw_data, dict)
 
         self.assertEqual(tempnetworkplot.delta, 1000)
         self.assertEqual(tempnetworkplot.start, 0)
         self.assertEqual(tempnetworkplot.end, None)
         self.assertEqual(tempnetworkplot.intervals, None)
         self.assertEqual(tempnetworkplot.dynamic_layout_interval, None)
-        self.assertEqual(tempnetworkplot.font_size, 8)#
+        self.assertEqual(tempnetworkplot.font_size, 8)
 
         self.assertEqual(tempnetworkplot.node_opacity, 1)
         self.assertEqual(tempnetworkplot.edge_opacity, 1)
@@ -151,7 +158,7 @@ class ManimTest(unittest.TestCase):
             output_dir = Path(temp_dir)
             output_file = "test_output.mp4"
 
-            temp_network_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)#
+            temp_network_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
 
             self.assertEqual(Path(self.mock_config.media_dir).resolve(), output_dir.resolve())
             self.assertEqual(self.mock_config.output_file, output_file)
@@ -202,9 +209,80 @@ class ManimTest(unittest.TestCase):
     def test_manim_temp_np_get_color_at_time(self):
         """Test for the method get_color_at_time int the TemporalNetworkPlot class"""
         temp_network_plot = TemporalNetworkPlot(self.data)
+        node_data = {"color": manim_colors.RED}
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data, 0), manim_colors.RED)
+        self.assertEqual(temp_network_plot.get_color_at_time({}, 0), manim_colors.BLUE)
 
-    #def test_manim_static_network_plot(self):
-  #   """Test StaticNetworkPlot class"""
+        node_data_2 = {
+            "color": manim_colors.PURPLE,
+            "color_change": [
+                {"time": 5, "color": manim_colors.TEAL},
+                {"time": 10, "color": manim_colors.GREEN},
+            ]
+        }
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 1), manim_colors.PURPLE)
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 5), manim_colors.TEAL)
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 7), manim_colors.TEAL)
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 10), manim_colors.GREEN)
+        self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 11), manim_colors.GREEN)
+
+    def test_manim_temp_np_construct(self):
+        """Test for the construct method from the TemporalNetworkPlot class"""  # noch nicht vollständig
+        temp_network_plot = TemporalNetworkPlot(self.data2)
+        temp_network_plot.construct()
+
+        graph_added = any(isinstance(mobj, Graph) for mobj in temp_network_plot.mobjects)
+        self.assertTrue(graph_added)
+
+    def test_manim_plot_save(self):
+        """Test for the method save from the ManimPlot class"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir)
+            output_file = "test_output"
+            format = "mp4"
+
+            manim_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
+
+            with patch.object(Scene, "render", new=render_side_effect):
+                manim_plot.save(output_file, save_dir=output_dir, save_as=format)
+
+            target_path = output_dir / f"{output_file}.{format}"
+
+            self.assertTrue(target_path.exists())
+            with target_path.open() as f:
+                self.assertEqual(f.read(), "test video")
+
+    @patch("IPython.display")
+    #@patch.object(Scene, "render", new=render_side_effect)
+    def test_manim_plot_show(self, mock_display):
+        """Test for the method show from the ManimPlot class"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir)
+            output_file = "TemporalNetworkPlot"
+
+            manim_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
+
+            with patch.object(TemporalNetworkPlot, "render", new=render_side_effect):
+                manim_plot.show()
+
+            video_path = output_dir / "videos" / "720p30" / f"{output_file}.mp4"
+            self.assertTrue(video_path.exists())
+
+
+def render_side_effect(self, *args, **kwargs):
+    from manim import config as manim_config
+
+    #format = "mp4"
+
+    output_dir = Path(manim_config.media_dir) if manim_config.media_dir else Path.cwd()
+
+    video_dir = output_dir / "videos" / "720p30"
+    video_dir.mkdir(parents=True, exist_ok=True)
+
+    rendered_file = video_dir / f"{manim_config.output_file or TemporalNetworkPlot.__name__}.mp4"
+    rendered_file.write_text("test video")
+
+    return None
 
 
 if __name__ == "__main__":
