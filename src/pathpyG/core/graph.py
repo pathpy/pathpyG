@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING,
     Dict,
     Iterable,
     Tuple,
@@ -8,7 +7,6 @@ from typing import (
     Union,
     Any,
     Optional,
-    Generator,
 )
 
 import numpy as np
@@ -19,10 +17,8 @@ import torch_geometric
 import torch_geometric.utils
 from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
-from torch_geometric.transforms.to_undirected import ToUndirected
-from torch_geometric.utils import scatter
+from torch_geometric.utils import scatter, to_undirected
 
-from pathpyG.utils.config import config
 from pathpyG.core.index_map import IndexMap
 
 
@@ -180,13 +176,10 @@ class Graph:
         return Graph(Data(edge_index=edge_index, num_nodes=num_nodes), mapping=mapping)
 
     def to_undirected(self) -> Graph:
-        """
-        Returns an undirected version of a directed graph.
+        """Return an undirected version of this directed graph.
 
-        This method transforms the current graph instance into an undirected graph by
-        adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
-        transform to the underlying [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object, which automatically
-        duplicates edge attributes for newly created directed edges.
+        This method creates a new undirected Graph from the current graph instance by
+        adding all directed edges in opposite direction.
 
         Examples:
             >>> import pathpyG as pp
@@ -195,15 +188,30 @@ class Graph:
             >>> print(g_u)
             Undirected graph with 3 nodes and 6 (directed) edges
         """
-        tf = ToUndirected()
-        d = tf(self.data)
-        # unfortunately, the application of a transform creates a new edge_index of type tensor
-        # so we have to recreate the EdgeIndex tensor and sort it again
+        # create undirected edge index by coalescing the directed edges and keep 
+        # track of the original edge index for the edge attributes
+        attr_idx = torch.arange(self.data.num_edges, device=self.data.edge_index.device)
+        edge_index, attr_idx = to_undirected(
+            self.data.edge_index,
+            edge_attr=attr_idx,
+            num_nodes=self.data.num_nodes,
+            reduce="min",
+        )
 
-        e = EdgeIndex(data=d.edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True)
-        d.edge_index = e
-        d.num_nodes = self.data.num_nodes
-        return Graph(d, self.mapping)
+        data = Data(
+            edge_index=EdgeIndex(data=edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True),
+            num_nodes=self.data.num_nodes
+        )
+        # Note that while the torch_geometric.transforms.ToUndirected function would do this automatically,
+        # we do it manually since the transform cannot handle numpy arrays as edge attributes.
+        # make sure to copy all node and (undirected) edge attributes
+        for node_attr in self.node_attrs():
+            data[node_attr] = self.data[node_attr]
+        for edge_attr in self.edge_attrs():
+            if edge_attr != "edge_index":
+                data[edge_attr] = self.data[edge_attr][attr_idx]
+
+        return Graph(data, self.mapping)
 
     def to_weighted_graph(self) -> Graph:
         """Coalesces multi-edges to single-edges with an additional weight attribute
