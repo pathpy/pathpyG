@@ -6,6 +6,7 @@ import base64
 import logging
 import shutil
 import tempfile
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +53,6 @@ class ManimPlot(PathPyPlot):
         """
         Save the rendered Manim plot to disk.
         """
-        format = kwargs.get("save_as", "mp4").lower()
         save_dir = kwargs.get("save_dir", None)
 
         if save_dir is None:
@@ -61,6 +61,7 @@ class ManimPlot(PathPyPlot):
             save_dir = Path(save_dir)
 
         save_dir.mkdir(parents=True, exist_ok=True)
+        name, output_format = filename.rsplit(".", 1)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -69,15 +70,39 @@ class ManimPlot(PathPyPlot):
             scene = self.__class__(data=self.raw_data, output_dir=tmp_path, output_file=temp_output_file, **kwargs)
             scene.render()
 
-            video_path = tmp_path / "videos" / "720p30" / f"{temp_output_file}.{format}"
+            video_path = tmp_path / "videos" / "1080p60" / f"{temp_output_file}.mp4"
 
             if not video_path.exists():
                 logger.warning("Rendered video not found at expected path: %s ", video_path)
                 return
 
-            target_path = save_dir / f"{filename}.{format}"
+            target_path = save_dir / f"{name}.{output_format}"
 
-            shutil.copy(video_path, target_path)
+            if output_format == "gif":
+                try:
+                    subprocess.run(
+                        [
+                            "ffmpeg",
+                            "-i",
+                            str(video_path.as_posix()),
+                            "-vf",
+                            "fps=20,scale=720:-1:flags=lanczos",
+                            "-y",
+                            "-hide_banner",
+                            "-loglevel",
+                            "error",
+                            str(target_path.as_posix()),
+                        ],
+                        check=True,
+                    )
+
+                    # Optionally delete the intermediate MP4
+                    video_path.unlink()
+                except Exception as e:
+                    logger.error(f"GIF conversion failed: {e}")
+
+            else:
+                shutil.copy(video_path, target_path)
 
     def show(self, **kwargs: Any) -> None:
         """
@@ -110,7 +135,7 @@ class ManimPlot(PathPyPlot):
             scene = self.__class__(data=self.raw_data, output_dir=tmp_path, output_file=output_file, **kwargs)
             scene.render()
 
-            video_dir = tmp_path / "videos" / "720p30"
+            video_dir = tmp_path / "videos" / "1080p60"
             video_path = video_dir / f"{output_file}.mp4"
 
             if video_path.exists():
