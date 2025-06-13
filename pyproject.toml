@@ -129,6 +129,7 @@ reportGeneralTypeIssues = false
 reportCallIssue = false
 reportOptionalMemberAccess = false
 reportArgumentType = false
+reportOptionalSubscript = false
 
 [tool.mypy] # Static type checker
 check_untyped_defs = true
