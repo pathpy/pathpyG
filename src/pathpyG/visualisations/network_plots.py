@@ -434,14 +434,21 @@ class TemporalNetworkPlot(NetworkPlot):
     def _compute_node_data(self):
         """_summary_"""
         super()._compute_node_data()
-        color_changes_raw = self.config.get("node_color_timed", [])
+   
+        raw_color_attr = self.config.get("node_color", {})
+        if not isinstance(raw_color_attr, dict):
+            return
 
         color_changes_by_node = defaultdict(list)
-        for entry in color_changes_raw:
+        for key,color in raw_color_attr.items():
+            if "-" not in key:
+                continue
+        
             try:
-                node_id, (time, color) = entry
-            except (ValueError, TypeError) as exc:
-                raise ValueError(f"Invalid node_color_timed entry: {entry}") from exc
+                node_id, time_str = key.rsplit("-",1)
+                time = float(time_str)
+            except ValueError as exc:
+                raise ValueError(f"Invalid time-encoded node_color key: '{key}'") from exc
 
             if isinstance(color, (int, float)):
                 cmap = self.config.get("node_cmap", Colormap())
