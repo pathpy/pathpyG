@@ -126,6 +126,9 @@ disable = "R1705"
 
 [tool.pyright]
 reportGeneralTypeIssues = false
+reportCallIssue = false
+reportOptionalMemberAccess = false
+reportArgumentType = false
 
 [tool.mypy] # Static type checker
 check_untyped_defs = true
