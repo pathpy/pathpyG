@@ -90,8 +90,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         manim_config.pixel_height = 1080
         manim_config.pixel_width = 1920
         manim_config.frame_rate = 15
-        manim_config.quality = "medium_quality"
-        manim_config.format = self.config.get("save_as", "mp4")
+        manim_config.quality = "high_quality"
         manim_config.background_color = self.config.get("background_color", WHITE)
 
         self.delta = self.config.get("delta", 1000)
@@ -286,7 +285,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                             # also change the positions of the labels
                             if node in self.node_label:
                                 label = self.node_label[node]
-                                offset = graph[node].height/2 + label.height/2 + 0.05
+                                offset = graph[node].height / 2 + label.height / 2 + 0.05
                                 animations.append(label.animate.move_to(new_pos + offset * UP))
 
                     self.play(*animations, run_time=delta)
