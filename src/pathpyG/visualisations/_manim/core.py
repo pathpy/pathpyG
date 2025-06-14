@@ -51,7 +51,18 @@ class ManimPlot(PathPyPlot):
 
     def save(self, filename: str, **kwargs: Any) -> None:
         """
-        Save the rendered Manim plot to disk.
+        Renders and saves a Manim animation to a given or the working directory.
+
+        This method creates a temporary scene using the instance's `raw data`,
+        renders it with Manim, and saves the resulting video.
+
+        Args:
+            **kwargs (Any): Additional keyword arguments forwarded to the scene constructor.
+            These can be used to customize the rendering behaviour or pass scene-specific parameters
+            filename (str): Name for the File that will be saved. Is necessary for this function to work.
+
+        Tip:
+            - use `**kwargs` to control aspects of the scene such as animation timing, layout, or styling
         """
         save_dir = kwargs.get("save_dir", None)
 
