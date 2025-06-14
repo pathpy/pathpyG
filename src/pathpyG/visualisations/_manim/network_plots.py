@@ -99,6 +99,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         self.intervals = self.config.get("intervals", None)
         self.dynamic_layout_interval = self.config.get("dynamic_layout_interval", None)
         self.font_size = self.config.get("font_size", 8)
+        self.look_behind = self.config.get("look_behind", 5)
+        self.look_forward = self.config.get("look_forward", 3)
 
         # defaults
         self.node_size = 0.4
@@ -192,7 +194,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         This method:
             - Adds nodes using `Graph`
             - Draws and removes temporal edges frame-by-frame
-            - Recomputes layout dynamically (if specified)
+            - Recomputes layout dynamically (if specified) based on on the temporal edges in the time window between the current step - look_behind and the current step + look_forward
             - Displays timestamps
         """
 
@@ -214,6 +216,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         # if intervals is not specified, every timestep is an interval
         if intervals is None:
             intervals = end - start
+
+        look_behind = self.look_behind
+        look_forward = self.look_forward
 
         delta /= 1000  # convert milliseconds to seconds
         layout = self.get_layout(g, "random" if dynamic_layout_interval is not None else "fr")
@@ -275,7 +280,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                 ):  # change the layout based on the edges since the last change until the current timestep
                     # and only if there were edges in the last interval
                     change = False
-                    new_layout = self.get_layout(g, time_window=(step - dynamic_layout_interval, step))
+                    new_layout = self.get_layout(g, time_window=(step - look_behind, step + look_forward))
 
                     animations = []
                     for node in g.nodes:
