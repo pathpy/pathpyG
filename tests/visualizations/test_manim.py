@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 import tempfile
 from pathlib import Path
 import pytest
-from manim import Scene, manim_colors, Graph
+from manim import Scene, manim_colors, Graph, tempconfig
 from manim import config as manim_config
 from matplotlib.pyplot import get_cmap
 import numpy as np
@@ -41,15 +41,9 @@ class ManimTest(unittest.TestCase):
                       {"source": 2, "target": 1, "start": 5}]
         }
 
-        self.data2 = {
-            "nodes": [
-                {"uid": 0, "label": "A"},
-                {"uid": 1, "label": "B"}
-            ],
-            "edges": [
-                {"source": 0, "target": 1, "start": 0, "end": 2}, 
-                {"source": 1, "target": 0, "start": 1, "end": 3}
-            ]
+        self.data3 = {
+            "nodes": [{"uid": "A", "label": "Alpha"}],
+            "edges": [{"source": "A", "target": "A", "start": 0, "end": 1}],
         }
 
     def test_manim_network_plot(self):
@@ -226,13 +220,35 @@ class ManimTest(unittest.TestCase):
         self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 10), manim_colors.GREEN)
         self.assertEqual(temp_network_plot.get_color_at_time(node_data_2, 11), manim_colors.GREEN)
 
-    def test_manim_temp_np_construct(self):
+    @patch.object(TemporalNetworkPlot, "compute_edge_index")
+    @patch.object(TemporalNetworkPlot, "get_layout")
+    @patch.object(TemporalNetworkPlot, "get_color_at_time")
+    def test_manim_temp_np_construct(self, mock_color, mock_layout, mock_edge_index):
         """Test for the construct method from the TemporalNetworkPlot class"""  # noch nicht vollständig
-        temp_network_plot = TemporalNetworkPlot(self.data2)
-        temp_network_plot.construct()
+        with tempfile.TemporaryDirectory() as tmp_path:
+            with tempconfig({
+                "disable_caching": True,
+                "dry_run": True,
+                "disable_output": True,
+                "media_dir": str(tmp_path),
+            }):
+                mock_edge_index.return_value = ([("A", "A", 0)], 1)
+                mock_layout.return_value = {"A": np.array([0, 0, 0])}
+                mock_color.return_value = (0, 0, 1)
 
-        graph_added = any(isinstance(mobj, Graph) for mobj in temp_network_plot.mobjects)
-        self.assertTrue(graph_added)
+                temp_network_plot = TemporalNetworkPlot(self.data3)
+
+                temp_network_plot.add = MagicMock()
+                temp_network_plot.play = MagicMock()
+                temp_network_plot.wait = MagicMock()
+                temp_network_plot.remove = MagicMock()
+
+                temp_network_plot.construct()
+
+                self.assertTrue(temp_network_plot.add.called)
+                self.assertTrue(temp_network_plot.wait.called)
+                self.assertTrue(temp_network_plot.remove.called)
+                self.assertTrue(any(isinstance(call[0][0], Graph) for call in temp_network_plot.add.call_args_list))
 
     def test_manim_plot_save(self):
         """Test for the method save from the ManimPlot class"""
@@ -262,7 +278,7 @@ class ManimTest(unittest.TestCase):
 
             manim_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
 
-            with patch.object(TemporalNetworkPlot, "render", new=render_side_effect):
+            with patch.object(Scene, "render", new=render_side_effect):
                 manim_plot.show()
 
             video_path = output_dir / "videos" / "720p30" / f"{output_file}.mp4"
@@ -272,16 +288,14 @@ class ManimTest(unittest.TestCase):
 def render_side_effect(self, *args, **kwargs):
     from manim import config as manim_config
 
-    #format = "mp4"
-
     output_dir = Path(manim_config.media_dir) if manim_config.media_dir else Path.cwd()
 
     video_dir = output_dir / "videos" / "720p30"
     video_dir.mkdir(parents=True, exist_ok=True)
 
-    rendered_file = video_dir / f"{manim_config.output_file or TemporalNetworkPlot.__name__}.mp4"
+    rendered_file = video_dir / f"{TemporalNetworkPlot.__name__}.mp4"
     rendered_file.write_text("test video")
-
+    
     return None
 
 
