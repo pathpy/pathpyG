@@ -8,8 +8,10 @@ from manim import config as manim_config
 from matplotlib.pyplot import get_cmap
 import numpy as np
 import pathpyG as pp
+import subprocess
 
 from pathpyG.visualisations._manim.core import ManimPlot
+import pathpyG.visualisations._manim.core as core
 from pathpyG.visualisations._manim.network_plots import NetworkPlot
 from pathpyG.visualisations._manim.network_plots import TemporalNetworkPlot
 from pathpyG.visualisations._manim.network_plots import StaticNetworkPlot
@@ -160,7 +162,7 @@ class ManimTest(unittest.TestCase):
             self.assertEqual(self.mock_config.pixel_height, 1080)
             self.assertEqual(self.mock_config.pixel_width, 1920)
             self.assertEqual(self.mock_config.frame_rate, 15)
-            self.assertEqual(self.mock_config.quality, "medium_quality")
+            self.assertEqual(self.mock_config.quality, "high_quality")
             self.assertEqual(self.mock_config.background_color, manim_colors.WHITE)
 
     def test_manim_temp_np_path(self):
@@ -224,7 +226,7 @@ class ManimTest(unittest.TestCase):
     @patch.object(TemporalNetworkPlot, "get_layout")
     @patch.object(TemporalNetworkPlot, "get_color_at_time")
     def test_manim_temp_np_construct(self, mock_color, mock_layout, mock_edge_index):
-        """Test for the construct method from the TemporalNetworkPlot class"""  # noch nicht vollständig
+        """Test for the construct method from the TemporalNetworkPlot class"""
         with tempfile.TemporaryDirectory() as tmp_path:
             with tempconfig({
                 "disable_caching": True,
@@ -250,53 +252,89 @@ class ManimTest(unittest.TestCase):
                 self.assertTrue(temp_network_plot.remove.called)
                 self.assertTrue(any(isinstance(call[0][0], Graph) for call in temp_network_plot.add.call_args_list))
 
-    def test_manim_plot_save(self):
-        """Test for the method save from the ManimPlot class"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output_dir = Path(temp_dir)
-            output_file = "test_output"
-            format = "mp4"
+    def test_manim_plot_save_mp4(self):
+        """Test for saving a mp4 file with the method save from the ManimPlot class"""
+        with tempfile.TemporaryDirectory() as tmp_scene_dir, tempfile.TemporaryDirectory() as tmp_save_dir:
 
-            manim_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
-
-            with patch.object(Scene, "render", new=render_side_effect):
-                manim_plot.save(output_file, save_dir=output_dir, save_as=format)
-
-            target_path = output_dir / f"{output_file}.{format}"
-
-            self.assertTrue(target_path.exists())
-            with target_path.open() as f:
-                self.assertEqual(f.read(), "test video")
-
-    @patch("IPython.display")
-    #@patch.object(Scene, "render", new=render_side_effect)
-    def test_manim_plot_show(self, mock_display):
-        """Test for the method show from the ManimPlot class"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output_dir = Path(temp_dir)
+            scene_output = Path(tmp_scene_dir)
+            save_output = Path(tmp_save_dir)
             output_file = "TemporalNetworkPlot"
 
-            manim_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
+            manim_plot = TemporalNetworkPlot(self.data, output_dir=scene_output, output_file=output_file)
 
             with patch.object(Scene, "render", new=render_side_effect):
-                manim_plot.show()
+                manim_plot.save("testvideo.mp4", save_dir=save_output)
 
-            video_path = output_dir / "videos" / "720p30" / f"{output_file}.mp4"
-            self.assertTrue(video_path.exists())
+            target_path = save_output / "testvideo.mp4"
+            self.assertTrue(target_path.exists())
+            self.assertEqual(target_path.read_text(), "test video")
+
+    def test_manim_plot_save_gif(self):
+        """Test for saving a gif with the method save from the ManimPlot class"""
+        with tempfile.TemporaryDirectory() as tmp_scene_dir, tempfile.TemporaryDirectory() as tmp_save_dir:
+
+            scene_output = Path(tmp_scene_dir)
+            save_output = Path(tmp_save_dir)
+            output_file = "TemporalNetworkPlot"
+
+            manim_plot = TemporalNetworkPlot(self.data, output_dir=scene_output, output_file=output_file)
+
+            with patch.object(Scene, "render", new=render_side_effect_gif):
+                manim_plot.save("testvideo.gif", save_dir=save_output, save_as=format)
+
+            target_path = save_output / "testvideo.gif"
+            self.assertTrue(target_path.exists())
+            #self.assertEqual(target_path.read_text(), "test video")        
+
+    @patch("pathpyG.visualisations._manim.core.display")
+    @patch.object(core, "in_jupyter_notebook", return_value=True)
+    def test_manim_plot_show(self, mock_jupyter, mock_display):
+        """Test for the method show from the ManimPlot class"""
+        manim_plot = TemporalNetworkPlot(self.data)
+
+        with patch.object(Scene, "render", new=render_side_effect):
+            manim_plot.show()
+
+        mock_display.assert_called_once()
 
 
-def render_side_effect(self, *args, **kwargs):
+def render_side_effect(self):
+    """Mocking Scene.render"""
     from manim import config as manim_config
 
     output_dir = Path(manim_config.media_dir) if manim_config.media_dir else Path.cwd()
 
-    video_dir = output_dir / "videos" / "720p30"
+    video_dir = output_dir / "videos" / "1080p60"
     video_dir.mkdir(parents=True, exist_ok=True)
 
-    rendered_file = video_dir / f"{TemporalNetworkPlot.__name__}.mp4"
-    rendered_file.write_text("test video")
-    
-    return None
+    video_file = video_dir / f"{TemporalNetworkPlot.__name__}.mp4"
+    video_file.write_text("test video")
+
+
+def render_side_effect_gif(self):
+    """Mocking Scene.render"""
+    from manim import config as manim_config
+
+    output_dir = Path(manim_config.media_dir) if manim_config.media_dir else Path.cwd()
+
+    video_dir = output_dir / "videos" / "1080p60"
+    video_dir.mkdir(parents=True, exist_ok=True)
+    video_file = video_dir / f"{TemporalNetworkPlot.__name__}.mp4"
+  
+    command = [
+        "ffmpeg",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=320x240:d=1",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-y",
+        str(video_file)
+    ]
+    subprocess.run(command, check=True)
 
 
 if __name__ == "__main__":
