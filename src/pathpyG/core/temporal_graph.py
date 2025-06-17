@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Any, Optional, Generator
+from typing import Tuple, Union, Any, Optional, Generator
 
 import numpy as np
 
@@ -31,24 +31,20 @@ class TemporalGraph(Graph):
             print(t)
             ```
         """
-        if not isinstance(data.edge_index, EdgeIndex):
-            data.edge_index = data.edge_index = EdgeIndex(
-                data=data.edge_index.contiguous(), sparse_size=(data.num_nodes, data.num_nodes)
+        self.data = data
+        if not isinstance(self.data.edge_index, EdgeIndex):
+            self.data.edge_index = EdgeIndex(
+                data=self.data.edge_index.contiguous(), sparse_size=(self.data.num_nodes, self.data.num_nodes)
             )
 
         # reorder temporal data
-        # TODO: Fix in PyG
-        if data.num_nodes != data.num_edges:
-            self.data = data.sort_by_time()
-        else:
-            sorted_idx = torch.argsort(data.time)
-            data.time = data.time[sorted_idx]
-            for edge_attr in data.edge_attrs():
-                if edge_attr == "edge_index":
-                    data.edge_index = data.edge_index[:, sorted_idx]
-                else:
-                    data[edge_attr] = data[edge_attr][sorted_idx]
-            self.data = data
+        # Note that we do not use `torch_geometric.self.data.Data.sort_by_time` because it cannot sort numpy arrays`
+        sorted_idx = torch.argsort(self.data.time)
+        for edge_attr in set(self.data.edge_attrs()).union(set(["time"])):
+            if edge_attr == "edge_index":
+                self.data.edge_index = self.data.edge_index[:, sorted_idx]
+            else:
+                data[edge_attr] = data[edge_attr][sorted_idx]
 
         if mapping is not None:
             self.mapping = mapping
@@ -57,7 +53,10 @@ class TemporalGraph(Graph):
 
         # create mapping between edge index and edge tuples
         self.edge_to_index = {
-            (e[0].item(), e[1].item()): i for i, e in enumerate([e for e in self.data.edge_index.t()])
+            (e[0].item(), e[1].item()): i for i, e in enumerate(self.data.edge_index.t())
+        }
+        self.tedge_to_index = {
+            (e[0].item(), e[1].item(), t.item()): i for i, (e, t) in enumerate(zip([e for e in self.data.edge_index.t()], self.data.time))
         }
 
         self.start_time = self.data.time[0].item()
@@ -68,6 +67,12 @@ class TemporalGraph(Graph):
         edge_array = np.array(edge_list)
         ts = edge_array[:, 2].astype(np.number)
 
+        # Convert timestamps to tensor
+        if np.issubdtype(ts.dtype, np.integer):
+            ts = torch.tensor(ts, dtype=torch.long)
+        else:
+            ts = torch.tensor(ts, dtype=torch.float32)
+
         index_map = IndexMap(np.unique(edge_array[:, :2]))
         edge_index = index_map.to_idxs(edge_array[:, :2].T)
 
@@ -77,7 +82,7 @@ class TemporalGraph(Graph):
         return TemporalGraph(
             data=Data(
                 edge_index=edge_index,
-                time=torch.Tensor(ts),
+                time=ts,
                 num_nodes=num_nodes,
             ),
             mapping=index_map,
@@ -160,6 +165,29 @@ class TemporalGraph(Graph):
         and end refer to the time stamps"""
 
         return TemporalGraph(data=self.data.snapshot(start_time, end_time), mapping=self.mapping)
+
+    def __getitem__(self, key: Union[tuple, str]) -> Any:
+        """Return node, edge, temporal edge, or graph attribute.
+
+        Args:
+            key: name of attribute to be returned
+        """
+        if not isinstance(key, tuple):
+            if key in self.data.keys():
+                return self.data[key]
+            else:
+                raise KeyError(key + " is not a graph attribute")
+        elif key[0] in self.node_attrs():
+            return self.data[key[0]][self.mapping.to_idx(key[1])]
+        elif key[0] in self.edge_attrs():
+            # TODO: Get item for non-temporal edges will only return the last occurence of the edge
+            #       This is a limitation and should be fixed in the future.
+            if len(key) == 3:
+                return self.data[key[0]][self.edge_to_index[self.mapping.to_idx(key[1]), self.mapping.to_idx(key[2])]]
+            else:
+                return self.data[key[0]][self.tedge_to_index[self.mapping.to_idx(key[1]), self.mapping.to_idx(key[2]), key[3]]]
+        else:
+            raise KeyError(key[0] + " is not a node or edge attribute")
 
     def __str__(self) -> str:
         """

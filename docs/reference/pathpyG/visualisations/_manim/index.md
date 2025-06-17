@@ -1,8 +1,8 @@
 # Visualisation using Manim
 
-The `_manim`submodule provides Manim-based plotting tools for visualising temporal networks.
-
-## Overview
+The `_manim` submodule provides plotting tools for creating Manim-based visualisations of temporal networks.
+Designed for use in Jupyter notebooks or standalone rendering, it allows animated plots of temporal graphs
+while offering a wide range of customizable styling options.
 
 ---
 
@@ -10,30 +10,21 @@ The `_manim`submodule provides Manim-based plotting tools for visualising tempor
 
 ### `ManimPlot`
 
-Base lass for Manim visualisations integrated with Jupyter notebooks. Defines the interface for rendering and exporting animations from data.
+Base class for Manim visualisations integrated with Jupyter notebooks. Defines the interface for rendering and exporting animations from data.
 
-#### Methods
+**Methods**
 
-- `generate()`: Abstract method to generate the plot.
 - `show(**kwargs)`: Render and display inline in Jupyter Notebook
 - `save(filename: str, **kwargs)`: Save animation to disk 
 
 **kwargs** for saving Manim plots:
 
-- `filename` (string): Name the rendered file should be given. This keyword is necessary for saving.
+- `filename` (`str`): Name the rendered file should be given. This keyword is necessary for saving.
 - `save_as` {`gif`,`mp4`}: Saving format options. Default is `mp4`
-- `save_dir` (string): Directory path to save the Output to. Default is current working directory.
+- `save_dir` (`str`): Directory path to save the Output to. Default is current working directory.
 
 For rendering and inline display use the `show()` method instead of `save()`.
 
-### `NetworkPlot`
-
-Base class fors static and  temporal network visualisations. Stores input data and configuration
-
-#### Parameters
-
-- `data (dict)`: Input network dictionary
-- `**kwargs`: Custom styling parameters
 
 ### `TemporalNetworkPlot`
 
@@ -52,20 +43,20 @@ Animation class for temporal graphs. Supports dynamic layout, time-based color c
 | `background_color`     | str              | WHITE    | Background color (name, hex, RGB, or Manim)     |
 | **Nodes**              |                  |          |                                                 |
 | `node_size`            | float / dict     | 0.4      | Radius of nodes (uniform or per-node)            |
-| `node_color`           | str / list[str]  | BLUE     | Node fill color or list of colors                 |
+| `node_color`           | str / list / dict / float / tuple | BLUE     | Node fill color or list of colors                 |
 | `node_cmap`            | Colormap         | None     | Colormap for scalar node values                   |
 | `node_opacity`         | float / dict     | 1        | Node fill opacity (0 transparent, 1 solid)       |
-| `node_color_timed`     | list[tuple]      | None     | Color Changes for Nodes at timestep
+| `node_color_timed`     | list     | None     | Color Changes for Nodes at timestep
 | **Edges**              |                  |          |                                                 |
 | `edge_size`            | float / dict     | 0.4      | Edge width (uniform or per-edge)                  |
-| `edge_color`           | str / list[str]  | GRAY     | Edge line color or list of colors                  |
+| `edge_color`           | str / list / dict / float / tuple  | GRAY     | Edge line color or list of colors                  |
 | `edge_cmap`            | Colormap         | None     | Colormap for scalar edge values                    |
 | `edge_opacity`         | float / dict     | 1        | Edge line opacity (0 transparent, 1 solid)        |
 
 ---
-##### Detailed Descriptions
+#### Detailed Descriptions
 
-###### General
+##### General
 
 - `delta`: Duration (in milliseconds) of each animation timestep.
 - `start`: Starting timestep of the animation sequence.
@@ -75,15 +66,15 @@ Animation class for temporal graphs. Supports dynamic layout, time-based color c
 - `background_color`: Background color of the plot, accepts color names, hex codes, RGB tuples, or Manim color constants.
 
 
-###### Nodes
+##### Nodes
 
 - `node_size`: Node radius; either a single float applied to all nodes or a dictionary with sizes per node ID.
-- `node_color`: Fill color(s) for nodes. Can be a single color string referred to by name, HEX, RGB, float a list of colors cycling through nodes or a dictionary with color per node
+- `node_color`: Fill color(s) for nodes. Can be a single color string referred to by name (`"blue"`), HEX (`"#ff0000"`), RGB(`(255,0,0)`), float, a list of colors cycling through nodes or a dictionary with color per node in one of the given formats
 - `node_cmap`: Colormap used when node colors are numeric.
 - `node_opacity`: Opacity level for nodes, either uniform or per node.
-- `node_color_timed`: List containing color changes at certain time steps for a certain node. Tuples in the list follow `('node_id',(t, color))` format to indicate for a node with node_id a change to color at time t. Color can be a single color string referred to by name, HEX, RGB or float.
+- `node_color_timed`: List containing color changes at certain time steps for a certain node. Tuples in the list follow `('node_id',(t, color))` format to indicate for a node with node_id a change in color at time t. Color can be a single color string referred to by name, HEX, RGB or float.
 
-###### Edges
+##### Edges
 
 - `edge_size`: Width of edges, can be uniform or specified per edge in a dictionary with size per edge ID.
 - `edge_color`: Color(s) of edges; supports single or multiple colors (see `node_color` above).
@@ -118,9 +109,9 @@ pp.plot(
     background_color = '#f0f0f0',
     node_size = {"a": 0.6, "b": 0.3},
     node_color = ["red", "blue"],
-    edge_color = 0.4,
+    edge_color = {'a-b-1.0':0.6, 'd-c-4.0':'green'},
     edge_opacity = 0.7,
-    node_color_timed =  [('a', (1, 'yellow')), ('b', (2, 'blue')), ('c', (4, 0.1)), ('b', 4, (255,0,0)]
+    node_color_timed =  [('a', (1, 'yellow')), ('b', (2, 'blue')), ('c', (4, 0.1)), ('b', 4, (255,0,0))]
 )
 ```
 

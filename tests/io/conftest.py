@@ -1,41 +1,23 @@
-from __future__ import annotations
+"""This module contains fixtures for testing the io module of pathpyG."""
 
 import pytest
-
-from pathpyG.core.graph import Graph
-import pandas as pd
+from pathpyG import Graph, TemporalGraph
 
 
 @pytest.fixture
-def df_graph() -> pd.DataFrame:
-    """DataFrame for simple graph with header and no edge attributes."""
-    df = pd.DataFrame({"v": ["a", "b", "c"], "w": ["b", "c", "a"]})
-    return df
+def backward_idx() -> list[int]:
+    """Return a backward index."""
+    return [2, 1, 0]
 
 
 @pytest.fixture
-def df_graph_attribute() -> pd.DataFrame:
-    """DataFrame for simple graph with edge attributes and header."""
-    df = pd.DataFrame({"v": ["a", "b", "c"], "w": ["b", "c", "a"], "edge_weight": [2.0, 1.0, 42.0]})
-    return df
+def simple_graph() -> Graph:
+    """Return a simple directed graph."""
+    return Graph.from_edge_list([("a", "b"), ("b", "c"), ("a", "c")])
 
 
 @pytest.fixture
-def df_graph_attribute_no_header() -> pd.DataFrame:
-    """DataFrame for simple graph with edge attributes and no header."""
-    df = pd.DataFrame([["a", "b", 2.0], ["b", "c", 1.0], ["c", "a", 42.0]])
-    return df
-
-
-@pytest.fixture
-def df_temporal_graph() -> pd.DataFrame:
-    """DataFrame for simple temporal graph with header."""
-    df = pd.DataFrame({"v": ["a", "b", "c"], "w": ["b", "c", "a"], "t": [1, 2, 3]})
-    return df
-
-
-@pytest.fixture
-def df_temporal_graph_no_header() -> pd.DataFrame:
-    """DataFrame for simple temporal graph without header."""
-    df = pd.DataFrame([["a", "b", 1], ["b", "c", 2], ["c", "a", 3]])
-    return df
+def simple_temporal_graph() -> TemporalGraph:
+    """Return a simple temporal graph."""
+    tedges = [("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)]
+    return TemporalGraph.from_edge_list(tedges)
