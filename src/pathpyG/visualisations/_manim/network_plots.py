@@ -143,28 +143,31 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         """
         layout_style = {}
         layout_style["layout"] = layout_type
+        try:
+            layout = pp.layout(
+                graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(),
+                **layout_style,
+                seed=0,
+            )
+        
 
-        layout = pp.layout(
-            graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(),
-            **layout_style,
-            seed=0,
-        )
-        for key in layout.keys():
-            layout[key] = np.append(
-                layout[key], 0.0
-            )  # manim works in 3 dimensions, not 2 --> add zeros as third dimension to every node coordinate
+            for key in layout.keys():
+                layout[key] = np.append(
+                    layout[key], 0.0
+                )  # manim works in 3 dimensions, not 2 --> add zeros as third dimension to every node coordinate
 
-        layout_array = np.array(list(layout.values()))
-        mins = layout_array.min(axis=0)  # compute the mins and maxs of the 3 dimensions
-        maxs = layout_array.max(axis=0)
-        center = (mins + maxs) / 2  # compute the center of the network
-        scale = (
-            4.0 / (maxs - mins).max() if (maxs - mins).max() != 0 else 1.0
-        )  # compute scale, so that every node fits into a 2 x 2 box
+            layout_array = np.array(list(layout.values()))
+            mins = layout_array.min(axis=0)  # compute the mins and maxs of the 3 dimensions
+            maxs = layout_array.max(axis=0)
+            center = (mins + maxs) / 2  # compute the center of the network
+            scale = (
+                4.0 / (maxs - mins).max() if (maxs - mins).max() != 0 else 1.0
+            )  # compute scale, so that every node fits into a 2 x 2 box
 
-        for k in layout:
-            layout[k] = (layout[k] - center) * scale  # scale the position of each node
-
+            for k in layout:
+                layout[k] = (layout[k] - center) * scale  # scale the position of each node
+        except IndexError as e:
+                    layout = None
         return layout
 
     def get_color_at_time(self, node_data: dict, time_step: int):
@@ -230,12 +233,12 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             time_stamp_dict[t].append((v, w))
 
         graph = Graph(
-            [v["uid"] for v in nodes_data],
+            [str(v["uid"]) for v in nodes_data],
             [],
             layout=layout,
             labels=False,
             vertex_config={
-                v["uid"]: {
+                str(v["uid"]): {
                     "radius": v.get("size", self.node_size),
                     "fill_color": v.get("color", BLUE),
                     "fill_opacity": (v.get("opacity", self.node_opacity)),
@@ -247,7 +250,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
 
         # add labels
         for node_data in nodes_data:
-            node_id = node_data["uid"]
+            node_id = str(node_data["uid"])
             label_text = node_data.get("label", None)
             if label_text is not None:
                 label = Text(label_text, font_size=self.font_size).set_color(BLACK)
@@ -258,7 +261,6 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         step_size = int((end - start + 1) / intervals)  # step size based on the number of intervals
         time_window = range(start, end + 1, step_size)
 
-        change = False
         for time_step in tqdm(time_window):
             range_stop = time_step + step_size
             range_stop = range_stop if range_stop < end + 1 else end + 1
@@ -276,28 +278,26 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                     dynamic_layout_interval is not None
                     and (step - start) % dynamic_layout_interval == 0
                     and step - start != 0
-                    and change
                 ):  # change the layout based on the edges since the last change until the current timestep
                     # and only if there were edges in the last interval
-                    change = False
                     new_layout = self.get_layout(g, time_window=(step - look_behind, step + look_forward))
+                    if new_layout != None:
+                        animations = []
+                        for node in g.nodes:
+                            if node in new_layout:
+                                new_pos = new_layout[node]
+                                animations.append(graph[node].animate.move_to(new_pos))
+                                # also change the positions of the labels
+                                if node in self.node_label:
+                                    label = self.node_label[node]
+                                    offset = graph[node].height / 2 + label.height / 2 + 0.05
+                                    animations.append(label.animate.move_to(new_pos + offset * UP))
 
-                    animations = []
-                    for node in g.nodes:
-                        if node in new_layout:
-                            new_pos = new_layout[node]
-                            animations.append(graph[node].animate.move_to(new_pos))
-                            # also change the positions of the labels
-                            if node in self.node_label:
-                                label = self.node_label[node]
-                                offset = graph[node].height / 2 + label.height / 2 + 0.05
-                                animations.append(label.animate.move_to(new_pos + offset * UP))
-
-                    self.play(*animations, run_time=delta)
+                        self.play(*animations, run_time=delta)
 
                 # color change
                 for node in g.nodes:
-                    node_info = next(nd for nd in nodes_data if nd["uid"] == node)
+                    node_info = next(nd for nd in nodes_data if str(nd["uid"]) == node)
                     color = self.get_color_at_time(node_info, step)
                     graph[node].set_fill(color)
 
@@ -315,9 +315,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         s_to_r_vec = 1 / np.linalg.norm(s_to_r_vec) * s_to_r_vec
                         r_to_s_vec = 1 / np.linalg.norm(r_to_s_vec) * r_to_s_vec
 
-                        node_u_data = next((node for node in nodes_data if node.get("uid") == u), {})
+                        node_u_data = next((node for node in nodes_data if str(node.get("uid")) == u), {})
                         node_u_size = node_u_data.get("size", self.node_size)
-                        node_v_data = next((node for node in nodes_data if node.get("uid") == v), {})
+                        node_v_data = next((node for node in nodes_data if str(node.get("uid")) == v), {})
                         node_v_size = node_v_data.get("size", self.node_size)
 
                         sender = graph[u].get_center() + (s_to_r_vec * node_u_size)
@@ -350,7 +350,6 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         )
                         lines.append(line)
             if len(lines) > 0:
-                change = True
                 self.add(*lines)
                 self.wait(delta)
                 self.remove(*lines)
