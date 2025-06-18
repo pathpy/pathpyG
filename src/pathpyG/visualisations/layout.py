@@ -400,7 +400,7 @@ class Layout(object):
 
         if self.positions is not None:
             # Determine size of existing domain to adjust initial positions
-            _size = max(coord for t in layout.values() for coord in t)  # type: ignore
+            _size = max(coord for t in self.positions.values() for coord in t)  # type: ignore
             if _size == 0:
                 _size = 1
             np.random.seed(self.seed)
