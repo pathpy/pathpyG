@@ -129,7 +129,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         max_time = max(d["start"] for d in self.raw_data["edges"])
         return tedges, max_time
 
-    def get_layout(self, graph: pp.TemporalGraph, layout_type: str = "fr", time_window: tuple = None) -> dict:
+    def get_layout(self, graph: pp.TemporalGraph, layout_type: str = "fr", time_window: tuple = None, old_layout: dict = {}) -> dict:
         """
         Compute spatial layout for network nodes using pathpy layout functions.
 
@@ -143,13 +143,17 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         """
         layout_style = {}
         layout_style["layout"] = layout_type
+
+        #convert old_layout back to 2 dimensions because pathpyG's layout function only works in 2 dimensions
+        old_layout = {k: v[:2] for k, v in old_layout.items()}
+        
         try:
             layout = pp.layout(
                 graph.get_window(*time_window).to_static_graph() if time_window != None else graph.to_static_graph(),
                 **layout_style,
                 seed=0,
+                positions = old_layout
             )
-        
 
             for key in layout.keys():
                 layout[key] = np.append(
@@ -280,7 +284,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                     and step - start != 0
                 ):  # change the layout based on the edges since the last change until the current timestep
                     # and only if there were edges in the last interval
-                    new_layout = self.get_layout(g, time_window=(step - look_behind, step + look_forward))
+                    new_layout = self.get_layout(g, time_window=(step - look_behind, step + look_forward), old_layout=layout)
                     if new_layout != None:
                         animations = []
                         for node in g.nodes:
