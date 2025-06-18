@@ -266,6 +266,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         time_window = range(start, end + 1, step_size)
 
         for time_step in tqdm(time_window):
+            animation = False
             range_stop = time_step + step_size
             range_stop = range_stop if range_stop < end + 1 else end + 1
 
@@ -297,7 +298,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                                     offset = graph[node].height / 2 + label.height / 2 + 0.05
                                     animations.append(label.animate.move_to(new_pos + offset * UP))
 
-                        self.play(*animations, run_time=delta)
+                        self.play(*animations, run_time=delta/2)
+                        animation = True
 
                 # color change
                 for node in g.nodes:
@@ -355,10 +357,16 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         lines.append(line)
             if len(lines) > 0:
                 self.add(*lines)
-                self.wait(delta)
+                if animation:
+                    self.wait(delta/2)
+                else:
+                    self.wait(delta)
                 self.remove(*lines)
             else:
-                self.wait(delta)
+                if animation:
+                    self.wait(delta/2)
+                else:
+                    self.wait(delta)
 
             self.remove(text)
 
