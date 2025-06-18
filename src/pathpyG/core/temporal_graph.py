@@ -71,7 +71,7 @@ class TemporalGraph(Graph):
         if np.issubdtype(ts.dtype, np.integer):
             ts = torch.tensor(ts, dtype=torch.long)
         else:
-            ts = torch.tensor(ts, dtype=torch.float32)
+            ts = torch.tensor(ts, dtype=torch.float64)
 
         index_map = IndexMap(np.unique(edge_array[:, :2]))
         edge_index = index_map.to_idxs(edge_array[:, :2].T)

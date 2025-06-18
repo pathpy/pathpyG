@@ -327,11 +327,10 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                             (
                                 e
                                 for e in edges_data
-                                if e["source"] == u and e["target"] == v and e["start"] <= step <= e["end"]
+                                if e["source"] == f'{u}' and e["target"] == f'{v}' and e["start"] <= step <= e["end"]
                             ),
                             None,
                         )
-
                         if edge_info:
                             stroke_width = edge_info.get("size", self.edge_size)
                             stroke_opacity = edge_info.get("opacity", self.edge_opacity)
