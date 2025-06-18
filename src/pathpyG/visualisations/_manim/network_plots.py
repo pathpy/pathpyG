@@ -233,12 +233,12 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
             time_stamp_dict[t].append((v, w))
 
         graph = Graph(
-            [v["uid"] for v in nodes_data],
+            [str(v["uid"]) for v in nodes_data],
             [],
             layout=layout,
             labels=False,
             vertex_config={
-                v["uid"]: {
+                str(v["uid"]): {
                     "radius": v.get("size", self.node_size),
                     "fill_color": v.get("color", BLUE),
                     "fill_opacity": (v.get("opacity", self.node_opacity)),
@@ -250,7 +250,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
 
         # add labels
         for node_data in nodes_data:
-            node_id = node_data["uid"]
+            node_id = str(node_data["uid"])
             label_text = node_data.get("label", None)
             if label_text is not None:
                 label = Text(label_text, font_size=self.font_size).set_color(BLACK)
@@ -297,7 +297,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
 
                 # color change
                 for node in g.nodes:
-                    node_info = next(nd for nd in nodes_data if nd["uid"] == node)
+                    node_info = next(nd for nd in nodes_data if str(nd["uid"]) == node)
                     color = self.get_color_at_time(node_info, step)
                     graph[node].set_fill(color)
 
@@ -315,9 +315,9 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                         s_to_r_vec = 1 / np.linalg.norm(s_to_r_vec) * s_to_r_vec
                         r_to_s_vec = 1 / np.linalg.norm(r_to_s_vec) * r_to_s_vec
 
-                        node_u_data = next((node for node in nodes_data if node.get("uid") == u), {})
+                        node_u_data = next((node for node in nodes_data if str(node.get("uid")) == u), {})
                         node_u_size = node_u_data.get("size", self.node_size)
-                        node_v_data = next((node for node in nodes_data if node.get("uid") == v), {})
+                        node_v_data = next((node for node in nodes_data if str(node.get("uid")) == v), {})
                         node_v_size = node_v_data.get("size", self.node_size)
 
                         sender = graph[u].get_center() + (s_to_r_vec * node_u_size)
