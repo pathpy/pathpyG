@@ -106,7 +106,7 @@ pp.plot(
     t,
     backend= 'd3js', 
     node_size = {"a": 15, "b": 5},
-    node_color = "red",
+    node_color = "grey",
     edge_opacity = 0.7,
 )
 ```
