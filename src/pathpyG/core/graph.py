@@ -674,9 +674,10 @@ class Graph:
             d2_idx_translation[m2.to_idx(v)] = m1.to_idx(v)
         # add mapping for nodes in g2 that are not in g1 and correct indices in g2
         for v in additional_nodes:
-            new_idx = m2.to_idx(v) + self.n - len(overlap)
+            new_idx =  sum(1 for item in node_ids if item != "")
             node_ids[new_idx] = v
             d2_idx_translation[m2.to_idx(v)] = new_idx
+            
         # apply index translation to d2
         # fast dictionary based mapping using torch
         palette, key = zip(*d2_idx_translation.items())
