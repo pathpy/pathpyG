@@ -87,7 +87,7 @@ class ManimPlot(PathPyPlot):
                 logger.warning("Rendered video not found at expected path: %s ", video_path)
                 return
 
-            target_path = save_dir / f"{name}.{output_format}"
+            target_path = save_dir / f"{filename}"
 
             if output_format == "gif":
                 try:
