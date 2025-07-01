@@ -1,20 +1,15 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import tempfile
+import subprocess
 from pathlib import Path
-import pytest
 from manim import Scene, manim_colors, Graph, tempconfig
-from manim import config as manim_config
-from matplotlib.pyplot import get_cmap
 import numpy as np
 import pathpyG as pp
-import subprocess
 
-from pathpyG.visualisations._manim.core import ManimPlot
 import pathpyG.visualisations._manim.core as core
 from pathpyG.visualisations._manim.network_plots import NetworkPlot
 from pathpyG.visualisations._manim.network_plots import TemporalNetworkPlot
-from pathpyG.visualisations._manim.network_plots import StaticNetworkPlot
 
 
 class ManimTest(unittest.TestCase):
@@ -320,7 +315,7 @@ def render_side_effect_gif(self):
     video_dir = output_dir / "videos" / "1080p60"
     video_dir.mkdir(parents=True, exist_ok=True)
     video_file = video_dir / f"{TemporalNetworkPlot.__name__}.mp4"
-  
+
     command = [
         "ffmpeg",
         "-f",
