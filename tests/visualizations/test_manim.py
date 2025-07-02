@@ -187,8 +187,9 @@ class ManimTest(unittest.TestCase):
         nodes = {0, 1, 2, 3}
         graph = pp.TemporalGraph.from_edge_list(edgelist)
         temp_network_plot = TemporalNetworkPlot(self.data)
+        old_layout = {node: [0.0, 0.0] for node in graph.nodes}
 
-        layout = temp_network_plot.get_layout(graph)
+        layout = temp_network_plot.get_layout(graph, old_layout=old_layout)
 
         self.assertIsInstance(layout, dict)
         self.assertEqual(layout.keys(), nodes)
