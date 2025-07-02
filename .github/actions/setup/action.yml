@@ -37,6 +37,7 @@ runs:
       run: |
         apt-get update
         apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
+      shell: bash
 
     - name: Install PyTorch ${{ inputs.torch-version }}+${{ inputs.cuda-version }}
       run: |
