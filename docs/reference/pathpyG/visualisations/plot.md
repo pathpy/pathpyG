@@ -40,8 +40,8 @@ For display use the `show()` method instead of `save()`.
 | `background_color`        |     ❌   |     ✔️    |     ❌    |         | Background color (name, hex, RGB)   |
 | `width`                   |     ✔️   |      ❌   |      ❌   |         | Width of the output               |
 | `height`                  |     ✔️   |      ❌   |      ❌   |         | Height of the output                   |
-| `lookahead`               |     ✔️   |      ❌   |      ❌   |    ❌     | for layout computation                |
-| `lookbehind`              |     ✔️   |      ❌   |      ❌   |    ❌     | for layout computation                  |
+| `lookahead`               |      ❌  |      ✔️  |      ❌   |    ❌     | for layout computation                |
+| `lookbehind`              |     ❌   |      ✔️   |      ❌   |    ❌     | for layout computation                  |
 | **Nodes**                 |           |           |           |           |                                               |
 | `node_size`               |     ✔️    |     ✔️    |      ✔️   |    ✔️     | Radius of nodes (uniform or per-node)         |
 | `node_color`              |     🟨    |     ✔️    |     🟨    |     🟨    | Node fill color           |
