@@ -129,7 +129,7 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         max_time = max(d["start"] for d in self.raw_data["edges"])
         return tedges, max_time
 
-    def get_layout(self, graph: pp.TemporalGraph, layout_type: str = "fr", time_window: tuple = None, old_layout: dict = {}) -> dict:
+    def get_layout(self, graph: pp.TemporalGraph, layout_type: str = "fr", time_window: tuple = None, old_layout: dict = None) -> dict:
         """
         Compute spatial layout for network nodes using pathpy layout functions.
 
@@ -145,7 +145,8 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
         layout_style["layout"] = layout_type
 
         #convert old_layout back to 2 dimensions because pathpyG's layout function only works in 2 dimensions
-        old_layout = {k: v[:2] for k, v in old_layout.items()}
+        if old_layout != None: 
+            old_layout = {k: v[:2] for k, v in old_layout.items()}
         
         try:
             layout = pp.layout(
@@ -333,11 +334,10 @@ class TemporalNetworkPlot(NetworkPlot, Scene):
                             (
                                 e
                                 for e in edges_data
-                                if e["source"] == u and e["target"] == v and e["start"] <= step <= e["end"]
+                                if e["source"] == f'{u}' and e["target"] == f'{v}' and e["start"] <= step <= e["end"]
                             ),
                             None,
                         )
-
                         if edge_info:
                             stroke_width = edge_info.get("size", self.edge_size)
                             stroke_opacity = edge_info.get("opacity", self.edge_opacity)
