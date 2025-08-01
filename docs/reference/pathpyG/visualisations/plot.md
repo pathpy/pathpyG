@@ -183,4 +183,4 @@ pp.plot(
 
 
 ---
-For more details and usage examples, see [Visualisation Tutorial](/tutorial/visualisation) and [Develop your own plot Functions](/plot_tutorial)
+For more details and usage examples, see [Manim Visualisation Tutorial](/tutorial/manim_tutorial),[Visualisation Tutorial](/tutorial/visualisation) and [Develop your own plot Functions](/plot_tutorial)
