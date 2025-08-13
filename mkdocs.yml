@@ -22,13 +22,13 @@ nav:
     - Basic Concepts: tutorial/basic_concepts.ipynb    
     - Temporal Graphs: tutorial/temporal_graphs.ipynb
     - Interactive Graph Visualisation: tutorial/visualisation.ipynb    
+    - Temporal Graph Visualisation using Manim: tutorial/manim_tutorial.ipynb
     - Graph Learning in Netzschleuder Data: tutorial/netzschleuder.ipynb
     - Path Data and Higher-Order Models: tutorial/paths_higher_order.ipynb    
     - Higher-Order Models for Time-Respecting Paths: tutorial/trp_higher_order.ipynb    
     - Causality-Aware GNNs: tutorial/dbgnn.ipynb    
     - Generative Models for Random Graphs: tutorial/generative_models.ipynb    
     - Develop your own plot Functions: plot_tutorial.md
-    - Temporal Graph Visualisation using Manim: tutorial/manim_tutorial.ipynb
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
     - contributing.md
