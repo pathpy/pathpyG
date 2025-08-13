@@ -149,7 +149,7 @@ class ManimTest(unittest.TestCase):
             output_dir = Path(temp_dir)
             output_file = "test_output.mp4"
 
-            temp_network_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
+            _ = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
 
             self.assertEqual(Path(self.mock_config.media_dir).resolve(), output_dir.resolve())
             self.assertEqual(self.mock_config.output_file, output_file)
@@ -166,7 +166,7 @@ class ManimTest(unittest.TestCase):
             output_dir = Path(temp_dir)
             output_file = "test_output.mp4"
 
-            temp_network_plot = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
+            _ = TemporalNetworkPlot(self.data, output_dir=output_dir, output_file=output_file)
 
             from manim import config as manim_config
 
@@ -294,7 +294,7 @@ class ManimTest(unittest.TestCase):
         mock_display.assert_called_once()
 
 
-def render_side_effect(self):
+def render_side_effect(*args):
     """Mocking Scene.render"""
     from manim import config as manim_config
 
@@ -307,7 +307,7 @@ def render_side_effect(self):
     video_file.write_text("test video")
 
 
-def render_side_effect_gif(self):
+def render_side_effect_gif(*args):
     """Mocking Scene.render"""
     from manim import config as manim_config
 
@@ -331,7 +331,3 @@ def render_side_effect_gif(self):
         str(video_file)
     ]
     subprocess.run(command, check=True)
-
-
-if __name__ == "__main__":
-    unittest.main()
