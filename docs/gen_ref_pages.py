@@ -3,11 +3,18 @@
 
 from pathlib import Path
 
+import yaml
 import mkdocs_gen_files
 
 nav = mkdocs_gen_files.Nav()
+# Load the ignored modules from the YAML file
+ignored_modules_path = Path("docs", "reference", "ignored_modules.yaml")
+ignored_modules = yaml.safe_load(ignored_modules_path.read_text("utf-8"))
 
 for path in sorted(Path("src").rglob("*.py")):
+    if str(path.relative_to(".")) in ignored_modules:
+        print(f"Skipping {path} as it is in the ignored modules list.")
+        continue
     module_path = path.relative_to("src").with_suffix("")
     doc_path = path.relative_to("src").with_suffix(".md")
     full_doc_path = Path("reference", doc_path)
@@ -21,11 +28,15 @@ for path in sorted(Path("src").rglob("*.py")):
     elif parts[-1] == "__main__":
         continue
 
-    nav[parts] = doc_path.as_posix()
+    nav[(part.split("_")[-1] for part in parts)] = doc_path.as_posix()
 
-    with mkdocs_gen_files.open(full_doc_path, "w") as fd:
-        ident = ".".join(parts)
-        fd.write(f"::: {ident}")
+    print(f"Checking {full_doc_path}")
+    if not (Path("docs") / full_doc_path).exists():
+        with mkdocs_gen_files.open(full_doc_path, "w") as fd:
+            ident = ".".join(parts)
+            fd.write(f"::: {ident}")
+    else:
+        print(f"File {full_doc_path} already exists, skipping.")
 
     mkdocs_gen_files.set_edit_path(full_doc_path, Path("../") / path)
 
