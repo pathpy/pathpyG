@@ -688,10 +688,6 @@ class Graph:
             >>> print(g1 + g2)
             Graph with 5 nodes and 4 edges
         """
-
-        if self.order > 1:
-            raise NotImplementedError("Add operator can only be applied to order 1 graphs")
-
         d1 = self.data.clone()
         m1 = self.mapping
 
@@ -699,13 +695,20 @@ class Graph:
         m2 = other.mapping
 
         nodes = np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))])
-        mapping = IndexMap(np.unique(nodes))
+        mapping = IndexMap(np.unique(nodes, axis=0).tolist())
         d1.edge_index = mapping.to_idxs(m1.to_ids(d1.edge_index), device=d1.edge_index.device)
         d2.edge_index = mapping.to_idxs(m2.to_ids(d2.edge_index), device=d2.edge_index.device)
 
         d = d1.concat(d2)
         d.num_nodes = mapping.num_ids()
         d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
+        
+        # For higher-order graphs, we need to update the inverse_idx attribute
+        if "inverse_idx" in d:
+            d.inverse_idx = mapping.to_idxs(
+                np.concatenate([m1.to_ids(d1.inverse_idx), m2.to_ids(d2.inverse_idx)]),
+                device=d.inverse_idx.device,
+            )
 
         # If both graphs contain node attributes, reduce them using the specified method
         for k in d1.keys():
