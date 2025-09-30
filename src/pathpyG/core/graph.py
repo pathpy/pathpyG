@@ -136,6 +136,7 @@ class Graph:
         is_undirected: bool = False,
         mapping: Optional[IndexMap] = None,
         num_nodes: Optional[int] = None,
+        device: Optional[torch.device] = None,
     ) -> Graph:
         """Generate a Graph based on an edge list.
 
@@ -148,6 +149,7 @@ class Graph:
             is_undirected: Whether the edge list contains all bidorectional edges
             mapping: optional mapping of string IDs to node indices
             num_nodes: optional number of nodes (useful in case not all nodes have incident edges)
+            device: optional torch device where tensors shall be stored
 
         Examples:
             >>> import pathpyG as pp
@@ -159,7 +161,10 @@ class Graph:
 
         # handle empty graph
         if len(edge_list) == 0:
-            return Graph(Data(edge_index=torch.tensor([[], []], dtype=torch.int32), num_nodes=0), mapping=IndexMap())
+            return Graph(
+                Data(edge_index=torch.tensor([[], []], dtype=torch.int32, device=device), num_nodes=0),
+                mapping=IndexMap(),
+            )
 
         if mapping is None:
             edge_array = np.array(edge_list)
@@ -172,7 +177,7 @@ class Graph:
             num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
-            mapping.to_idxs(edge_list).T.contiguous(),
+            mapping.to_idxs(edge_list, device=device).T.contiguous(),
             sparse_size=(num_nodes, num_nodes),
             is_undirected=is_undirected,
         )
@@ -233,6 +238,31 @@ class Graph:
             self.data.edge_index.as_tensor(), torch.ones(self.m, device=self.data.edge_index.device)
         )
         return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
+
+    def to(self, device: torch.device) -> Graph:
+        """Move all tensors to the given device.
+        
+        Args:
+            device: torch device to which all tensors shall be moved
+
+        Returns:
+            Graph: self
+        """
+        self.data.edge_index = self.data.edge_index.to(device)
+        self.data.node_sequence = self.data.node_sequence.to(device)
+        for attr in self.node_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+        for attr in self.edge_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+
+        self.row = self.row.to(device)
+        self.row_ptr = self.row_ptr.to(device)
+        self.col = self.col.to(device)
+        self.col_ptr = self.col_ptr.to(device)
+
+        return self
 
     def node_attrs(self) -> List[str]:
         """
@@ -670,8 +700,8 @@ class Graph:
 
         nodes = np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))])
         mapping = IndexMap(np.unique(nodes))
-        d1.edge_index = mapping.to_idxs(m1.to_ids(d1.edge_index))
-        d2.edge_index = mapping.to_idxs(m2.to_ids(d2.edge_index))
+        d1.edge_index = mapping.to_idxs(m1.to_ids(d1.edge_index), device=d1.edge_index.device)
+        d2.edge_index = mapping.to_idxs(m2.to_ids(d2.edge_index), device=d2.edge_index.device)
 
         d = d1.concat(d2)
         d.num_nodes = mapping.num_ids()
@@ -683,7 +713,10 @@ class Graph:
                 if isinstance(d[k], torch.Tensor):
                     d[k] = torch_geometric.utils.scatter(
                         d[k],
-                        mapping.to_idxs(np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))])),
+                        mapping.to_idxs(
+                            np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))]),
+                            device=d[k].device,
+                        ),
                         dim_size=d.num_nodes,
                         reduce=reduce,
                     )

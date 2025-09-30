@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import pytest
-import scipy.sparse as s
 import torch
 from torch_geometric.edge_index import EdgeIndex
 from torch_geometric.data import Data
@@ -100,7 +99,7 @@ def test_to_undirected(simple_graph, gpu):
     simple_graph.to(gpu)
 
     g_u = simple_graph.to_undirected()
-    assert g_u.data.is_undirected()
+    assert g_u.is_undirected()
 
     assert g_u.data.edge_index.device == gpu
     assert g_u.row.device == gpu
@@ -132,8 +131,8 @@ def test_add_operator_partial_overlap(gpu):
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"])).to(gpu)
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "g", "h"])).to(gpu)
     g = g1 + g2
-    assert g.N == 6
-    assert g.M == g1.M + g2.M
+    assert g.n == 6
+    assert g.m == g1.m + g2.m
 
     # we need to sort because the order may vary when merged on GPU
     assert torch.equal(

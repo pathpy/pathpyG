@@ -44,12 +44,12 @@ class PathData:
         else:
             self.mapping = IndexMap()
         self.data: Data = Data(
-            edge_index=torch.empty((2, 0), dtype=torch.long),
-            node_sequence=torch.empty((0, 1), dtype=torch.long),
-            dag_weight=torch.empty(0, dtype=torch.float),
-            dag_num_edges=torch.empty(0, dtype=torch.long),
-            dag_num_nodes=torch.empty(0, dtype=torch.long),
-        ).to(device)
+            edge_index=torch.empty((2, 0), dtype=torch.long, device=device),
+            node_sequence=torch.empty((0, 1), dtype=torch.long, device=device),
+            dag_weight=torch.empty(0, dtype=torch.float, device=device),
+            dag_num_edges=torch.empty(0, dtype=torch.long, device=device),
+            dag_num_nodes=torch.empty(0, dtype=torch.long, device=device),
+        )
         self.data.num_nodes = 0
 
     @property
@@ -103,7 +103,7 @@ class PathData:
             >>> walks.append_walk(('a', 'c', 'd'), weight=2.0)
             >>> paths.append_walk(('b', 'c', 'e'), weight=1.0)
         """
-        idx_seq = self.mapping.to_idxs(node_seq).unsqueeze(1)
+        idx_seq = self.mapping.to_idxs(node_seq, device=self.data.edge_index.device).unsqueeze(1)
         idx = torch.arange(len(node_seq), device=self.data.edge_index.device)
         edge_index = torch.stack([idx[:-1], idx[1:]])
 
@@ -128,7 +128,7 @@ class PathData:
             >>> walks = pp.PathData(mapping)
             >>> walks.append_walks([['a', 'c', 'd'], ['b', 'c', 'e']], [2.0, 1.0])
         """
-        idx_seqs = torch.cat([self.mapping.to_idxs(seq) for seq in node_seqs]).unsqueeze(1)
+        idx_seqs = torch.cat([self.mapping.to_idxs(seq, device=self.data.edge_index.device) for seq in node_seqs]).unsqueeze(1)
         dag_num_nodes = torch.tensor([len(seq) for seq in node_seqs], device=self.data.edge_index.device)
 
         big_idx = torch.arange(dag_num_nodes.sum(), device=self.data.edge_index.device)

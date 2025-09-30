@@ -17,7 +17,3 @@ from pathpyG import algorithms
 from pathpyG import processes
 from pathpyG import statistics
 from pathpyG.visualisations import plot, layout
-
-
-if config["device"] == "cuda":
-    config["device"] = "cuda" if torch.cuda.is_available() else "cpu"
