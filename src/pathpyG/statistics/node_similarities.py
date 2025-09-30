@@ -1,14 +1,10 @@
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict
-)
+from typing import TYPE_CHECKING, Any, Dict
 
 import numpy as _np
 import scipy as _sp
 
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.algorithms.shortest_paths import shortest_paths_dijkstra
 from pathpyG.statistics.degrees import degree_sequence
 
@@ -19,7 +15,7 @@ def inverse_path_length(graph: Graph, v, w) -> float:
     if d == 0:
         return _np.inf
     else:
-        return 1/d
+        return 1 / d
 
 
 def common_neighbors(graph: Graph, v, w) -> float:
@@ -31,7 +27,7 @@ def common_neighbors(graph: Graph, v, w) -> float:
 def overlap_coefficient(graph: Graph, v, w) -> float:
     N_v = set([x for x in graph.successors(v)])
     N_w = set([x for x in graph.successors(w)])
-    return len(N_v.intersection(N_w))/min(len(N_v), len(N_w))
+    return len(N_v.intersection(N_w)) / min(len(N_v), len(N_w))
 
 
 def jaccard_similarity(graph: Graph, v, w) -> float:
@@ -41,7 +37,7 @@ def jaccard_similarity(graph: Graph, v, w) -> float:
     if len(N_v) == 0 and len(N_w) == 0:
         return 1
     else:
-        return len(intersection)/(len(N_v) + len(N_w) - len(intersection))
+        return len(intersection) / (len(N_v) + len(N_w) - len(intersection))
 
 
 def adamic_adar_index(graph: Graph, v, w) -> float:
@@ -57,30 +53,36 @@ def cosine_similarity(graph: Graph, v, w) -> float:
     if graph.degrees()[v] == 0 or graph.degrees()[w] == 0:
         return 0
     else:
-        A = graph.get_sparse_adj_matrix().todense()
+        A = graph.sparse_adj_matrix().todense()
         v_v = A[graph.mapping.to_idx(v)].A1
         v_w = A[graph.mapping.to_idx(w)].A1
-        return _np.dot(v_v, v_w)/(_np.linalg.norm(v_v)*_np.linalg.norm(v_w))
-    
+        return _np.dot(v_v, v_w) / (_np.linalg.norm(v_v) * _np.linalg.norm(v_w))
+
 
 def katz_index(graph: Graph, v, w, beta) -> float:
-    A = graph.get_sparse_adj_matrix()
-    I = _sp.sparse.identity(graph.N)
+    A = graph.sparse_adj_matrix()
+    I = _sp.sparse.identity(graph.n)
     S = _sp.sparse.linalg.inv(I - beta * A) - I
     return S[graph.mapping.to_idx(v), graph.mapping.to_idx(w)]
 
 
 def LeichtHolmeNewman_index(graph: Graph, v, w, alpha) -> float:
-    A = graph.get_sparse_adj_matrix()
+    A = graph.sparse_adj_matrix()
     ev = _sp.sparse.linalg.eigs(A, which="LM", k=2, return_eigenvectors=False)
     if graph.is_directed():
-        m = graph.M
+        m = graph.m
     else:
-        m = graph.M/2
+        m = graph.m / 2
     eigenvalues_sorted = _np.sort(_np.absolute(ev))
     lambda_1 = eigenvalues_sorted[1]
-    D = _sp.sparse.diags(degree_sequence(graph))
-    I = _sp.sparse.identity(graph.N)
-    S = 2*m*lambda_1*_sp.sparse.linalg.inv(D) * _sp.sparse.linalg.inv(I - alpha*A/lambda_1)*_sp.sparse.linalg.inv(D)
+    D = _sp.sparse.diags(degree_sequence(graph)).tocsc()
+    I = _sp.sparse.identity(graph.n).tocsc()
+    S = (
+        2
+        * m
+        * lambda_1
+        * _sp.sparse.linalg.inv(D)
+        * _sp.sparse.linalg.inv(I - alpha * A / lambda_1)
+        * _sp.sparse.linalg.inv(D)
+    )
     return S[graph.mapping.to_idx(v), graph.mapping.to_idx(w)]
-

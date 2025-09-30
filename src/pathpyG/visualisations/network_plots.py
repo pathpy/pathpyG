@@ -1,4 +1,5 @@
 """Network plot classes."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -20,8 +21,8 @@ from pathpyG.visualisations.layout import layout as network_layout
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
-    from pathpyG.core.Graph import Graph
-    from pathpyG.core.TemporalGraph import TemporalGraph
+    from pathpyG.core.graph import Graph
+    from pathpyG.core.temporal_graph import TemporalGraph
 
 
 # create logger
@@ -144,6 +145,7 @@ class NetworkPlot(PathPyPlot):
 
         # add node data to data dict
         self._get_node_data(nodes, attributes, attr, categories)
+        nodes = {str(k): v for k, v in nodes.items()}
 
         # convert needed attributes to useful values
         attr["color"] = self._convert_color(attr["color"], mode="node")
@@ -153,6 +155,7 @@ class NetworkPlot(PathPyPlot):
 
         # update data dict with converted attributes
         for attribute in attr:
+            attr[attribute] = {str(k): v for k, v in attr[attribute].items()}
             for key, value in attr[attribute].items():
                 nodes[key][attribute] = value
 
@@ -168,11 +171,12 @@ class NetworkPlot(PathPyPlot):
     ) -> None:
         """Extract node data from network."""
         for uid in self.network.nodes:
-            nodes[uid] = {"uid": str(uid)}
+            str_uid = str(uid)
+            nodes[uid] = {"uid": str_uid}
 
             # add edge attributes if needed
             for attribute in attributes:
-                attr[attribute][uid] = (
+                attr[attribute][str_uid] = (
                     self.network[f"node_{attribute}", uid].item() if attribute in categories else None
                 )
 
@@ -244,6 +248,7 @@ class NetworkPlot(PathPyPlot):
         """Convert colors to hex if rgb."""
         # get style from the config
         style = self.config.get(f"{mode}_color")
+        color = {str(k): v for k, v in color.items()}
 
         # check if new attribute is a single object
         if isinstance(style, (str, int, float, tuple)):
@@ -353,8 +358,8 @@ class NetworkPlot(PathPyPlot):
 
         # update x,y position of the nodes
         for uid, (_x, _y) in layout.items():
-            self.data["nodes"][uid]["x"] = _x
-            self.data["nodes"][uid]["y"] = _y
+            self.data["nodes"][str(uid)]["x"] = _x
+            self.data["nodes"][str(uid)]["y"] = _y
 
     def _cleanup_config(self) -> None:
         """Clean up final config file."""
@@ -430,6 +435,39 @@ class TemporalNetworkPlot(NetworkPlot):
                     self.network[f"edge_{attribute}", u, v].item() if attribute in categories else None
                 )
 
+    def _compute_node_data(self):
+        """_summary_"""
+        super()._compute_node_data()
+
+        raw_color_attr = self.config.get("node_color", {})
+        if not isinstance(raw_color_attr, dict):
+            return
+
+        color_changes_by_node = defaultdict(list)
+        for key, color in raw_color_attr.items():
+            if "-" not in key:
+                continue
+
+            try:
+                node_id, time_str = key.rsplit("-", 1)
+                time = float(time_str)
+            except ValueError as exc:
+                raise ValueError(f"Invalid time-encoded node_color key: '{key}'") from exc
+
+            if isinstance(color, (int, float)):
+                cmap = self.config.get("node_cmap", Colormap())
+                rgb = cmap([color])[0]
+                color = rgb_to_hex(rgb[:3])
+
+            elif isinstance(color, tuple):
+                color = rgb_to_hex(color)
+
+            color_changes_by_node[node_id].append({"time": time, "color": color})
+
+        for node_id, changes in color_changes_by_node.items():
+            if node_id in self.data.get("nodes", {}):
+                self.data["nodes"][node_id]["color_change"] = sorted(changes, key=lambda x: x["time"])
+
     def _get_node_data(self, nodes: dict, attributes: set, attr: defaultdict, categories: set) -> None:
         """Extract node data from temporal network."""
 
@@ -443,7 +481,7 @@ class TemporalNetworkPlot(NetworkPlot):
 
         for uid in self.network.nodes:
             nodes[uid] = {
-                "uid": uid,
+                "uid": str(uid),
                 "start": int(min(time) - 1),
                 "end": int(max(time) + 1),
             }

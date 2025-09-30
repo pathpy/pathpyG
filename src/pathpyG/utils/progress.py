@@ -1,4 +1,5 @@
 """Progressbar for pathpy."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -21,7 +22,7 @@ def tqdm_disabled(it, *args, **kwargs):
 
 def tqdm_console(*args, **kwargs):
     """Progressbar for a console environment."""
-    if len(args[0]) > config['progress']['min_iter']:
+    if len(args[0]) > config["progress"]["min_iter"]:
         return tq(*args, **kwargs)
     else:
         return args[0]
@@ -29,7 +30,7 @@ def tqdm_console(*args, **kwargs):
 
 def tqdm_notebook(*args, **kwargs):
     """Progressbar for a notebook environment."""
-    if len(args[0]) > config['progress']['min_iter']:
+    if len(args[0]) > config["progress"]["min_iter"]:
         return tqn(*args, **kwargs)
     else:
         return args[0]
@@ -39,8 +40,8 @@ def tqdm_notebook(*args, **kwargs):
 tqdm: Any
 
 # if progress is enabled show bar
-if config['progress']['enabled']:
-    if config['environment']['interactive'] and config['environment']['IDE'] != 'vs code':
+if config["progress"]["enabled"]:
+    if config["environment"]["interactive"] and config["environment"]["IDE"] != "vs code":
         tqdm = tqdm_notebook
     else:
         tqdm = tqdm_console

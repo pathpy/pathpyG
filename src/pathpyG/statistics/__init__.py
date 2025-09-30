@@ -24,4 +24,5 @@ Example:
 """
 
 from pathpyG.statistics.degrees import *
+from pathpyG.statistics.clustering import *
 from pathpyG.statistics import node_similarities

@@ -63,8 +63,12 @@ doc = [
     "mike"                                       # Tool for versioning the documentation
 ]
 
+vis = [
+    "manim", # Animation engine
+]
+
 [project.urls]
-Documentation = "https://github.com/pathpy/pathpyG/blob/main/README.md" # TODO: Update to official documentation
+Documentation = "https://www.pathpy.net"
 Source = "https://github.com/pathpy/pathpyG"
 Tracker = "https://github.com/pathpy/pathpyG/issues"
 
@@ -73,8 +77,8 @@ Tracker = "https://github.com/pathpy/pathpyG/issues"
 ########################################################################################
 
 [build-system]
-requires = ["flit"]
-build-backend = "flit.buildapi"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [tool.flit.module]
 name = "pathpyG"
@@ -96,7 +100,7 @@ addopts = "--cov=src -m \"not benchmark and not gpu\""
 branch = true
 
 [tool.coverage.report]
-fail_under = 25
+fail_under = 65
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -122,13 +126,18 @@ per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py fil
 
 [tool.pylint.format] # Linter
 max-line-length = 120
+# Disable information about: Unnecessary "else" after "return", remove the "else" and de-indent the code inside 
+disable = "R1705"
+
+[tool.pyright]
+reportGeneralTypeIssues = false
+reportCallIssue = false
+reportOptionalMemberAccess = false
+reportArgumentType = false
+reportOptionalSubscript = false
 
 [tool.mypy] # Static type checker
-disallow_untyped_defs = true
-disallow_any_unimported = true
-no_implicit_optional = true
 check_untyped_defs = true
-warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
 ignore_missing_imports = true

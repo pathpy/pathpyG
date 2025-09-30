@@ -78,7 +78,7 @@ from typing import TYPE_CHECKING, Any
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
-    from pathpyG.core.Graph import Graph
+    from pathpyG.core.graph import Graph
 
 # create logger
 logger = logging.getLogger("pathpyG")
@@ -138,7 +138,7 @@ touch test_hist.py
 Now we can create a simple test environment with a simple graph and call our `hist(...)` function.
 
 ```python
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.visualisations.hist_plots import hist
 
 
@@ -225,7 +225,7 @@ from typing import TYPE_CHECKING, Any
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
-    from pathpyG.core.Graph import Graph
+    from pathpyG.core.graph import Graph
 
 # create logger
 logger = logging.getLogger("pathpyG")

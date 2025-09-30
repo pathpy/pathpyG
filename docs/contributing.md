@@ -47,7 +47,7 @@ The documentation is then available at [`http://localhost:8000/`](http://localho
 
 ### Code Reference
 
-The `Code Reference` is generated automatically from the :python_logo: Python source files. The docstrings should be formatted according to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings). Be sure to also use the advanced stuff like notes, tips and more. They can e.g. look as follows:
+The `Code Reference` is generated automatically from the :python_logo: Python source files using `docs/gen_ref_pages.py`. The docstrings should be formatted according to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings). Be sure to also use the advanced stuff like notes, tips and more. They can e.g. look as follows:
 
 === "Docstring"
     ```python
@@ -70,7 +70,18 @@ The `Code Reference` is generated automatically from the :python_logo: Python so
 
 See the documentation of the underlying [griffe](https://mkdocstrings.github.io/griffe/docstrings/) package for more details.
 
-To get an overview for each module, `mkdocstrings` automatically uses the docstrings from the `__init__.py` files in each module as description. Thus, do not forget to add a docstring to each `__init__.py` file.
+To get an overview for each package, `mkdocstrings` automatically uses the docstrings from the `__init__.py` files in each package as description. Thus, do not forget to add a docstring to each `__init__.py` file. If a package starts with an underscore (`_`), the underscore will be removed from the name in the documentation. 
+
+#### Replace Automatic Code Reference 
+
+While the docstrings include rich functionality, it is easier to write long and detailed descriptions using `.md`-files. Therefore, you can replace the automatically generated documentation for a module by adding a `.md`-file with the same name as the module in the `docs/reference/`-directory. The file will be rendered instead of the automatically generated documentation. You can find an example in `docs/reference/pathpyG/index.md`.
+
+!!! info "Replacing package documentation in the `__init__.py`-file"
+    The Overview for each package can be provided in the `__init__.py`-file. If you want to replace the `__init__.py`-file to provide a better documentation using `markdown`, make sure to name the file `index.md` instead.
+
+#### Ignore specific `.py`-files
+
+If you want to ignore specific `.py`-files in the code reference, you can add them to `docs/reference/ignored_modules.yaml`. All files listed there will be ignored when generating the code reference. If you include all files in a package-directory, the whole package will not be shown in the documentation.
 
 ### Tutorials
 

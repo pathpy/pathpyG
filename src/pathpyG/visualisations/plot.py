@@ -1,4 +1,5 @@
 """Class to plot pathpy networks."""
+
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -20,7 +21,7 @@ from typing import Optional, Any
 logger = logging.getLogger("root")
 
 # supported backends
-BACKENDS: set = {"d3js", "tikz", "matplotlib"}
+BACKENDS: set = {"d3js", "tikz", "matplotlib", "manim"}
 
 # supported file formats
 FORMATS: dict = {
@@ -28,6 +29,8 @@ FORMATS: dict = {
     ".tex": "tikz",
     ".pdf": "tikz",
     ".png": "matplotlib",
+    ".mp4": "manim",
+    ".gif": "manim",
 }
 
 
@@ -95,15 +98,11 @@ class PathPyPlot:
         _backend: str = kwargs.pop("backend", self.config.get("backend", None))
 
         plot_backend = _get_plot_backend(_backend, filename)
-        plot_backend.plot(
-            deepcopy(self.data), self._kind, **deepcopy(self.config)
-        ).save(filename, **kwargs)
+        plot_backend.plot(deepcopy(self.data), self._kind, **deepcopy(self.config)).save(filename, **kwargs)
 
     def show(self, **kwargs: Any) -> None:
         """Show the plot on the device."""
         _backend: str = kwargs.pop("backend", self.config.get("backend", None))
 
         plot_backend = _get_plot_backend(_backend, None)
-        plot_backend.plot(
-            deepcopy(self.data), self._kind, **deepcopy(self.config)
-        ).show(**kwargs)
+        plot_backend.plot(deepcopy(self.data), self._kind, **deepcopy(self.config)).show(**kwargs)

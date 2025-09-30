@@ -1,4 +1,4 @@
-from pathpyG.core.Graph import Graph
+from pathpyG.core.graph import Graph
 from pathpyG.visualisations.hist_plots import hist
 
 
