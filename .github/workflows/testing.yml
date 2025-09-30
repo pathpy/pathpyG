@@ -34,7 +34,7 @@ jobs:
       - name: Install main package
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          pip install -e .[test]
+          pip install -e .[test,vis]
 
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
