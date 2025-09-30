@@ -27,9 +27,9 @@ def to_numpy(input_iterable: torch.Tensor | np.ndarray | list) -> np.ndarray:
         Numpy array.
     """
     if isinstance(input_iterable, (EdgeIndex, Index)):
-        return input_iterable.as_tensor().numpy()
+        return input_iterable.as_tensor().cpu().numpy()
     elif isinstance(input_iterable, torch.Tensor):
-        return input_iterable.numpy()
+        return input_iterable.cpu().numpy()
     elif isinstance(input_iterable, (list, tuple)):
         return np.array(input_iterable)
     elif isinstance(input_iterable, np.ndarray):

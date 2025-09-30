@@ -143,6 +143,12 @@ The tests are located in the `tests/`-directory. We use `pytest-cov` to measure 
 !!! todo "Add tests"
     We are currently only at 60% coverage. So the lines above are currently pure fiction.
 
+Test that use a GPU are located in the `tests/gpu`-directory.
+They are currently disabled for CI but can be manually executed with
+```
+pytest -m gpu
+```
+
 ## Benchmarking
 
 For optimal runtime, we continually measure the execution time of our core functions using pytest benchmarks. These benchmarks are located in `tests/benchmarks/` and are unit-tests that utilize the `benchmark` fixture from [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html). All of them are marked with the benchmark decorator (`@pytest.mark.benchmark`) to exclude them from the normal unit-tests. You can run all benchmarks in the command line using

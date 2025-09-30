@@ -6,9 +6,8 @@ calculate (temporal) and higher-order graph metrics like centralities.
 
 Example:
     ```py
-    # Import pathpyG and configure your torch device if you want to use GPU .
+    # Import pathpyG
     import pathpyG as pp
-    pp.config['torch']['device'] = 'cuda'
 
     # Generate a toy example for a temporal graph.
     g = pp.TemporalGraph.from_edge_list([
