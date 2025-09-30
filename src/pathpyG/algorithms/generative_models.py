@@ -105,7 +105,7 @@ def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
                 edges.add((mapping.to_id(w), mapping.to_id(v)))
             edges_added += 1
 
-    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping)
 
 
 def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph:
@@ -158,7 +158,7 @@ def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
 
     # fast handling of special case p = 0
     if p == 0.0:
-        return Graph.from_edge_list([], is_undirected=not directed, num_nodes=0)
+        return Graph.from_edge_list([], is_undirected=not directed)
 
     # connect pairs of nodes with probability p
     for s in range(n):
@@ -174,7 +174,7 @@ def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
                 if not directed and s != t:
                     edges.add((mapping.to_id(t), mapping.to_id(s)))
 
-    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping)
 
 
 def erdos_renyi_gnp_randomize(graph: Graph, self_loops: bool = False) -> Graph:
@@ -387,7 +387,7 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: Optional[IndexM
                 edges.append((mapping.to_id(u), mapping.to_id(v)))
                 edges.append((mapping.to_id(v), mapping.to_id(u)))
 
-    g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n).to_undirected()
+    g = Graph.from_edge_list(edges, mapping=mapping).to_undirected()
     return g
 
 

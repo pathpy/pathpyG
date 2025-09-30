@@ -124,6 +124,8 @@ class Graph:
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
+            if mapping is not None and mapping.num_ids() != num_nodes:
+                raise ValueError("Number of node IDs in mapping must match num_nodes")
             d = Data(edge_index=edge_index, num_nodes=num_nodes)
         return Graph(d, mapping=mapping)
 
@@ -132,7 +134,6 @@ class Graph:
         edge_list: Iterable[Tuple[str, str]],
         is_undirected: bool = False,
         mapping: Optional[IndexMap] = None,
-        num_nodes: Optional[int] = None,
     ) -> Graph:
         """Generate a Graph based on an edge list.
 
@@ -142,9 +143,8 @@ class Graph:
 
         Args:
             edge_list: Iterable of edges represented as tuples
-            is_undirected: Whether the edge list contains all bidorectional edges
-            mapping: optional mapping of string IDs to node indices
-            num_nodes: optional number of nodes (useful in case not all nodes have incident edges)
+            is_undirected: Whether the edge list contains all bidirectional edges
+            mapping: Optional mapping of string IDs to node indices
 
         Examples:
             >>> import pathpyG as pp
@@ -165,8 +165,7 @@ class Graph:
                 node_ids = np.sort(node_ids.astype(int)).astype(str)
             mapping = IndexMap(node_ids)
 
-        if num_nodes is None:
-            num_nodes = mapping.num_ids()
+        num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
             mapping.to_idxs(edge_list).T.contiguous(),
