@@ -38,7 +38,7 @@ class PathData:
         PathData with 2 paths with total weight 4.0
     """
 
-    def __init__(self, mapping: IndexMap | None = None) -> None:
+    def __init__(self, mapping: IndexMap | None = None, device: torch.device | None = None) -> None:
         if mapping:
             self.mapping = mapping
         else:
@@ -49,7 +49,7 @@ class PathData:
             dag_weight=torch.empty(0, dtype=torch.float),
             dag_num_edges=torch.empty(0, dtype=torch.long),
             dag_num_nodes=torch.empty(0, dtype=torch.long),
-        )
+        ).to(device)
         self.data.num_nodes = 0
 
     @property
@@ -140,12 +140,10 @@ class PathData:
         mask[cum_sum[1:-1] - 1] = False
         big_edge_index = big_edge_index[:, mask]
 
-        weights = torch.Tensor(weights, device=self.data.edge_index.device)
-
         self._append_data(
             edge_index=big_edge_index,
             node_sequence=idx_seqs,
-            weights=weights,
+            weights=torch.tensor(weights, device=self.data.edge_index.device),
             num_edges=dag_num_nodes - 1,
             num_nodes=dag_num_nodes,
         )
