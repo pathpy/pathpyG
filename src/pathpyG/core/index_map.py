@@ -1,10 +1,12 @@
 """IndexMap class for mapping node indices to IDs."""
 
 from __future__ import annotations
-from typing import List, Union, Any, Tuple
+from typing import List, Union, Any
 
 import torch
 import numpy as np
+
+from pathpyG.utils.convert import to_numpy
 
 
 class IndexMap:
@@ -169,12 +171,12 @@ class IndexMap:
         if node_id not in self.id_to_idx:
             idx = self.num_ids()
             if isinstance(node_id, (list, tuple)):
-                node_id = np.array(node_id)
+                node_id = to_numpy(node_id)
                 self.id_shape = (-1, *node_id.shape)
             self.node_ids = (
-                np.concatenate((self.node_ids, np.array([node_id])))
+                np.concatenate((self.node_ids, to_numpy([node_id])))
                 if self.node_ids is not None
-                else np.array([node_id])
+                else to_numpy([node_id])
             )
             self.id_to_idx[node_id] = idx
         else:
@@ -203,10 +205,10 @@ class IndexMap:
         """
         cur_num_ids = self.num_ids()
         if isinstance(node_ids, list) and isinstance(node_ids[0], (list, tuple)):
-            self.id_shape = (-1, *np.array(node_ids[0]).shape)
+            self.id_shape = (-1, *to_numpy(node_ids[0]).shape)
 
         if not isinstance(node_ids, np.ndarray):
-            node_ids = np.array(node_ids)
+            node_ids = to_numpy(node_ids)
 
         all_ids = np.concatenate((self.node_ids, node_ids)) if self.node_ids is not None else node_ids
         unique_ids = np.unique(all_ids, axis=0 if self.id_shape != (-1,) else None)
@@ -284,7 +286,7 @@ class IndexMap:
         """
         if self.has_ids:
             if not isinstance(idxs, np.ndarray):
-                idxs = np.array(idxs)
+                idxs = to_numpy(idxs)
             return self.node_ids[idxs]  # type: ignore
         else:
             return idxs  # type: ignore
@@ -352,7 +354,7 @@ class IndexMap:
         """
         if self.has_ids:
             if not isinstance(nodes, np.ndarray):
-                nodes = np.array(nodes)
+                nodes = to_numpy(nodes)
 
             shape = nodes.shape
             if self.id_shape == (-1,):

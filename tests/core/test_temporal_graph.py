@@ -67,8 +67,11 @@ def test_to_static_graph(long_temporal_graph):
 
     g = long_temporal_graph.to_static_graph(weighted=True)
     assert g.n == long_temporal_graph.n
-    assert g.data.edge_weight[0].item() == 2.0  # A -> B is two times in the temporal graph
-    assert g.data.edge_weight[1].item() == 1.0  # B -> C is one time in the temporal graph
+    print(g.data.edge_weight)
+    print(g.data.edge_index)
+    # Order changed due to sorting
+    assert g.data.edge_weight[2].item() == 2.0  # A -> B is two times in the temporal graph
+    assert g.data.edge_weight[0].item() == 1.0  # A -> C is one time in the temporal graph
 
 
 def test_to_undirected(long_temporal_graph):
