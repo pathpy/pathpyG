@@ -489,13 +489,13 @@ class MultiOrderModel:
         if g.data.x is not None:
             x = g.data.x
         else:
-            x = torch.eye(num_nodes, num_nodes)
-        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes)
+            x = torch.eye(num_nodes, num_nodes, device=g.data.edge_index.device)
+        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes, device=g_max_order.data.edge_index.device)
         edge_index = g.data.edge_index
         edge_index_max_order = g_max_order.data.edge_index
         edge_weight = g.data.edge_weight
         edge_weight_max_order = g_max_order.data.edge_weight
-        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping)
+        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping, device=edge_index.device)
 
         if g.data.y is not None:
             y = g.data.y
