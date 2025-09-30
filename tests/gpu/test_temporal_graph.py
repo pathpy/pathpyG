@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from pathpyG.core.TemporalGraph import TemporalGraph
+from pathpyG.core.temporal_graph import TemporalGraph
 
 
 @pytest.mark.gpu

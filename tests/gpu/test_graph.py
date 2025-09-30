@@ -101,7 +101,7 @@ def test_to_undirected(simple_graph, gpu):
 
     g_u = simple_graph.to_undirected()
     assert g_u.data.is_undirected()
-    
+
     assert g_u.data.edge_index.device == gpu
     assert g_u.row.device == gpu
     assert g_u.row_ptr.device == gpu
@@ -129,19 +129,19 @@ def test_to_device(simple_graph, gpu, cpu):
 @pytest.mark.gpu
 def test_add_operator_partial_overlap(gpu):
     # partial overlap
-    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'c', 'd'])).to(gpu)
-    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(['a', 'b', 'g', 'h'])).to(gpu)
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"])).to(gpu)
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "g", "h"])).to(gpu)
     g = g1 + g2
     assert g.N == 6
     assert g.M == g1.M + g2.M
 
     # we need to sort because the order may vary when merged on GPU
-    assert torch.equal(g.data.edge_index.sort_by('col')[0], torch.tensor([[0, 0, 1, 1, 1, 1],
-                                                                          [1, 1, 2, 3, 4, 5]], device=gpu))
-    
+    assert torch.equal(
+        g.data.edge_index.sort_by("col")[0], torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 4, 5]], device=gpu)
+    )
+
     assert g.data.edge_index.device == gpu
     assert g.row.device == gpu
     assert g.row_ptr.device == gpu
     assert g.col.device == gpu
     assert g.col_ptr.device == gpu
-    
