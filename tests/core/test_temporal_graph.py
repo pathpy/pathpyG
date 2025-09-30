@@ -32,6 +32,11 @@ def test_from_edge_list():
     assert tgraph.start_time == 1
     assert tgraph.end_time == 9
     assert tgraph.data.edge_index.shape == (2, 4)
+    assert tgraph.data.time.dtype == torch.int64
+
+    tedges = [("a", "b", 1.0), ("b", "c", 5.0), ("c", "d", 9.0), ("c", "e", 9.0)]
+    tgraph = TemporalGraph.from_edge_list(tedges)
+    assert tgraph.data.time.dtype == torch.float64
 
 
 def test_N(long_temporal_graph):

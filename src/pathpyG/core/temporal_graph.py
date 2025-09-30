@@ -69,7 +69,7 @@ class TemporalGraph(Graph):
 
         # Convert timestamps to tensor
         if isinstance(edge_list[0][2], int):
-            ts = torch.tensor(edge_array[:, 2].astype(np.long), device=device)
+            ts = torch.tensor(edge_array[:, 2].astype(np.int_), device=device)
         else:
             ts = torch.tensor(edge_array[:, 2].astype(np.double), device=device)
 
