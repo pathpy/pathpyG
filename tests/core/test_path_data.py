@@ -79,8 +79,3 @@ def test_add_walk_seqs():
 def test_str(simple_walks):
     assert str(simple_walks)
 
-
-def test_from_ngram():
-    path = "docs/data/tube_paths_train.ngram"
-    paths = PathData.from_ngram(path)
-    assert paths.num_paths == 61748

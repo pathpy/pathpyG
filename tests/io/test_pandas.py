@@ -23,6 +23,7 @@ from pathpyG.io.pandas import (
     temporal_graph_to_df,
     read_csv_graph,
     read_csv_temporal_graph,
+    read_csv_path_data,
     write_csv,
 )
 
@@ -518,3 +519,25 @@ def test_write_csv_with_node_indices(tmp_path, simple_graph):
     assert set(df.columns) == {"v", "w"}
     assert set(df["v"]) == {0, 1}
     assert set(df["w"]) == {1, 2}
+
+
+def test_read_csv_path_data(tmp_path):
+    # write sample ngram without weights
+    test_path = tmp_path / 'test_no_weights.ngram'
+    with open(test_path, 'w') as f:
+        f.writelines(['a,b,c\n', 'a,b\n', 'x,y\n', 'x\n', 'a,x,z\n'])
+    paths = read_csv_path_data(path_or_buf=test_path, sep=',', weight=False)
+    print(paths)
+    assert paths.num_paths == 5
+    assert paths.data.dag_weight.sum().item() == 5.0
+    assert paths.get_walk(0) == ('a', 'b', 'c')
+
+    # write sample ngram with weights
+    test_path = tmp_path / 'test_weights.ngram'
+    with open(test_path, 'w') as f:
+        f.writelines(['a,b,c,2\n', 'a,b,4\n', 'x,y,6\n', 'x,8\n', 'a,x,z,14\n'])
+
+    paths = read_csv_path_data(path_or_buf=test_path, sep=',', weight=True)
+    assert paths.num_paths == 5
+    assert paths.data.dag_weight.sum().item() == 34.0
+    assert paths.get_walk(0) == ('a', 'b', 'c')
