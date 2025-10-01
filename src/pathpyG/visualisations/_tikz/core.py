@@ -52,20 +52,30 @@ class TikzPlot(PathPyPlot):
             shutil.copy(temp_file, filename)
             # remove the temporal directory
             shutil.rmtree(temp_dir)
-
+        elif filename.endswith("svg"):
+            # compile temporary svg
+            temp_file, temp_dir = self.compile_svg()
+            # Copy a file with new name
+            shutil.copy(temp_file, filename)
+            # remove the temporal directory
+            shutil.rmtree(temp_dir)
         else:
             raise NotImplementedError
 
     def show(self, **kwargs: Any) -> None:
         """Show the plot on the device."""
         # compile temporary pdf
-        temp_file, temp_dir = self.compile_pdf()
+        temp_file, temp_dir = self.compile_svg()
 
         if config["environment"]["interactive"]:
-            from IPython.display import IFrame, display
+            from IPython.display import SVG, display
 
-            # open the file in the notebook
-            display(IFrame(temp_file, width=600, height=300))
+            # open the file, read the content and display it
+            # workaround because it is not possible to embed files in vs code
+            # https://github.com/microsoft/vscode-jupyter/discussions/13769
+            with open(temp_file, "r") as svg_file:
+                svg = SVG(svg_file.read())
+            display(svg)
         else:
             # open the file in the webbrowser
             webbrowser.open(r"file:///" + temp_file)
@@ -76,21 +86,44 @@ class TikzPlot(PathPyPlot):
         # remove the temporal directory
         shutil.rmtree(temp_dir)
 
+    def compile_svg(self) -> tuple:
+        """Compile svg from tex."""
+        temp_dir, current_dir, basename = self.prepare_compile()
+
+        # latex compiler
+        command = [
+            "latexmk",
+            "--interaction=nonstopmode",
+            basename + ".tex",
+        ]
+        try:
+            subprocess.check_output(command, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            logger.error("latexmk compiler failed with output:\n%s", e.output.decode())
+            raise AttributeError from e
+        
+        # dvisvgm command
+        command = [
+            "dvisvgm",
+            basename + ".dvi",
+            "-o",
+            basename + ".svg",
+        ]
+        try:
+            subprocess.check_output(command, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            logger.error("dvisvgm command failed with output:\n%s", e.output.decode())
+            raise AttributeError from e
+        finally:
+            # change back to the current directory
+            os.chdir(current_dir)
+
+        # return the name of the folder and temp svg file
+        return os.path.join(temp_dir, basename + ".svg"), temp_dir
+
     def compile_pdf(self) -> tuple:
         """Compile pdf from tex."""
-        # basename
-        basename = "default"
-        # get current directory
-        current_dir = os.getcwd()
-
-        # get temporal directory
-        temp_dir = tempfile.mkdtemp()
-
-        # change to output dir
-        os.chdir(temp_dir)
-
-        # save the tex file
-        self.save(basename + ".tex")
+        temp_dir, current_dir, basename = self.prepare_compile()
 
         # latex compiler
         command = [
@@ -105,13 +138,30 @@ class TikzPlot(PathPyPlot):
             subprocess.check_output(command, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             logger.error("latexmk compiler failed with output:\n%s", e.output.decode())
-            raise AttributeError
+            raise AttributeError from e
         finally:
             # change back to the current directory
             os.chdir(current_dir)
 
         # return the name of the folder and temp pdf file
-        return (os.path.join(temp_dir, basename + ".pdf"), temp_dir)
+        return os.path.join(temp_dir, basename + ".pdf"), temp_dir
+
+    def prepare_compile(self) -> tuple[str, str, str]:
+        """Prepare compilation of tex to pdf or svg by saving the tex file."""
+        # basename
+        basename = "default"
+        # get current directory
+        current_dir = os.getcwd()
+
+        # get temporal directory
+        temp_dir = tempfile.mkdtemp()
+
+        # change to output dir
+        os.chdir(temp_dir)
+
+        # save the tex file
+        self.save(basename + ".tex")
+        return temp_dir, current_dir, basename
 
     def to_tex(self) -> str:
         """Convert data to tex."""
@@ -131,8 +181,8 @@ class TikzPlot(PathPyPlot):
         # fill template with data
         tex = Template(tex_template).substitute(
             classoptions=self.config.get("latex_class_options", ""),
-            width=self.config.get("width", "6cm"),
-            height=self.config.get("height", "6cm"),
+            width=self.config.get("width", "12cm"),
+            height=self.config.get("height", "12cm"),
             tikz=data,
         )
 

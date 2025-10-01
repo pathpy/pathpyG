@@ -28,6 +28,7 @@ FORMATS: dict = {
     ".html": "d3js",
     ".tex": "tikz",
     ".pdf": "tikz",
+    ".svg": "tikz",
     ".png": "matplotlib",
     ".mp4": "manim",
     ".gif": "manim",
