@@ -37,5 +37,11 @@
 		"all"
 	],
 	// Install pathpyG as editable python package
-	"postCreateCommand": "pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG"
+	"postCreateCommand": "pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG && xargs -a latex-packages.txt tlmgr install",
+	"features": {
+		"ghcr.io/prulloac/devcontainer-features/latex:1": {
+			"scheme": "minimal",
+			"mirror": "https://mirror.ctan.org/systems/texlive/tlnet/"
+		}
+	}
 }
