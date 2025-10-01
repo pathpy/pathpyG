@@ -547,7 +547,8 @@ def read_csv_temporal_graph(
     return df_to_temporal_graph(df, timestamp_format=timestamp_format, time_rescale=time_rescale, **kwargs)
 
 
-def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, **pdargs: Any) -> None:
+def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, 
+              path_or_buf: Any = None, **pdargs: Any) -> None:
     """Store all edges including edge attributes in a csv file.
 
     This method stores a `Graph` or `TemporalGraph` as a `.csv` file. The csv file
@@ -559,10 +560,11 @@ def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, **
     Args:
         graph: The graph to export as pandas DataFrame
         node_indices: whether nodes should be exported as integer indices
+        path_or_buf: String, path, or file-like object (see documentation of `pandas.DaatFrame.to_csv`)
         **pdargs: Additional keyword arguments passed to `pandas.DataFrame.to_csv`.
     """
     if isinstance(graph, TemporalGraph):
         frame = temporal_graph_to_df(graph=graph, node_indices=node_indices)
     else:
         frame = graph_to_df(graph=graph, node_indices=node_indices)
-    frame.to_csv(index=False, **pdargs)
+    frame.to_csv(index=False, path_or_buf=path_or_buf, **pdargs)
