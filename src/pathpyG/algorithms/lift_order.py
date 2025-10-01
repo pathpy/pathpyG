@@ -45,7 +45,7 @@ def aggregate_node_attributes(
     return aggr_attributes
 
 
-def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int) -> torch.Tensor:
+def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int | None = None) -> torch.Tensor:
     """Line graph transformation.
 
     Do a line graph transformation on the edge index to lift the order of the graph by one.
@@ -53,11 +53,15 @@ def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int) -> torch.Ten
 
     Args:
         edge_index: A **sorted** edge index tensor of shape (2, num_edges).
-        num_nodes: The number of nodes in the graph.
+        num_nodes: The number of nodes in the graph. If not given,
+            it will be inferred from the edge index (maximum node index + 1).
 
     Returns:
         The edge index of the lifted (line) graph.
     """
+    if num_nodes is None:
+        num_nodes = int(edge_index.max()) + 1
+
     outdegree = degree(edge_index[0], dtype=torch.long, num_nodes=num_nodes)
     # Map outdegree to each destination node to create an edge for each combination
     # of incoming and outgoing edges for each destination node
@@ -77,7 +81,7 @@ def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int) -> torch.Ten
 
 
 def lift_order_edge_index_weighted(
-    edge_index: torch.Tensor, edge_weight: torch.Tensor, num_nodes: int, aggr: str = "src"
+    edge_index: torch.Tensor, edge_weight: torch.Tensor, num_nodes: int | None = None, aggr: str = "src"
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Weighted line graph transformation.
 
@@ -94,6 +98,9 @@ def lift_order_edge_index_weighted(
     Returns:
         A tuple containing the edge index of the lifted (line) graph and the aggregated edge weights.
     """
+    if num_nodes is None:
+        num_nodes = int(edge_index.max()) + 1
+
     ho_index = lift_order_edge_index(edge_index, num_nodes)
     ho_edge_weight = aggregate_node_attributes(ho_index, edge_weight, aggr)
 

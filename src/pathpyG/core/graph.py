@@ -127,6 +127,8 @@ class Graph:
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
+            if mapping is not None and mapping.num_ids() != num_nodes:
+                raise ValueError("Number of node IDs in mapping must match num_nodes")
             d = Data(edge_index=edge_index, num_nodes=num_nodes)
         return Graph(d, mapping=mapping)
 
