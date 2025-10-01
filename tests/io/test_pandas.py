@@ -200,7 +200,7 @@ def test_df_to_graph():
     )
     g = df_to_graph(df_graph_with_string_attr, is_undirected=True)
     assert g.n == 3
-    assert g.m == 6
+    assert g.m == 3
 
 
 def test_add_node_attributes_by_name(simple_graph):

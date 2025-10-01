@@ -73,7 +73,7 @@ def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
 
     Args:
         n: the number of nodes of the graph
-        m: the number of random edges to be generated
+        m: the number of random directed or undirected edges to be generated
         mapping: optional given mapping of n nodes to node IDs. If this is not given a mapping is created
         self_loops: whether or not to allow self-loops (v,v) to be generated
         multi_edges: whether or not multiple identical edges are allowed
@@ -126,12 +126,8 @@ def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edge
         r = pp.algorithms.generative_models.G_nm_randomize(g)
     ```
     """
-    if graph.is_undirected():
-        m = int(graph.m / 2)
-    else:
-        m = graph.m
     return erdos_renyi_gnm(
-        graph.n, m, directed=graph.is_directed(),
+        graph.n, graph.m, directed=graph.is_directed(),
         self_loops=self_loops,
         multi_edges=multi_edges,
         mapping=graph.mapping
@@ -183,31 +179,28 @@ def erdos_renyi_gnp_randomize(graph: Graph, self_loops: bool = False) -> Graph:
     The number of nodes, expected number of edges, edge directedness and node uids of the
     generated graph match the corresponding values of the graph given as parameter.
     """
-    if graph.is_directed():
-        m = graph.m
-    else:
-        m = int(graph.m / 2)
     M = max_edges(graph.n, directed=graph.is_directed(), self_loops=self_loops)
-    p = m / M
+    p = graph.m / M
     return erdos_renyi_gnp(n=graph.n, p=p, directed=graph.is_directed(), 
                            self_loops=self_loops, mapping=graph.mapping)
 
 
 def erdos_renyi_gnp_likelihood(p: float, graph: Graph) -> float:
     """Calculate the likelihood of parameter p for a G(n,p) model and a given graph"""
-    assert graph.is_directed is False
-    return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m / 2)
+    assert graph.is_directed() is False
+    return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m)
 
 
 def erdos_renyi_gnp_log_likelihood(p: float, graph: Graph) -> float:
     """Calculate the log-likelihood of parameter p for a G(n,p) model and a given graph"""
-    return (graph.m / 2) * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m / 2)) * _np.log10(1 - p)
+    assert graph.is_directed() is False
+    return graph.m * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m)) * _np.log10(1 - p)
 
 
 def erdos_renyi_gnp_mle(graph: Graph) -> float:
     """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given undirected graph"""
     assert graph.is_directed() is False
-    return (graph.m / 2) / scipy.special.binom(graph.n, 2)
+    return graph.m / scipy.special.binom(graph.n, 2)
 
 
 def watts_strogatz(
