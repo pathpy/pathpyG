@@ -15,4 +15,4 @@ RUN pip install torch_geometric>=2.5.0
 RUN pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
 
 # install pathpy
-RUN pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG
+RUN pip install -e '.[dev,test,doc,vis]'
