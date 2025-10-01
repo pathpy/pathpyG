@@ -601,12 +601,19 @@ class Graph:
         """
         Return number of edges.
 
-        Returns the number of edges in the graph. For an undirected graph, the number of directed edges is returned.
+        Returns the number of edges in the graph. For an undirected graph, the number of 
+        undirected edges (accounting for self-loops) is returned, i.e. in an undirected
+        graph the directed edges (a,b) and (b,a) will be counted only once.
 
         Returns:
             int: number of edges in the graph
         """
-        return self.data.num_edges  # type: ignore
+        if self.is_directed():
+            return self.data.num_edges  # type: ignore
+        else:
+            num_self_loops = (self.data.edge_index[0] == self.data.edge_index[1]).sum().item()
+            num_edges_wo_self_loops = self.data.edge_index.size(1) - int(num_self_loops)
+            return int(num_edges_wo_self_loops/2 + num_self_loops) # type: ignore
 
     @property
     def order(self) -> int:
@@ -741,7 +748,7 @@ class Graph:
         from pprint import pformat
 
         if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} (directed) edges\n".format(self.n, self.m)
+            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.n, self.m)
         else:
             s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
 

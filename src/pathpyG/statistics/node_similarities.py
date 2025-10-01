@@ -69,11 +69,8 @@ def katz_index(graph: Graph, v, w, beta) -> float:
 def LeichtHolmeNewman_index(graph: Graph, v, w, alpha) -> float:
     A = graph.sparse_adj_matrix()
     ev = _sp.sparse.linalg.eigs(A, which="LM", k=2, return_eigenvectors=False)
-    if graph.is_directed():
-        m = graph.m
-    else:
-        m = graph.m / 2
     eigenvalues_sorted = _np.sort(_np.absolute(ev))
+    m = graph.m
     lambda_1 = eigenvalues_sorted[1]
     D = _sp.sparse.diags(degree_sequence(graph)).tocsc()
     I = _sp.sparse.identity(graph.n).tocsc()
