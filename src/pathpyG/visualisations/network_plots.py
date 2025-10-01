@@ -412,6 +412,7 @@ class TemporalNetworkPlot(NetworkPlot):
     """Network plot class for a temporal network."""
 
     _kind = "temporal"
+    network: TemporalGraph
 
     def __init__(self, network: TemporalGraph, **kwargs: Any) -> None:
         """Initialize network plot class."""
@@ -419,8 +420,7 @@ class TemporalNetworkPlot(NetworkPlot):
 
     def _get_edge_data(self, edges: dict, attributes: set, attr: defaultdict, categories: set) -> None:
         """Extract edge data from temporal network."""
-        # TODO: Fix typing issue with temporal graphs
-        for u, v, t in self.network.temporal_edges:  # type: ignore
+        for u, v, t in self.network.temporal_edges:
             uid = f"{u}-{v}-{t}"
             edges[uid] = {
                 "uid": uid,

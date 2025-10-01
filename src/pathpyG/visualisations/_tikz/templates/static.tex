@@ -1,10 +1,13 @@
 \documentclass[$classoptions]{standalone}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{tikz-network}
+\newcommand{\width}{$width}
+\newcommand{\height}{$height}
 \begin{document}
 \begin{tikzpicture}
 \tikzset{every node}=[font=\sffamily\bfseries]
-\clip (0,0) rectangle ($width,$height);
+\clip (-0.5*\width,-0.5*\height) rectangle (0.5*\width,0.5*\height);
+\draw[draw,opacity=0] (-0.5*\width,-0.5*\height) rectangle (0.5*\width,0.5*\height);
 $tikz
 \end{tikzpicture}
 \end{document}

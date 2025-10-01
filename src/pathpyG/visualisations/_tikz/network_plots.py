@@ -32,12 +32,10 @@ class NetworkPlot(TikzPlot):
         super().__init__()
         self.data = data
         self.config = kwargs
-        self.config["width"] = self.config.pop("width", 6)
-        self.config["height"] = self.config.pop("height", 6)
         self.generate()
 
     def generate(self) -> None:
-        """Clen up data."""
+        """Clean up data."""
         self._compute_node_data()
         self._compute_edge_data()
         self._update_layout()

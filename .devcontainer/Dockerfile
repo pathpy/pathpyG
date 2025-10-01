@@ -6,6 +6,9 @@ RUN apt-get -y install git
 # For signed commits: https://code.visualstudio.com/remote/advancedcontainers/sharing-git-credentials#_sharing-gpg-keys
 RUN apt install gnupg2 -y
 
+# Install dependencies for .svg support in tikz
+RUN apt update && apt install -y ghostscript
+
 # Install dependencies for manim
 RUN apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
 

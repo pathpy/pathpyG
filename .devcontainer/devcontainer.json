@@ -37,5 +37,12 @@
 		"all"
 	],
 	// Install pathpyG as editable python package
-	"postCreateCommand": "pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG"
+	"postCreateCommand": "pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG",
+	"features": {
+		"ghcr.io/prulloac/devcontainer-features/latex:1": {
+			"scheme": "minimal",
+			"mirror": "https://mirror.ctan.org/systems/texlive/tlnet/",
+			"packages": "tikz-network,standalone,xcolor,xifthen,tools,ifmtarg,pgf,datatool,etoolbox,tracklang,amsmath,trimspaces,epstopdf-pkg,dvisvgm"
+		}
+	}
 }

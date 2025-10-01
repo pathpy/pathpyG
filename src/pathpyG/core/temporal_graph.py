@@ -89,8 +89,26 @@ class TemporalGraph(Graph):
         )
 
     @property
-    def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
-        """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
+    def temporal_edges(self) -> list:
+        """Return all temporal edges as a list of tuples (source, destination, timestamp).
+
+        Returns:
+            list: A list of tuples representing temporal edges in the format (source, destination, timestamp).
+
+        Examples:
+            Get the list of temporal edges:
+
+            >>> g = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)])
+            >>> print(g.temporal_edges)
+            [('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)]
+
+            Iterate over temporal edges:
+            >>> for edge in g.temporal_edges:
+            >>>     print(edge)
+            ('a', 'b', 1)
+            ('b', 'c', 2)
+            ('c', 'a', 3)
+        """
         return [(*self.mapping.to_ids(e), t.item()) for e, t in zip(self.data.edge_index.t(), self.data.time)]
     
     def to(self, device: torch.device) -> TemporalGraph:
