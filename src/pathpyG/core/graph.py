@@ -135,7 +135,6 @@ class Graph:
         edge_list: Iterable[Tuple[str, str]],
         is_undirected: bool = False,
         mapping: Optional[IndexMap] = None,
-        num_nodes: Optional[int] = None,
         device: Optional[torch.device] = None,
     ) -> Graph:
         """Generate a Graph based on an edge list.
@@ -148,7 +147,6 @@ class Graph:
             edge_list: Iterable of edges represented as tuples
             is_undirected: Whether the edge list contains all bidorectional edges
             mapping: optional mapping of string IDs to node indices
-            num_nodes: optional number of nodes (useful in case not all nodes have incident edges)
             device: optional torch device where tensors shall be stored
 
         Examples:
@@ -173,8 +171,7 @@ class Graph:
                 node_ids = np.sort(node_ids.astype(int)).astype(str)
             mapping = IndexMap(node_ids)
 
-        if num_nodes is None:
-            num_nodes = mapping.num_ids()
+        num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
             mapping.to_idxs(edge_list, device=device).T.contiguous(),

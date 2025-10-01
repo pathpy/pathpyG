@@ -35,4 +35,4 @@ def largest_connected_component(graph: Graph, connection="weak") -> Graph:
     for v, w in graph.edges:
         if labels[graph.mapping.to_idx(v)] == x and labels[graph.mapping.to_idx(w)] == x:
             C.append((v, w))
-    return Graph.from_edge_list(C, is_undirected=graph.is_undirected(), num_nodes=x_c)
+    return Graph.from_edge_list(C, is_undirected=graph.is_undirected())
