@@ -32,6 +32,11 @@ def test_from_edge_list():
     assert tgraph.start_time == 1
     assert tgraph.end_time == 9
     assert tgraph.data.edge_index.shape == (2, 4)
+    assert tgraph.data.time.dtype == torch.int64
+
+    tedges = [("a", "b", 1.0), ("b", "c", 5.0), ("c", "d", 9.0), ("c", "e", 9.0)]
+    tgraph = TemporalGraph.from_edge_list(tedges)
+    assert tgraph.data.time.dtype == torch.float64
 
 
 def test_N(long_temporal_graph):
@@ -67,8 +72,11 @@ def test_to_static_graph(long_temporal_graph):
 
     g = long_temporal_graph.to_static_graph(weighted=True)
     assert g.n == long_temporal_graph.n
-    assert g.data.edge_weight[0].item() == 2.0  # A -> B is two times in the temporal graph
-    assert g.data.edge_weight[1].item() == 1.0  # B -> C is one time in the temporal graph
+    print(g.data.edge_weight)
+    print(g.data.edge_index)
+    # Order changed due to sorting
+    assert g.data.edge_weight[2].item() == 2.0  # A -> B is two times in the temporal graph
+    assert g.data.edge_weight[0].item() == 1.0  # A -> C is one time in the temporal graph
 
 
 def test_to_undirected(long_temporal_graph):

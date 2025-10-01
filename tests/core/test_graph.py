@@ -10,7 +10,7 @@ from torch_geometric.edge_index import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.testing import get_random_edge_index
 
-from pathpyG import Graph, IndexMap
+from pathpyG import Graph, IndexMap, MultiOrderModel
 
 
 def test_init():
@@ -276,6 +276,21 @@ def test_laplacian(simple_graph):
     assert laplacian.data[5] == 0
 
 
+def test_add_operator_wo_indices():
+    g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), num_nodes=4)
+    g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), num_nodes=4)
+    g = g1 + g2
+    assert g.n == g1.n
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 2, 3]]))
+
+    g3 = Graph.from_edge_index(torch.IntTensor([[0, 2, 3], [2, 3, 4]]), num_nodes=5)
+    g = g1 + g2 + g3
+    assert g.n == 5
+    assert g.m == g1.m + g2.m + g3.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 0, 1, 1, 1, 1, 2, 3], [1, 1, 2, 2, 3, 2, 3, 3, 4]]))
+
+
 def test_add_operator_complete_overlap():
     # complete overlap
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
@@ -304,6 +319,53 @@ def test_add_operator_partial_overlap():
     assert g.n == 6
     assert g.m == g1.m + g2.m
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 4, 5]]))
+
+
+def test_add_with_node_attrs():
+    g1 = Graph.from_edge_index(
+        torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"])
+    )
+    g1["node_class"] = torch.tensor([[1], [2], [3], [4]])
+
+    g2 = Graph.from_edge_index(
+        torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "g", "h"])
+    )
+    g2["node_class"] = torch.tensor([[5], [6], [7], [8]])
+
+    g = g1 + g2
+    assert g.n == 6
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 4, 5]]))
+    assert torch.equal(g["node_class"], torch.tensor([[6], [8], [3], [4], [7], [8]]))
+
+
+def test_add_with_edge_attrs():
+    g1 = Graph.from_edge_index(
+        torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"])
+    )
+    g1["edge_weight"] = torch.tensor([[1], [2], [3]])
+
+    g2 = Graph.from_edge_index(
+        torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "g", "h"])
+    )
+    g2["edge_weight"] = torch.tensor([[4], [5], [6]])
+
+    g = g1 + g2
+    assert g.n == 6
+    assert g.m == g1.m + g2.m
+    assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 4, 5]]))
+    assert torch.equal(g["edge_weight"], torch.tensor([[1], [4], [2], [3], [5], [6]]))
+
+
+def test_higher_order_graph(simple_walks, simple_walks_2):
+    ho_g1 = MultiOrderModel.from_PathData(simple_walks, max_order=2).layers[2]
+    ho_g2 = MultiOrderModel.from_PathData(simple_walks_2, max_order=2).layers[2]
+    g = ho_g1 + ho_g2
+
+    assert g.n == 4
+    assert g.m == 4
+    assert (g.mapping.to_ids(g.data.inverse_idx[:ho_g1.data.inverse_idx.size(0)]) == ho_g1.mapping.to_ids(ho_g1.data.inverse_idx)).all()
+    assert (g.mapping.to_ids(g.data.inverse_idx[ho_g1.data.inverse_idx.size(0):]) == ho_g2.mapping.to_ids(ho_g2.data.inverse_idx)).all()
 
 
 def test_get_node_attr(simple_graph):

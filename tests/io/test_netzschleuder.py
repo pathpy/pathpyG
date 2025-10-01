@@ -32,54 +32,39 @@ def test_node_attrs():
 
 def test_edge_attrs():
     """Test the extraction of edge attributes"""
+    # Original edge list:
+    # source  target  weight
+    # 0       1       1
+    # 0       2       1
+    # 0       3       1
+    # 0       8       1
+    # 0       9       1
+    # 0      11       1
+    # 1       2       1
+    # 1       8       1
+    # 1      11       1
+    # 2       4       3
+    # 2       5       3
+    # 2       8       1
+    # 2       9       1
+    # 2      11       1
+    # 4       5       3
+    # 4      14       1
+    # 5      14       2
+    # 8      11       1
+    # 11      12       3
+
     g = read_netzschleuder_graph("ambassador", "1985_1989", multiedges=True)
     assert "edge_weight" in g.edge_attrs()
-    print(g.data.edge_weight)
-    assert torch.equal(
-        g.data.edge_weight,
-        torch.tensor(
-            [
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                3,
-                1,
-                1,
-                1,
-                3,
-                1,
-                3,
-                3,
-                1,
-                1,
-                3,
-                2,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                3,
-                1,
-                3,
-                3,
-                1,
-                2,
-            ]
-        ),
-    )
+    sources = torch.tensor([0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 4, 4, 5, 8, 11])
+    targets = torch.tensor([1, 2, 3, 8, 9, 11, 2, 8, 11, 4, 5, 8, 9, 11, 5, 14, 14, 11, 12])
+    weights = torch.tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 3, 1, 2, 1, 3])
+
+    for source, target, weight in zip(sources, targets, weights):
+        edge = g.mapping.to_idxs([source, target])
+        # find edge in edge_index tensor
+        mask = (g.data.edge_index[0] == edge[0]) & (g.data.edge_index[1] == edge[1])
+        assert (g.data.edge_weight[mask] == weight).all()
 
 
 def test_graph_attrs():

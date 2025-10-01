@@ -8,7 +8,6 @@ graph neural networks.
 Example:
     ```py
     import pathpyG as pp
-    pp.config['torch']['device'] = 'cuda'
 
     # Generate toy example temporal graph
     g = pp.TemporalGraph.from_edge_list([
@@ -18,7 +17,9 @@ Example:
         ('d', 'a', 4),
         ('b', 'd', 2),
         ('d', 'a', 6),
-        ('a', 'b', 7)])
+        ('a', 'b', 7)],
+        device='cuda'
+    )
 
     # Create Multi-Order model that models time-respecting paths
     m = pp.MultiOrderModel.from_temporal_graph(g, delta=1, max_order=3)

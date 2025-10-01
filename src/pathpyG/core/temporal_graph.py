@@ -18,8 +18,8 @@ class TemporalGraph(Graph):
         """Creates an instance of a temporal graph from a `TemporalData` object.
 
         Args:
-            data: xxx
-            mapping: xxx
+            data: PyG `Data` object containing edges saved in `edge_index` and timestamps in `time`.
+            mapping: Optional mapping from node IDs to indices.
 
         Example:
             ```py
@@ -44,7 +44,7 @@ class TemporalGraph(Graph):
             if edge_attr == "edge_index":
                 self.data.edge_index = self.data.edge_index[:, sorted_idx]
             else:
-                data[edge_attr] = data[edge_attr][sorted_idx]
+                self.data[edge_attr] = self.data[edge_attr][sorted_idx]
 
         if mapping is not None:
             self.mapping = mapping
@@ -63,18 +63,18 @@ class TemporalGraph(Graph):
         self.end_time = self.data.time[-1].item()
 
     @staticmethod
-    def from_edge_list(edge_list, num_nodes: Optional[int] = None) -> TemporalGraph:  # type: ignore
+    def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore
         """Create a temporal graph from a list of tuples containing edges with timestamps."""
         edge_array = np.array(edge_list)
 
         # Convert timestamps to tensor
         if isinstance(edge_list[0][2], int):
-            ts = torch.tensor(edge_array[:, 2].astype(np.long))
+            ts = torch.tensor(edge_array[:, 2].astype(np.int_), device=device)
         else:
-            ts = torch.tensor(edge_array[:, 2].astype(np.double))
+            ts = torch.tensor(edge_array[:, 2].astype(np.double), device=device)
 
         index_map = IndexMap(np.unique(edge_array[:, :2]))
-        edge_index = index_map.to_idxs(edge_array[:, :2].T)
+        edge_index = index_map.to_idxs(edge_array[:, :2].T, device=device)
 
         if not num_nodes:
             num_nodes = index_map.num_ids()
@@ -92,6 +92,25 @@ class TemporalGraph(Graph):
     def temporal_edges(self) -> Generator[Tuple[int, int, int], None, None]:
         """Iterator that yields each edge as a tuple of source and destination node as well as the corresponding timestamp."""
         return [(*self.mapping.to_ids(e), t.item()) for e, t in zip(self.data.edge_index.t(), self.data.time)]
+    
+    def to(self, device: torch.device) -> TemporalGraph:
+        """Moves all graph data to the specified device (CPU or GPU).
+
+        Args:
+            device: The target device to move the graph data to.
+
+        Returns:
+            TemporalGraph: A new TemporalGraph instance with data on the specified device.
+        """
+        self.data.edge_index = self.data.edge_index.to(device)
+        self.data.time = self.data.time.to(device)
+        for attr in self.node_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+        for attr in self.edge_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+        return self
 
     @property
     def order(self) -> int:

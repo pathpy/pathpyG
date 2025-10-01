@@ -38,17 +38,17 @@ class PathData:
         PathData with 2 paths with total weight 4.0
     """
 
-    def __init__(self, mapping: IndexMap | None = None) -> None:
+    def __init__(self, mapping: IndexMap | None = None, device: torch.device | None = None) -> None:
         if mapping:
             self.mapping = mapping
         else:
             self.mapping = IndexMap()
         self.data: Data = Data(
-            edge_index=torch.empty((2, 0), dtype=torch.long),
-            node_sequence=torch.empty((0, 1), dtype=torch.long),
-            dag_weight=torch.empty(0, dtype=torch.float),
-            dag_num_edges=torch.empty(0, dtype=torch.long),
-            dag_num_nodes=torch.empty(0, dtype=torch.long),
+            edge_index=torch.empty((2, 0), dtype=torch.long, device=device),
+            node_sequence=torch.empty((0, 1), dtype=torch.long, device=device),
+            dag_weight=torch.empty(0, dtype=torch.float, device=device),
+            dag_num_edges=torch.empty(0, dtype=torch.long, device=device),
+            dag_num_nodes=torch.empty(0, dtype=torch.long, device=device),
         )
         self.data.num_nodes = 0
 
@@ -84,6 +84,11 @@ class PathData:
         self.data.dag_num_nodes = torch.cat([self.data.dag_num_nodes, num_nodes])
         self.data.num_nodes += num_nodes.sum().item()
 
+    def to(self, device: torch.device) -> PathData:
+        """Moves all paths to the given device."""
+        self.data = self.data.to(device)
+        return self
+
     def append_walk(self, node_seq: list | tuple, weight: float = 1.0) -> None:
         """Add an observation of a walk based on a list or tuple of node IDs or indices
 
@@ -98,7 +103,7 @@ class PathData:
             >>> walks.append_walk(('a', 'c', 'd'), weight=2.0)
             >>> paths.append_walk(('b', 'c', 'e'), weight=1.0)
         """
-        idx_seq = self.mapping.to_idxs(node_seq).unsqueeze(1)
+        idx_seq = self.mapping.to_idxs(node_seq, device=self.data.edge_index.device).unsqueeze(1)
         idx = torch.arange(len(node_seq), device=self.data.edge_index.device)
         edge_index = torch.stack([idx[:-1], idx[1:]])
 
@@ -123,7 +128,7 @@ class PathData:
             >>> walks = pp.PathData(mapping)
             >>> walks.append_walks([['a', 'c', 'd'], ['b', 'c', 'e']], [2.0, 1.0])
         """
-        idx_seqs = torch.cat([self.mapping.to_idxs(seq) for seq in node_seqs]).unsqueeze(1)
+        idx_seqs = torch.cat([self.mapping.to_idxs(seq, device=self.data.edge_index.device) for seq in node_seqs]).unsqueeze(1)
         dag_num_nodes = torch.tensor([len(seq) for seq in node_seqs], device=self.data.edge_index.device)
 
         big_idx = torch.arange(dag_num_nodes.sum(), device=self.data.edge_index.device)
@@ -135,12 +140,10 @@ class PathData:
         mask[cum_sum[1:-1] - 1] = False
         big_edge_index = big_edge_index[:, mask]
 
-        weights = torch.Tensor(weights, device=self.data.edge_index.device)
-
         self._append_data(
             edge_index=big_edge_index,
             node_sequence=idx_seqs,
-            weights=weights,
+            weights=torch.tensor(weights, device=self.data.edge_index.device),
             num_edges=dag_num_nodes - 1,
             num_nodes=dag_num_nodes,
         )
@@ -176,21 +179,3 @@ class PathData:
         s = f"PathData with {self.num_paths} paths with total weight {weight}"
         return s
 
-    @staticmethod
-    def from_ngram(file: str, sep: str = ",", weight: bool = True) -> PathData:
-        with open(file, "r", encoding="utf-8") as f:
-            if weight:
-                paths_and_weights = [line.split(sep) for line in f]
-                paths = [path[:-1] for path in paths_and_weights]
-                weights = [float(path[-1]) for path in paths_and_weights]
-            else:
-                paths = [line.split(sep) for line in f]
-                weights = [1.0] * len(paths)
-
-        mapping = IndexMap()
-        mapping.add_ids(np.unique(np.hstack(paths)))
-
-        pathdata = PathData(mapping)
-        pathdata.append_walks(node_seqs=paths, weights=weights)
-
-        return pathdata

@@ -6,9 +6,8 @@ calculate (temporal) and higher-order graph metrics like centralities.
 
 Example:
     ```py
-    # Import pathpyG and configure your torch device if you want to use GPU acceleration.
+    # Import pathpyG
     import pathpyG as pp
-    pp.config['torch']['device'] = 'cuda'
 
     # Generate toy example for temporal graph
     g = pp.TemporalGraph.from_edge_list([
@@ -19,7 +18,7 @@ Example:
         ('b', 'd', 2),
         ('d', 'a', 6),
         ('a', 'b', 7)
-    ])    
+    ])
 
     bw_t = pp.algorithms.temporal_betweenness_centrality(g, delta=1)
     cl_t = pp.algorithms.temporal_closeness_centrality(g, delta=1)

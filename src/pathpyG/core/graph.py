@@ -60,7 +60,7 @@ class Graph:
             self.mapping = mapping
 
         # set num_nodes property
-        if "num_nodes" not in data:
+        if "num_nodes" not in data and "edge_index" in data:
             data.num_nodes = data.edge_index.max().item() + 1
 
         # turn edge index tensor into EdgeIndex object
@@ -73,11 +73,14 @@ class Graph:
         ):
             raise Exception("sparse size of EdgeIndex should match number of nodes!")
 
-        # sort EdgeIndex and validate
-        data.edge_index = data.edge_index.sort_by("row").values
-        data.edge_index.validate()
-
         self.data = data
+
+        # sort EdgeIndex and validate
+        data.edge_index, sorted_idx = data.edge_index.sort_by("row")
+        for edge_attr in self.edge_attrs():
+            data[edge_attr] = self.data[edge_attr][sorted_idx]
+
+        data.edge_index.validate()
 
         # create mapping between edge tuples and edge indices
         self.edge_to_index = {
@@ -134,6 +137,7 @@ class Graph:
         edge_list: Iterable[Tuple[str, str]],
         is_undirected: bool = False,
         mapping: Optional[IndexMap] = None,
+        device: Optional[torch.device] = None,
     ) -> Graph:
         """Generate a Graph based on an edge list.
 
@@ -143,8 +147,9 @@ class Graph:
 
         Args:
             edge_list: Iterable of edges represented as tuples
-            is_undirected: Whether the edge list contains all bidirectional edges
-            mapping: Optional mapping of string IDs to node indices
+            is_undirected: Whether the edge list contains all bidorectional edges
+            mapping: optional mapping of string IDs to node indices
+            device: optional torch device where tensors shall be stored
 
         Examples:
             >>> import pathpyG as pp
@@ -156,7 +161,10 @@ class Graph:
 
         # handle empty graph
         if len(edge_list) == 0:
-            return Graph(Data(edge_index=torch.tensor([[], []], dtype=torch.int32), num_nodes=0), mapping=IndexMap())
+            return Graph(
+                Data(edge_index=torch.tensor([[], []], dtype=torch.int32, device=device), num_nodes=0),
+                mapping=IndexMap(),
+            )
 
         if mapping is None:
             edge_array = np.array(edge_list)
@@ -168,7 +176,7 @@ class Graph:
         num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
-            mapping.to_idxs(edge_list).T.contiguous(),
+            mapping.to_idxs(edge_list, device=device).T.contiguous(),
             sparse_size=(num_nodes, num_nodes),
             is_undirected=is_undirected,
         )
@@ -187,7 +195,7 @@ class Graph:
             >>> print(g_u)
             Undirected graph with 3 nodes and 6 (directed) edges
         """
-        # create undirected edge index by coalescing the directed edges and keep 
+        # create undirected edge index by coalescing the directed edges and keep
         # track of the original edge index for the edge attributes
         attr_idx = torch.arange(self.data.num_edges, device=self.data.edge_index.device)
         edge_index, attr_idx = to_undirected(
@@ -198,8 +206,10 @@ class Graph:
         )
 
         data = Data(
-            edge_index=EdgeIndex(data=edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True),
-            num_nodes=self.data.num_nodes
+            edge_index=EdgeIndex(
+                data=edge_index, sparse_size=(self.data.num_nodes, self.data.num_nodes), is_undirected=True
+            ),
+            num_nodes=self.data.num_nodes,
         )
         # Note that while the torch_geometric.transforms.ToUndirected function would do this automatically,
         # we do it manually since the transform cannot handle numpy arrays as edge attributes.
@@ -227,6 +237,31 @@ class Graph:
             self.data.edge_index.as_tensor(), torch.ones(self.m, device=self.data.edge_index.device)
         )
         return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
+
+    def to(self, device: torch.device) -> Graph:
+        """Move all tensors to the given device.
+        
+        Args:
+            device: torch device to which all tensors shall be moved
+
+        Returns:
+            Graph: self
+        """
+        self.data.edge_index = self.data.edge_index.to(device)
+        self.data.node_sequence = self.data.node_sequence.to(device)
+        for attr in self.node_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+        for attr in self.edge_attrs():
+            if isinstance(self.data[attr], torch.Tensor):
+                self.data[attr] = self.data[attr].to(device)
+
+        self.row = self.row.to(device)
+        self.row_ptr = self.row_ptr.to(device)
+        self.col = self.col.to(device)
+        self.col_ptr = self.col_ptr.to(device)
+
+        return self
 
     def node_attrs(self) -> List[str]:
         """
@@ -448,7 +483,7 @@ class Graph:
         Returns:
             tensor: Weighted outdegrees of nodes.
         """
-        edge_weight = getattr(self.data, 'edge_weight', None)
+        edge_weight = getattr(self.data, "edge_weight", None)
         if edge_weight is None:
             edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
         weighted_outdegree = scatter(
@@ -465,7 +500,7 @@ class Graph:
         """
         weighted_outdegree = self.weighted_outdegrees()
         source_ids = self.data.edge_index[0]
-        edge_weight = getattr(self.data, 'edge_weight', None)
+        edge_weight = getattr(self.data, "edge_weight", None)
         if edge_weight is None:
             edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
         return edge_weight / weighted_outdegree[source_ids]
@@ -607,16 +642,21 @@ class Graph:
         """
         return self.data.has_self_loops()
 
-    def __add__(self, other: Graph) -> Graph:
+    def __add__(self, other: Graph, reduce: str = "sum") -> Graph:
         """Combine Graph object with other Graph object.
 
         The semantics of this operation depends on the optional IndexMap
         of both graphs. If no IndexMap is included, the two underlying data objects
         are concatenated, thus merging edges from both graphs while leaving node indices
         unchanged. If both graphs include IndexMaps that assign node IDs to indices,
-        indiced will be adjusted, creating a new mapping for the union of node Ids in both graphs.
+        indices will be adjusted, creating a new mapping for the union of node Ids in both graphs.
 
         Node IDs of graphs to be combined can be disjoint, partly overlapping or non-overlapping.
+
+        Args:
+            other: Other graph to be combined with this graph
+            reduce: Reduction method for node attributes of nodes that are present in both graphs.
+                Can be one of "sum", "mean", "mul", "min", "max". Default is "sum".
 
         Examples:
             Adding two graphs without node IDs:
@@ -647,47 +687,43 @@ class Graph:
             >>> print(g1 + g2)
             Graph with 5 nodes and 4 edges
         """
-
-        if self.order > 1:
-            raise NotImplementedError("Add operator can only be applied to order 1 graphs")
-
         d1 = self.data.clone()
         m1 = self.mapping
 
         d2 = other.data.clone()
         m2 = other.mapping
 
-        # compute overlap and additional nodes in g2 over g1
-        overlap = set(m2.node_ids).intersection(m1.node_ids)
-        additional_nodes = set(m2.node_ids).difference(m1.node_ids)
+        nodes = np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))])
+        mapping = IndexMap(np.unique(nodes, axis=0).tolist())
+        d1.edge_index = mapping.to_idxs(m1.to_ids(d1.edge_index), device=d1.edge_index.device)
+        d2.edge_index = mapping.to_idxs(m2.to_ids(d2.edge_index), device=d2.edge_index.device)
 
-        d2_idx_translation = {}
-        node_ids = [""] * (self.n + len(additional_nodes))
-        # keep mappings of nodes in g1
-        for v in m1.node_ids:
-            node_ids[m1.to_idx(v)] = v
-        for v in m2.node_ids:
-            d2_idx_translation[m2.to_idx(v)] = m2.to_idx(v)
-        # for overlapping node IDs we must correct node indices in m2
-        for v in overlap:
-            d2_idx_translation[m2.to_idx(v)] = m1.to_idx(v)
-        # add mapping for nodes in g2 that are not in g1 and correct indices in g2
-        for v in additional_nodes:
-            new_idx = m2.to_idx(v) + self.n - len(overlap)
-            node_ids[new_idx] = v
-            d2_idx_translation[m2.to_idx(v)] = new_idx
-        # apply index translation to d2
-        # fast dictionary based mapping using torch
-        palette, key = zip(*d2_idx_translation.items())
-        key = torch.tensor(key)
-        palette = torch.tensor(palette)
-
-        index = torch.bucketize(d2.edge_index.ravel(), palette)
-        d2.edge_index = key[index].reshape(d2.edge_index.shape)
         d = d1.concat(d2)
-        mapping = IndexMap(node_ids)
-        d.num_nodes = self.n + len(additional_nodes)
+        d.num_nodes = mapping.num_ids()
         d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
+        
+        # For higher-order graphs, we need to update the inverse_idx attribute
+        if "inverse_idx" in d:
+            d.inverse_idx = mapping.to_idxs(
+                np.concatenate([m1.to_ids(d1.inverse_idx), m2.to_ids(d2.inverse_idx)]),
+                device=d.inverse_idx.device,
+            )
+
+        # If both graphs contain node attributes, reduce them using the specified method
+        for k in d1.keys():
+            if k != "node_sequence" and k.startswith("node_"):
+                if isinstance(d[k], torch.Tensor):
+                    d[k] = torch_geometric.utils.scatter(
+                        d[k],
+                        mapping.to_idxs(
+                            np.concatenate([m1.to_ids(np.arange(self.n)), m2.to_ids(np.arange(other.n))]),
+                            device=d[k].device,
+                        ),
+                        dim_size=d.num_nodes,
+                        reduce=reduce,
+                    )
+                else:
+                    raise ValueError("Node attribute " + k + " is not a tensor and cannot be reduced.")
         return Graph(d, mapping=mapping)
 
     def __str__(self) -> str:

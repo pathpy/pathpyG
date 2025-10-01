@@ -10,4 +10,5 @@ from pathpyG.io.pandas import (
     add_edge_attributes,
     graph_to_df,
     temporal_graph_to_df,
+    read_csv_path_data
 )

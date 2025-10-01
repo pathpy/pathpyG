@@ -31,6 +31,18 @@ class MultiOrderModel:
         s = f"MultiOrderModel with max. order {max_order}"
         return s
 
+    def to(self, device: torch.device) -> MultiOrderModel:
+        """Convert the graph layers to the given device.
+
+        Args:
+            device: The device to convert the graph layers to.
+
+        Returns: The MultiOrderModel with graph layers on the given device.
+        """
+        for g in self.layers.values():
+            g.to(device)
+        return self
+
     @staticmethod
     def iterate_lift_order(
         edge_index: torch.Tensor,
@@ -72,11 +84,12 @@ class MultiOrderModel:
 
     @staticmethod
     def from_temporal_graph(
-        g: TemporalGraph, delta: float | int = 1,
+        g: TemporalGraph,
+        delta: float | int = 1,
         max_order: int = 1,
         weight: str = "edge_weight",
         cached: bool = True,
-        event_graph: torch.Tensor = None
+        event_graph: torch.Tensor = None,
     ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph.
 
@@ -86,7 +99,7 @@ class MultiOrderModel:
             max_order: The maximum order of the MultiOrderModel that should be computed.
             weight: The edge attribute to use as edge weight.
             cached: Whether to save the aggregated higher-order graphs smaller than max order in the MultiOrderModel.
-            event_graph: precomputed event graph edge index for given delta to be used for model generation. Useful to prevent the same event graph 
+            event_graph: precomputed event graph edge index for given delta to be used for model generation. Useful to prevent the same event graph
             from being computed twice.
 
         Returns:
@@ -253,7 +266,7 @@ class MultiOrderModel:
 
         elif assumption == "ngrams":
             for order in range(1, max_order + 1):
-                dof += (self.layers[1].data.num_nodes ** order) * (self.layers[1].data.num_nodes - 1)
+                dof += (self.layers[1].data.num_nodes**order) * (self.layers[1].data.num_nodes - 1)
         else:
             raise ValueError(
                 f"Unknown assumption {assumption} in input. The only accepted values are 'path' and 'ngram'"
@@ -309,12 +322,12 @@ class MultiOrderModel:
         # selecting only path that didn t shrink to zero due to higher-order transformation
         paths_lenghts_ho_filtered = paths_lenghts_ho[paths_lenghts_ho > 0]
         frequencies = frequencies[paths_lenghts_ho > 0]
-        # start index of the path in the higher order space 
+        # start index of the path in the higher order space
         ixs_start_paths_ho = cumsum(paths_lenghts_ho_filtered)[:-1]
 
         transition_probabilities = self.layers[order].transition_probabilities()[
             self.layers[order + 1].data.inverse_idx[ixs_start_paths_ho]
-            ]
+        ]
 
         log_transition_probabilities = torch.log(transition_probabilities)
         llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
@@ -476,13 +489,13 @@ class MultiOrderModel:
         if g.data.x is not None:
             x = g.data.x
         else:
-            x = torch.eye(num_nodes, num_nodes)
-        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes)
+            x = torch.eye(num_nodes, num_nodes, device=g.data.edge_index.device)
+        x_max_order = torch.eye(num_ho_nodes, num_ho_nodes, device=g_max_order.data.edge_index.device)
         edge_index = g.data.edge_index
         edge_index_max_order = g_max_order.data.edge_index
         edge_weight = g.data.edge_weight
         edge_weight_max_order = g_max_order.data.edge_weight
-        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping)
+        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping, device=edge_index.device)
 
         if g.data.y is not None:
             y = g.data.y

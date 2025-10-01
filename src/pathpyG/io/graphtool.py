@@ -257,7 +257,6 @@ def parse_graphtool_format(data: bytes, id_node_attr=None) -> Graph:
     for a in node_attr:
         if not a.startswith("node_"):
             # print(node_attr[a])
-            # g.data['node_{0}'.format(a)] = torch.tensor(node_attr[a], dtype=torch.float).to(config['torch']['device'])
             g.data["node_{0}".format(a)] = node_attr[a]
     for a in edge_attr:
         if not a.startswith("edge_"):
