@@ -28,7 +28,7 @@ logger = logging.getLogger("root")
 
 
 class TikzPlot(PathPyPlot):
-    """Base class for plotting d3js objects."""
+    """Base class for plotting tikz objects."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize plot class."""
@@ -83,20 +83,8 @@ class TikzPlot(PathPyPlot):
         # get current directory
         current_dir = os.getcwd()
 
-        # template directory
-        tikz_dir = str(
-            os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                os.path.normpath("templates"),
-                "tikz-network.sty",
-            )
-        )
-
         # get temporal directory
         temp_dir = tempfile.mkdtemp()
-
-        # copy tikz-network to temporal directory
-        shutil.copy(tikz_dir, temp_dir)
 
         # change to output dir
         os.chdir(temp_dir)
@@ -115,9 +103,8 @@ class TikzPlot(PathPyPlot):
 
         try:
             subprocess.check_output(command, stderr=subprocess.STDOUT)
-        except Exception:
-            # If compiler does not exist, try next in the list
-            logger.error("No latexmk compiler found")
+        except subprocess.CalledProcessError as e:
+            logger.error("latexmk compiler failed with output:\n%s", e.output.decode())
             raise AttributeError
         finally:
             # change back to the current directory
