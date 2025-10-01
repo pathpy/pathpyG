@@ -179,21 +179,3 @@ class PathData:
         s = f"PathData with {self.num_paths} paths with total weight {weight}"
         return s
 
-    @staticmethod
-    def from_ngram(file: str, sep: str = ",", weight: bool = True, device: Optional[torch.device] = None) -> PathData:
-        with open(file, "r", encoding="utf-8") as f:
-            if weight:
-                paths_and_weights = [line.split(sep) for line in f]
-                paths = [path[:-1] for path in paths_and_weights]
-                weights = [float(path[-1]) for path in paths_and_weights]
-            else:
-                paths = [line.split(sep) for line in f]
-                weights = [1.0] * len(paths)
-
-        mapping = IndexMap()
-        mapping.add_ids(np.unique(np.hstack(paths)))
-
-        pathdata = PathData(mapping, device)
-        pathdata.append_walks(node_seqs=paths, weights=weights)
-
-        return pathdata
