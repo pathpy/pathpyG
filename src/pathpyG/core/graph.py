@@ -485,7 +485,7 @@ class Graph:
         if return_tensor:
             return d
         else:
-            return {self.mapping.to_id(i): d[i].item() for i in range(self.n)}
+            return {str(self.mapping.to_id(i)): d[i].item() for i in range(self.n)}
 
     # def weighted_outdegrees(self) -> torch.Tensor:
     #     """
