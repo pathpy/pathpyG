@@ -476,7 +476,7 @@ class Graph:
             else:
                 edge_weight = getattr(self.data, edge_attr, None)
                 d = scatter(edge_weight, self.data.edge_index[1], dim=0, dim_size=self.data.num_nodes, reduce="sum")
-        elif mode == "out":
+        else:
             if not edge_attr:
                 d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
             else:
