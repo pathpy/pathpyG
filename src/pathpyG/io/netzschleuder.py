@@ -12,7 +12,6 @@ import pandas as pd
 
 from pathpyG.core.graph import Graph
 from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
-from pathpyG.io.graphtool import parse_graphtool_format
 from pathpyG.io.pandas import add_node_attributes
 
 
