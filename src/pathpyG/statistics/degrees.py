@@ -8,34 +8,17 @@ import numpy as _np
 
 
 def degree_sequence(g: Graph, mode: str = "total") -> _np.array:
-    """Calculates the degree sequence of an undirected network.
+    """Calculates the (unweighted) degree sequence of an undirected network.
 
     Args:
         graph: The `Graph` object for which degrees are calculated
     """
-    d = g.degrees()
-    if g.is_directed() and mode == "in":
-        d = g.in_degrees
-    elif g.is_directed() and mode == "out":
-        d = g.out_degrees
-    elif g.is_directed() and mode == "total":
-        d = g.degrees()
-
-    _degrees = _np.zeros(g.n, dtype=float)
-    for v in g.nodes:
-        _degrees[g.mapping.to_idx(v)] = d[v]
-    return _degrees
+    return g.degrees(mode, return_tensor=True).detach().numpy()
 
 
 def degree_distribution(g: Graph, mode: str = "total") -> Dict[int, float]:
-    """Calculates the degree distribution of a graph"""
-    d = g.degrees()
-    if g.is_directed() and mode == "in":
-        d = g.in_degrees
-    elif g.is_directed() and mode == "out":
-        d = g.out_degrees
-    elif g.is_directed() and mode == "total":
-        d = g.degrees()
+    """Calculates the (unweighted) degree distribution of a graph"""
+    d = g.degrees(mode, return_tensor=False)    
 
     cnt: defaultdict = defaultdict(float)
     for v in g.nodes:

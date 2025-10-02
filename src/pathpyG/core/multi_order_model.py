@@ -357,7 +357,7 @@ class MultiOrderModel:
 
         # Adding the likelihood of highest/stationary order
         if max_order > 0:
-            transition_probabilities = self.layers[max_order].transition_probabilities()
+            transition_probabilities = self.layers[max_order].transition_probabilities(edge_attr="edge_weight")
             log_transition_probabilities = torch.log(transition_probabilities)
             llh_by_subpath = log_transition_probabilities * self.layers[max_order].data.edge_weight
             llh += llh_by_subpath.sum().item()
