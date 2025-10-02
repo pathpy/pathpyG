@@ -17,7 +17,7 @@ classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 11.8",
 ]
 requires-python = ">=3.10" # We are using `match` statements
-dynamic = ["version"]
+version = "0.2.0"
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
     'zstandard',            # Compression library
@@ -27,10 +27,34 @@ dependencies = [
     'pandas',               # Data analysis library
     'matplotlib',           # Plotting library
     'seaborn',              # High-level plotting library
-    "jupyter",           # To run the tutorial notebooks
+    'jupyter',              # To run the tutorial notebooks
+    'torch_geometric',      # PyTorch Geometric library for graph deep learning
 ]
 
 [project.optional-dependencies]
+vis = [
+    "manim", # Animation engine
+]
+
+cu129 = [
+  "torch==2.8.0",         # PyTorch for deep learning
+  "pyg_lib",              # PyTorch Geometric library for efficient graph operations
+  "torch_scatter",        # PyTorch Geometric library for scatter operations
+  "torch_sparse",         # PyTorch Geometric library for sparse matrix operations
+  "torch_cluster",        # PyTorch Geometric library for clustering operations
+  "torch_spline_conv",    # PyTorch Geometric library for spline convolution
+]
+
+cpu = [
+  "torch==2.8.0",         # PyTorch for deep learning
+  "pyg_lib",              # PyTorch Geometric library for efficient graph operations
+  "torch_scatter",        # PyTorch Geometric library for scatter operations
+  "torch_sparse",         # PyTorch Geometric library for sparse matrix operations
+  "torch_cluster",        # PyTorch Geometric library for clustering operations
+  "torch_spline_conv",    # PyTorch Geometric library for spline convolution
+]
+
+[dependency-groups]
 test = [
     "pytest",      # Testing framework
     "pytest-cov",  # Code coverage plugin for pytest
@@ -39,14 +63,8 @@ test = [
 ]
 
 dev = [
-    "flake8",            # Linter
-    "flake8-pyproject",  # Enables flake8 to read pyproject.toml
-    "flake8-bugbear",    # Additional flake8 rules to find common bugs
-    "pylint",            # Another linter with mostly different rules
-    "black",             # Code formatter
-    "pre-commit",        # Python package to enable GitHub pre-commit hooks
-    "pathpy2",           # Old pathpy version for comparisons
-    "mypy",              # Static type checker
+    "ruff",  # Linter and code formatter
+    "mypy",  # Static type checker
 ]
 
 doc = [
@@ -63,25 +81,82 @@ doc = [
     "mike"                                       # Tool for versioning the documentation
 ]
 
-vis = [
-    "manim", # Animation engine
-]
-
 [project.urls]
 Documentation = "https://www.pathpy.net"
 Source = "https://github.com/pathpy/pathpyG"
 Tracker = "https://github.com/pathpy/pathpyG/issues"
+
+
+########################################################################################
+############################## Package configuration ###################################
+########################################################################################
+[tool.uv]
+default-groups = ["dev", "test", "doc"]
+conflicts = [
+    [
+      { extra = "cpu" },
+      { extra = "cu129" },
+    ],
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "torch-cu129", extra = "cu129" },
+  { index = "torch-cpu", extra = "cpu" },
+]
+pyg_lib = [
+  { index = "pyg-cu129", extra = "cu129" },
+  { index = "pyg-cpu", extra = "cpu" },
+]
+torch_scatter = [
+  { index = "pyg-cu129", extra = "cu129" },
+  { index = "pyg-cpu", extra = "cpu" },
+]
+torch_sparse = [
+  { index = "pyg-cu129", extra = "cu129" },
+  { index = "pyg-cpu", extra = "cpu" },
+]
+torch_cluster = [
+  { index = "pyg-cu129", extra = "cu129" },
+  { index = "pyg-cpu", extra = "cpu" },
+]
+torch_spline_conv = [
+  { index = "pyg-cu129", extra = "cu129" },
+  { index = "pyg-cpu", extra = "cpu" },
+]
+
+[[tool.uv.index]]
+name = "torch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[[tool.uv.index]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pyg-cpu"
+url = "https://data.pyg.org/whl/torch-2.8.0+cpu.html"
+explicit = true
+format = "flat"
+
+[[tool.uv.index]]
+name = "pyg-cu129"
+url = "https://data.pyg.org/whl/torch-2.8.0+cu129.html"
+explicit = true
+format = "flat"
 
 ########################################################################################
 ########################### Build system configuration #################################
 ########################################################################################
 
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
 
-[tool.flit.module]
-name = "pathpyG"
+[tool.uv.build-backend]
+module-name = "pathpyG"
 
 ########################################################################################
 ############################# Test configuration #######################################
@@ -119,22 +194,17 @@ skip_covered = true
 ############################# Linting configuration ####################################
 ########################################################################################
 
-[tool.flake8] # Linter and code style checker
-max-line-length = 120
-extend-ignore = "E203"                # whitespace before ':' conflicts with black
-per-file-ignores = "__init__.py:F401" # Ignore unused imports in __init__.py files
+[tool.ruff]
+line-length = 120
 
-[tool.pylint.format] # Linter
-max-line-length = 120
-# Disable information about: Unnecessary "else" after "return", remove the "else" and de-indent the code inside 
-disable = "R1705"
+[tool.ruff.format]
+docstring-code-format = true
 
-[tool.pyright]
-reportGeneralTypeIssues = false
-reportCallIssue = false
-reportOptionalMemberAccess = false
-reportArgumentType = false
-reportOptionalSubscript = false
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "D", "I"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.mypy] # Static type checker
 check_untyped_defs = true
@@ -145,15 +215,3 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]] # Disable mypy for the dir `tests/`
 module = "tests.*"
 ignore_errors = true
-
-########################################################################################
-############################# Formatting configuration #################################
-########################################################################################
-
-[tool.isort] # Sorts imports
-profile = "black"
-skip = [".gitignore", "__init__.py"]
-
-[tool.black] # Code formatter
-line-length = 120
-target-version = ["py38", "py39", "py310"]

@@ -2,32 +2,30 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
-	"name": "pathpyG-torch2.4.1-cuda12.1",
+	"name": "pathpyG-torch2.8.0-cuda12.9",
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
-				"ms-python.black-formatter",
-				"ms-python.isort",
-				"ms-python.pylint",
-				"ms-python.flake8",
-				"ms-python.mypy-type-checker",
-				"ms-toolsai.jupyter"
+				"ms-toolsai.jupyter",
+				"charliermarsh.ruff",
+				"ms-python.mypy-type-checker"
 			],
-			"python.defaultInterpreterPath": "/opt/conda/bin/python",
-			"python.linting.enabled": true,
-			"python.linting.pylintEnabled": true,
-			"python.analysis.typeCheckingMode": "basic"
+			"settings": {
+				"[python]": {
+					"analysis.languageServerMode": "light",
+					"editor.defaultFormatter": "charliermarsh.ruff",
+					"notebook.defaultFormatter": "charliermarsh.ruff",
+					"mypy-type-checker.importStrategy": "fromEnvironment"
+				}
+			}
 		},
 		// Add IDs of extensions you want to be installed when container is created.
 		"extensions": [
 			"ms-python.python",
-			"ms-python.black-formatter",
-			"ms-python.isort",
-			"ms-python.pylint",
-			"ms-python.flake8",
-			"ms-python.mypy-type-checker",
-			"ms-toolsai.jupyter"
+			"ms-toolsai.jupyter",
+			"charliermarsh.ruff",
+			"ms-python.mypy-type-checker"
 		]
 	},
 	// Use GPU for CUDA
@@ -37,7 +35,12 @@
 		"all"
 	],
 	// Install pathpyG as editable python package
-	"postCreateCommand": "pip install -e '.[dev,test,doc,vis]' && git config --global --add safe.directory /workspaces/pathpyG",
+	// Use optional dependencies 'vis' for visualization (manim) and 'cu129' for CUDA 12.9 support
+	// (change 'cu129' to 'cpu' if you want to use the CPU version of PyTorch and PyTorch Geometric)
+	"postCreateCommand": "uv sync --frozen --extra vis --extra cu129 && git config --global --add safe.directory /workspaces/pathpyG",
+	"remoteEnv": {
+		"PATH": "/workspaces/pathpyG/.venv/bin:${containerEnv:PATH}"
+	},
 	"features": {
 		"ghcr.io/prulloac/devcontainer-features/latex:1": {
 			"scheme": "minimal",
