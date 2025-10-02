@@ -14,5 +14,5 @@ RUN pip install torch==2.4.1+cu121 --index-url https://download.pytorch.org/whl/
 RUN pip install torch_geometric>=2.5.0
 RUN pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
 
-# install pathpyG
-RUN pip install -e .
+# install latest dev version of pathpyG
+RUN pip install git+https://github.com/pathpy/pathpyG.git
