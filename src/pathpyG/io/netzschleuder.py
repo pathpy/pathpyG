@@ -81,13 +81,13 @@ def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewe
     Returns:
         Dictionary containing key-value pairs of metadata
     """
-    url = "/api/net/{0}".format(name)
+    url = f"/api/net/{name}"
     try:
         return json.loads(request.urlopen(base_url + url).read())
-    except HTTPError:
-        msg = "Could not connect to netzschleuder repository at {0}".format(base_url)
+    except HTTPError as exc:
+        msg = f"Could not connect to netzschleuder repository at {base_url}"
         # LOG.error(msg)
-        raise Exception(msg)
+        raise Exception(msg) from exc
 
 
 def read_netzschleuder_graph(
@@ -136,8 +136,8 @@ def read_netzschleuder_graph(
         try:
             is_directed = analyses["is_directed"]
             num_nodes = analyses["num_vertices"]
-        except KeyError:
-            raise Exception(f"Record {name} contains multiple networks, please specify network name.")
+        except KeyError as exc:
+            raise Exception(f"Record {name} contains multiple networks, please specify network name.") from exc
         
         # Retrieve CSV data
         url = f"{base_url}/net/{name}/files/{network}.csv.zip"
@@ -152,7 +152,8 @@ def read_netzschleuder_graph(
                     zip_ref.extractall(path=temp_dir)
 
                     # the gprop file contains lines with property name/value pairs
-                    # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', skip_blank_lines=True, skipinitialspace=True)
+                    # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', 
+                    #           skip_blank_lines=True, skipinitialspace=True)
 
                     # nodes.csv contains node indices with node properties (like name)
                     edges = pd.read_csv(
@@ -183,10 +184,10 @@ def read_netzschleuder_graph(
                         g.data["analyses_" + x] = analyses[x]
 
                     return g
-        except HTTPError:
+        except HTTPError as exc:
             msg = f"Could not retrieve netzschleuder record at {url}"
-            raise Exception(msg)        
-    except HTTPError:
+            raise Exception(msg) from exc
+    except HTTPError as exc:
         msg = f"Could not retrieve netzschleuder record at {base_url}/api/net/{name}"
-        raise Exception(msg)
+        raise Exception(msg) from exc
     return None
