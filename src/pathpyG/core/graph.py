@@ -440,7 +440,7 @@ class Graph:
 
     @property
     def in_degrees(self) -> Dict[str, float]:
-        """Return in-degrees of nodes in directed network.
+        """Return unweighted in-degrees of nodes in directed network.
 
         Returns:
             dict: dictionary containing in-degrees of nodes
@@ -449,60 +449,79 @@ class Graph:
 
     @property
     def out_degrees(self) -> Dict[str, float]:
-        """Return out-degrees of nodes in directed network.
+        """Return unweighted out-degrees of nodes in directed network.
 
         Returns:
             dict: dictionary containing out-degrees of nodes
         """
         return self.degrees(mode="out")
 
-    def degrees(self, mode: str = "in") -> Dict[str, float]:
+    def degrees(self, mode: str = "in", edge_attr: Any = None, return_tensor: bool = False) -> Dict[str, float]:
         """
-        Return degrees of nodes.
+        Return (weighted) degrees of nodes.
 
         Args:
-            mode: `in` or `out` to calculate the in- or out-degree for
+            mode: `in` or `out` to calculate in- or out-degree for
                 directed networks.
-
+            edge_attr: Optional numerical edge attribute that will 
+                be used to compute weighted degrees
+            return_tensor: if True the function returns a degree tensor, if False (default)
+                a dictionary will be returned that can be indexed by nodes
         Returns:
-            dict: dictionary containing degrees of nodes
+            dict: dictionary containing node degrees
         """
         if mode == "in":
-            d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.n, dtype=torch.int)
+            if not edge_attr:
+                d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.n, dtype=torch.int)
+            else:
+                edge_weight = getattr(self.data, edge_attr, None)
+                d = scatter(edge_weight, self.data.edge_index[1], dim=0, dim_size=self.data.num_nodes, reduce="sum")
+        elif mode == "out":
+            if not edge_attr:
+                d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
+            else:
+                edge_weight = getattr(self.data, edge_attr, None)
+                d = scatter(edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum")
+        if return_tensor:
+            return d
         else:
-            d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
-        return {self.mapping.to_id(i): d[i].item() for i in range(self.n)}
+            return {self.mapping.to_id(i): d[i].item() for i in range(self.n)}
 
-    def weighted_outdegrees(self) -> torch.Tensor:
+    # def weighted_outdegrees(self) -> torch.Tensor:
+    #     """
+    #     Compute the weighted outdegrees of each node in the graph.
+
+    #     Args:
+    #         graph (Graph): pathpy graph object.
+
+    #     Returns:
+    #         tensor: Weighted outdegrees of nodes.
+    #     """
+    #     edge_weight = getattr(self.data, "edge_weight", None)
+    #     if edge_weight is None:
+    #         edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
+    #     weighted_outdegree = scatter(
+    #         edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
+    #     )
+    #     return weighted_outdegree
+
+    def transition_probabilities(self, edge_attr: Any = None) -> torch.Tensor:
         """
-        Compute the weighted outdegrees of each node in the graph.
+        Compute transition probabilities based on (weighted) outdegrees.
 
         Args:
-            graph (Graph): pathpy graph object.
-
-        Returns:
-            tensor: Weighted outdegrees of nodes.
-        """
-        edge_weight = getattr(self.data, "edge_weight", None)
-        if edge_weight is None:
-            edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
-        weighted_outdegree = scatter(
-            edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
-        )
-        return weighted_outdegree
-
-    def transition_probabilities(self) -> torch.Tensor:
-        """
-        Compute transition probabilities based on weighted outdegrees.
+            edge_attr: Optional name of numerical edge attribute that will
+                        will be used to calculate weighted out-degrees for the
+                        visitation probabilities.
 
         Returns:
             tensor: Transition probabilities.
         """
-        weighted_outdegree = self.weighted_outdegrees()
-        source_ids = self.data.edge_index[0]
-        edge_weight = getattr(self.data, "edge_weight", None)
-        if edge_weight is None:
-            edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
+        weighted_outdegree = self.degrees(mode="out", edge_attr=edge_attr, return_tensor=True)
+        source_ids = self.data.edge_index[0]        
+        edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
+        if edge_attr:
+            edge_weight = getattr(self.data, edge_attr, None)
         return edge_weight / weighted_outdegree[source_ids]
 
     def laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
