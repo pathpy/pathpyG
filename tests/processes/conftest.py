@@ -48,5 +48,5 @@ def simple_second_order_graph() -> Tuple[Graph, Graph]:
     paths.append_walk(["c", "d", "a"], weight=0.2)
     paths.append_walk(["d", "a", "b"], weight=1)
 
-    m = MultiOrderModel.from_PathData(paths, max_order=2)
+    m = MultiOrderModel.from_path_data(paths, max_order=2)
     return (g, m.layers[2])

@@ -252,7 +252,9 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         g: The graph to which the edge attributes should be added.
         time_attr: If not None, the name of the column containing time stamps for temporal edges.
     """
-    assert "v" in df and "w" in df, "Data frame must have columns `v` and `w` for source and target nodes"
+    if "v" not in df or "w" not in df:
+        logger.error("Data frame must have columns `v` and `w` for source and target nodes")
+        raise ValueError("Data frame must have columns `v` and `w` for source and target nodes")
 
     # check for non-existent nodes
     node_ids = set(df["v"]).union(set(df["w"]))
@@ -276,7 +278,9 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
     edge_attrs = [attr for attr in df.columns if attr not in ["v", "w"]]
 
     if time_attr is not None:
-        assert time_attr in df, f"Data frame must have column `{time_attr}` for time stamps"
+        if time_attr not in df:
+            logger.error("Data frame must have column %s for time stamps", time_attr)
+            raise ValueError(f"Data frame must have column {time_attr} for time stamps")
 
         time = df[time_attr].values
         edge_attrs.remove(time_attr)
@@ -286,6 +290,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         for src_i, tgt_i, time_i in zip(src, tgt, time):
             edge = g.tedge_to_index.get((src_i.item(), tgt_i.item(), time_i.item()), None)  # type: ignore
             if edge is None:
+                logger.error("found non-existing edge in temporal graph")
                 raise ValueError(
                     f"Edge ({src_i.item()}, {tgt_i.item()}) does not exist at time {time_i.item()} in the graph."
                 )
@@ -296,6 +301,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         for src_i, tgt_i in zip(src, tgt):
             edge = g.edge_to_index.get((src_i.item(), tgt_i.item()), None)
             if edge is None:
+                logger.error("found non-existing edge in temporal graph")
                 raise ValueError(f"Edge ({src_i.item()}, {tgt_i.item()}) does not exist in the graph.")
             edge_idx.append(edge)
 
@@ -364,6 +370,7 @@ def df_to_temporal_graph(
 
     if no_header:
         # interpret first two columns as source and target
+        logger.info("Interpreting first three columns as v, w, t")
         col_names = ["v", "w", "t"]
         # interpret remaining columns as edge attributes
         for i in range(3, len(df.columns.values.tolist())):

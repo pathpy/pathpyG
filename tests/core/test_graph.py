@@ -358,8 +358,8 @@ def test_add_with_edge_attrs():
 
 
 def test_higher_order_graph(simple_walks, simple_walks_2):
-    ho_g1 = MultiOrderModel.from_PathData(simple_walks, max_order=2).layers[2]
-    ho_g2 = MultiOrderModel.from_PathData(simple_walks_2, max_order=2).layers[2]
+    ho_g1 = MultiOrderModel.from_path_data(simple_walks, max_order=2).layers[2]
+    ho_g2 = MultiOrderModel.from_path_data(simple_walks_2, max_order=2).layers[2]
     g = ho_g1 + ho_g2
 
     assert g.n == 4
