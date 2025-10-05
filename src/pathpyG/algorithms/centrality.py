@@ -152,10 +152,6 @@ def path_visitation_probabilities(paths: PathData) -> dict:
     Args:
         paths: PathData object that contains path data
     """
-    # if not isinstance(paths, PathData):
-    #    assert False, "`paths` must be an instance of Paths"
-    # Log.add('Calculating visitation probabilities...', Severity.INFO)
-
     # entries capture the probability that a given node is visited on an arbitrary path
     # Note: this is identical to the subpath count of zero-length paths
     # (i.e. the relative frequencies of nodes across all pathways)

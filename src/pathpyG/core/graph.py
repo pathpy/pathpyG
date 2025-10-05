@@ -19,7 +19,10 @@ from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.utils import scatter, to_undirected
 
+import logging
 from pathpyG.core.index_map import IndexMap
+
+logger = logging.getLogger("root")
 
 
 class Graph:
@@ -60,8 +63,9 @@ class Graph:
             self.mapping = mapping
 
         # set num_nodes property
-        if "num_nodes" not in data and "edge_index" in data:
+        if "num_nodes" not in data and "edge_index" in data:            
             data.num_nodes = data.edge_index.max().item() + 1
+            logger.debug("Inferred number of nodes from edge_index, n = %s", data.num_nodes)
 
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):
@@ -71,7 +75,8 @@ class Graph:
             data.edge_index.get_sparse_size(dim=0) != data.num_nodes
             or data.edge_index.get_sparse_size(dim=1) != data.num_nodes
         ):
-            raise Exception("sparse size of EdgeIndex should match number of nodes!")
+            logger.error("Sparse size of edge_index does not match number of nodes, n = %s", data.num_nodes)
+            raise ValueError("sparse size of EdgeIndex must match number of nodes!")
 
         self.data = data
 
@@ -128,6 +133,7 @@ class Graph:
             d = Data(edge_index=edge_index)
         else:
             if mapping is not None and mapping.num_ids() != num_nodes:
+                logger.error("Number of node IDs in mapping must match num_nodes")
                 raise ValueError("Number of node IDs in mapping must match num_nodes")
             d = Data(edge_index=edge_index, num_nodes=num_nodes)
         return Graph(d, mapping=mapping)
@@ -456,7 +462,8 @@ class Graph:
         """
         return self.degrees(mode="out")
 
-    def degrees(self, mode: str = "in", edge_attr: Any = None, return_tensor: bool = False) -> Dict[str, float]:
+    def degrees(self, mode: str = "in", edge_attr: Any = None, return_tensor: bool = False) -> Union[Dict[str, float],
+                                                                                                     torch.tensor]:
         """
         Return (weighted) degrees of nodes.
 
@@ -486,24 +493,6 @@ class Graph:
             return d
         else:
             return {str(self.mapping.to_id(i)): d[i].item() for i in range(self.n)}
-
-    # def weighted_outdegrees(self) -> torch.Tensor:
-    #     """
-    #     Compute the weighted outdegrees of each node in the graph.
-
-    #     Args:
-    #         graph (Graph): pathpy graph object.
-
-    #     Returns:
-    #         tensor: Weighted outdegrees of nodes.
-    #     """
-    #     edge_weight = getattr(self.data, "edge_weight", None)
-    #     if edge_weight is None:
-    #         edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
-    #     weighted_outdegree = scatter(
-    #         edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
-    #     )
-    #     return weighted_outdegree
 
     def transition_probabilities(self, edge_attr: Any = None) -> torch.Tensor:
         """
