@@ -18,17 +18,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup packages
         uses: ./.github/actions/setup
         with:
           python-version: ${{ matrix.python-version }}
           torch-version: ${{ matrix.torch-version }}
-
-      - name: Install main package
-        run: |
-          pip install -e .[test,vis]
 
       - name: Run tests
         run: |
