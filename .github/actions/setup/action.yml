@@ -35,3 +35,11 @@ runs:
     - name: Install pathpyG
       run: |
         uv sync --frozen --extra vis --extra ${{ inputs.torch-version }}
+      shell: bash
+
+    - name: Check installation
+      run: |
+        uv run python -c "import torch; print('PyTorch:', torch.__version__)"
+        uv run python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+        uv run python -c "import torch; print('CUDA:', torch.version.cuda)"
+      shell: bash
