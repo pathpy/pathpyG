@@ -26,10 +26,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           torch-version: ${{ matrix.torch-version }}
 
-      - name: Install main package
-        run: |
-          pip install -e .[test,vis]
-
       - name: Run tests
         run: |
           pytest

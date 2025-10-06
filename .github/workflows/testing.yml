@@ -31,11 +31,6 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup
 
-      - name: Install main package
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          pip install -e .[test,vis]
-
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
