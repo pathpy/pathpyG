@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+<!-- You can include an announcement bar with the block "announce" -->
+
+<!-- Includes a download button in the Jupyter tutorials -->
+{% block content %}
+{% if page.nb_url %}
+    <a href="{{ page.nb_url }}" title="Download Notebook" class="md-content__button md-icon">
+        {% include ".icons/material/download.svg" %}
+    </a>
+    <a href="{{ page.edit_url | replace('https://github.com/pathpy/pathpyG/edit/', 'https://colab.research.google.com/github/pathpy/pathpyG/blob/') }}" title="Open in Google Colab" class="md-content__button md-icon">
+      {% include ".icons/simple/googlecolab.svg" %}
+    </a>
+{% endif %}
+{{ super() }}
+{% endblock %}
+
+<!-- Adds a warning to the top of the page if the page is not the dev or the stable version -->
+{% block outdated %}
+  You're not viewing the latest version.
+  <a href="{{ '../' ~ base_url }}">
+    <strong>Click here to go to latest.</strong>
+  </a>
+{% endblock %}
