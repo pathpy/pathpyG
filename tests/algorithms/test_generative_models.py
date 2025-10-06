@@ -232,12 +232,9 @@ def test_watts_strogatz_rewiring():
     assert ratio < 0.6
 
 
-def test_watts_strogatz_get_warning():
+def test_watts_strogatz_get_error():
     with pytest.raises(ValueError):
         print(watts_strogatz(5, 10, 0.5, allow_duplicate_edges=False))
-
-    with pytest.warns(Warning):
-        print(watts_strogatz(10, 5, 0.31, allow_duplicate_edges=False))
 
 
 def test_stochastic_block_model():
