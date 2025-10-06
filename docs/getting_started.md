@@ -12,7 +12,16 @@ Once you have an environment up and running, you can install the package simply 
 
 ### Dependencies
 
-This package is based on [:pytorch_logo: PyTorch](https://pytorch.org/) and [:pyg_logo: PyTorch Geometric](https://pytorch-geometric.readthedocs.io/). Please install both libraries before installing PathpyG. You can follow the installation instructions in their respective documentation ([:pytorch_logo: PyTorch](https://pytorch.org/get-started/locally/) and [:pyg_logo: PyG](https://pytorch-geometric.readthedocs.io/en/stable/install/installation.html)).
+This package is based on [:pytorch_logo: PyTorch](https://pytorch.org/) and [:pyg_logo: PyTorch Geometric](https://pytorch-geometric.readthedocs.io/). Please install both libraries before installing PathpyG. You can follow the installation instructions in their respective documentation ([:pytorch_logo: PyTorch](https://pytorch.org/get-started/locally/) and [:pyg_logo: PyG](https://pytorch-geometric.readthedocs.io/en/stable/install/installation.html)). Alternatively, you can install the correct versions of both libraries using `uv` to install the optional dependencies of PathpyG. You can choose between a CPU-only installation or a CUDA installation for a specific CUDA version. For example, to install the CPU-only version, run:
+
+```bash
+uv pip install pathpyg[cpu]
+```
+Or, to install the CUDA 12.9 version, run:
+
+```bash
+uv pip install pathpyg[cu129]
+```
 
 !!! warning
     We currently only support PyG version 2.5.0 and above.
