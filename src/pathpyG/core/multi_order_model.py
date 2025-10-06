@@ -1,9 +1,16 @@
 from __future__ import annotations
+from typing import (
+    TYPE_CHECKING,
+    Optional,
+)
 
 from scipy.stats import chi2
 import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import degree, cumsum
+
+
+import logging
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.path_data import PathData
@@ -17,6 +24,8 @@ from pathpyG.algorithms.lift_order import (
     lift_order_edge_index_weighted,
     aggregate_edge_index,
 )
+
+logger = logging.getLogger("root")
 
 
 class MultiOrderModel:
@@ -89,7 +98,7 @@ class MultiOrderModel:
         max_order: int = 1,
         weight: str = "edge_weight",
         cached: bool = True,
-        event_graph: torch.Tensor = None,
+        event_graph: Optional[torch.Tensor] = None,
     ) -> MultiOrderModel:
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph.
 
@@ -150,11 +159,10 @@ class MultiOrderModel:
                 )
                 if cached or k == max_order:
                     m.layers[k] = gk
-
         return m
 
     @staticmethod
-    def from_PathData(
+    def from_path_data(
         path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
     ) -> MultiOrderModel:
         """
@@ -203,7 +211,7 @@ class MultiOrderModel:
 
         return m
 
-    def get_mon_dof(self, max_order: int = None, assumption: str = "paths") -> int:
+    def get_mon_dof(self, max_order: Optional[int] = None, assumption: str = "paths") -> int:
         """
         The degrees of freedom for the kth layer of a multi-order model. This depends on the number of different paths of exactly length `k` in the graph.
         Therefore, we can obtain these values by summing the entries of the `k`-th power of the binary adjacency matrix of the graph.
@@ -225,16 +233,17 @@ class MultiOrderModel:
             int: The degrees of freedom for the multi-order model.
 
         Raises:
-            AssertionError: If max_order is larger than the maximum order of
+            ValueError: If max_order is larger than the maximum order of
                 the multi-order network.
             ValueError: If the assumption is not 'paths' or 'ngrams'.
         """
         if max_order is None:
             max_order = max(self.layers)
 
-        assert max_order <= max(
-            self.layers
-        ), "Error: max_order cannot be larger than maximum order of multi-order network"
+        if max_order > max(self.layers):
+            logger.error("max_order cannot be larger than maximum order of multi-order network")
+            raise ValueError("max_order cannot be larger than maximum order of multi-order network")
+
 
         dof = self.layers[1].data.num_nodes - 1  # Degrees of freedom for zeroth order
 
@@ -268,8 +277,9 @@ class MultiOrderModel:
             for order in range(1, max_order + 1):
                 dof += (self.layers[1].data.num_nodes**order) * (self.layers[1].data.num_nodes - 1)
         else:
+            logger.error("Unknown assumption %s. Only 'path' and 'ngram' are accepted.", assumption)
             raise ValueError(
-                f"Unknown assumption {assumption} in input. The only accepted values are 'path' and 'ngram'"
+                f"Unknown assumption {assumption}. Only 'path' and 'ngram' are accepted."
             )
 
         return int(dof)
@@ -357,7 +367,7 @@ class MultiOrderModel:
 
         # Adding the likelihood of highest/stationary order
         if max_order > 0:
-            transition_probabilities = self.layers[max_order].transition_probabilities()
+            transition_probabilities = self.layers[max_order].transition_probabilities(edge_attr="edge_weight")
             log_transition_probabilities = torch.log(transition_probabilities)
             llh_by_subpath = log_transition_probabilities * self.layers[max_order].data.edge_weight
             llh += llh_by_subpath.sum().item()
@@ -400,12 +410,12 @@ class MultiOrderModel:
             tuple: A tuple containing a boolean indicating whether the null hypothesis is rejected
                 and the p-value of the test.
         """
-        assert (
-            max_order_null < max_order
-        ), "Error: order of null hypothesis must be smaller than order of alternative hypothesis"
-        assert max_order <= max(
-            self.layers
-        ), f"Error: order of hypotheses ({max_order_null} and {max_order}) must be smaller than the maximum order of the MultiOrderModel {max(self.layers)}"
+        if max_order_null >= max_order:
+            logger.error("order of null hypothesis must be smaller than order of alternative hypothesis")
+            raise ValueError("order of null hypothesis must be smaller than order of alternative hypothesis")
+        if max_order > max(self.layers):
+            logger.error("order of hypotheses must be smaller than max. order of MultiOrderModel")
+            raise ValueError(f"order of hypotheses ({max_order_null} and {max_order}) must be smaller than max. order of MultiOrderModel {max(self.layers)}")
         # let L0 be the likelihood for the null model and L1 be the likelihood for the alternative model
 
         # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
@@ -423,7 +433,7 @@ class MultiOrderModel:
         p = 1 - chi2.cdf(x, dof_diff)
         return (p < significance_threshold), p
 
-    def estimate_order(self, dag_data: PathData, max_order: int = None, significance_threshold: float = 0.01) -> int:
+    def estimate_order(self, dag_data: PathData, max_order: Optional[int] = None, significance_threshold: float = 0.01) -> int:
         """
         Selects the optimal maximum order of a multi-order network model for the
         observed paths, based on a likelihood ratio test with p-value threshold of p
@@ -440,19 +450,20 @@ class MultiOrderModel:
             int: The estimated optimal maximum order for the multi-order network model.
 
         Raises:
-            AssertionError: If the provided max_order is larger than the maximum order of the multi-order model
+            ValueError: If the provided max_order is larger than the maximum order of the multi-order model
                 or if the input DAGData does not have the same set of nodes as the multi-order network
         """
         if max_order is None:
-            max_order = max(self.layers)  # THIS
-        assert max_order <= max(
-            self.layers
-        ), "Error: maxOrder cannot be larger than maximum order of multi-order network"
-        assert max_order > 1, "Error: max_order must be larger than one"
-
-        assert set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) == set(
-            dag_data.mapping.node_ids
-        ), "Input DAGData doesn t have the same set of nodes as those of the multi-order network"
+            max_order = max(self.layers)
+        if max_order > max(self.layers):
+            logger.error("max_order cannot be larger than maximum order of multi-order network")
+            raise ValueError("max_order cannot be larger than maximum order of multi-order network")
+        if max_order <= 1:
+            logger.error("max_order must be larger than one")
+            raise ValueError("max_order must be larger than one")
+        if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(dag_data.mapping.node_ids):
+            logger.error("Input paths do not have same set of nodes as multi-order network")
+            raise ValueError("Input paths do not have same set of nodes as multi-order network")        
 
         max_accepted_order = 1
         dag_graph = dag_data.data
@@ -480,6 +491,7 @@ class MultiOrderModel:
             Data: The De Bruijn graph data.
         """
         if max_order not in self.layers:
+            logger.error("Higher-order graph of specified order not found.")
             raise ValueError(f"Higher-order graph of order {max_order} not found.")
 
         g = self.layers[1]

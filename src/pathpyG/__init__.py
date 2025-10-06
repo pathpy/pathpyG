@@ -1,6 +1,6 @@
-import torch
-
-__version__ = "0.2.0"
+from importlib.metadata import version as get_version
+# We set the version in pyproject.toml because dynamic versioning is currently not supported by uv_build
+__version__ = get_version("pathpyG")
 
 from pathpyG.utils.config import config
 from pathpyG.utils.progress import tqdm

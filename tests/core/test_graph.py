@@ -243,12 +243,12 @@ def test_out_degrees(simple_graph):
 
 def test_weighted_outdegrees(simple_graph):
     # Test on graph without defined weights
-    out_degrees = simple_graph.weighted_outdegrees()
+    out_degrees = simple_graph.degrees(mode="out", return_tensor=True)
     assert out_degrees.equal(torch.tensor([2, 1, 0]))
 
     # Test on graph with defined weights
     simple_graph.data["edge_weight"] = torch.tensor([1, 3, 2])
-    out_degrees = simple_graph.weighted_outdegrees()
+    out_degrees = simple_graph.degrees(mode="out", edge_attr="edge_weight", return_tensor=True)
     assert out_degrees.equal(torch.tensor([4, 2, 0]))
 
 
@@ -259,7 +259,7 @@ def test_transition_probabilities(simple_graph):
 
     # Test on graph with defined weights
     simple_graph.data["edge_weight"] = torch.tensor([1, 3, 2])
-    transition_probs = simple_graph.transition_probabilities()
+    transition_probs = simple_graph.transition_probabilities(edge_attr="edge_weight")
     assert transition_probs.equal(torch.tensor([0.25, 0.75, 1]))
 
 
@@ -358,8 +358,8 @@ def test_add_with_edge_attrs():
 
 
 def test_higher_order_graph(simple_walks, simple_walks_2):
-    ho_g1 = MultiOrderModel.from_PathData(simple_walks, max_order=2).layers[2]
-    ho_g2 = MultiOrderModel.from_PathData(simple_walks_2, max_order=2).layers[2]
+    ho_g1 = MultiOrderModel.from_path_data(simple_walks, max_order=2).layers[2]
+    ho_g2 = MultiOrderModel.from_path_data(simple_walks_2, max_order=2).layers[2]
     g = ho_g1 + ho_g2
 
     assert g.n == 4

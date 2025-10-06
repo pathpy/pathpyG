@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Only run workflow if certain files have been changed.
       - name: Get changed files
@@ -30,11 +30,6 @@ jobs:
       - name: Setup packages
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup
-
-      - name: Install main package
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          pip install -e .[test,vis]
 
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'

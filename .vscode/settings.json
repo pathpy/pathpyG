@@ -4,33 +4,9 @@
     "[jsonc]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
-    },
-    "python.defaultInterpreterPath": "/opt/conda/bin/python",
-    "python.formatting.provider": "none", // disable for now. Will be deprecated in the future
+    "python.defaultInterpreterPath": "/workspaces/pathpyG/.venv/bin/python",
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "black-formatter.importStrategy": "fromEnvironment",
-    "black-formatter.args": [
-        "--config=pyproject.toml"
-    ],
-    "pylint.importStrategy": "fromEnvironment",
-    "pylint.args": [
-        "--rcfile=pyproject.toml"
-    ],
-    "flake8.importStrategy": "fromEnvironment",
-    "flake8.args": [
-        "--toml-config=pyproject.toml"
-    ],
-    "isort.importStrategy": "fromEnvironment",
-    "isort.args": [
-        "--settings-path=pyproject.toml"
-    ],
-    "mypy-type-checker.importStrategy": "fromEnvironment",
-    "mypy-type-checker.args": [
-        "--config-file=pyproject.toml"
-    ],
     "python.testing.pytestArgs": [
         "tests"
     ],

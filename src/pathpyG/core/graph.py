@@ -19,7 +19,10 @@ from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.utils import scatter, to_undirected
 
+import logging
 from pathpyG.core.index_map import IndexMap
+
+logger = logging.getLogger("root")
 
 
 class Graph:
@@ -60,8 +63,9 @@ class Graph:
             self.mapping = mapping
 
         # set num_nodes property
-        if "num_nodes" not in data and "edge_index" in data:
+        if "num_nodes" not in data and "edge_index" in data:            
             data.num_nodes = data.edge_index.max().item() + 1
+            logger.debug("Inferred number of nodes from edge_index, n = %s", data.num_nodes)
 
         # turn edge index tensor into EdgeIndex object
         if not isinstance(data.edge_index, EdgeIndex):
@@ -71,7 +75,8 @@ class Graph:
             data.edge_index.get_sparse_size(dim=0) != data.num_nodes
             or data.edge_index.get_sparse_size(dim=1) != data.num_nodes
         ):
-            raise Exception("sparse size of EdgeIndex should match number of nodes!")
+            logger.error("Sparse size of edge_index does not match number of nodes, n = %s", data.num_nodes)
+            raise ValueError("sparse size of EdgeIndex must match number of nodes!")
 
         self.data = data
 
@@ -127,6 +132,9 @@ class Graph:
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
+            if mapping is not None and mapping.num_ids() != num_nodes:
+                logger.error("Number of node IDs in mapping must match num_nodes")
+                raise ValueError("Number of node IDs in mapping must match num_nodes")
             d = Data(edge_index=edge_index, num_nodes=num_nodes)
         return Graph(d, mapping=mapping)
 
@@ -135,7 +143,6 @@ class Graph:
         edge_list: Iterable[Tuple[str, str]],
         is_undirected: bool = False,
         mapping: Optional[IndexMap] = None,
-        num_nodes: Optional[int] = None,
         device: Optional[torch.device] = None,
     ) -> Graph:
         """Generate a Graph based on an edge list.
@@ -148,7 +155,6 @@ class Graph:
             edge_list: Iterable of edges represented as tuples
             is_undirected: Whether the edge list contains all bidorectional edges
             mapping: optional mapping of string IDs to node indices
-            num_nodes: optional number of nodes (useful in case not all nodes have incident edges)
             device: optional torch device where tensors shall be stored
 
         Examples:
@@ -173,8 +179,7 @@ class Graph:
                 node_ids = np.sort(node_ids.astype(int)).astype(str)
             mapping = IndexMap(node_ids)
 
-        if num_nodes is None:
-            num_nodes = mapping.num_ids()
+        num_nodes = mapping.num_ids()
 
         edge_index = EdgeIndex(
             mapping.to_idxs(edge_list, device=device).T.contiguous(),
@@ -441,7 +446,7 @@ class Graph:
 
     @property
     def in_degrees(self) -> Dict[str, float]:
-        """Return in-degrees of nodes in directed network.
+        """Return unweighted in-degrees of nodes in directed network.
 
         Returns:
             dict: dictionary containing in-degrees of nodes
@@ -450,60 +455,62 @@ class Graph:
 
     @property
     def out_degrees(self) -> Dict[str, float]:
-        """Return out-degrees of nodes in directed network.
+        """Return unweighted out-degrees of nodes in directed network.
 
         Returns:
             dict: dictionary containing out-degrees of nodes
         """
         return self.degrees(mode="out")
 
-    def degrees(self, mode: str = "in") -> Dict[str, float]:
+    def degrees(self, mode: str = "in", edge_attr: Any = None, return_tensor: bool = False) -> Union[Dict[str, float],
+                                                                                                     torch.tensor]:
         """
-        Return degrees of nodes.
+        Return (weighted) degrees of nodes.
 
         Args:
-            mode: `in` or `out` to calculate the in- or out-degree for
+            mode: `in` or `out` to calculate in- or out-degree for
                 directed networks.
-
+            edge_attr: Optional numerical edge attribute that will 
+                be used to compute weighted degrees
+            return_tensor: if True the function returns a degree tensor, if False (default)
+                a dictionary will be returned that can be indexed by nodes
         Returns:
-            dict: dictionary containing degrees of nodes
+            dict: dictionary containing node degrees
         """
         if mode == "in":
-            d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.n, dtype=torch.int)
+            if not edge_attr:
+                d = torch_geometric.utils.degree(self.data.edge_index[1], num_nodes=self.n, dtype=torch.int)
+            else:
+                edge_weight = getattr(self.data, edge_attr, None)
+                d = scatter(edge_weight, self.data.edge_index[1], dim=0, dim_size=self.data.num_nodes, reduce="sum")
         else:
-            d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
-        return {self.mapping.to_id(i): d[i].item() for i in range(self.n)}
+            if not edge_attr:
+                d = torch_geometric.utils.degree(self.data.edge_index[0], num_nodes=self.n, dtype=torch.int)
+            else:
+                edge_weight = getattr(self.data, edge_attr, None)
+                d = scatter(edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum")
+        if return_tensor:
+            return d
+        else:
+            return {str(self.mapping.to_id(i)): d[i].item() for i in range(self.n)}
 
-    def weighted_outdegrees(self) -> torch.Tensor:
+    def transition_probabilities(self, edge_attr: Any = None) -> torch.Tensor:
         """
-        Compute the weighted outdegrees of each node in the graph.
+        Compute transition probabilities based on (weighted) outdegrees.
 
         Args:
-            graph (Graph): pathpy graph object.
-
-        Returns:
-            tensor: Weighted outdegrees of nodes.
-        """
-        edge_weight = getattr(self.data, "edge_weight", None)
-        if edge_weight is None:
-            edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
-        weighted_outdegree = scatter(
-            edge_weight, self.data.edge_index[0], dim=0, dim_size=self.data.num_nodes, reduce="sum"
-        )
-        return weighted_outdegree
-
-    def transition_probabilities(self) -> torch.Tensor:
-        """
-        Compute transition probabilities based on weighted outdegrees.
+            edge_attr: Optional name of numerical edge attribute that will
+                        will be used to calculate weighted out-degrees for the
+                        visitation probabilities.
 
         Returns:
             tensor: Transition probabilities.
         """
-        weighted_outdegree = self.weighted_outdegrees()
-        source_ids = self.data.edge_index[0]
-        edge_weight = getattr(self.data, "edge_weight", None)
-        if edge_weight is None:
-            edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
+        weighted_outdegree = self.degrees(mode="out", edge_attr=edge_attr, return_tensor=True)
+        source_ids = self.data.edge_index[0]        
+        edge_weight = torch.ones(self.data.num_edges, device=self.data.edge_index.device)
+        if edge_attr:
+            edge_weight = getattr(self.data, edge_attr, None)
         return edge_weight / weighted_outdegree[source_ids]
 
     def laplacian(self, normalization: Any = None, edge_attr: Any = None) -> Any:
@@ -602,12 +609,19 @@ class Graph:
         """
         Return number of edges.
 
-        Returns the number of edges in the graph. For an undirected graph, the number of directed edges is returned.
+        Returns the number of edges in the graph. For an undirected graph, the number of 
+        undirected edges (accounting for self-loops) is returned, i.e. in an undirected
+        graph the directed edges (a,b) and (b,a) will be counted only once.
 
         Returns:
             int: number of edges in the graph
         """
-        return self.data.num_edges  # type: ignore
+        if self.is_directed():
+            return self.data.num_edges  # type: ignore
+        else:
+            num_self_loops = (self.data.edge_index[0] == self.data.edge_index[1]).sum().item()
+            num_edges_wo_self_loops = self.data.edge_index.size(1) - int(num_self_loops)
+            return int(num_edges_wo_self_loops/2 + num_self_loops) # type: ignore
 
     @property
     def order(self) -> int:
@@ -742,7 +756,7 @@ class Graph:
         from pprint import pformat
 
         if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} (directed) edges\n".format(self.n, self.m)
+            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.n, self.m)
         else:
             s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
 

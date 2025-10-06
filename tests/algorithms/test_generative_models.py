@@ -34,10 +34,9 @@ def test_erdos_renyi_gnm():
     # test undirected graph w/o multi-edges, w/o self-loops and without IndexMapping
     n = 100
     m = 200
-    m_1 = erdos_renyi_gnm(n=n, m=m)
+    m_1 = erdos_renyi_gnm(n=n, m=m, directed=False, self_loops=False)
     assert m_1.n == n
-    # 400 directed edges for undirected graph
-    assert m_1.m == 2 * m
+    assert m_1.m == m
     # no multiple edges
     assert len(set([(v, w) for v, w in m_1.edges])) == len([(v, w) for v, w in m_1.edges])
     assert m_1.is_directed() is False
@@ -45,8 +44,7 @@ def test_erdos_renyi_gnm():
     # test undirected graph w/o multi-edges, w/o self-loops and with custom IDs
     m_2 = erdos_renyi_gnm(n=n, m=m, mapping=IndexMap([str(i) for i in range(n)]))
     assert m_2.n == n
-    # 400 directed edges for undirected graph
-    assert m_2.m == 2 * m
+    assert m_2.m == m
     # no multiple edges
     assert len(set([(v, w) for v, w in m_2.edges])) == len([(v, w) for v, w in m_2.edges])
     assert m_2.is_directed() is False
@@ -54,7 +52,6 @@ def test_erdos_renyi_gnm():
     # test directed graph w/o multi-edges, w/o self-loops
     m_3 = erdos_renyi_gnm(n=n, m=m, directed=True)
     assert m_3.n == n
-    # 200 directed edges
     assert m_3.m == m
     assert len(set([(v, w) for v, w in m_3.edges])) == len([(v, w) for v, w in m_3.edges])
     assert m_3.is_directed() is True
@@ -62,8 +59,7 @@ def test_erdos_renyi_gnm():
     # test undirected graph w/o multi-edges and with self-loops
     m_4 = erdos_renyi_gnm(n=n, m=m, self_loops=True)
     assert m_4.n == n
-    # since self-loops only exist in one direction we have 2 * m - n <= M <= 2 * m
-    assert m_4.m >= 2 * m - n and m_4.m <= 2 * m
+    assert m_4.m == m
     assert len(set([(v, w) for v, w in m_4.edges])) == len([(v, w) for v, w in m_4.edges])
     assert m_4.is_directed() is False
 
@@ -123,11 +119,12 @@ def test_erdos_renyi_gnm_randomize():
     n = 100
     m = 200
 
-    g = erdos_renyi_gnp(n, m)
-    g_r = erdos_renyi_gnm_randomize(g)
+    g = erdos_renyi_gnm(n, m, directed=False, self_loops=False)
+    g_r = erdos_renyi_gnm_randomize(g, self_loops=False)
     assert g_r.n == g.n
+    assert g_r.is_directed() == g.is_directed()
     assert g_r.mapping == g.mapping
-    assert g_r.m == g_r.m
+    assert g_r.m == g.m
 
 
 def test_erdos_renyi_gnp_randomize():
@@ -179,7 +176,7 @@ def test_generate_degree_sequence():
 
 def test_watts_strogatz_simple():
     g = watts_strogatz(5, 1, 0.0)
-    assert g.m == 10
+    assert g.m == 5
     assert (
         to_numpy(g.data.edge_index) == np.array([[0, 0, 1, 1, 2, 2, 3, 3, 4, 4], [1, 4, 0, 2, 1, 3, 2, 4, 0, 3]])
     ).all()
@@ -187,7 +184,7 @@ def test_watts_strogatz_simple():
     torch.manual_seed(1)
     g = watts_strogatz(5, 1, 0.5, allow_duplicate_edges=False, allow_self_loops=False)
     print(g.data.edge_index)
-    assert g.m == 10
+    assert g.m == 5
     assert g.n == 5
     assert g.has_self_loops() is False
     assert g.is_directed() is False
@@ -235,12 +232,9 @@ def test_watts_strogatz_rewiring():
     assert ratio < 0.6
 
 
-def test_watts_strogatz_get_warning():
+def test_watts_strogatz_get_error():
     with pytest.raises(ValueError):
         print(watts_strogatz(5, 10, 0.5, allow_duplicate_edges=False))
-
-    with pytest.warns(Warning):
-        print(watts_strogatz(10, 5, 0.31, allow_duplicate_edges=False))
 
 
 def test_stochastic_block_model():
@@ -256,7 +250,7 @@ def test_stochastic_block_model():
     g = stochastic_block_model(M, z, IndexMap(list('abcdefghi')))
 
     assert g.n == 9
-    assert g.m == 18
+    assert g.m == 9
     assert g.is_undirected()
     _, labels = connected_components(g)
     assert Counter(labels) == {0: 3, 1: 3, 2: 3}

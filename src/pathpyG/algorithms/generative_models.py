@@ -22,8 +22,12 @@ import numpy as _np
 import torch
 from torch_geometric.utils import degree
 
+import logging
+
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
+
+logger = logging.getLogger("root")
 
 
 def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_loops: bool = False) -> int | float:
@@ -73,7 +77,7 @@ def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
 
     Args:
         n: the number of nodes of the graph
-        m: the number of random edges to be generated
+        m: the number of random directed or undirected edges to be generated
         mapping: optional given mapping of n nodes to node IDs. If this is not given a mapping is created
         self_loops: whether or not to allow self-loops (v,v) to be generated
         multi_edges: whether or not multiple identical edges are allowed
@@ -82,7 +86,9 @@ def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
     Returns:
         Graph: graph object
     """
-    assert m <= max_edges(n, directed=directed, self_loops=self_loops, multi_edges=multi_edges)
+    if m > max_edges(n, directed=directed, self_loops=self_loops, multi_edges=multi_edges):
+        logger.error("Given number of edges is larger than theoretical maximum")
+        raise ValueError("Given number of edges is larger than theoretical maximum")
 
     edges = set()
     edges_added: int = 0
@@ -105,7 +111,7 @@ def erdos_renyi_gnm(n: int, m: int, mapping: IndexMap | None = None,
                 edges.add((mapping.to_id(w), mapping.to_id(v)))
             edges_added += 1
 
-    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping)
 
 
 def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edges: bool = False) -> Graph:
@@ -126,12 +132,8 @@ def erdos_renyi_gnm_randomize(graph: Graph, self_loops: bool = False, multi_edge
         r = pp.algorithms.generative_models.G_nm_randomize(g)
     ```
     """
-    if graph.is_undirected():
-        m = int(graph.m / 2)
-    else:
-        m = graph.m
     return erdos_renyi_gnm(
-        graph.n, m, directed=graph.is_directed(),
+        graph.n, graph.m, directed=graph.is_directed(),
         self_loops=self_loops,
         multi_edges=multi_edges,
         mapping=graph.mapping
@@ -158,7 +160,7 @@ def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
 
     # fast handling of special case p = 0
     if p == 0.0:
-        return Graph.from_edge_list([], is_undirected=not directed, num_nodes=0)
+        return Graph.from_edge_list([], is_undirected=not directed)
 
     # connect pairs of nodes with probability p
     for s in range(n):
@@ -174,7 +176,7 @@ def erdos_renyi_gnp(n: int, p: float, mapping: IndexMap | None = None,
                 if not directed and s != t:
                     edges.add((mapping.to_id(t), mapping.to_id(s)))
 
-    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping, num_nodes=n)
+    return Graph.from_edge_list(list(edges), is_undirected=not directed, mapping=mapping)
 
 
 def erdos_renyi_gnp_randomize(graph: Graph, self_loops: bool = False) -> Graph:
@@ -183,31 +185,34 @@ def erdos_renyi_gnp_randomize(graph: Graph, self_loops: bool = False) -> Graph:
     The number of nodes, expected number of edges, edge directedness and node uids of the
     generated graph match the corresponding values of the graph given as parameter.
     """
-    if graph.is_directed():
-        m = graph.m
-    else:
-        m = int(graph.m / 2)
     M = max_edges(graph.n, directed=graph.is_directed(), self_loops=self_loops)
-    p = m / M
+    p = graph.m / M
     return erdos_renyi_gnp(n=graph.n, p=p, directed=graph.is_directed(), 
                            self_loops=self_loops, mapping=graph.mapping)
 
 
 def erdos_renyi_gnp_likelihood(p: float, graph: Graph) -> float:
-    """Calculate the likelihood of parameter p for a G(n,p) model and a given graph"""
-    assert graph.is_directed is False
-    return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m / 2)
+    """Calculate the likelihood of parameter p for a G(n,p) model and a given undirected graph"""
+    if graph.is_directed():
+        logger.error("erdos_renyi_gnp_likelihood does not support directed graphs")
+        raise NotImplementedError("erdos_renyi_gnp_likelihood does not support directed graphs")
+    return p**graph.n * (1 - p) ** (scipy.special.binom(graph.n, 2) - graph.m)
 
 
 def erdos_renyi_gnp_log_likelihood(p: float, graph: Graph) -> float:
-    """Calculate the log-likelihood of parameter p for a G(n,p) model and a given graph"""
-    return (graph.m / 2) * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m / 2)) * _np.log10(1 - p)
+    """Calculate the log-likelihood of parameter p for a G(n,p) model and a given undirected graph"""
+    if graph.is_directed():
+        logger.error("erdos_renyi_gnp_log_likelihood does not support directed graphs")
+        raise NotImplementedError("erdos_renyi_gnp_log_likelihood does not support directed graphs")
+    return graph.m * _np.log10(p) + (scipy.special.binom(graph.n, 2) - (graph.m)) * _np.log10(1 - p)
 
 
 def erdos_renyi_gnp_mle(graph: Graph) -> float:
     """Calculate the maximum likelihood estimate of parameter p for a G(n,p) model and a given undirected graph"""
-    assert graph.is_directed() is False
-    return (graph.m / 2) / scipy.special.binom(graph.n, 2)
+    if graph.is_directed():
+        logger.error("erdos_renyi_gnp_mle does not support directed graphs")
+        raise NotImplementedError("erdos_renyi_gnp_mle does not support directed graphs")
+    return graph.m / scipy.special.binom(graph.n, 2)
 
 
 def watts_strogatz(
@@ -253,11 +258,12 @@ def watts_strogatz(
 
     if not allow_duplicate_edges:
         if n * (n - 1) < edges.shape[1]:
+            logger.error("number of edges is greater than the number of possible edges in the graph. Set `allow_duplicate_edges=True` to allow this.")
             raise ValueError(
-                "The number of edges is greater than the number of possible edges in the graph. Set `allow_duplicate_edges=True` to allow this."
+                "number of edges is greater than the number of possible edges in the graph. Set `allow_duplicate_edges=True` to allow this."
             )
         elif n * (n - 1) * 0.5 < edges.shape[1] and p > 0.3:
-            warnings.warn(
+            logger.info(
                 "Avoding duplicate in graphs with high connectivity and high rewiring probability may be slow. Consider setting `allow_duplicate_edges=True`."
             )
 
@@ -387,7 +393,7 @@ def stochastic_block_model(M: _np.matrix, z: _np.array, mapping: Optional[IndexM
                 edges.append((mapping.to_id(u), mapping.to_id(v)))
                 edges.append((mapping.to_id(v), mapping.to_id(u)))
 
-    g = Graph.from_edge_list(edges, mapping=mapping, num_nodes=n).to_undirected()
+    g = Graph.from_edge_list(edges, mapping=mapping).to_undirected()
     return g
 
 
@@ -433,7 +439,8 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
 
     # assume that we are given a graphical degree sequence
     if not is_graphic_erdos_gallai(degree_sequence):
-        raise AttributeError('degree sequence is not graphic')
+        logger.error("given degree sequence is not graphic")
+        raise ValueError('gicen degree sequence is not graphic')
 
     # create empty network with n nodes
     n = len(degree_sequence)
@@ -473,9 +480,10 @@ def molloy_reed(degree_sequence: _np.array | Dict[int, float],
 
 
 def molloy_reed_randomize(g: Graph) -> Optional[Graph]:
-    """Generates a random realization of a given network based on the observed degree sequence.
+    """Generates a randomized realization of a given undirected network based on the observed degree sequence.
     """
     if g.is_directed():
+        logger.error("molloy_reed_randomize is only implemented for undirected graphs")
         raise NotImplementedError('molloy_reed_randomize is only implemented for undirected graphs')
     # degrees are listed in order of node indices
     degrees = degree(g.data.edge_index[1], num_nodes=g.n, dtype=torch.int).tolist()

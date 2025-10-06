@@ -11,6 +11,7 @@ import numpy as np
 from torch_geometric.data import Data
 
 from pathpyG.core.graph import Graph
+from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.convert import to_numpy
@@ -251,7 +252,9 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         g: The graph to which the edge attributes should be added.
         time_attr: If not None, the name of the column containing time stamps for temporal edges.
     """
-    assert "v" in df and "w" in df, "Data frame must have columns `v` and `w` for source and target nodes"
+    if "v" not in df or "w" not in df:
+        logger.error("Data frame must have columns `v` and `w` for source and target nodes")
+        raise ValueError("Data frame must have columns `v` and `w` for source and target nodes")
 
     # check for non-existent nodes
     node_ids = set(df["v"]).union(set(df["w"]))
@@ -275,7 +278,9 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
     edge_attrs = [attr for attr in df.columns if attr not in ["v", "w"]]
 
     if time_attr is not None:
-        assert time_attr in df, f"Data frame must have column `{time_attr}` for time stamps"
+        if time_attr not in df:
+            logger.error("Data frame must have column %s for time stamps", time_attr)
+            raise ValueError(f"Data frame must have column {time_attr} for time stamps")
 
         time = df[time_attr].values
         edge_attrs.remove(time_attr)
@@ -285,6 +290,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         for src_i, tgt_i, time_i in zip(src, tgt, time):
             edge = g.tedge_to_index.get((src_i.item(), tgt_i.item(), time_i.item()), None)  # type: ignore
             if edge is None:
+                logger.error("found non-existing edge in temporal graph")
                 raise ValueError(
                     f"Edge ({src_i.item()}, {tgt_i.item()}) does not exist at time {time_i.item()} in the graph."
                 )
@@ -295,6 +301,7 @@ def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None
         for src_i, tgt_i in zip(src, tgt):
             edge = g.edge_to_index.get((src_i.item(), tgt_i.item()), None)
             if edge is None:
+                logger.error("found non-existing edge in temporal graph")
                 raise ValueError(f"Edge ({src_i.item()}, {tgt_i.item()}) does not exist in the graph.")
             edge_idx.append(edge)
 
@@ -363,6 +370,7 @@ def df_to_temporal_graph(
 
     if no_header:
         # interpret first two columns as source and target
+        logger.info("Interpreting first three columns as v, w, t")
         col_names = ["v", "w", "t"]
         # interpret remaining columns as edge attributes
         for i in range(3, len(df.columns.values.tolist())):
@@ -547,8 +555,9 @@ def read_csv_temporal_graph(
     return df_to_temporal_graph(df, timestamp_format=timestamp_format, time_rescale=time_rescale, **kwargs)
 
 
-def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, **pdargs: Any) -> None:
-    """Store all edges including edge attributes in a csv file.
+def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, 
+              path_or_buf: Any = None, **pdargs: Any) -> None:
+    """Store all edges of a graph or temporal graph in a csv file.
 
     This method stores a `Graph` or `TemporalGraph` as a `.csv` file. The csv file
     will contain all edges including edge attributes. Node and network-level attributes
@@ -559,10 +568,50 @@ def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, **
     Args:
         graph: The graph to export as pandas DataFrame
         node_indices: whether nodes should be exported as integer indices
+        path_or_buf: String, path, or file-like object (see documentation of `pandas.DaatFrame.to_csv`)
         **pdargs: Additional keyword arguments passed to `pandas.DataFrame.to_csv`.
     """
     if isinstance(graph, TemporalGraph):
         frame = temporal_graph_to_df(graph=graph, node_indices=node_indices)
     else:
         frame = graph_to_df(graph=graph, node_indices=node_indices)
-    frame.to_csv(index=False, **pdargs)
+    frame.to_csv(index=False, path_or_buf=path_or_buf, **pdargs)
+
+
+def read_csv_path_data(path_or_buf: Any = None, weight: bool = True, sep=',',
+                       device: Optional[torch.device] = None, **pdargs: Any) -> PathData:
+    """Read multiple paths stored in an n-gram csv file
+
+
+    Args:
+        path_or_buf: File, path or file-like object that the `pandas.read_table` function will read from        
+        weight: If True the last column of each row in the CSV file will be interpreted as a count or weight
+        sep: character that separates the nodes (and weight) in each line of the input file
+    """
+
+    # Read raw data
+    df = pd.read_table(filepath_or_buffer=path_or_buf, header=None)
+    # split and expand non-uniform rows
+    df = df[0].str.split(sep, expand=True)
+
+    paths = []
+    weights = []
+
+    # extract node sequences and edges
+    for row in df.itertuples(index=False):
+        p = [x for x in row if x]
+        if weight:
+            weights.append(float(p[-1]))
+            p.pop()
+        else:
+            weights.append(1.0)
+        paths.append(p)
+
+    # create index mapping
+    mapping = IndexMap()
+    mapping.add_ids(np.unique(np.hstack(paths)))
+
+    # create path_data object
+    pathdata = PathData(mapping, device)
+    pathdata.append_walks(node_seqs=paths, weights=weights)
+    return pathdata

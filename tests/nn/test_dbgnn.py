@@ -10,7 +10,7 @@ from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 
 def test_bipartite_edge_index(simple_walks):
-    m = MultiOrderModel.from_PathData(simple_walks, max_order=2)
+    m = MultiOrderModel.from_path_data(simple_walks, max_order=2)
     g = m.layers[1]
     print(g.data.edge_index)
     print(g.mapping)
@@ -32,7 +32,7 @@ def test_bipartite_edge_index(simple_walks):
 
 
 def test_dbgnn(simple_walks):
-    m = MultiOrderModel.from_PathData(simple_walks, max_order=2)
+    m = MultiOrderModel.from_path_data(simple_walks, max_order=2)
     data = m.to_dbgnn_data()
     g1 = m.layers[1]
     g2 = m.layers[2]
