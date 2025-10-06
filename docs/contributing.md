@@ -93,43 +93,29 @@ You can add more pages to the documentation by adding a `markdown`-file to the `
 
 ## Code Style
 
-We (soon) enforce code style guidelines with `pylint`, `flake8`, `mypy` and `pyright`. These packages are configured as defaults in the Dev Container setup via `VSCode` and the settings are saved in `pyproject.toml`. You can run them locally with the following commands:
+We (soon) enforce code style guidelines with `ruff` and `mypy`. These packages are configured as defaults in the Dev Container setup via `VSCode` and the settings are saved in `pyproject.toml`. You can run them locally with the following commands:
 
-- `pylint`: A linter that checks for errors and code style violations.
+- `ruff`: A linter that checks for errors and code style violations.
     ```bash
-    pylint scr/ # (1)!
+    ruff check . # (1)!
     ```
-    1. This runs `pylint` on all files in `scr/`. You can also run `pylint` on a single file by specifying the path to the file instead.
-- `flake8`: Another linter that checks for bad code smells and suspicious constructs.
-    ```bash
-    flake8 . # (1)!
-    ```
-    1. This runs `flake8` on all files in the current directory. You can also run `flake8` on a single file or a subdirectory by specifying the path accordingly.
+    1. This runs `ruff` as a linter on all files in the current directory. You can also run `ruff` on a single file by specifying the path to the file instead. If you want to automatically fix all issues that can be fixed automatically, you can use `ruff check . --fix`.
 - `mypy`: A static type checker for Python.
     ```bash
     mypy src/ # (1)!
     ```
     1. This runs `mypy` on all files in `src/`. You can also run `mypy` on a single file by specifying the path to the file instead.
-- `pyright`: A second static type checker for Python.
-    ```bash
-    pyright . # (1)!
-    ```
-    1. This runs `pyright` on all files in the current directory. You can also run it on a single file or a subdirectory by specifying the path accordingly.
 
 ## Formatting
 
-We use `black` for formatting. You can run it locally with the following command:
+We use `ruff` for formatting. You can run it locally with the following command:
 
 ```bash
-black . # (1)!
+ruff format . # (1)!
 ```
 
-1. This command will format all files in the current directory. You can also run `black` on a single file or a subdirectory by specifying the path accordingly.
+1. This command will format all files in the current directory. You can also run `ruff` on a single file or a subdirectory by specifying the path accordingly.
 
-We further use `isort` for sorting imports. You can run it locally with the following command:
-```bash
-isort .
-```
 The default keyboard shortcut for formatting in `VSCode` is `Alt + Shift + F`.
 
 ## Testing
