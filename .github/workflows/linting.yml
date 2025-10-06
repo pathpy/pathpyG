@@ -1,6 +1,8 @@
 # Inspired by https://github.com/pyg-team/pytorch_geometric/blob/ee30973ed0957a7f29f345d4eeaf9cfd70805109/.github/workflows/linting.yml
 name: Linting
 
+description: Run ruff and mypy to check code quality and type hints.
+
 on:
   push:
     branches:
@@ -36,6 +38,8 @@ jobs:
 
       - name: Setup packages
         uses: ./.github/actions/setup
+        with:
+          full_install: false
 
       - name: Check type hints
         continue-on-error: true

@@ -11,6 +11,10 @@ inputs: # defaults are set to the version used in the dev container
     required: false
     default: cpu # For GPU support a self-hosted runner is required.
     description: "If CUDA should be used or not."
+  full_install:
+    required: false
+    default: true
+    description: "If optional dependencies like `manim` and `LaTeX` should be installed."
 
 runs:
   using: composite
@@ -22,15 +26,9 @@ runs:
         python-version: ${{ inputs.python-version }}
         activate-environment: true
 
-    - name: Install manim dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
-      shell: bash
-
     - name: Install pathpyG
       run: |
-        uv sync --frozen --extra vis --extra ${{ inputs.cuda-version }}
+        uv sync --frozen --extra ${{ inputs.cuda-version }}
       shell: bash
 
     - name: Check installation
@@ -38,4 +36,11 @@ runs:
         uv run python -c "import torch; print('PyTorch:', torch.__version__)"
         uv run python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
         uv run python -c "import torch; print('CUDA:', torch.version.cuda)"
+      shell: bash
+
+    - name: Install extension packages
+      if: ${{ inputs.full_install == 'true' }}
+      run: | # ToDo: Add LaTeX installation
+        sudo apt-get update && sudo apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
+        uv sync --frozen --extra vis --extra ${{ inputs.cuda-version }}
       shell: bash
