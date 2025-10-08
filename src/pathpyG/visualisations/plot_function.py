@@ -21,7 +21,7 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
-from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
+# from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 
 # create logger
 logger = logging.getLogger("root")
@@ -53,7 +53,7 @@ FORMATS: dict = {
 # Supported Plot Classes
 PLOT_CLASSES: dict = {
     "static": NetworkPlot,
-    "temporal": TemporalNetworkPlot,
+    # "temporal": TemporalNetworkPlot,
 }
 
 def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: str) -> PlotBackend:

@@ -1,46 +1,40 @@
-#!/usr/bin/python -tt
-# -*- coding: utf-8 -*-
-# =============================================================================
-# File      : core.py -- Plots with tikz
-# Author    : Jürgen Hackl <hackl@ifi.uzh.ch>
-# Time-stamp: <Wed 2023-10-25 09:52 juergen>
-#
-# Copyright (c) 2016-2021 Pathpy Developers
-# =============================================================================
 from __future__ import annotations
 
-import os
-import time
-import shutil
 import logging
-import tempfile
+import os
+import shutil
 import subprocess
+import tempfile
+import time
 import webbrowser
-
-from typing import Any
 from string import Template
 
-from pathpyG.utils.config import config
-from pathpyG.visualisations.plot import PathPyPlot
+from pathpyG import config
+from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.pathpy_plot import PathPyPlot
+from pathpyG.visualisations.plot_backend import PlotBackend
+from pathpyG.visualisations.utils import unit_str_to_float, hex_to_rgb
 
 # create logger
 logger = logging.getLogger("root")
 
+SUPPORTED_KINDS = {
+    NetworkPlot: "static",
+}
 
-class TikzPlot(PathPyPlot):
-    """Base class for plotting tikz objects."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize plot class."""
-        super().__init__()
-        if kwargs:
-            self.config = kwargs
+class TikzBackend(PlotBackend):
+    """Backend for tikz/latex output."""
 
-    def generate(self) -> None:
-        """Generate the plot."""
-        raise NotImplementedError
+    def __init__(self, plot: PathPyPlot, show_labels: bool):
+        """Initialize the backend with a plot."""
+        super().__init__(plot, show_labels=show_labels)
+        self._kind = SUPPORTED_KINDS.get(type(plot), None)
+        if self._kind is None:
+            logger.error(f"Plot of type {type(plot)} not supported by Tikz backend.")
+            raise ValueError(f"Plot of type {type(plot)} not supported.")
 
-    def save(self, filename: str, **kwargs: Any) -> None:
+    def save(self, filename: str) -> None:
         """Save the plot to the hard drive."""
         if filename.endswith("tex"):
             with open(filename, "w+") as new:
@@ -62,7 +56,7 @@ class TikzPlot(PathPyPlot):
         else:
             raise NotImplementedError
 
-    def show(self, **kwargs: Any) -> None:
+    def show(self) -> None:
         """Show the plot on the device."""
         # compile temporary pdf
         temp_file, temp_dir = self.compile_svg()
@@ -101,7 +95,7 @@ class TikzPlot(PathPyPlot):
         except subprocess.CalledProcessError as e:
             logger.error("latexmk compiler failed with output:\n%s", e.output.decode())
             raise AttributeError from e
-        
+
         # dvisvgm command
         command = [
             "dvisvgm",
@@ -180,25 +174,59 @@ class TikzPlot(PathPyPlot):
 
         # fill template with data
         tex = Template(tex_template).substitute(
-            classoptions=self.config.get("latex_class_options", ""),
-            width=self.config.get("width", "12cm"),
-            height=self.config.get("height", "12cm"),
+            classoptions=self.config.get("latex_class_options"),
+            width=self.config.get("width"),
+            height=self.config.get("height"),
             tikz=data,
         )
 
         return tex
 
     def to_tikz(self) -> str:
-        """Convert data to tikz."""
-        raise NotImplementedError
+        """Convert to Tex."""
+        tikz = ""
+        # generate node strings
+        node_strings = "\\Vertex["
+        # show labels if specified
+        if self.show_labels:
+            node_strings += "label=" + self.data["nodes"].index.astype(str) + ","
+            node_strings += (
+                "fontsize=\\fontsize{" + str(int(0.75 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
+            )
+        # Convert hex colors to rgb if necessary
+        if self.data["nodes"]["color"].str.startswith("#").all():
+            self.data["nodes"]["color"] = self.data["nodes"]["color"].map(hex_to_rgb)
+            node_strings += "RGB,color={" + self.data["nodes"]["color"].astype(str).str.strip("()") + "},"
+        else:
+            node_strings += "color=" + self.data["nodes"]["color"] + ","
+        # add other options
+        node_strings += "size=" + (self.data["nodes"]["size"] * 0.05).astype(str) + ","
+        node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
+        # add position
+        node_strings += (
+            "x=" + ((self.data["nodes"]["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")).astype(str) + ","
+        )
+        node_strings += (
+            "y=" + ((self.data["nodes"]["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")).astype(str) + "]"
+        )
+        # add node name
+        node_strings += "{" + self.data["nodes"].index.astype(str) + "}\n"
+        tikz += node_strings.str.cat()
 
+        # generate edge strings
+        edge_strings = "\\Edge["
+        if self.config["directed"]:
+            edge_strings += "bend=15,Direct,"
+        if self.data["edges"]["color"].str.startswith("#").all():
+            self.data["edges"]["color"] = self.data["edges"]["color"].map(hex_to_rgb)
+            edge_strings += "RGB,color={" + self.data["edges"]["color"].astype(str).str.strip("()") + "},"
+        else:
+            edge_strings += "color=" + self.data["edges"]["color"] + ","
+        edge_strings += "lw=" + self.data["edges"]["size"].astype(str) + ","
+        edge_strings += "opacity=" + self.data["edges"]["opacity"].astype(str) + "]"
+        edge_strings += (
+            "(" + self.data["edges"]["source"].astype(str) + ")(" + self.data["edges"]["target"].astype(str) + ")\n"
+        )
+        tikz += edge_strings.str.cat()
 
-# =============================================================================
-# eof
-#
-# Local Variables:
-# mode: python
-# mode: linum
-# mode: auto-fill
-# fill-column: 79
-# End:
+        return tikz

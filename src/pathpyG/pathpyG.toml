@@ -15,15 +15,6 @@ frequency = "frequency"
 [object]
 separator =","
 
-[node]
-color = "CornFlowerBlue"
-size = 15
-
-[edge]
-color = "darkgray"
-width = 2
-curved = true
-
 [path]
 separator = "|"
 replace = "_"
@@ -33,7 +24,25 @@ max_name_length = 5
 separator = "="
 replace = "_"
 
-[temporal]
+[visualisation]
+default_backend = "d3js"
+cmap = "cividis"
+layout = "spring_layout"
+width = "12cm"
+height = "12cm"
+latex_class_options = ""
+
+[visualisation.node]
+color = [36, 74, 92]
+size = 15
+opacity = 0.75
+
+[visualisation.edge]
+color = [76, 112, 123]
+size = 2
+opacity = 0.5
+
+[visualisation.temporal]
 start = "start"
 end = "end"
 timestamp = "timestamp"

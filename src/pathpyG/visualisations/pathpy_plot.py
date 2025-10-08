@@ -17,6 +17,10 @@ class PathPyPlot:
         """Initialize plot class."""
         self.data: dict = {}
         self.config: dict = config.get("visualisation", {}).copy()
+        if isinstance(self.config["node"]["color"], list):
+            self.config["node"]["color"] = tuple(self.config["node"]["color"])
+        if isinstance(self.config["edge"]["color"], list):
+            self.config["edge"]["color"] = tuple(self.config["edge"]["color"])
         logger.debug(f"Intialising PathpyPlot with config: {self.config}")
 
     def generate(self) -> None:

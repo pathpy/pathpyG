@@ -70,7 +70,10 @@ class NetworkPlot(PathPyPlot):
         nodes: pd.DataFrame = pd.DataFrame(index=self.network.nodes)
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
-            nodes[attribute] = self.config.get("node").get(attribute)  # type: ignore[union-attr]
+            if isinstance(self.config.get("node").get(attribute), list | tuple):  # type: ignore[union-attr]
+                nodes[attribute] = [self.config.get("node").get(attribute)] * len(nodes)  # type: ignore[union-attr]
+            else:
+                nodes[attribute] = self.config.get("node").get(attribute)  # type: ignore[union-attr]
             # check if attribute is given as argument
             if attribute in self.node_args:
                 if isinstance(self.node_args[attribute], dict):
@@ -94,7 +97,10 @@ class NetworkPlot(PathPyPlot):
         edges: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples(self.network.edges, names=["source", "target"]))
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
-            edges[attribute] = self.config.get("edge").get(attribute)  # type: ignore[union-attr]
+            if isinstance(self.config.get("edge").get(attribute), list | tuple):  # type: ignore[union-attr]
+                edges[attribute] = [self.config.get("edge").get(attribute)] * len(edges)  # type: ignore[union-attr]
+            else:
+                edges[attribute] = self.config.get("edge").get(attribute)  # type: ignore[union-attr]
             # check if attribute is given as argument
             if attribute in self.edge_args:
                 if isinstance(self.edge_args[attribute], dict):
@@ -164,6 +170,10 @@ class NetworkPlot(PathPyPlot):
 
         # update x,y position of the nodes
         layout_df = pd.DataFrame.from_dict(layout, orient="index", columns=["x", "y"])
+        # scale x and y to [0,1]
+        layout_df["x"] = (layout_df["x"] - layout_df["x"].min()) / (layout_df["x"].max() - layout_df["x"].min())
+        layout_df["y"] = (layout_df["y"] - layout_df["y"].min()) / (layout_df["y"].max() - layout_df["y"].min())
+        # join layout with node data
         self.data["nodes"] = self.data["nodes"].join(layout_df, how="left")
 
     def _compute_config(self) -> None:

@@ -5,10 +5,11 @@ from pathpyG.visualisations.pathpy_plot import PathPyPlot
 
 class PlotBackend:
     """Base class for all plot backends."""
-    def __init__(self, plot: PathPyPlot):
+    def __init__(self, plot: PathPyPlot, show_labels: bool) -> None:
         """Initialize the backend with a plot."""
         self.data = plot.data
         self.config = plot.config
+        self.show_labels = show_labels
 
     def save(self, filename: str) -> None:
         """Save the plot to the hard drive."""
