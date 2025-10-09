@@ -179,6 +179,7 @@ class NetworkPlot(PathPyPlot):
     def _compute_config(self) -> None:
         """Add additional configs."""
         self.config["directed"] = self.network.is_directed()
+        self.config["simulation"] = self.config["layout"] is None
 
 
 # =============================================================================

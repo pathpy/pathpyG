@@ -17,8 +17,9 @@ const Network = (config) => {
     const height = config.height || 600;    // window height
     const delta = config.delta || 300;      // time between frames
     const padding = (config.node && config.node.image_padding) || 5;    // distance between node and image
-    const xlim = [-0.1,1.1]; // limits of the x-coordinates
-    const ylim = [-0.1,1.1]; // limits of the y-coordinates
+    const margin = config.margin || 0.1;  // margin around the plot area for fixed layout
+    const xlim = [-1*margin, 1+(1*margin)]; // limits of the x-coordinates
+    const ylim = [-1*margin, 1+(1*margin)]; // limits of the y-coordinates
     const arrowheadMultiplier = 4; // Multiplier for arrowhead size based on edge stroke width
     const nodeStrokeWidth = 2.5; // Stroke width around nodes
 
@@ -418,10 +419,10 @@ const Network = (config) => {
                 // TRUE: Use a dynamic spring layout (force-directed)
                 simulation
                     .force('charge', d3.forceManyBody().strength(-50)) // Nodes repel each other
-                    .force('center', d3.forceCenter(0, 0)) // Center the graph
+                    .force('center', d3.forceCenter(width/2, height/2)) // Center the graph
                     .force('x', null) // Remove the static x-force
                     .force('y', null) // Remove the static y-force
-                    .force('boundary', forceBoundary(-width / 2, -height / 2, width / 2, height / 2));
+                    .force('boundary', forceBoundary(0, 0, width, height));
                 
                 // Adjust link force
                 simulation.force("link").strength(0.1).distance(70);

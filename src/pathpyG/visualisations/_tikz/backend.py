@@ -175,8 +175,9 @@ class TikzBackend(PlotBackend):
         # fill template with data
         tex = Template(tex_template).substitute(
             classoptions=self.config.get("latex_class_options"),
-            width=self.config.get("width"),
-            height=self.config.get("height"),
+            width=unit_str_to_float(self.config.get("width"), "cm"),
+            height=unit_str_to_float(self.config.get("height"), "cm"),
+            margin=self.config.get("margin"),
             tikz=data,
         )
 

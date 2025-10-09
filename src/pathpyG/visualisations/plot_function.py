@@ -21,6 +21,7 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
+from pathpyG.visualisations._d3js.backend import D3jsBackend
 # from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 
 # create logger
@@ -155,10 +156,16 @@ def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: A
     filename = kwargs.pop("filename", None)
     _backend: str = kwargs.pop("backend", None)
 
-    plt = PLOT_CLASSES[kind](graph, **kwargs)
     plot_backend_class = _get_plot_backend(
         backend=_backend, filename=filename, default=config.get("visualisation").get("default_backend")  # type: ignore[union-attr]
     )
+
+    # Check if backend is d3js and if layouting is required
+    if plot_backend_class == D3jsBackend:
+        if "layout" not in kwargs:
+            kwargs["layout"] = None
+
+    plt = PLOT_CLASSES[kind](graph, **kwargs)
     plot_backend = plot_backend_class(plt, show_labels=show_labels)
     if filename:
         plot_backend.save(filename)

@@ -89,8 +89,8 @@ class MatplotlibBackend(PlotBackend):
                 )
 
         # set limits
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_ylim(-0.1, 1.1)
+        ax.set_xlim(-1 * self.config["margin"], 1 + (1*self.config["margin"]))
+        ax.set_ylim(-1 * self.config["margin"], 1 + (1*self.config["margin"]))
         return fig, ax
 
     def add_undirected_edges(self, source_coords, target_coords, ax, size_factor):
