@@ -217,20 +217,20 @@ const Network = (config) => {
             const oldNodesMap = new Map(node.data().map(d => [d.uid, d]));
             nodes = nodes.map(newNode => {
                 const oldNode = oldNodesMap.get(newNode.uid);
-                
-                // Check if this is the node currently being dragged
-                if (currentlyDragged && currentlyDragged.uid === newNode.uid) {
-                    // If so, update the original object in place...
-                    Object.assign(currentlyDragged, newNode);
-                    // ...and return the original object to preserve its identity.
-                    return currentlyDragged;
+                // If there's an old node, preserve its position and velocity.
+                // Also, preserve fixed position (fx, fy) if the user is dragging it.
+                if (oldNode) {
+                    newNode.x = oldNode.x;
+                    newNode.y = oldNode.y;
+                    newNode.vx = oldNode.vx;
+                    newNode.vy = oldNode.vy;
+                    if (oldNode.fx) newNode.fx = oldNode.fx;
+                    if (oldNode.fy) newNode.fy = oldNode.fy;
                 }
-                
-                // For all other nodes, create a new merged object as before.
-                return { ...oldNode, ...newNode };
+                return newNode;
             });
             links = links.map(d => ({...d}));
-
+            
             // --- NODES (CIRCLES) ---
             // 1. Data Join
             node = container.select('.nodes').selectAll("circle.node")
@@ -418,8 +418,7 @@ const Network = (config) => {
             }
 
             // Restart simulation and render immediately
-            simulation.alpha(1).restart().tick();
-            ticked();
+            simulation.alpha(1).restart();
         }
     });
 }; // End Network

@@ -127,6 +127,17 @@ class NetworkPlot(PathPyPlot):
         edges["source"] = edges.index.map(lambda x: x[0])
         edges["target"] = edges.index.map(lambda x: x[1])
 
+        # remove duplicate edges for better efficiency
+        if not self.network.is_directed():
+            # for undirected networks, sort source and target and drop duplicates
+            edges = edges.reset_index(drop=True)
+            edges["sorted"] = edges.apply(lambda row: tuple(sorted((row["source"], row["target"]))), axis=1)
+            edges = edges.drop_duplicates(subset=["sorted"]).drop(columns=["sorted"])
+            edges = edges.set_index(["source", "target"])
+        else:
+            # for directed networks, remove duplicates based on index
+            edges = edges[~edges.index.duplicated(keep="first")]
+        
         # save edge data
         self.data["edges"] = edges
 
