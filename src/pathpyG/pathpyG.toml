@@ -31,11 +31,13 @@ layout = "spring_layout"
 width = "12cm"
 height = "12cm"
 latex_class_options = ""
+delta = 300
 
 [visualisation.node]
 color = [36, 74, 92]
 size = 15
 opacity = 0.75
+image_padding = 5
 
 [visualisation.edge]
 color = [76, 112, 123]
