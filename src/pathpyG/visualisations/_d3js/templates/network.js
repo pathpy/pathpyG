@@ -22,6 +22,7 @@ const Network = (config) => {
     const ylim = [-1*margin, 1+(1*margin)]; // limits of the y-coordinates
     const arrowheadMultiplier = 4; // Multiplier for arrowhead size based on edge stroke width
     const nodeStrokeWidth = 2.5; // Stroke width around nodes
+    const curveFactor = 0.75; // Factor to control curvature of edges (higher = more curved)
 
     // Initialize svg canvas
     const svg = d3.select(selector)
@@ -53,112 +54,83 @@ const Network = (config) => {
         .attr("class", "images")
         .selectAll(".image");
 
-    // Helper function to calculate and store link endpoints on the data object
-    const calculateAndStoreLinkPath = (d) => {
-        const source_x = d.source.x;
-        const source_y = d.source.y;
-        const target_x = d.target.x;
-        const target_y = d.target.y;
-
-        const sourceRadius = d.source.size || (config.node && config.node.size) || 15;
-        const targetRadius = d.target.size || (config.node && config.node.size) || 15;
-        
-        let effectiveSourceRadius = sourceRadius + nodeStrokeWidth / 2;
-        let effectiveTargetRadius = targetRadius + nodeStrokeWidth / 2;
-
-        if (config.directed) {
-            // Adjust effective radii to account for arrowhead size
-            const edgeStrokeWidth = d.size || (config.edge && config.edge.size) || 2;
-            const arrowheadLength = edgeStrokeWidth * arrowheadMultiplier;
-            effectiveTargetRadius += arrowheadLength;
-        }
-
-        let finalPath;
-
-        if (config.curved) {
-            // --- For CURVED Directed Links (Complex Path) ---
-            const dx = target_x - source_x;
-            const dy = target_y - source_y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Create a virtual path from center to center
-            const virtualPathData = `M${source_x},${source_y} A${distance},${distance} 0 0,1 ${target_x},${target_y}`;
-
-            // Use a temporary path element to measure
-            const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            tempPath.setAttribute("d", virtualPathData);
-            
-            const pathLength = tempPath.getTotalLength();
-            
-            // Find the precise intersection points by moving along the path
-            const startPoint = tempPath.getPointAtLength(effectiveSourceRadius);
-            const endPoint = tempPath.getPointAtLength(pathLength - effectiveTargetRadius);
-
-            // Rebuild the arc with the new, correct endpoints
-            const newDx = endPoint.x - startPoint.x;
-            const newDy = endPoint.y - startPoint.y;
-            const newDistance = Math.sqrt(newDx * newDx + newDy * newDy);
-            
-            finalPath = `M${startPoint.x},${startPoint.y} A${newDistance},${newDistance} 0 0,1 ${endPoint.x},${endPoint.y}`;
-
-        } else {
-            // --- For STRAIGHT Undirected Links (Simple Path) ---
-            const dx = target_x - source_x;
-            const dy = target_y - source_y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance === 0) {
-                 d._path = `M${source_x},${source_y} L${target_x},${target_y}`;
-                 return;
-            }
-            
-            const x1 = source_x + (dx / distance) * effectiveSourceRadius;
-            const y1 = source_y + (dy / distance) * effectiveSourceRadius;
-            const x2 = target_x - (dx / distance) * effectiveTargetRadius;
-            const y2 = target_y - (dy / distance) * effectiveTargetRadius;
-            finalPath = `M${x1},${y1} L${x2},${y2}`;
-        }
-        
-        d._path = finalPath;
-    };
-
     const ticked = () => {
-        // First, iterate through the link data to calculate all endpoints (and curves if directed)
-        // so that the link only touches the edge of the node when opacity is < 1
-        link.data().forEach(calculateAndStoreLinkPath);
+        // 1. Update node, label, and image positions
+        node.attr("transform", d => `translate(${d.x},${d.y})`);
+        label.attr("transform", d => `translate(${d.x},${d.y})`);
+        image.attr("transform", d => `translate(${d.x},${d.y})`);
 
-        node.call(updateNodePosition);
-        link.call(updateLinkPosition);
-        if (config.show_labels) {
-            label.call(updateLabelPosition);
-        }
-        image.call(updateImagePosition);
-    }
+        // 2. Update the link paths
+        link.attr('d', d => {
+            // --- A. Get necessary properties ---
+            const sourceRadius = d.source.size || (config.node && config.node.size) || 15;
+            const targetRadius = d.target.size || (config.node && config.node.size) || 15;
+            const edgeStrokeWidth = d.size || (config.edge && config.edge.size) || 2;
+            const arrowheadLength = config.directed ? (edgeStrokeWidth * arrowheadMultiplier) : 0;
 
-    // update node position
-    const updateNodePosition = (node) => {
-        node.attr("transform", function(d) {
-            return "translate(" + d.x + "," + d.y + ")";
+            const effectiveSourceRadius = sourceRadius + (nodeStrokeWidth / 2);
+            const effectiveTargetRadius = targetRadius + (nodeStrokeWidth / 2) + arrowheadLength;
+
+            const x1 = d.source.x, y1 = d.source.y;
+            const x2 = d.target.x, y2 = d.target.y;
+
+            const dx = x2 - x1, dy = y2 - y1;
+            const distance = Math.hypot(dx, dy);
+
+            // Don't draw if nodes are overlapping
+            if (distance < effectiveSourceRadius + effectiveTargetRadius) return "";
+
+            // --- B. Straight Line Calculation (Fast Path) ---
+            if (!config.curved) {
+                const sourceX = d.source.x + (dx / distance) * effectiveSourceRadius;
+                const sourceY = d.source.y + (dy / distance) * effectiveSourceRadius;
+                const targetX = d.target.x - (dx / distance) * effectiveTargetRadius;
+                const targetY = d.target.y - (dy / distance) * effectiveTargetRadius;
+
+                return `M${sourceX},${sourceY}L${targetX},${targetY}`;
+            } else {
+                // --- C. Curved Line Calculation ---
+                // The radius of the arc is the distance between the nodes times a curve factor
+                const arcRadius = distance * curveFactor;
+
+                // Find the intersection of two circles:
+                // 1. The arc itself with unknown center.
+                // 2. The node's boundary circle.
+
+                // Find the center of the arc's circle
+                // https://math.stackexchange.com/questions/1781438/finding-the-center-of-a-circle-given-two-points-and-a-radius-algebraically
+                xa = dx/2; ya = dy/2;
+                x0 = x1 + xa; y0 = y1 + ya; // center of the rhombus
+                a = distance/2;
+                b = Math.sqrt(arcRadius*arcRadius - a*a);
+
+                // center of the arc's circle
+                const cx = x0 - (b * ya) / a;
+                const cy = y0 + (b * xa) / a;
+
+                // source node intersection
+                const sourceDX = x1 - cx; const sourceDY = y1 - cy;
+                const sourceDistance = Math.hypot(sourceDX, sourceDY);
+                const sourceA = ((arcRadius*arcRadius) - (effectiveSourceRadius*effectiveSourceRadius) + (sourceDistance*sourceDistance)) / (2*sourceDistance);
+                const sourceH = Math.sqrt((arcRadius*arcRadius) - (sourceA*sourceA));
+                const sourceMidX = cx + (sourceA * (sourceDX)) / sourceDistance;
+                const sourceMidY = cy + (sourceA * (sourceDY)) / sourceDistance;
+                const sourceNewX = sourceMidX - (sourceH * (sourceDY)) / sourceDistance;
+                const sourceNewY = sourceMidY + (sourceH * (sourceDX)) / sourceDistance;
+
+                // target node intersection
+                const targetDX = x2 - cx; const targetDY = y2 - cy;
+                const targetDistance = Math.hypot(targetDX, targetDY);
+                const targetA = ((arcRadius*arcRadius) - (effectiveTargetRadius*effectiveTargetRadius) + (targetDistance*targetDistance)) / (2*targetDistance);
+                const targetH = Math.sqrt((arcRadius*arcRadius) - (targetA*targetA));
+                const targetMidX = cx + (targetA * (targetDX)) / targetDistance;
+                const targetMidY = cy + (targetA * (targetDY)) / targetDistance;
+                const targetNewX = targetMidX + (targetH * (targetDY)) / targetDistance;
+                const targetNewY = targetMidY - (targetH * (targetDX)) / targetDistance;
+
+                return `M${sourceNewX},${sourceNewY} A${arcRadius},${arcRadius} 0 0,1 ${targetNewX},${targetNewY}`;
+            }
         });
-    };
-
-    // update label position
-    const updateLabelPosition = (label) => {
-        label.attr("transform", function(d) {
-            return "translate(" + d.x + "," + d.y + ")";
-        });
-    };
-
-    // update image position
-    const updateImagePosition = (image) => {
-        image.attr("transform", function(d) {
-            return "translate(" + d.x + "," + d.y + ")";
-        });
-    };
-
-    // update link position
-    const updateLinkPosition = (link) => {
-        link.attr('d', d => d._path);
     };
 
     const simulation = d3.forceSimulation()
