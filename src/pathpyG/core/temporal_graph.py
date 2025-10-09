@@ -11,6 +11,7 @@ from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG.core.index_map import IndexMap
+from pathpyG.utils import to_numpy
 
 
 class TemporalGraph(Graph):
@@ -109,7 +110,8 @@ class TemporalGraph(Graph):
             ('b', 'c', 2)
             ('c', 'a', 3)
         """
-        return [(*self.mapping.to_ids(e), t.item()) for e, t in zip(self.data.edge_index.t(), self.data.time)]
+        edge_and_time = np.concatenate((self.mapping.to_ids(self.data.edge_index), to_numpy(self.data.time.unsqueeze(0))), axis=0)
+        return edge_and_time.T.tolist()
     
     def to(self, device: torch.device) -> TemporalGraph:
         """Moves all graph data to the specified device (CPU or GPU).
