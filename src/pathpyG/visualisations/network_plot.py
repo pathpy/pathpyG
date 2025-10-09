@@ -84,7 +84,7 @@ class NetworkPlot(PathPyPlot):
             elif f"node_{attribute}" in self.network.node_attrs():
                 nodes[attribute] = self.network.data[f"node_{attribute}"]
 
-        # convert needed attributes to useful values
+        # convert attributes to useful values
         nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
         nodes["color"] = nodes["color"].map(self._convert_color)
 
@@ -120,9 +120,10 @@ class NetworkPlot(PathPyPlot):
                     else:
                         edges[attribute] = self.edge_args["weight"]
 
-        # convert needed attributes to useful values
+        # convert attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
         edges["color"] = edges["color"].map(self._convert_color)
+        # add source and target columns
         edges["source"] = edges.index.map(lambda x: x[0])
         edges["target"] = edges.index.map(lambda x: x[1])
 
@@ -179,6 +180,7 @@ class NetworkPlot(PathPyPlot):
     def _compute_config(self) -> None:
         """Add additional configs."""
         self.config["directed"] = self.network.is_directed()
+        self.config["curved"] = self.network.is_directed()
         self.config["simulation"] = self.config["layout"] is None
 
 

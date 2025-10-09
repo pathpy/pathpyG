@@ -6,21 +6,21 @@ import os
 import tempfile
 import uuid
 import webbrowser
-from string import Template
 from copy import deepcopy
+from string import Template
 
 from pathpyG.utils.config import config
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
+from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
-# from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 
 # create logger
 logger = logging.getLogger("root")
 
 SUPPORTED_KINDS = {
     NetworkPlot: "static",
-    # TemporalNetworkPlot: "temporal",
+    TemporalNetworkPlot: "temporal",
 }
 
 

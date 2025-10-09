@@ -31,7 +31,7 @@ layout = "spring_layout"
 width = "12cm"
 height = "12cm"
 latex_class_options = ""
-delta = 300
+delta = 1000
 margin = 0.1
 
 [visualisation.node]

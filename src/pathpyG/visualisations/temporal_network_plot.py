@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from collections import defaultdict
+import time
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
+
 from pathpyG.visualisations.network_plot import NetworkPlot
-from pathpyG.visualisations.utils import Colormap, rgb_to_hex
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -21,80 +22,114 @@ class TemporalNetworkPlot(NetworkPlot):
         """Initialize network plot class."""
         super().__init__(network, **kwargs)
 
-    def _get_edge_data(self, edges: dict, attributes: set, attr: defaultdict, categories: set) -> None:
-        """Extract edge data from temporal network."""
-        for u, v, t in self.network.temporal_edges:
-            uid = f"{u}-{v}-{t}"
-            edges[uid] = {
-                "uid": uid,
-                "source": str(u),
-                "target": str(v),
-                "start": int(t),
-                "end": int(t) + 1,
-            }
-            # add edge attributes if needed
-            for attribute in attributes:
-                attr[attribute][uid] = (
-                    self.network[f"edge_{attribute}", u, v].item() if attribute in categories else None
-                )
+    def generate(self) -> None:
+        """Generate the plot."""
+        self._compute_edge_data()
+        self._compute_node_data()
+        # self._compute_layout()
+        self._compute_config()
 
-    def _compute_node_data(self):
-        """_summary_"""
-        super()._compute_node_data()
+    def _compute_node_data(self) -> None:
+        """Generate the data structure for the nodes."""
+        # initialize values with index `node-0` to indicate time step 0
+        start_nodes: pd.DataFrame = pd.DataFrame(index=[f"{node}-0" for node in self.network.nodes])
+        new_nodes: pd.DataFrame = pd.DataFrame()
+        # add attributes to start nodes and new nodes if given as dictionary
+        for attribute in self.attributes:
+            # set default value for each attribute based on the pathpyG.toml config
+            if isinstance(self.config.get("node").get(attribute, None), list | tuple):  # type: ignore[union-attr]
+                start_nodes[attribute] = [self.config.get("node").get(attribute, None)] * len(start_nodes)  # type: ignore[union-attr]
+            else:
+                start_nodes[attribute] = self.config.get("node").get(attribute, None)  # type: ignore[union-attr]
+            # check if attribute is given as argument
+            if attribute in self.node_args:
+                if isinstance(self.node_args[attribute], dict):
+                    # check if dict contains node or node-time keys
+                    if "-" in next(iter(self.node_args[attribute].keys())):  # type: ignore[union-attr]
+                        # add node attribute according to node-time keys
+                        new_nodes = new_nodes.join(
+                            pd.DataFrame.from_dict(self.node_args[attribute], orient="index", columns=[attribute]),
+                            how="outer",
+                        )
+                    else:
+                        # add node attributes to start nodes according to node keys
+                        start_nodes[attribute] = start_nodes.index.map(lambda x: x[0]).map(self.node_args[attribute])
+                else:
+                    start_nodes[attribute] = self.node_args[attribute]
+            # check if attribute is given as node attribute
+            elif f"node_{attribute}" in self.network.node_attrs():
+                start_nodes[attribute] = self.network.data[f"node_{attribute}"]
 
-        raw_color_attr = self.config.get("node_color", {})
-        if not isinstance(raw_color_attr, dict):
-            return
+        # combine start nodes and new nodes
+        nodes = pd.concat([start_nodes, new_nodes])
+        nodes["start"] = nodes.index.map(lambda x: int(x.split("-")[1]))
+        nodes["uid"] = nodes.index.map(lambda x: x.split("-")[0])
+        # fill missing values with last known value
+        nodes = nodes.sort_values(by=["uid", "start"]).groupby("uid", sort=False).ffill()
+        nodes["uid"] = nodes.index.map(lambda x: x.split("-")[0])
+        # add end time step with the start the node appears the next time or max time step + 1
+        nodes["end"] = nodes.groupby("uid")["start"].shift(-1)
+        max_node_time = nodes["start"].max() + 1
+        if max_node_time < self.network.data.time[-1].item():
+            max_node_time = self.network.data.time[-1].item() + 1
+        nodes["end"] = nodes["end"].fillna(max_node_time)
 
-        color_changes_by_node = defaultdict(list)
-        for key, color in raw_color_attr.items():
-            if "-" not in key:
-                continue
+        # convert attributes to useful values
+        nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
+        nodes["color"] = nodes["color"].map(self._convert_color)
 
-            try:
-                node_id, time_str = key.rsplit("-", 1)
-                time = float(time_str)
-            except ValueError as exc:
-                raise ValueError(f"Invalid time-encoded node_color key: '{key}'") from exc
+        nodes = nodes.set_index(nodes["uid"])
+        # save node data
+        self.data["nodes"] = nodes
 
-            if isinstance(color, (int, float)):
-                cmap = self.config.get("node_cmap", Colormap())
-                rgb = cmap([color])[0]
-                color = rgb_to_hex(rgb[:3])
+    def _compute_edge_data(self) -> None:
+        """Generate the data structure for the edges."""
+        start_time = time.time()
+        # initialize values
+        edges: pd.DataFrame = pd.DataFrame(index=[f"{source}-{target}-{time}" for source, target, time in self.network.temporal_edges])
+        for attribute in self.attributes:
+            # set default value for each attribute based on the pathpyG.toml config
+            if isinstance(self.config.get("edge").get(attribute, None), list | tuple):  # type: ignore[union-attr]
+                edges[attribute] = [self.config.get("edge").get(attribute, None)] * len(edges)  # type: ignore[union-attr]
+            else:
+                edges[attribute] = self.config.get("edge").get(attribute, None)  # type: ignore[union-attr]
+            # check if attribute is given as argument
+            if attribute in self.edge_args:
+                if isinstance(self.edge_args[attribute], dict):
+                    new_colors = edges.index.map(self.edge_args[attribute])
+                    edges.loc[~new_colors.isna(), attribute] = new_colors[~new_colors.isna()]
+                else:
+                    edges[attribute] = self.edge_args[attribute]
+            # check if attribute is given as edge attribute
+            elif f"edge_{attribute}" in self.network.edge_attrs():
+                edges[attribute] = self.network.data[f"edge_{attribute}"]
+            # special case for size: If no edge_size is given use edge_weight if available
+            elif attribute == "size":
+                if "edge_weight" in self.network.edge_attrs():
+                    edges[attribute] = self.network.data["edge_weight"]
+                elif "weight" in self.edge_args:
+                    if isinstance(self.edge_args["weight"], dict):
+                        edges[attribute] = edges.index.map(lambda x: f"{x[0]}-{x[1]}-{x[2]}").map(
+                            self.edge_args["weight"]
+                        )
+                    else:
+                        edges[attribute] = self.edge_args["weight"]
 
-            elif isinstance(color, tuple):
-                color = rgb_to_hex(color)
 
-            color_changes_by_node[node_id].append({"time": time, "color": color})
+        # convert needed attributes to useful values
+        edges["color"] = self._convert_to_rgb_tuple(edges["color"])
+        edges["color"] = edges["color"].map(self._convert_color)
+        edges["source"] = edges.index.map(lambda x: x.split("-")[0])
+        edges["target"] = edges.index.map(lambda x: x.split("-")[1])
+        edges["start"] = edges.index.map(lambda x: int(x.split("-")[2]))
+        edges["end"] = edges["start"] + 1  # assume all edges last for one time step
+        edges.index = edges.index.map(lambda x: f"{x.split('-')[0]}-{x.split('-')[1]}")
 
-        for node_id, changes in color_changes_by_node.items():
-            if node_id in self.data.get("nodes", {}):
-                self.data["nodes"][node_id]["color_change"] = sorted(changes, key=lambda x: x["time"])
-
-    def _get_node_data(self, nodes: dict, attributes: set, attr: defaultdict, categories: set) -> None:
-        """Extract node data from temporal network."""
-
-        time = {e[2] for e in self.network.temporal_edges}
-
-        if self.config.get("end", None) is None:
-            self.config["end"] = int(max(time) + 1)
-
-        if self.config.get("start", None) is None:
-            self.config["start"] = int(min(time) - 1)
-
-        for uid in self.network.nodes:
-            nodes[uid] = {
-                "uid": str(uid),
-                "start": int(min(time) - 1),
-                "end": int(max(time) + 1),
-            }
-
-            # add edge attributes if needed
-            for attribute in attributes:
-                attr[attribute][uid] = (
-                    self.network[f"node_{attribute}", uid].item() if attribute in categories else None
-                )
+        # save edge data
+        self.data["edges"] = edges
 
     def _compute_config(self) -> None:
         """Add additional configs."""
-        pass
+        self.config["directed"] = True
+        self.config["curved"] = False
+        self.config["simulation"] = self.config["layout"] is None

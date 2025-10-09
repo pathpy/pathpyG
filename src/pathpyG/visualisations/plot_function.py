@@ -18,11 +18,10 @@ from typing import Any, Optional
 from pathpyG import config
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.visualisations.network_plot import NetworkPlot
-from pathpyG.visualisations.pathpy_plot import PathPyPlot
-from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations._d3js.backend import D3jsBackend
-# from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
+from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.plot_backend import PlotBackend
+from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 
 # create logger
 logger = logging.getLogger("root")
@@ -54,10 +53,10 @@ FORMATS: dict = {
 # Supported Plot Classes
 PLOT_CLASSES: dict = {
     "static": NetworkPlot,
-    # "temporal": TemporalNetworkPlot,
+    "temporal": TemporalNetworkPlot,
 }
 
-def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: str) -> PlotBackend:
+def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: str) -> type[PlotBackend]:
     """Return the plotting backend to use."""
     # check if backend is valid backend type based on enum
     if backend is not None and not Backends.is_backend(backend):
@@ -85,10 +84,10 @@ def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: 
         logger.error(f"The <{_backend}> backend could not be imported.")
         raise ImportError from e
 
-    return getattr(module, f"{_backend.capitalize()}Backend")  # type: ignore[return-value]
+    return getattr(module, f"{_backend.capitalize()}Backend")
 
 
-def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: Any) -> PathPyPlot:
+def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: Any) -> PlotBackend:
     """Make plot of pathpyG objects.
 
     Creates and displays a plot for a given `pathpyG` object. This function can
@@ -160,7 +159,7 @@ def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: A
         backend=_backend, filename=filename, default=config.get("visualisation").get("default_backend")  # type: ignore[union-attr]
     )
 
-    # Check if backend is d3js and if layouting is required
+    # Check if backend is d3js and set layout to None if not specifically given as argument
     if plot_backend_class == D3jsBackend:
         if "layout" not in kwargs:
             kwargs["layout"] = None

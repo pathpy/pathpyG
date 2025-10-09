@@ -66,9 +66,16 @@ const Network = (config) => {
         let effectiveSourceRadius = sourceRadius + nodeStrokeWidth / 2;
         let effectiveTargetRadius = targetRadius + nodeStrokeWidth / 2;
 
+        if (config.directed) {
+            // Adjust effective radii to account for arrowhead size
+            const edgeStrokeWidth = d.size || (config.edge && config.edge.size) || 2;
+            const arrowheadLength = edgeStrokeWidth * arrowheadMultiplier;
+            effectiveTargetRadius += arrowheadLength;
+        }
+
         let finalPath;
 
-        if (config.directed) {
+        if (config.curved) {
             // --- For CURVED Directed Links (Complex Path) ---
             const dx = target_x - source_x;
             const dy = target_y - source_y;
@@ -82,11 +89,6 @@ const Network = (config) => {
             tempPath.setAttribute("d", virtualPathData);
             
             const pathLength = tempPath.getTotalLength();
-            
-            // Adjust effective radii to account for arrowhead size
-            const edgeStrokeWidth = d.size || (config.edge && config.edge.size) || 2;
-            const arrowheadLength = edgeStrokeWidth * arrowheadMultiplier;
-            effectiveTargetRadius += arrowheadLength;
             
             // Find the precise intersection points by moving along the path
             const startPoint = tempPath.getPointAtLength(effectiveSourceRadius);
