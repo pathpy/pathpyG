@@ -41,7 +41,7 @@ class NetworkPlot(PathPyPlot):
         self.network = network
         self.node_args = {}
         self.edge_args = {}
-        self.attributes = ["color", "size", "opacity"]
+        self.attributes = ["color", "size", "opacity", "image"]
         # extract node and edge specific arguments from kwargs
         for key in kwargs.keys():
             if key.startswith("node_"):
@@ -70,10 +70,10 @@ class NetworkPlot(PathPyPlot):
         nodes: pd.DataFrame = pd.DataFrame(index=self.network.nodes)
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
-            if isinstance(self.config.get("node").get(attribute), list | tuple):  # type: ignore[union-attr]
-                nodes[attribute] = [self.config.get("node").get(attribute)] * len(nodes)  # type: ignore[union-attr]
+            if isinstance(self.config.get("node").get(attribute, None), list | tuple):  # type: ignore[union-attr]
+                nodes[attribute] = [self.config.get("node").get(attribute, None)] * len(nodes)  # type: ignore[union-attr]
             else:
-                nodes[attribute] = self.config.get("node").get(attribute)  # type: ignore[union-attr]
+                nodes[attribute] = self.config.get("node").get(attribute, None)  # type: ignore[union-attr]
             # check if attribute is given as argument
             if attribute in self.node_args:
                 if isinstance(self.node_args[attribute], dict):
@@ -81,7 +81,7 @@ class NetworkPlot(PathPyPlot):
                 else:
                     nodes[attribute] = self.node_args[attribute]
             # check if attribute is given as node attribute
-            elif attribute in self.network.node_attrs():
+            elif f"node_{attribute}" in self.network.node_attrs():
                 nodes[attribute] = self.network.data[f"node_{attribute}"]
 
         # convert needed attributes to useful values
@@ -97,10 +97,10 @@ class NetworkPlot(PathPyPlot):
         edges: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples(self.network.edges, names=["source", "target"]))
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
-            if isinstance(self.config.get("edge").get(attribute), list | tuple):  # type: ignore[union-attr]
-                edges[attribute] = [self.config.get("edge").get(attribute)] * len(edges)  # type: ignore[union-attr]
+            if isinstance(self.config.get("edge").get(attribute, None), list | tuple):  # type: ignore[union-attr]
+                edges[attribute] = [self.config.get("edge").get(attribute, None)] * len(edges)  # type: ignore[union-attr]
             else:
-                edges[attribute] = self.config.get("edge").get(attribute)  # type: ignore[union-attr]
+                edges[attribute] = self.config.get("edge").get(attribute, None)  # type: ignore[union-attr]
             # check if attribute is given as argument
             if attribute in self.edge_args:
                 if isinstance(self.edge_args[attribute], dict):

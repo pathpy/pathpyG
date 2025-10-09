@@ -8,6 +8,7 @@
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 
+from typing import Callable
 
 def rgb_to_hex(rgb: tuple) -> str:
     """Convert rgb color tuple to hex string.
@@ -37,14 +38,31 @@ def inch_to_cm(value: float) -> float:
     """Convert inch to cm."""
     return value * 2.54
 
+def inch_to_px(value: float, dpi: int = 96) -> float:
+    """Convert inch to px."""
+    return value * dpi
+
+def px_to_inch(value: float, dpi: int = 96) -> float:
+    """Convert px to inch."""
+    return value / dpi
+
 def unit_str_to_float(value: str, unit: str) -> float:
     """Convert string with unit to float in `unit`."""
-    if value.endswith("cm"):
-        return float(value[:-2]) if unit == "cm" else cm_to_inch(float(value[:-2]))
-    elif value.endswith("in"):
-        return inch_to_cm(float(value[:-2])) if unit == "cm" else float(value[:-2])
+    conversion_functions: dict[str, Callable[[float], float]] = {
+        "cm_to_in": cm_to_inch,
+        "in_to_cm": inch_to_cm,
+        "in_to_px": inch_to_px,
+        "px_to_in": px_to_inch,
+        "cm_to_px": lambda x: inch_to_px(cm_to_inch(x)),
+        "px_to_cm": lambda x: cm_to_inch(px_to_inch(x)),
+    }
+    conversion_key = f"{value[-2:]}_to_{unit}"
+    if conversion_key in conversion_functions:
+        return conversion_functions[conversion_key](float(value[:-2]))
+    elif value[-2:] == unit:
+        return float(value[:-2])
     else:
-        raise ValueError("Value must end with 'cm' or 'in'.")
+        raise ValueError(f"The provided conversion '{conversion_key}' is not supported.")
 
 # =============================================================================
 # eof
