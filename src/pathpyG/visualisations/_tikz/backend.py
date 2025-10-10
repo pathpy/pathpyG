@@ -9,6 +9,8 @@ import time
 import webbrowser
 from string import Template
 
+import pandas as pd
+
 from pathpyG import config
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
@@ -190,9 +192,11 @@ class TikzBackend(PlotBackend):
         node_strings = "\\Vertex["
         # show labels if specified
         if self.show_labels:
-            node_strings += "label=" + self.data["nodes"].index.astype(str) + ","
             node_strings += (
-                "fontsize=\\fontsize{" + str(int(0.75 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
+                "label=$" + self.data["nodes"].index.astype(str).map(self._replace_with_LaTeX_math_symbol) + "$,"
+            )
+            node_strings += (
+                "fontsize=\\fontsize{" + str(int(0.6 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
             )
         # Convert hex colors to rgb if necessary
         if self.data["nodes"]["color"].str.startswith("#").all():
@@ -201,7 +205,7 @@ class TikzBackend(PlotBackend):
         else:
             node_strings += "color=" + self.data["nodes"]["color"] + ","
         # add other options
-        node_strings += "size=" + (self.data["nodes"]["size"] * 0.05).astype(str) + ","
+        node_strings += "size=" + (self.data["nodes"]["size"] * 0.075).astype(str) + ","
         node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
         # add position
         node_strings += (
@@ -231,3 +235,21 @@ class TikzBackend(PlotBackend):
         tikz += edge_strings.str.cat()
 
         return tikz
+
+    def _replace_with_LaTeX_math_symbol(self, node_label: str) -> str:
+        """Replace certain symbols with LaTeX math symbols."""
+        replacements = {
+            "->": r"\to ",
+            "<-": r"\gets ",
+            "<->": r"\leftrightarrow ",
+            "=>": r"\Rightarrow ",
+            "<=": r"\Leftarrow ",
+            "<=>": r"\Leftrightarrow ",
+            "!=": r"\neq ",
+        }
+        if self.config["higher_order"]["separator"].strip() in replacements:
+            node_label = node_label.replace(
+                self.config["higher_order"]["separator"],
+                replacements[self.config["higher_order"]["separator"].strip()],
+            )
+        return node_label

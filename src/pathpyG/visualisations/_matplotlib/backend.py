@@ -79,13 +79,13 @@ class MatplotlibBackend(PlotBackend):
         if self.show_labels:
             for label in self.data["nodes"].index:
                 x, y = self.data["nodes"].loc[label, ["x", "y"]]
-                # Annotate the node label with text above the node
+                # Annotate the node label with text in the center of the node
                 ax.annotate(
                     label,
                     (x, y),
-                    xytext=(0, 0.75 * self.data["nodes"].loc[label, "size"]),
-                    textcoords="offset points",
-                    fontsize=0.75 * self.data["nodes"]["size"].mean(),
+                    fontsize=0.4 * self.data["nodes"]["size"].mean(),
+                    ha="center",
+                    va="center",
                 )
 
         # set limits
@@ -163,7 +163,6 @@ class MatplotlibBackend(PlotBackend):
         source_node_size,
         target_node_size,
         head_length,
-        curvature=0.2,
         shorten=0.005,
     ):
         """Calculates the vertices and codes for a quadratic Bézier curve path.
@@ -174,7 +173,6 @@ class MatplotlibBackend(PlotBackend):
             source_node_size (np.array): Size of the source nodes to adjust the curve shortening.
             target_node_size (np.array): Size of the target nodes to adjust the curve shortening.
             head_length (float): Length of the arrowhead to adjust the curve shortening.
-            curvature (float): A value controlling the curve's bend.
             shorten (float): Amount to shorten the curve at both ends to avoid overlap with nodes.
                 Will shorten double at the target end to make space for the arrowhead.
 
@@ -189,18 +187,33 @@ class MatplotlibBackend(PlotBackend):
         mid_point = (P0 + P2) / 2
         vec = P2 - P0
         dist = np.linalg.norm(vec, axis=1, keepdims=True)
+        # Avoid division by zero
+        dist[dist == 0] = 1e-6
 
         # Perpendicular vector
         perp_vec = np.array([-vec[:, 1], vec[:, 0]]).T / dist
 
         # Calculate control points
-        P1 = mid_point + perp_vec * dist * curvature
+        P1 = mid_point + perp_vec * dist * self.config["curvature"]
 
         # Shorten the curve to avoid overlap with nodes
-        direction_P0_P1 = (P1 - P0) / np.linalg.norm(P1 - P0, axis=1, keepdims=True)
-        direction_P2_P1 = (P1 - P2) / np.linalg.norm(P1 - P2, axis=1, keepdims=True)
-        P0 += direction_P0_P1 * (shorten + source_node_size)
-        P2 += direction_P2_P1 * (shorten + target_node_size + head_length)
+        distance_P0_P1 = np.linalg.norm(P1 - P0, axis=1, keepdims=True)
+        distance_P0_P1[distance_P0_P1 == 0] = 1e-6
+        distance_P2_P1 = np.linalg.norm(P1 - P2, axis=1, keepdims=True)
+        distance_P2_P1[distance_P2_P1 == 0] = 1e-6
+        direction_P0_P1 = (P1 - P0) / distance_P0_P1
+        direction_P2_P1 = (P1 - P2) / distance_P2_P1
+        P0_offset_dist = shorten + source_node_size
+        P2_offset_dist = shorten + target_node_size + (head_length * self.data["edges"]["size"].values[:, np.newaxis])
+        if np.any(distance_P2_P1/2 < P2_offset_dist):
+            logger.warning("Arrowhead length is too long for some edges. Please reduce the edge size. Using non-curved edges instead.")
+            direction_P0_P2 = vec / dist
+            P0 += direction_P0_P2 * P0_offset_dist
+            P2 -= direction_P0_P2 * P2_offset_dist
+            return [P0, P2], [Path.MOVETO, Path.LINETO]
+        
+        P0 += direction_P0_P1 * P0_offset_dist
+        P2 += direction_P2_P1 * P2_offset_dist
 
         vertices = [P0, P1, P2]
         codes = [
@@ -222,20 +235,22 @@ class MatplotlibBackend(PlotBackend):
             tuple: A tuple containing (vertices, codes) for the Path object.
         """
         # Extract the last segment of the Bézier curve
-        P1, P2 = vertices[1], vertices[2]
+        P1, P2 = vertices[-2], vertices[-1]
         # 1. Calculate the tangent vector (direction of the curve at the end)
         # For a quadratic curve, this is the vector from the control point to the end point.
         tangent = P2 - P1
         tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
+        # Avoid division by zero
+        tangent[tangent == 0] = 1e-6
 
         # 2. Calculate the perpendicular vector for the width
         perp = np.array([-tangent[:, 1], tangent[:, 0]]).T
 
         # 3. Define the three points of the arrowhead triangle
         base_center = P2
-        tip = P2 + tangent * head_length
-        wing1 = base_center + perp * head_width / 2
-        wing2 = base_center - perp * head_width / 2
+        tip = P2 + tangent * head_length * self.data["edges"]["size"].values[:, np.newaxis]
+        wing1 = base_center + perp * head_width / 2 * self.data["edges"]["size"].values[:, np.newaxis]
+        wing2 = base_center - perp * head_width / 2 * self.data["edges"]["size"].values[:, np.newaxis]
 
         vertices = [wing1, tip, wing2, wing1]
         codes = [

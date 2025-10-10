@@ -84,7 +84,6 @@ class TemporalNetworkPlot(NetworkPlot):
 
     def _compute_edge_data(self) -> None:
         """Generate the data structure for the edges."""
-        start_time = time.time()
         # initialize values
         edges: pd.DataFrame = pd.DataFrame(index=[f"{source}-{target}-{time}" for source, target, time in self.network.temporal_edges])
         for attribute in self.attributes:

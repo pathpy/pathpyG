@@ -20,10 +20,6 @@ separator = "|"
 replace = "_"
 max_name_length = 5
 
-[hon]
-separator = "="
-replace = "_"
-
 [visualisation]
 default_backend = "d3js"
 cmap = "cividis"
@@ -31,8 +27,8 @@ layout = "spring_layout"
 width = "12cm"
 height = "12cm"
 latex_class_options = ""
-delta = 1000
 margin = 0.1
+curvature = 0.25
 
 [visualisation.node]
 color = [36, 74, 92]
@@ -46,15 +42,7 @@ size = 2
 opacity = 0.5
 
 [visualisation.temporal]
-start = "start"
-end = "end"
-timestamp = "timestamp"
-duration = "duration"
-duration_value = 1
-start_synonyms = ["beginning", "begin"]
-end_synonyms = ["finished", "ending"]
-timestamp_synonyms = ['time', "t"]
-duration_synonyms = ["delta", "dt"]
-active = "active"
-is_active = true
-unit = "s"
+delta = 1000
+
+[visualisation.higher_order]
+separator = "->"

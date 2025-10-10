@@ -15,14 +15,14 @@ const Network = (config) => {
     const selector = config.selector;       // DOM uuid
     const width = config.width || 800;      // window width 
     const height = config.height || 600;    // window height
-    const delta = config.delta || 300;      // time between frames
+    const delta = (config.temporal && config.temporal.delta) || 300;      // time between frames
     const padding = (config.node && config.node.image_padding) || 5;    // distance between node and image
     const margin = config.margin || 0.1;  // margin around the plot area for fixed layout
     const xlim = [-1*margin, 1+(1*margin)]; // limits of the x-coordinates
     const ylim = [-1*margin, 1+(1*margin)]; // limits of the y-coordinates
     const arrowheadMultiplier = 4; // Multiplier for arrowhead size based on edge stroke width
     const nodeStrokeWidth = 2.5; // Stroke width around nodes
-    const curveFactor = 0.75; // Factor to control curvature of edges (higher = more curved)
+    const curveFactor = config.curvature || 0.25; // Factor to control curvature of edges (higher = more curved)
 
     // Initialize svg canvas
     const svg = d3.select(selector)
@@ -68,8 +68,8 @@ const Network = (config) => {
             const edgeStrokeWidth = d.size || (config.edge && config.edge.size) || 2;
             const arrowheadLength = config.directed ? (edgeStrokeWidth * arrowheadMultiplier) : 0;
 
-            const effectiveSourceRadius = sourceRadius + (nodeStrokeWidth / 2);
-            const effectiveTargetRadius = targetRadius + (nodeStrokeWidth / 2) + arrowheadLength;
+            const effectiveSourceRadius = sourceRadius + (nodeStrokeWidth/2);
+            const effectiveTargetRadius = targetRadius + (nodeStrokeWidth/2) + arrowheadLength;
 
             const x1 = d.source.x, y1 = d.source.y;
             const x2 = d.target.x, y2 = d.target.y;
@@ -89,46 +89,67 @@ const Network = (config) => {
 
                 return `M${sourceX},${sourceY}L${targetX},${targetY}`;
             } else {
-                // --- C. Curved Line Calculation ---
-                // The radius of the arc is the distance between the nodes times a curve factor
-                const arcRadius = distance * curveFactor;
+                // --- C. Curved Line Calculation (Quadratic Bézier) ---
 
-                // Find the intersection of two circles:
-                // 1. The arc itself with unknown center.
-                // 2. The node's boundary circle.
+                // Find the midpoint, the vector between the nodes, and the distance.
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
 
-                // Find the center of the arc's circle
-                // https://math.stackexchange.com/questions/1781438/finding-the-center-of-a-circle-given-two-points-and-a-radius-algebraically
-                xa = dx/2; ya = dy/2;
-                x0 = x1 + xa; y0 = y1 + ya; // center of the rhombus
-                a = distance/2;
-                b = Math.sqrt(arcRadius*arcRadius - a*a);
+                // Calculate the control point (P1) for the quadratic curve.
+                // This point is offset from the midpoint along a perpendicular vector.
+                if (distance === 0) { // Handle case where nodes are at the same position
+                    return `M${x1},${y1}`; 
+                }
+                // Get the normalized perpendicular vector.
+                const perpX = -dy / distance;
+                const perpY = dx / distance;
 
-                // center of the arc's circle
-                const cx = x0 - (b * ya) / a;
-                const cy = y0 + (b * xa) / a;
+                // Define how much the curve should "bulge". This is your curvature factor.
+                const controlPointOffset = distance * curveFactor;
 
-                // source node intersection
-                const sourceDX = x1 - cx; const sourceDY = y1 - cy;
-                const sourceDistance = Math.hypot(sourceDX, sourceDY);
-                const sourceA = ((arcRadius*arcRadius) - (effectiveSourceRadius*effectiveSourceRadius) + (sourceDistance*sourceDistance)) / (2*sourceDistance);
-                const sourceH = Math.sqrt((arcRadius*arcRadius) - (sourceA*sourceA));
-                const sourceMidX = cx + (sourceA * (sourceDX)) / sourceDistance;
-                const sourceMidY = cy + (sourceA * (sourceDY)) / sourceDistance;
-                const sourceNewX = sourceMidX - (sourceH * (sourceDY)) / sourceDistance;
-                const sourceNewY = sourceMidY + (sourceH * (sourceDX)) / sourceDistance;
+                // Calculate the final control point's coordinates.
+                const controlX = midX + perpX * controlPointOffset;
+                const controlY = midY + perpY * controlPointOffset;
 
-                // target node intersection
-                const targetDX = x2 - cx; const targetDY = y2 - cy;
-                const targetDistance = Math.hypot(targetDX, targetDY);
-                const targetA = ((arcRadius*arcRadius) - (effectiveTargetRadius*effectiveTargetRadius) + (targetDistance*targetDistance)) / (2*targetDistance);
-                const targetH = Math.sqrt((arcRadius*arcRadius) - (targetA*targetA));
-                const targetMidX = cx + (targetA * (targetDX)) / targetDistance;
-                const targetMidY = cy + (targetA * (targetDY)) / targetDistance;
-                const targetNewX = targetMidX + (targetH * (targetDY)) / targetDistance;
-                const targetNewY = targetMidY - (targetH * (targetDX)) / targetDistance;
+                // Shorten the curve to start and end at the node's edge, not its center.
+                // To do this, we find the direction from the node's center towards the control point
+                // and move the start/end point along that direction by the node's radius.
 
-                return `M${sourceNewX},${sourceNewY} A${arcRadius},${arcRadius} 0 0,1 ${targetNewX},${targetNewY}`;
+                // a. For the source node (P0 -> P1 direction)
+                const dirSourceX = controlX - x1;
+                const dirSourceY = controlY - y1;
+                const lenSource = Math.hypot(dirSourceX, dirSourceY);
+                const normDirSourceX = dirSourceX / lenSource;
+                const normDirSourceY = dirSourceY / lenSource;
+
+                // For the target node (P2 -> P1 direction)
+                const dirTargetX = controlX - x2;
+                const dirTargetY = controlY - y2;
+                const lenTarget = Math.hypot(dirTargetX, dirTargetY);
+                const normDirTargetX = dirTargetX / lenTarget;
+                const normDirTargetY = dirTargetY / lenTarget;
+
+                if (lenTarget < effectiveTargetRadius) {
+                    const message = "Arrowhead length is too long for some edges. Please reduce the edge size.";
+                    console.error(message);
+                    const sourceX = d.source.x + (dx / distance) * effectiveSourceRadius;
+                    const sourceY = d.source.y + (dy / distance) * effectiveSourceRadius;
+                    const targetX = d.target.x - (dx / distance) * effectiveTargetRadius;
+                    const targetY = d.target.y - (dy / distance) * effectiveTargetRadius;
+
+                    return `M${sourceX},${sourceY}L${targetX},${targetY}`;
+                }
+
+                // The new, shortened start point (x3, y3)
+                const x3 = x1 + normDirSourceX * effectiveSourceRadius;
+                const y3 = y1 + normDirSourceY * effectiveSourceRadius;
+
+                // The new, shortened end point (x4, y4)
+                const x4 = x2 + normDirTargetX * effectiveTargetRadius;
+                const y4 = y2 + normDirTargetY * effectiveTargetRadius;
+
+                // Return the SVG path string for the quadratic Bézier curve.
+                return `M${x3},${y3} Q${controlX},${controlY} ${x4},${y4}`;
             }
         });
     };
