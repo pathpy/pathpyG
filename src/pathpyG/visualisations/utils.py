@@ -8,11 +8,28 @@
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 
+import os
+import tempfile
 from typing import Callable
+
+
+def prepare_tempfile() -> tuple[str, str]:
+    """Prepare temporary directory and filename for compilation."""
+    # get current directory
+    current_dir = os.getcwd()
+
+    # get temporal directory
+    temp_dir = tempfile.mkdtemp()
+
+    # change to output dir
+    os.chdir(temp_dir)
+
+    return temp_dir, current_dir
+
 
 def rgb_to_hex(rgb: tuple) -> str:
     """Convert rgb color tuple to hex string.
-    
+
     Args:
         rgb (tuple): RGB color tuple either in range 0-1 or 0-255.
     """
@@ -34,17 +51,21 @@ def cm_to_inch(value: float) -> float:
     """Convert cm to inch."""
     return value / 2.54
 
+
 def inch_to_cm(value: float) -> float:
     """Convert inch to cm."""
     return value * 2.54
+
 
 def inch_to_px(value: float, dpi: int = 96) -> float:
     """Convert inch to px."""
     return value * dpi
 
+
 def px_to_inch(value: float, dpi: int = 96) -> float:
     """Convert px to inch."""
     return value / dpi
+
 
 def unit_str_to_float(value: str, unit: str) -> float:
     """Convert string with unit to float in `unit`."""
@@ -63,6 +84,7 @@ def unit_str_to_float(value: str, unit: str) -> float:
         return float(value[:-2])
     else:
         raise ValueError(f"The provided conversion '{conversion_key}' is not supported.")
+
 
 # =============================================================================
 # eof

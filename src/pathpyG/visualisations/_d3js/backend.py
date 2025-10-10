@@ -11,6 +11,7 @@ from string import Template
 
 from pathpyG.utils.config import config
 from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
@@ -18,7 +19,7 @@ from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
 # create logger
 logger = logging.getLogger("root")
 
-SUPPORTED_KINDS = {
+SUPPORTED_KINDS: dict[type, str] = {
     NetworkPlot: "static",
     TemporalNetworkPlot: "temporal",
 }
@@ -27,13 +28,11 @@ SUPPORTED_KINDS = {
 class D3jsBackend(PlotBackend):
     """D3js plotting backend."""
 
-    def __init__(self, plot, show_labels: bool):
+    def __init__(self, plot: PathPyPlot, show_labels: bool):
         super().__init__(plot, show_labels)
         self._kind = SUPPORTED_KINDS.get(type(plot), None)
         if self._kind is None:
-            logger.error(
-                f"Plot of type {type(plot)} not supported by D3js backend."
-            )
+            logger.error(f"Plot of type {type(plot)} not supported by D3js backend.")
             raise ValueError(f"Plot of type {type(plot)} not supported.")
 
     def save(self, filename: str) -> None:
@@ -78,7 +77,7 @@ class D3jsBackend(PlotBackend):
         config["show_labels"] = self.show_labels
         return config
 
-    def to_json(self) -> tuple[str,str]:
+    def to_json(self) -> tuple[str, str]:
         """Convert data and config to json."""
         data_dict = self._prepare_data()
         config_dict = self._prepare_config()

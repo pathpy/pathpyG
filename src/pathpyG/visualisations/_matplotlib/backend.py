@@ -8,6 +8,7 @@ from matplotlib.collections import EllipseCollection, LineCollection, PathCollec
 from matplotlib.path import Path
 
 from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.utils import unit_str_to_float
 
@@ -21,7 +22,7 @@ SUPPORTED_KINDS = {
 class MatplotlibBackend(PlotBackend):
     """Matplotlib plotting backend."""
 
-    def __init__(self, plot, show_labels: bool):
+    def __init__(self, plot: PathPyPlot, show_labels: bool):
         super().__init__(plot, show_labels=show_labels)
         self._kind = SUPPORTED_KINDS.get(type(plot), None)
         if self._kind is None:

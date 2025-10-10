@@ -21,28 +21,28 @@ replace = "_"
 max_name_length = 5
 
 [visualisation]
-default_backend = "d3js"
-cmap = "cividis"
-layout = "spring_layout"
-width = "12cm"
-height = "12cm"
-latex_class_options = ""
-margin = 0.1
-curvature = 0.25
+default_backend = "d3js"  # Default backend for visualisations
+cmap = "cividis"  # Color map that is used if color is given integer values
+layout = "spring_layout"  # Default layout algorithm
+width = "12cm"  # Width of the plot in all backends
+height = "12cm"  # Height of the plot in all backends
+latex_class_options = ""  # LaTeX class options for TikZ visualisations
+margin = 0.1  # Margin around the plot in all backends
+curvature = 0.25  # Curvature for curved edges between nodes
 
 [visualisation.node]
-color = [36, 74, 92]
-size = 15
-opacity = 0.75
-image_padding = 5
+color = [36, 74, 92]  # Node color in RGB from the pathpyG logo
+size = 15  # Node size given as diameter
+opacity = 0.75  # Node opacity between 0 and 1
+image_padding = 5  # Padding around images if image link is provided in d3js visualisations
 
 [visualisation.edge]
-color = [76, 112, 123]
-size = 2
-opacity = 0.5
+color = [76, 112, 123]  # Edge color in RGB from the pathpyG logo
+size = 2  # Edge width
+opacity = 0.5  # Edge opacity between 0 and 1
 
 [visualisation.temporal]
-delta = 1000
+delta = 1000  # Time between frames in milliseconds
 
 [visualisation.higher_order]
-separator = "->"
+separator = "->"  # Separator for higher-order node labels

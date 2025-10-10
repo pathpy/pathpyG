@@ -4,18 +4,15 @@ import logging
 import os
 import shutil
 import subprocess
-import tempfile
 import time
 import webbrowser
 from string import Template
-
-import pandas as pd
 
 from pathpyG import config
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
-from pathpyG.visualisations.utils import unit_str_to_float, hex_to_rgb
+from pathpyG.visualisations.utils import hex_to_rgb, prepare_tempfile, unit_str_to_float
 
 # create logger
 logger = logging.getLogger("root")
@@ -84,13 +81,15 @@ class TikzBackend(PlotBackend):
 
     def compile_svg(self) -> tuple:
         """Compile svg from tex."""
-        temp_dir, current_dir, basename = self.prepare_compile()
+        temp_dir, current_dir = prepare_tempfile()
+        # save the tex file
+        self.save("default.tex")
 
         # latex compiler
         command = [
             "latexmk",
             "--interaction=nonstopmode",
-            basename + ".tex",
+            "default.tex",
         ]
         try:
             subprocess.check_output(command, stderr=subprocess.STDOUT)
@@ -101,9 +100,9 @@ class TikzBackend(PlotBackend):
         # dvisvgm command
         command = [
             "dvisvgm",
-            basename + ".dvi",
+            "default.dvi",
             "-o",
-            basename + ".svg",
+            "default.svg",
         ]
         try:
             subprocess.check_output(command, stderr=subprocess.STDOUT)
@@ -115,11 +114,13 @@ class TikzBackend(PlotBackend):
             os.chdir(current_dir)
 
         # return the name of the folder and temp svg file
-        return os.path.join(temp_dir, basename + ".svg"), temp_dir
+        return os.path.join(temp_dir, "default.svg"), temp_dir
 
     def compile_pdf(self) -> tuple:
         """Compile pdf from tex."""
-        temp_dir, current_dir, basename = self.prepare_compile()
+        temp_dir, current_dir = prepare_tempfile()
+        # save the tex file
+        self.save("default.tex")
 
         # latex compiler
         command = [
@@ -127,7 +128,7 @@ class TikzBackend(PlotBackend):
             "--pdf",
             "-shell-escape",
             "--interaction=nonstopmode",
-            basename + ".tex",
+            "default.tex",
         ]
 
         try:
@@ -140,24 +141,7 @@ class TikzBackend(PlotBackend):
             os.chdir(current_dir)
 
         # return the name of the folder and temp pdf file
-        return os.path.join(temp_dir, basename + ".pdf"), temp_dir
-
-    def prepare_compile(self) -> tuple[str, str, str]:
-        """Prepare compilation of tex to pdf or svg by saving the tex file."""
-        # basename
-        basename = "default"
-        # get current directory
-        current_dir = os.getcwd()
-
-        # get temporal directory
-        temp_dir = tempfile.mkdtemp()
-
-        # change to output dir
-        os.chdir(temp_dir)
-
-        # save the tex file
-        self.save(basename + ".tex")
-        return temp_dir, current_dir, basename
+        return os.path.join(temp_dir, "default.pdf"), temp_dir
 
     def to_tex(self) -> str:
         """Convert data to tex."""

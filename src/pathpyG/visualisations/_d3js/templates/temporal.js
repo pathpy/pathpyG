@@ -132,5 +132,5 @@ times = range(d3.min(data.nodes, d => d.start),d3.max(data.nodes, d => d.end),1)
 update(1);
 
 // Add counter and start updating network
-const scrubberForm = scrubber(times,{chartUpdate:update, delay: delta || 300});
+const scrubberForm = scrubber(times,{chartUpdate:update, delay: (config.temporal && config.temporal.delta) || 300});
 d3.select(config.selector).append(() => scrubberForm.node());
