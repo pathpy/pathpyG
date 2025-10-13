@@ -214,7 +214,7 @@ class TikzBackend(PlotBackend):
         edge_strings += "lw=" + self.data["edges"]["size"].astype(str) + ","
         edge_strings += "opacity=" + self.data["edges"]["opacity"].astype(str) + "]"
         edge_strings += (
-            "(" + self.data["edges"]["source"].astype(str) + ")(" + self.data["edges"]["target"].astype(str) + ")\n"
+            "(" + self.data["edges"].index.get_level_values("source").astype(str) + ")(" + self.data["edges"].index.get_level_values("target").astype(str) + ")\n"
         )
         tikz += edge_strings.str.cat()
 

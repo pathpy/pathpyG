@@ -110,7 +110,8 @@ class NetworkPlot(PathPyPlot):
             # check if attribute is given as argument
             if attribute in self.edge_args:
                 if isinstance(self.edge_args[attribute], dict):
-                    edges[attribute] = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args[attribute])
+                    new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args[attribute])
+                    edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
                 else:
                     edges[attribute] = self.edge_args[attribute]
             # check if attribute is given as edge attribute
@@ -122,21 +123,19 @@ class NetworkPlot(PathPyPlot):
                     edges[attribute] = self.network.data["edge_weight"]
                 elif "weight" in self.edge_args:
                     if isinstance(self.edge_args["weight"], dict):
-                        edges[attribute] = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args["weight"])
+                        new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args["weight"])
+                        edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
                     else:
                         edges[attribute] = self.edge_args["weight"]
 
         # convert attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
         edges["color"] = edges["color"].map(self._convert_color)
-        # add source and target columns
-        edges["source"] = edges.index.map(lambda x: x[0])
-        edges["target"] = edges.index.map(lambda x: x[1])
 
         # remove duplicate edges for better efficiency
         if not self.network.is_directed():
             # for undirected networks, sort source and target and drop duplicates
-            edges = edges.reset_index(drop=True)
+            edges = edges.reset_index()
             edges["sorted"] = edges.apply(lambda row: tuple(sorted((row["source"], row["target"]))), axis=1)
             edges = edges.drop_duplicates(subset=["sorted"]).drop(columns=["sorted"])
             edges = edges.set_index(["source", "target"])

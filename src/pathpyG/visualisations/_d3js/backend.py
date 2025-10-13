@@ -61,6 +61,8 @@ class D3jsBackend(PlotBackend):
         node_data = node_data.rename(columns={"x": "xpos", "y": "ypos"})
         edge_data = self.data["edges"].copy()
         edge_data["uid"] = self.data["edges"].index.map(lambda x: f"{x[0]}-{x[1]}")
+        edge_data["source"] = edge_data.index.get_level_values("source")
+        edge_data["target"] = edge_data.index.get_level_values("target")
         data_dict = {
             "nodes": node_data.to_dict(orient="records"),
             "edges": edge_data.to_dict(orient="records"),

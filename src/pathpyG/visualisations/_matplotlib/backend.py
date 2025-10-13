@@ -49,8 +49,8 @@ class MatplotlibBackend(PlotBackend):
         ax.set_axis_off()
 
         # get source and target coordinates for edges
-        source_coords = self.data["nodes"].loc[self.data["edges"]["source"], ["x", "y"]].values
-        target_coords = self.data["nodes"].loc[self.data["edges"]["target"], ["x", "y"]].values
+        source_coords = self.data["nodes"].loc[self.data["edges"].index.get_level_values("source"), ["x", "y"]].values
+        target_coords = self.data["nodes"].loc[self.data["edges"].index.get_level_values("target"), ["x", "y"]].values
 
         if self.config["directed"]:
             self.add_directed_edges(source_coords, target_coords, ax, size_factor)
@@ -100,9 +100,9 @@ class MatplotlibBackend(PlotBackend):
         vec = target_coords - source_coords
         dist = np.linalg.norm(vec, axis=1, keepdims=True)
         direction = vec / dist
-        source_coords += direction * (self.data["nodes"].loc[self.data["edges"]["source"], ["size"]].values * (size_factor / 2))  # /2 because we use radius instead of diameter
-        target_coords -= direction * (self.data["nodes"].loc[self.data["edges"]["target"], ["size"]].values * (size_factor / 2))
-        
+        source_coords += direction * (self.data["nodes"].loc[self.data["edges"].index.get_level_values("source"), ["size"]].values * (size_factor / 2))  # /2 because we use radius instead of diameter
+        target_coords -= direction * (self.data["nodes"].loc[self.data["edges"].index.get_level_values("target"), ["size"]].values * (size_factor / 2))
+
         # create and add lines
         edge_lines = list(zip(source_coords, target_coords))
         ax.add_collection(
@@ -122,9 +122,9 @@ class MatplotlibBackend(PlotBackend):
         vertices, codes = self.get_bezier_curve(
             source_coords,
             target_coords,
-            source_node_size=self.data["nodes"].loc[self.data["edges"]["source"], ["size"]].values
+            source_node_size=self.data["nodes"].loc[self.data["edges"].index.get_level_values("source"), ["size"]].values
             * (size_factor / 2),  # /2 because we use radius instead of diameter
-            target_node_size=self.data["nodes"].loc[self.data["edges"]["target"], ["size"]].values
+            target_node_size=self.data["nodes"].loc[self.data["edges"].index.get_level_values("target"), ["size"]].values
             * (size_factor / 2),
             head_length=head_length,
         )
