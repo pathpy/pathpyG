@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import logging
+from math import ceil
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from pathpyG.visualisations.layout import layout as network_layout
 from pathpyG.visualisations.network_plot import NetworkPlot
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
     from pathpyG.core.temporal_graph import TemporalGraph
+
+# create logger
+logger = logging.getLogger("root")
 
 
 class TemporalNetworkPlot(NetworkPlot):
@@ -25,7 +31,8 @@ class TemporalNetworkPlot(NetworkPlot):
         """Generate the plot."""
         self._compute_edge_data()
         self._compute_node_data()
-        # self._compute_layout()
+        self._compute_layout()
+        self._fill_node_values()
         self._compute_config()
 
     def _compute_node_data(self) -> None:
@@ -60,10 +67,23 @@ class TemporalNetworkPlot(NetworkPlot):
                 start_nodes[attribute] = self.network.data[f"node_{attribute}"]
 
         # combine start nodes and new nodes
-        new_nodes = new_nodes.set_index(new_nodes.index.map(lambda x: (x.split("-")[0], int(x.split("-")[1]))))
-        new_nodes.index.set_names(["uid", "time"], inplace=True)
-        nodes = pd.concat([start_nodes, new_nodes])
-        # fill missing values with last known value
+        if not new_nodes.empty:
+            new_nodes = new_nodes.set_index(new_nodes.index.map(lambda x: (x.split("-")[0], int(x.split("-")[1]))))
+            new_nodes.index.set_names(["uid", "time"], inplace=True)
+            nodes = pd.concat([start_nodes, new_nodes])
+        else:
+            nodes = start_nodes
+
+        # convert attributes to useful values
+        nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
+        nodes["color"] = nodes["color"].map(self._convert_color)
+
+        # save node data
+        self.data["nodes"] = nodes
+
+    def _fill_node_values(self) -> pd.DataFrame:
+        """Fill all NaN/None values with the previous value and add start/end time columns."""
+        nodes = self.data["nodes"]
         nodes = nodes.sort_values(by=["uid", "time"]).groupby("uid", sort=False).ffill()
         nodes["start"] = nodes.index.get_level_values("time")
         nodes = nodes.droplevel("time")
@@ -73,12 +93,6 @@ class TemporalNetworkPlot(NetworkPlot):
         if max_node_time < self.network.data.time[-1].item():
             max_node_time = self.network.data.time[-1].item() + 1
         nodes["end"] = nodes["end"].fillna(max_node_time)
-
-        # convert attributes to useful values
-        nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
-        nodes["color"] = nodes["color"].map(self._convert_color)
-
-        # save node data
         self.data["nodes"] = nodes
 
     def _compute_edge_data(self) -> None:
@@ -115,7 +129,6 @@ class TemporalNetworkPlot(NetworkPlot):
                     else:
                         edges[attribute] = self.edge_args["weight"]
 
-
         # convert needed attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
         edges["color"] = edges["color"].map(self._convert_color)
@@ -125,6 +138,58 @@ class TemporalNetworkPlot(NetworkPlot):
 
         # save edge data
         self.data["edges"] = edges
+
+    def _compute_layout(self) -> None:
+        """Create temporal layout."""
+        # get layout from the config
+        layout_type = self.config.get("layout")
+        max_time = int(max(self.data["nodes"].index.get_level_values("time").max() + 1, self.data["edges"]["end"].max()))
+        window_size = self.config.get("layout_window_size")
+        if isinstance(window_size, int):
+            window_size = [ceil(window_size/2), window_size//2]
+        elif isinstance(window_size, list | tuple):
+            if window_size[0] < 0:
+                window_size[0] = max_time  # use all previous time steps
+            if window_size[1] < 0:
+                window_size[1] = max_time  # use all following time steps
+        elif not isinstance(window_size, (list, tuple)):
+            logger.error("The provided layout_window_size is not valid!")
+            raise AttributeError
+
+        # if no layout is considered stop this process
+        if layout_type is None:
+            return
+
+        pos = network_layout(self.network, layout="random")  # initial layout
+        num_steps = max_time - window_size[1]
+        layout_df = pd.DataFrame()
+        for step in range(num_steps+1):
+            # only compute layout if there are edges in the current window, otherwise use the previous layout
+            if ((max(0, step - window_size[0]) <= self.network.data.time) & (self.network.data.time <= step + window_size[1] + 1)).sum() > 0:
+                # get subgraph for the current time step
+                sub_graph = self.network.get_window(start_time=max(0, step - window_size[0]), end_time=step + window_size[1] + 1)
+
+                # get layout dict for each node
+                if isinstance(layout_type, str):
+                    pos = network_layout(sub_graph, layout=layout_type, pos=pos)
+                elif not isinstance(layout_type, dict):
+                    logger.error("The provided layout is not valid!")
+                    raise AttributeError
+
+            # update x,y position of the nodes
+            new_layout_df = pd.DataFrame.from_dict(pos, orient="index", columns=["x", "y"])
+            if self.network.order > 1 and not isinstance(new_layout_df.index[0], str):
+                new_layout_df.index = new_layout_df.index.map(lambda x: self.config["higher_order"]["separator"].join(map(str, x)))
+            # scale x and y to [0,1]
+            new_layout_df["x"] = (new_layout_df["x"] - new_layout_df["x"].min()) / (new_layout_df["x"].max() - new_layout_df["x"].min())
+            new_layout_df["y"] = (new_layout_df["y"] - new_layout_df["y"].min()) / (new_layout_df["y"].max() - new_layout_df["y"].min())
+            # add time for the layout
+            new_layout_df["time"] = step
+            # append to layout df
+            layout_df = pd.concat([layout_df, new_layout_df])
+        # join layout with node data
+        layout_df = layout_df.reset_index().rename(columns={"index": "uid"}).set_index(["uid", "time"])
+        self.data["nodes"] = self.data["nodes"].join(layout_df, how="outer")
 
     def _compute_config(self) -> None:
         """Add additional configs."""

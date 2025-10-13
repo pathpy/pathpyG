@@ -171,7 +171,7 @@ class NetworkPlot(PathPyPlot):
 
     def _compute_layout(self) -> None:
         """Create layout."""
-        # get layout form the config
+        # get layout from the config
         layout = self.config.get("layout")
 
         # if no layout is considered stop this process

@@ -48,6 +48,7 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
         - Spectral layout
         - Kamada-Kawai layout
         - Fruchterman-Reingold force-directed algorithm
+        - ForceAtlas2 layout algorithm
     - Grid layout
 
     The appearance of the layout can be modified by keyword arguments which will
@@ -75,11 +76,11 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
             raise ValueError("Length of weight iterable does not match number of edges in the network.")
 
     # create layout class
-    layout = Layout(
+    layout_cls = Layout(
         nodes=network.nodes, edge_index=network.data.edge_index, layout_type=layout, weight=weight, **kwargs
     )
     # return the layout
-    return layout.generate_layout()
+    return layout_cls.generate_layout()
 
 
 class Layout(object):
@@ -139,6 +140,7 @@ class Layout(object):
         names_spectral = ["spectral", "eigen", "spectral layout"]
         names_kk = ["kamada-kawai", "kamada_kawai", "kk", "kamada", "kamada layout"]
         names_fr = ["fruchterman-reingold", "fruchterman_reingold", "fr", "spring_layout", "spring layout", "spring"]
+        names_forceatlas2 = ["forceatlas2", "fa2", "forceatlas", "force-atlas", "force-atlas2", "fa 2", "fa 1"]
 
         if self.layout_type in names_rand:
             layout = nx.random_layout(nx_network, **self.kwargs)
@@ -154,6 +156,10 @@ class Layout(object):
             )
         elif self.layout_type in names_fr:
             layout = nx.spring_layout(nx_network, weight="weight" if self.weight is not None else None, **self.kwargs)
+        elif self.layout_type in names_forceatlas2:
+            layout = nx.forceatlas2_layout(
+                nx_network, weight="weight" if self.weight is not None else None, **self.kwargs
+            )
         else:
             raise ValueError(f"Layout '{self.layout_type}' not recognized.")
 
