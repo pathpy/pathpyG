@@ -8,6 +8,7 @@ import pandas as pd
 
 from pathpyG.visualisations.layout import layout as network_layout
 from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.utils import rgb_to_hex
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ class TemporalNetworkPlot(NetworkPlot):
         if not new_nodes.empty:
             new_nodes = new_nodes.set_index(new_nodes.index.map(lambda x: (x.split("-")[0], int(x.split("-")[1]))))
             new_nodes.index.set_names(["uid", "time"], inplace=True)
-            nodes = pd.concat([start_nodes, new_nodes])
+            nodes = new_nodes.combine_first(start_nodes)
         else:
             nodes = start_nodes
 
@@ -80,6 +81,18 @@ class TemporalNetworkPlot(NetworkPlot):
 
         # save node data
         self.data["nodes"] = nodes
+
+    def _convert_color(self, color: tuple[int, int, int]) -> str:
+        """Convert color rgb tuple to hex."""
+        if isinstance(color, tuple):
+            return rgb_to_hex(color[:3])
+        elif isinstance(color, str):
+            return color
+        elif color is None or pd.isna(color):
+            return pd.NA  # will be filled with self._fill_node_values()
+        else:
+            logger.error(f"The provided color {color} is not valid!")
+            raise AttributeError
 
     def _fill_node_values(self) -> pd.DataFrame:
         """Fill all NaN/None values with the previous value and add start/end time columns."""

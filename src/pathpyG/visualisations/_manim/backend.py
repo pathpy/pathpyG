@@ -81,10 +81,11 @@ class ManimBackend(PlotBackend):
         temp_file, temp_dir = self.render_video()
         if filename.endswith(".gif"):
             self.convert_to_gif(temp_file)
+            temp_file = temp_file.with_suffix(".gif")
         shutil.copy(temp_file, filename)
         shutil.rmtree(temp_dir)
 
-    def convert_to_gif(self, filename: str) -> None:
+    def convert_to_gif(self, filename: Path) -> None:
         """Convert the rendered mp4 video to a gif file."""
         try:
             subprocess.run(
@@ -93,12 +94,12 @@ class ManimBackend(PlotBackend):
                     "-i",
                     filename,
                     "-vf",
-                    "fps=20,scale=720:-1:flags=lanczos",
+                    "fps=30,scale=1080:-1:flags=lanczos",
                     "-y",
                     "-hide_banner",
                     "-loglevel",
                     "error",
-                    filename.replace(".mp4", ".gif"),
+                    filename.with_suffix(".gif"),
                 ],
                 check=True,
             )

@@ -26,6 +26,7 @@ from typing import Iterable, Optional
 import numpy as np
 import torch
 from torch import Tensor
+from torch_geometric import EdgeIndex
 from torch_geometric.utils import to_scipy_sparse_matrix
 
 from pathpyG.core.graph import Graph
@@ -105,11 +106,14 @@ class Layout(object):
             to the layout function.
     """
 
-    def __init__(self, nodes: list, edge_index: Tensor, layout_type: str = "random", weight: Optional[Tensor] = None, **kwargs):
+    def __init__(self, nodes: list, edge_index: Optional[Tensor] = None, layout_type: str = "random", weight: Optional[Tensor] = None, **kwargs):
         """Initialize the Layout class."""
         # initialize variables
         self.nodes = nodes
-        self.edge_index = edge_index
+        if edge_index is None:
+            self.edge_index = EdgeIndex(torch.empty((2, 0), dtype=torch.long))
+        else:
+            self.edge_index = edge_index
         self.weight = weight
         self.layout_type = layout_type
         self.kwargs = kwargs
