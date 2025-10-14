@@ -11,15 +11,17 @@
 # =============================================================================
 from __future__ import annotations
 
+import os
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sized
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.colors import to_rgb
 
 from pathpyG.visualisations.layout import layout as network_layout
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
-from pathpyG.visualisations.utils import rgb_to_hex
+from pathpyG.visualisations.utils import rgb_to_hex, image_to_base64
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -62,6 +64,7 @@ class NetworkPlot(PathPyPlot):
         self._compute_edge_data()
         self._compute_node_data()
         self._compute_layout()
+        self._post_process_node_data()
         self._compute_config()
 
     def _compute_node_data(self) -> None:
@@ -77,22 +80,25 @@ class NetworkPlot(PathPyPlot):
                 nodes[attribute] = [self.config.get("node").get(attribute, None)] * len(nodes)  # type: ignore[union-attr]
             else:
                 nodes[attribute] = self.config.get("node").get(attribute, None)  # type: ignore[union-attr]
+            # check if attribute is given as node attribute
+            if f"node_{attribute}" in self.network.node_attrs():
+                nodes[attribute] = self.network.data[f"node_{attribute}"]
             # check if attribute is given as argument
             if attribute in self.node_args:
-                if isinstance(self.node_args[attribute], dict):
-                    nodes[attribute] = nodes.index.map(self.node_args[attribute])
-                else:
-                    nodes[attribute] = self.node_args[attribute]
-            # check if attribute is given as node attribute
-            elif f"node_{attribute}" in self.network.node_attrs():
-                nodes[attribute] = self.network.data[f"node_{attribute}"]
-
-        # convert attributes to useful values
-        nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
-        nodes["color"] = nodes["color"].map(self._convert_color)
+                nodes = self.assign_argument(attribute, self.node_args[attribute], nodes)
 
         # save node data
         self.data["nodes"] = nodes
+
+    def _post_process_node_data(self) -> None:
+        """Post-process specific node attributes after constructing the DataFrame."""
+        # convert colors to uniform hex values
+        self.data["nodes"]["color"] = self._convert_to_rgb_tuple(self.data["nodes"]["color"])
+        self.data["nodes"]["color"] = self.data["nodes"]["color"].map(self._convert_color)
+
+        # load any local images to base64 strings
+        if self.data["nodes"]["image"].notna().any():
+            self.data["nodes"]["image"] = self.data["nodes"]["image"].map(self._load_image)
 
     def _compute_edge_data(self) -> None:
         """Generate the data structure for the edges."""
@@ -107,26 +113,17 @@ class NetworkPlot(PathPyPlot):
                 edges[attribute] = [self.config.get("edge").get(attribute, None)] * len(edges)  # type: ignore[union-attr]
             else:
                 edges[attribute] = self.config.get("edge").get(attribute, None)  # type: ignore[union-attr]
-            # check if attribute is given as argument
-            if attribute in self.edge_args:
-                if isinstance(self.edge_args[attribute], dict):
-                    new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args[attribute])
-                    edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
-                else:
-                    edges[attribute] = self.edge_args[attribute]
             # check if attribute is given as edge attribute
-            elif f"edge_{attribute}" in self.network.edge_attrs():
+            if f"edge_{attribute}" in self.network.edge_attrs():
                 edges[attribute] = self.network.data[f"edge_{attribute}"]
             # special case for size: If no edge_size is given use edge_weight if available
-            elif attribute == "size":
-                if "edge_weight" in self.network.edge_attrs():
-                    edges[attribute] = self.network.data["edge_weight"]
-                elif "weight" in self.edge_args:
-                    if isinstance(self.edge_args["weight"], dict):
-                        new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}").map(self.edge_args["weight"])
-                        edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
-                    else:
-                        edges[attribute] = self.edge_args["weight"]
+            elif attribute == "size" and "edge_weight" in self.network.edge_attrs():
+                edges[attribute] = self.network.data["edge_weight"]
+            # check if attribute is given as argument
+            if attribute in self.edge_args:
+                edges = self.assign_argument(attribute, self.edge_args[attribute], edges)
+            elif attribute == "size" and "weight" in self.edge_args:
+                edges = self.assign_argument("size", self.edge_args["weight"], edges)
 
         # convert attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
@@ -146,6 +143,31 @@ class NetworkPlot(PathPyPlot):
         # save edge data
         self.data["edges"] = edges
 
+    def assign_argument(self, attr_key: str, attr_value: Any, df: pd.DataFrame) -> pd.DataFrame:
+        """Assign argument to node or edge attribute.
+
+        Assigns the given value to the specified attribute key in the provided DataFrame.
+        `attr_value` can be a constant value, a list of values (of length equal to the number of nodes/edges),
+        or a dictionary mapping node/edge identifiers to values.
+
+        Args:
+            attr_key (str): Attribute key.
+            attr_value (Any): Attribute value.
+            df (pd.DataFrame): DataFrame to assign the attribute to (nodes or edges).
+        """
+        if isinstance(attr_value, dict):
+            # if dict does not contain values for all edges, only update those that are given
+            new_attrs = df.index.map(attr_value)
+            df.loc[~new_attrs.isna(), attr_key] = new_attrs[~new_attrs.isna()]
+        elif isinstance(attr_value, Sized) and not isinstance(attr_value, str):
+            if len(attr_value) != len(df):
+                logger.error(f"The provided list for {attr_key} has length {len(attr_value)}, but there are {len(df)} nodes/edges!")
+                raise AttributeError
+            df[attr_key] = attr_value
+        else:
+            df[attr_key] = attr_value
+        return df
+
     def _convert_to_rgb_tuple(self, colors: pd.Series) -> dict:
         """Convert colors to rgb colormap if given as numerical values."""
         # check if colors are given as numerical values
@@ -164,10 +186,32 @@ class NetworkPlot(PathPyPlot):
         if isinstance(color, tuple):
             return rgb_to_hex(color[:3])
         elif isinstance(color, str):
-            return color
+            if color.startswith("#"):
+                return color
+            else:
+                # try to convert color name to hex
+                try:
+                    rgb = to_rgb(color)
+                    return rgb_to_hex(rgb)
+                except ValueError:
+                    logger.error(f"The provided color {color} is not valid!")
+                    raise AttributeError
+        elif color is None or pd.isna(color):
+            return pd.NA  # will be filled with self._fill_node_values()
         else:
             logger.error(f"The provided color {color} is not valid!")
             raise AttributeError
+        
+    def _load_image(self, image_path: str) -> str:
+        """Check if image path is a URL or local file and load local files to base64 strings."""
+        if image_path.startswith("http://") or image_path.startswith("https://") or image_path.startswith("data:"):
+            return image_path  # already a URL or base64 string
+        else:
+            # check if file exists
+            if not os.path.isfile(image_path):
+                logger.error(f"The provided image path {image_path} does not exist!")
+                raise AttributeError
+            return image_to_base64(image_path)
 
     def _compute_layout(self) -> None:
         """Create layout."""

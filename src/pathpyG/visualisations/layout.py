@@ -159,6 +159,9 @@ class Layout(object):
                 nx_network, weight="weight" if self.weight is not None else None, **self.kwargs
             )
         elif self.layout_type in names_fr:
+            if "k" not in self.kwargs:
+                # set optimal distance between nodes
+                self.kwargs["k"] = np.sqrt(len(self.nodes))
             layout = nx.spring_layout(nx_network, weight="weight" if self.weight is not None else None, **self.kwargs)
         elif self.layout_type in names_forceatlas2:
             layout = nx.forceatlas2_layout(

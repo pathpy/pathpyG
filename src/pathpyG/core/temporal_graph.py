@@ -60,8 +60,12 @@ class TemporalGraph(Graph):
             (e[0].item(), e[1].item(), t.item()): i for i, (e, t) in enumerate(zip([e for e in self.data.edge_index.t()], self.data.time))
         }
 
-        self.start_time = self.data.time[0].item()
-        self.end_time = self.data.time[-1].item()
+        if self.data.time.size(0) > 0:
+            self.start_time = self.data.time[0].item()
+            self.end_time = self.data.time[-1].item()
+        else:
+            self.start_time = 0
+            self.end_time = 0
 
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore

@@ -7,6 +7,8 @@ from pathpyG.visualisations.layout import Layout
 
 # set manim log level to warning
 logging.getLogger("manim").setLevel(logging.WARNING)
+# set root logger
+logger = logging.getLogger("root")
 
 
 class TemporalGraphScene(Scene):
@@ -38,7 +40,7 @@ class TemporalGraphScene(Scene):
             layout = {node: (np.concatenate([pos, [0]]) - 0.5) * 5 for node, pos in layout.items()}
         vertex_config = start_node_df[["radius", "fill_color", "fill_opacity"]].to_dict(orient="index")
         if self.show_labels:
-            nodes = {node: LabeledDot(label=node, point=layout[node], **vertex_config[node]) for node in vertex_config}
+            nodes = {node: LabeledDot(label=str(node), point=layout[node], **vertex_config[node]) for node in vertex_config}
         else:
             nodes = {node: Dot(point=layout[node], **vertex_config[node]) for node in vertex_config}
         self.play(*[Create(node) for node in nodes.values()])
@@ -51,6 +53,10 @@ class TemporalGraphScene(Scene):
 
             # Add edges for current time step
             new_edge_df = self.data["edges"][(self.data["edges"]["start"] == t)]
+            # drop duplicate edges
+            if new_edge_df.index.duplicated().any():
+                logger.warning(f"Dropping duplicate edges at time {t}.")
+                new_edge_df = new_edge_df[~new_edge_df.index.duplicated(keep='first')]
             new_edge_config = new_edge_df[["stroke_color", "stroke_opacity", "stroke_width"]].to_dict(orient="index")
             if not new_edge_df.empty:
                 arrows = {
@@ -82,7 +88,7 @@ class TemporalGraphScene(Scene):
 
                 if self.show_labels:
                     new_nodes = {
-                        node: LabeledDot(label=node, point=layout[node], **new_vertex_config[node])
+                        node: LabeledDot(label=str(node), point=layout[node], **new_vertex_config[node])
                         for node in new_vertex_config
                     }
                 else:
@@ -126,5 +132,8 @@ class TemporalGraphScene(Scene):
 
     def get_boundary_point(self, center, direction, radius):
         """Calculate the boundary point of a circle in a given direction."""
-        direction = direction / np.linalg.norm(direction)
+        distance = np.linalg.norm(direction)
+        if distance == 0:
+            return center  # Avoid division by zero
+        direction = direction / distance
         return center + direction * radius

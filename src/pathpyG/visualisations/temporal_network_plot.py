@@ -8,7 +8,6 @@ import pandas as pd
 
 from pathpyG.visualisations.layout import layout as network_layout
 from pathpyG.visualisations.network_plot import NetworkPlot
-from pathpyG.visualisations.utils import rgb_to_hex
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -28,18 +27,12 @@ class TemporalNetworkPlot(NetworkPlot):
         """Initialize network plot class."""
         super().__init__(network, **kwargs)
 
-    def generate(self) -> None:
-        """Generate the plot."""
-        self._compute_edge_data()
-        self._compute_node_data()
-        self._compute_layout()
-        self._fill_node_values()
-        self._compute_config()
-
     def _compute_node_data(self) -> None:
         """Generate the data structure for the nodes."""
         # initialize values with index `node-0` to indicate time step 0
-        start_nodes: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples([(node, 0) for node in self.network.nodes], names=["uid", "time"]))
+        start_nodes: pd.DataFrame = pd.DataFrame(
+            index=pd.MultiIndex.from_tuples([(node, 0) for node in self.network.nodes], names=["uid", "time"])
+        )
         new_nodes: pd.DataFrame = pd.DataFrame()
         # add attributes to start nodes and new nodes if given as dictionary
         for attribute in self.attributes:
@@ -48,6 +41,9 @@ class TemporalNetworkPlot(NetworkPlot):
                 start_nodes[attribute] = [self.config.get("node").get(attribute, None)] * len(start_nodes)  # type: ignore[union-attr]
             else:
                 start_nodes[attribute] = self.config.get("node").get(attribute, None)  # type: ignore[union-attr]
+            # check if attribute is given as node attribute
+            if f"node_{attribute}" in self.network.node_attrs():
+                start_nodes[attribute] = self.network.data[f"node_{attribute}"]
             # check if attribute is given as argument
             if attribute in self.node_args:
                 if isinstance(self.node_args[attribute], dict):
@@ -60,12 +56,11 @@ class TemporalNetworkPlot(NetworkPlot):
                         )
                     else:
                         # add node attributes to start nodes according to node keys
-                        start_nodes[attribute] = start_nodes.index.get_level_values("uid").map(self.node_args[attribute])
+                        start_nodes[attribute] = start_nodes.index.get_level_values("uid").map(
+                            self.node_args[attribute]
+                        )
                 else:
                     start_nodes[attribute] = self.node_args[attribute]
-            # check if attribute is given as node attribute
-            elif f"node_{attribute}" in self.network.node_attrs():
-                start_nodes[attribute] = self.network.data[f"node_{attribute}"]
 
         # combine start nodes and new nodes
         if not new_nodes.empty:
@@ -75,27 +70,15 @@ class TemporalNetworkPlot(NetworkPlot):
         else:
             nodes = start_nodes
 
-        # convert attributes to useful values
-        nodes["color"] = self._convert_to_rgb_tuple(nodes["color"])
-        nodes["color"] = nodes["color"].map(self._convert_color)
-
         # save node data
         self.data["nodes"] = nodes
 
-    def _convert_color(self, color: tuple[int, int, int]) -> str:
-        """Convert color rgb tuple to hex."""
-        if isinstance(color, tuple):
-            return rgb_to_hex(color[:3])
-        elif isinstance(color, str):
-            return color
-        elif color is None or pd.isna(color):
-            return pd.NA  # will be filled with self._fill_node_values()
-        else:
-            logger.error(f"The provided color {color} is not valid!")
-            raise AttributeError
+    def _post_process_node_data(self) -> pd.DataFrame:
+        """Post-process specific node attributes after constructing the DataFrame."""
+        # Post-processing from parent class
+        super()._post_process_node_data()
 
-    def _fill_node_values(self) -> pd.DataFrame:
-        """Fill all NaN/None values with the previous value and add start/end time columns."""
+        # Fill all NaN/None values with the previous value and add start/end time columns.
         nodes = self.data["nodes"]
         nodes = nodes.sort_values(by=["uid", "time"]).groupby("uid", sort=False).ffill()
         nodes["start"] = nodes.index.get_level_values("time")
@@ -111,36 +94,26 @@ class TemporalNetworkPlot(NetworkPlot):
     def _compute_edge_data(self) -> None:
         """Generate the data structure for the edges."""
         # initialize values
-        edges: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples(self.network.temporal_edges, names=["source", "target", "time"]))
+        edges: pd.DataFrame = pd.DataFrame(
+            index=pd.MultiIndex.from_tuples(self.network.temporal_edges, names=["source", "target", "time"])
+        )
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
             if isinstance(self.config.get("edge").get(attribute, None), list | tuple):  # type: ignore[union-attr]
                 edges[attribute] = [self.config.get("edge").get(attribute, None)] * len(edges)  # type: ignore[union-attr]
             else:
                 edges[attribute] = self.config.get("edge").get(attribute, None)  # type: ignore[union-attr]
-            # check if attribute is given as argument
-            if attribute in self.edge_args:
-                if isinstance(self.edge_args[attribute], dict):
-                    # if dict does not contain values for all edges, only update those that are given
-                    new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}-{x[2]}").map(self.edge_args[attribute])
-                    edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
-                else:
-                    edges[attribute] = self.edge_args[attribute]
             # check if attribute is given as edge attribute
-            elif f"edge_{attribute}" in self.network.edge_attrs():
+            if f"edge_{attribute}" in self.network.edge_attrs():
                 edges[attribute] = self.network.data[f"edge_{attribute}"]
             # special case for size: If no edge_size is given use edge_weight if available
-            elif attribute == "size":
-                if "edge_weight" in self.network.edge_attrs():
-                    edges[attribute] = self.network.data["edge_weight"]
-                elif "weight" in self.edge_args:
-                    if isinstance(self.edge_args["weight"], dict):
-                        new_attrs = edges.index.map(lambda x: f"{x[0]}-{x[1]}-{x[2]}").map(
-                            self.edge_args["weight"]
-                        )
-                        edges.loc[~new_attrs.isna(), attribute] = new_attrs[~new_attrs.isna()]
-                    else:
-                        edges[attribute] = self.edge_args["weight"]
+            elif attribute == "size" and "edge_weight" in self.network.edge_attrs():
+                edges[attribute] = self.network.data["edge_weight"]
+            # check if attribute is given as argument
+            if attribute in self.edge_args:
+                edges = self.assign_argument(attribute, self.edge_args[attribute], edges)
+            elif attribute == "size" and "weight" in self.edge_args:
+                edges = self.assign_argument("size", self.edge_args["weight"], edges)
 
         # convert needed attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
@@ -156,10 +129,12 @@ class TemporalNetworkPlot(NetworkPlot):
         """Create temporal layout."""
         # get layout from the config
         layout_type = self.config.get("layout")
-        max_time = int(max(self.data["nodes"].index.get_level_values("time").max() + 1, self.data["edges"]["end"].max()))
+        max_time = int(
+            max(self.data["nodes"].index.get_level_values("time").max() + 1, self.data["edges"]["end"].max())
+        )
         window_size = self.config.get("layout_window_size")
         if isinstance(window_size, int):
-            window_size = [ceil(window_size/2), window_size//2]
+            window_size = [ceil(window_size / 2), window_size // 2]
         elif isinstance(window_size, list | tuple):
             if window_size[0] < 0:
                 window_size[0] = max_time  # use all previous time steps
@@ -176,11 +151,16 @@ class TemporalNetworkPlot(NetworkPlot):
         pos = network_layout(self.network, layout="random")  # initial layout
         num_steps = max_time - window_size[1]
         layout_df = pd.DataFrame()
-        for step in range(num_steps+1):
+        for step in range(num_steps + 1):
             # only compute layout if there are edges in the current window, otherwise use the previous layout
-            if ((max(0, step - window_size[0]) <= self.network.data.time) & (self.network.data.time <= step + window_size[1] + 1)).sum() > 0:
+            if (
+                (max(0, step - window_size[0]) <= self.network.data.time)
+                & (self.network.data.time <= step + window_size[1] + 1)
+            ).sum() > 0:
                 # get subgraph for the current time step
-                sub_graph = self.network.get_window(start_time=max(0, step - window_size[0]), end_time=step + window_size[1] + 1)
+                sub_graph = self.network.get_window(
+                    start_time=max(0, step - window_size[0]), end_time=step + window_size[1] + 1
+                )
 
                 # get layout dict for each node
                 if isinstance(layout_type, str):
@@ -192,10 +172,16 @@ class TemporalNetworkPlot(NetworkPlot):
             # update x,y position of the nodes
             new_layout_df = pd.DataFrame.from_dict(pos, orient="index", columns=["x", "y"])
             if self.network.order > 1 and not isinstance(new_layout_df.index[0], str):
-                new_layout_df.index = new_layout_df.index.map(lambda x: self.config["higher_order"]["separator"].join(map(str, x)))
+                new_layout_df.index = new_layout_df.index.map(
+                    lambda x: self.config["higher_order"]["separator"].join(map(str, x))
+                )
             # scale x and y to [0,1]
-            new_layout_df["x"] = (new_layout_df["x"] - new_layout_df["x"].min()) / (new_layout_df["x"].max() - new_layout_df["x"].min())
-            new_layout_df["y"] = (new_layout_df["y"] - new_layout_df["y"].min()) / (new_layout_df["y"].max() - new_layout_df["y"].min())
+            new_layout_df["x"] = (new_layout_df["x"] - new_layout_df["x"].min()) / (
+                new_layout_df["x"].max() - new_layout_df["x"].min()
+            )
+            new_layout_df["y"] = (new_layout_df["y"] - new_layout_df["y"].min()) / (
+                new_layout_df["y"].max() - new_layout_df["y"].min()
+            )
             # add time for the layout
             new_layout_df["time"] = step
             # append to layout df

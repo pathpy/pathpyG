@@ -8,8 +8,10 @@
 # Copyright (c) 2016-2023 Pathpy Developers
 # =============================================================================
 
+import base64
 import os
 import tempfile
+from pathlib import Path
 from typing import Callable
 
 
@@ -85,6 +87,29 @@ def unit_str_to_float(value: str, unit: str) -> float:
     else:
         raise ValueError(f"The provided conversion '{conversion_key}' is not supported.")
 
+
+def image_to_base64(image_path):
+    """Convert local image to base64 data URL."""
+    path = Path(image_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    
+    # Detect image type
+    suffix = path.suffix.lower()
+    mime_types = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg', 
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml'
+    }
+    mime_type = mime_types.get(suffix, 'image/png')
+    
+    # Read and encode
+    with open(image_path, 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode()
+    
+    return f"data:{mime_type};base64,{encoded}"
 
 # =============================================================================
 # eof
