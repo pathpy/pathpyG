@@ -12,7 +12,7 @@ ignored_modules_path = Path("docs", "reference", "ignored_modules.yaml")
 ignored_modules = yaml.safe_load(ignored_modules_path.read_text("utf-8"))
 
 for path in sorted(Path("src").rglob("*.py")):
-    if str(path.relative_to(".")) in ignored_modules:
+    if ignored_modules and str(path.relative_to(".")) in ignored_modules:
         print(f"Skipping {path} as it is in the ignored modules list.")
         continue
     module_path = path.relative_to("src").with_suffix("")
