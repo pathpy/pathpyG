@@ -20,15 +20,16 @@ requires-python = ">=3.10" # We are using `match` statements
 version = "0.2.0"
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
-    'zstandard',            # Compression library
-    'numpy',                # Numerical computing library
-    'scipy',                # Scientific computing library
-    'scikit-learn',         # Machine learning library
-    'pandas',               # Data analysis library
-    'matplotlib',           # Plotting library
-    'seaborn',              # High-level plotting library
-    'jupyter',              # To run the tutorial notebooks
-    'torch_geometric',      # PyTorch Geometric library for graph deep learning
+    'zstandard', # Compression library
+    'numpy', # Numerical computing library
+    'scipy', # Scientific computing library
+    'scikit-learn', # Machine learning library
+    'pandas', # Data analysis library
+    'matplotlib', # Plotting library
+    'seaborn', # High-level plotting library
+    'jupyter', # To run the tutorial notebooks
+    'torch_geometric', # PyTorch Geometric library for graph deep learning
+    "networkx", # NetworkX for basic network analysis and visualisation
 ]
 
 [project.optional-dependencies]

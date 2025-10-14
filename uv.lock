@@ -3293,6 +3293,8 @@ source = { editable = "." }
 dependencies = [
     { name = "jupyter" },
     { name = "matplotlib" },
+    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-7-pathpyg-cpu' and extra == 'extra-7-pathpyg-cu129')" },
+    { name = "networkx", version = "3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-7-pathpyg-cpu' and extra == 'extra-7-pathpyg-cu129')" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-7-pathpyg-cpu' and extra == 'extra-7-pathpyg-cu129')" },
     { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-7-pathpyg-cpu' and extra == 'extra-7-pathpyg-cu129')" },
     { name = "pandas" },
@@ -3361,6 +3363,7 @@ requires-dist = [
     { name = "jupyter" },
     { name = "manim", marker = "extra == 'vis'" },
     { name = "matplotlib" },
+    { name = "networkx", specifier = ">=3.4.2" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyg-lib", marker = "extra == 'cpu'", index = "https://data.pyg.org/whl/torch-2.8.0+cpu.html", conflict = { package = "pathpyg", extra = "cpu" } },
