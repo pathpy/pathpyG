@@ -37,6 +37,17 @@ class MatplotlibBackend(PlotBackend):
         - Bezier curves for directed edges
         - Automatic edge shortening to avoid node overlap
 
+    Example:
+        Plot a simple directed network with curved edges:
+        ```python
+        import pathpyG as pp
+        
+        edges = [("A", "B"), ("B", "C"), ("C", "A")]
+        g = pp.Graph.from_edge_list(edges)
+        pp.plot(g, backend="matplotlib")
+        ```
+        <img src="../../plot/network.png" alt="Example Matplotlib Backend Output" width="550"/>
+
     !!! note "Performance Optimization"
         Uses collections instead of individual plot calls for 10-100x
         faster rendering on networks with many edges.

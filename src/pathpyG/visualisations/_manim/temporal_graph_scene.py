@@ -1,3 +1,9 @@
+"""Manim scene implementation for temporal graph animation.
+
+Core animation scene that renders temporal networks with time-based node/edge
+evolution. Handles smooth transitions, proper edge-node boundary calculations,
+and time indicator display.
+"""
 import logging
 
 import numpy as np
@@ -12,7 +18,20 @@ logger = logging.getLogger("root")
 
 
 class TemporalGraphScene(Scene):
+    """Manim scene for animated temporal network visualization.
+    
+    Creates time-based animations showing network evolution with nodes
+    appearing/moving and edges being added/removed over time. Handles
+    proper scaling, positioning, and smooth transitions between timesteps.
+    """
     def __init__(self, data: dict, config: dict, show_labels: bool):
+        """Initialize temporal graph scene with network data and configuration.
+        
+        Args:
+            data: Network data with nodes/edges DataFrames in a dictionary
+            config: Animation configuration (timing, colors, etc.)
+            show_labels: Whether to display node labels
+        """
         super().__init__()
         self.data = data
         self.data["nodes"]["size"] *= 0.025  # scale sizes down
@@ -28,7 +47,17 @@ class TemporalGraphScene(Scene):
         self.show_labels = show_labels
 
     def construct(self):
-        """Constructs the Manim scene for the temporal graph."""
+        """Create temporal network animation with time-based evolution.
+        
+        Main animation sequence:
+        1. Initialize nodes at t=0 with layout positioning
+        2. For each timestep: update time display, add new edges, 
+           transform node positions, remove old edges
+        3. Clean up final frame
+        
+        Uses smooth transitions and proper edge-node boundary calculations
+        for professional animation quality.
+        """
         # Add initial nodes
         start_node_df = self.data["nodes"][self.data["nodes"]["start"] == 0]
         if "x" in self.data["nodes"] and "y" in self.data["nodes"]:
@@ -130,7 +159,20 @@ class TemporalGraphScene(Scene):
         self.play(Uncreate(node) for node in nodes.values())
 
     def get_boundary_point(self, center, direction, radius):
-        """Calculate the boundary point of a circle in a given direction."""
+        """Calculate edge attachment point on node boundary.
+        
+        Computes where edges should connect to nodes to avoid visual
+        overlap with node circles. Uses vector normalization to find
+        the intersection point on the node's circumference.
+        
+        Args:
+            center: Node center coordinates (x, y, z)
+            direction: Direction vector to target node
+            radius: Node radius for boundary calculation
+            
+        Returns:
+            Boundary point coordinates for clean edge attachment
+        """
         distance = np.linalg.norm(direction)
         if distance == 0:
             return center  # Avoid division by zero
