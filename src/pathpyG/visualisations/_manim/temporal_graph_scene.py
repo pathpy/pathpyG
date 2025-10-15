@@ -75,9 +75,9 @@ class TemporalGraphScene(Scene):
                     )
                     for source, target in new_edge_df.index
                 }
-                self.play(*[GrowArrow(arrow) for arrow in arrows.values()], run_time=self.config["temporal"]["delta"]/(4*1000))
+                self.play(*[GrowArrow(arrow) for arrow in arrows.values()], run_time=self.config["delta"]/(4*1000))
             else:
-                self.wait(self.config["temporal"]["delta"]/(4*1000))
+                self.wait(self.config["delta"]/(4*1000))
 
             # Update node positions for the next time step
             new_nodes = self.data["nodes"][self.data["nodes"]["start"] == (t + 1)]
@@ -85,7 +85,6 @@ class TemporalGraphScene(Scene):
                 new_vertex_config = new_nodes[["radius", "fill_color", "fill_opacity"]].to_dict(orient="index")
                 if "x" in new_nodes and "y" in new_nodes:
                     layout.update({node: np.concatenate([pos.values, [0]]) for node, pos in new_nodes[["x", "y"]].iterrows()})
-
                 if self.show_labels:
                     new_nodes = {
                         node: LabeledDot(label=str(node), point=layout[node], **new_vertex_config[node])
@@ -102,12 +101,12 @@ class TemporalGraphScene(Scene):
                             start=self.get_boundary_point(
                                 center=layout[source],
                                 direction=layout[target] - layout[source],
-                                radius=new_nodes[source].radius/2,
+                                radius=(nodes | new_nodes)[source].radius/2,
                             ),
                             end=self.get_boundary_point(
                                 center=layout[target],
                                 direction=layout[source] - layout[target],
-                                radius=new_nodes[target].radius/2,
+                                radius=(nodes | new_nodes)[target].radius/2,
                             ),
                             **new_edge_config[(source, target)],
                         )
@@ -115,18 +114,18 @@ class TemporalGraphScene(Scene):
                         if (source, target) in arrows
                     }
                     movement_animations.extend([Transform(arrows[index], new_arrows[index]) for index in new_arrows])
-                self.play(*movement_animations, run_time=self.config["temporal"]["delta"]/(2*1000) - 0.02) # 0.02 for time text update
+                self.play(*movement_animations, run_time=self.config["delta"]/(2*1000) - 0.02) # 0.02 for time text update
             else:
-                self.wait(self.config["temporal"]["delta"]/(2*1000) - 0.02) # 0.02 for time text update
+                self.wait(self.config["delta"]/(2*1000) - 0.02) # 0.02 for time text update
 
             # Gather all old edges to be removed
             if not new_edge_df.empty:
                 self.play(
                     *[arrow.animate.scale(0, scale_tips=True, about_point=arrow.get_end()) for arrow in arrows.values()],
-                    run_time=self.config["temporal"]["delta"]/(4*1000)
+                    run_time=self.config["delta"]/(4*1000)
                 )
             else:
-                self.wait(self.config["temporal"]["delta"]/(4*1000))
+                self.wait(self.config["delta"]/(4*1000))
 
         self.play(Uncreate(node) for node in nodes.values())
 

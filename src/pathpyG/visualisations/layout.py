@@ -71,7 +71,8 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
         else:
             raise ValueError(f"Weight attribute '{weight}' not found in edge attributes.")
     elif isinstance(weight, Iterable) and not isinstance(weight, torch.Tensor):
-        if len(weight) == network.m:
+        n_edges = network.m * 2 if network.is_undirected() else network.m
+        if len(weight) == n_edges:
             weight = torch.tensor(weight)
         else:
             raise ValueError("Length of weight iterable does not match number of edges in the network.")
@@ -144,7 +145,7 @@ class Layout(object):
         names_spectral = ["spectral", "eigen", "spectral layout"]
         names_kk = ["kamada-kawai", "kamada_kawai", "kk", "kamada", "kamada layout"]
         names_fr = ["fruchterman-reingold", "fruchterman_reingold", "fr", "spring_layout", "spring layout", "spring"]
-        names_forceatlas2 = ["forceatlas2", "fa2", "forceatlas", "force-atlas", "force-atlas2", "fa 2", "fa 1"]
+        names_forceatlas2 = ["forceatlas2", "fa2", "forceatlas", "force-atlas", "force-atlas2", "fa 2"]
 
         if self.layout_type in names_rand:
             layout = nx.random_layout(nx_network, **self.kwargs)
@@ -159,9 +160,6 @@ class Layout(object):
                 nx_network, weight="weight" if self.weight is not None else None, **self.kwargs
             )
         elif self.layout_type in names_fr:
-            if "k" not in self.kwargs:
-                # set optimal distance between nodes
-                self.kwargs["k"] = np.sqrt(len(self.nodes))
             layout = nx.spring_layout(nx_network, weight="weight" if self.weight is not None else None, **self.kwargs)
         elif self.layout_type in names_forceatlas2:
             layout = nx.forceatlas2_layout(

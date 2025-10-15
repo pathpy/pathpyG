@@ -55,6 +55,12 @@ class NetworkPlot(PathPyPlot):
             kwargs.pop(f"node_{node_arg}")
         for edge_arg in self.edge_args.keys():
             kwargs.pop(f"edge_{edge_arg}")
+        if "node" in kwargs:
+            self.config["node"].update(kwargs["node"])
+            kwargs.pop("node")
+        if "edge" in kwargs:
+            self.config["edge"].update(kwargs["edge"])
+            kwargs.pop("edge")
         self.config.update(kwargs)
         # generate plot data
         self.generate()

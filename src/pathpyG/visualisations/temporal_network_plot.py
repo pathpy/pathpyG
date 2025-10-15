@@ -33,7 +33,7 @@ class TemporalNetworkPlot(NetworkPlot):
         start_nodes: pd.DataFrame = pd.DataFrame(
             index=pd.MultiIndex.from_tuples([(node, 0) for node in self.network.nodes], names=["uid", "time"])
         )
-        new_nodes: pd.DataFrame = pd.DataFrame()
+        new_nodes: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples([], names=["uid", "time"]))
         # add attributes to start nodes and new nodes if given as dictionary
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
@@ -47,31 +47,19 @@ class TemporalNetworkPlot(NetworkPlot):
             # check if attribute is given as argument
             if attribute in self.node_args:
                 if isinstance(self.node_args[attribute], dict):
-                    # check if dict contains node or node-time keys
-                    if "-" in next(iter(self.node_args[attribute].keys())):  # type: ignore[union-attr]
-                        # add node attribute according to node-time keys
-                        new_nodes = new_nodes.join(
-                            pd.DataFrame.from_dict(self.node_args[attribute], orient="index", columns=[attribute]),
-                            how="outer",
-                        )
-                    else:
-                        # add node attributes to start nodes according to node keys
-                        start_nodes[attribute] = start_nodes.index.get_level_values("uid").map(
-                            self.node_args[attribute]
-                        )
+                    # check if entry is tuple or string
+                    for key in self.node_args[attribute].keys():  # type: ignore[union-attr]
+                        if isinstance(key, tuple):
+                            # add node attribute according to node-time keys
+                            new_nodes.loc[key, attribute] = self.node_args[attribute][key]  # type: ignore[index]
+                        else:
+                            # add node attributes to start nodes according to node keys
+                            start_nodes.loc[(key, 0), attribute] = self.node_args[attribute][key]  # type: ignore[index]
                 else:
                     start_nodes[attribute] = self.node_args[attribute]
 
-        # combine start nodes and new nodes
-        if not new_nodes.empty:
-            new_nodes = new_nodes.set_index(new_nodes.index.map(lambda x: (x.split("-")[0], int(x.split("-")[1]))))
-            new_nodes.index.set_names(["uid", "time"], inplace=True)
-            nodes = new_nodes.combine_first(start_nodes)
-        else:
-            nodes = start_nodes
-
-        # save node data
-        self.data["nodes"] = nodes
+        # save node data and combine start nodes with new nodes by making sure start nodes are overwritten
+        self.data["nodes"] = new_nodes.combine_first(start_nodes)
 
     def _post_process_node_data(self) -> pd.DataFrame:
         """Post-process specific node attributes after constructing the DataFrame."""
@@ -86,7 +74,7 @@ class TemporalNetworkPlot(NetworkPlot):
         # add end time step with the start the node appears the next time or max time step + 1
         nodes["end"] = nodes.groupby("uid")["start"].shift(-1)
         max_node_time = nodes["start"].max() + 1
-        if max_node_time < self.network.data.time[-1].item():
+        if max_node_time < self.network.data.time[-1].item() + 1:
             max_node_time = self.network.data.time[-1].item() + 1
         nodes["end"] = nodes["end"].fillna(max_node_time)
         self.data["nodes"] = nodes
@@ -134,7 +122,8 @@ class TemporalNetworkPlot(NetworkPlot):
         )
         window_size = self.config.get("layout_window_size")
         if isinstance(window_size, int):
-            window_size = [ceil(window_size / 2), window_size // 2]
+            # if uneven window size, add one to the future time steps since the end time step is exclusive
+            window_size = [window_size // 2, ceil(window_size / 2)]
         elif isinstance(window_size, list | tuple):
             if window_size[0] < 0:
                 window_size[0] = max_time  # use all previous time steps
@@ -152,15 +141,12 @@ class TemporalNetworkPlot(NetworkPlot):
         num_steps = max_time - window_size[1]
         layout_df = pd.DataFrame()
         for step in range(num_steps + 1):
+            start_time = max(0, step - window_size[0])
+            end_time = step + window_size[1] + 1
             # only compute layout if there are edges in the current window, otherwise use the previous layout
-            if (
-                (max(0, step - window_size[0]) <= self.network.data.time)
-                & (self.network.data.time <= step + window_size[1] + 1)
-            ).sum() > 0:
+            if ((start_time <= self.network.data.time) & (self.network.data.time <= end_time)).sum() > 0:
                 # get subgraph for the current time step
-                sub_graph = self.network.get_window(
-                    start_time=max(0, step - window_size[0]), end_time=step + window_size[1] + 1
-                )
+                sub_graph = self.network.get_window(start_time=start_time, end_time=end_time)
 
                 # get layout dict for each node
                 if isinstance(layout_type, str):

@@ -15,7 +15,7 @@ const Network = (config) => {
     const selector = config.selector;       // DOM uuid
     const width = config.width || 800;      // window width 
     const height = config.height || 600;    // window height
-    const delta = (config.temporal && config.temporal.delta) || 300;      // time between frames
+    const delta = config.delta || 300;      // time between frames
     const padding = (config.node && config.node.image_padding) || 5;    // distance between node and image
     const margin = config.margin || 0.1;  // margin around the plot area for fixed layout
     const xlim = [-1*margin, 1+(1*margin)]; // limits of the x-coordinates

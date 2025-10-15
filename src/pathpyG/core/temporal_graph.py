@@ -114,8 +114,9 @@ class TemporalGraph(Graph):
             ('b', 'c', 2)
             ('c', 'a', 3)
         """
-        edge_and_time = np.concatenate((self.mapping.to_ids(self.data.edge_index), to_numpy(self.data.time.unsqueeze(0))), axis=0)
-        return edge_and_time.T.tolist()
+        edge_ids = self.mapping.to_ids(self.data.edge_index)
+        times = to_numpy(self.data.time)
+        return list(zip(edge_ids[0], edge_ids[1], times))
     
     def to(self, device: torch.device) -> TemporalGraph:
         """Moves all graph data to the specified device (CPU or GPU).

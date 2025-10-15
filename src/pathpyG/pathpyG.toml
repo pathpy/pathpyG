@@ -30,6 +30,8 @@ latex_class_options = ""  # LaTeX class options for TikZ visualisations
 margin = 0.1  # Margin around the plot in all backends
 curvature = 0.25  # Curvature for curved edges between nodes
 layout_window_size = [-1, -1]  # Window size for layout algorithms that use temporal information. Default is [-1, -1] meaning that all timestamps in both directions is used. If an integer is given, this defines the number of time steps that are used to compute the layout at a specific time step. If  tuple of two integers is given, this defines the number of time steps before and after the current time step that are used to compute the layout at a specific time step.
+delta = 1000  # Time between frames in milliseconds
+separator = "->"  # Separator for higher-order node labels
 
 [visualisation.node]
 color = [36, 74, 92]  # Node color in RGB from the pathpyG logo
@@ -41,9 +43,3 @@ image_padding = 5  # Padding around images if image link is provided in d3js vis
 color = [76, 112, 123]  # Edge color in RGB from the pathpyG logo
 size = 2  # Edge width
 opacity = 0.5  # Edge opacity between 0 and 1
-
-[visualisation.temporal]
-delta = 1000  # Time between frames in milliseconds
-
-[visualisation.higher_order]
-separator = "->"  # Separator for higher-order node labels
