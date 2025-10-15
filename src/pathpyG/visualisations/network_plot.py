@@ -164,12 +164,25 @@ class NetworkPlot(PathPyPlot):
         if isinstance(attr_value, dict):
             # if dict does not contain values for all edges, only update those that are given
             new_attrs = df.index.map(attr_value)
-            df.loc[~new_attrs.isna(), attr_key] = new_attrs[~new_attrs.isna()]
+            # Check if all values are assigned
+            if new_attrs.size == df.shape[0]:
+                # If all values are assigned, directly set the column to make sure that dtype is correct
+                df[attr_key] = new_attrs
+            else:
+                # Otherwise, only update the values that are not NaN
+                df.loc[~new_attrs.isna(), attr_key] = new_attrs[~new_attrs.isna()]
         elif isinstance(attr_value, Sized) and not isinstance(attr_value, str):
-            if len(attr_value) != len(df):
+            # check if attr_key="color" and given values is an RGB tuple
+            if attr_key == "color":
+                if isinstance(attr_value, tuple) and len(attr_value) == 3:
+                    df[attr_key] = [attr_value] * len(df)
+                else:
+                    df[attr_key] = attr_value
+            elif len(attr_value) != len(df):
                 logger.error(f"The provided list for {attr_key} has length {len(attr_value)}, but there are {len(df)} nodes/edges!")
                 raise AttributeError
-            df[attr_key] = attr_value
+            else:
+                df[attr_key] = attr_value
         else:
             df[attr_key] = attr_value
         return df
