@@ -1,3 +1,9 @@
+"""Temporal network visualization module.
+
+Prepares temporal graphs for visualization, handling time-based
+node and edge dynamics, windowed layout computation, and
+attribute interpolation.
+"""
 from __future__ import annotations
 
 import logging
@@ -18,17 +24,37 @@ logger = logging.getLogger("root")
 
 
 class TemporalNetworkPlot(NetworkPlot):
-    """Network plot class for a temporal network."""
+    """Temporal network visualization with time-based node and edge dynamics.
+
+    Extends NetworkPlot to handle temporal graphs where edges appear at
+    fixed times. Provides windowed layout computation and
+    time-aware attribute interpolation.
+
+    !!! info "Temporal Features"
+        - Node lifetime tracking (start/end times)
+        - Windowed layout computation
+        - Time-based attribute interpolation
+    """
 
     _kind = "temporal"
     network: TemporalGraph
 
     def __init__(self, network: TemporalGraph, **kwargs: Any) -> None:
-        """Initialize network plot class."""
+        """Initialize temporal network plot.
+
+        Args:
+            network: TemporalGraph instance to visualize
+            **kwargs: Additional plotting parameters
+        """
         super().__init__(network, **kwargs)
 
     def _compute_node_data(self) -> None:
-        """Generate the data structure for the nodes."""
+        """Generate temporal node data with time-based attributes.
+
+        Creates multi-index DataFrame with (node_id, time) structure.
+        Handles node appearance times and attribute assignment from
+        network data, config defaults, and user arguments.
+        """
         # initialize values with index `node-0` to indicate time step 0
         start_nodes: pd.DataFrame = pd.DataFrame(
             index=pd.MultiIndex.from_tuples([(node, 0) for node in self.network.nodes], names=["uid", "time"])
@@ -62,7 +88,14 @@ class TemporalNetworkPlot(NetworkPlot):
         self.data["nodes"] = new_nodes.combine_first(start_nodes)
 
     def _post_process_node_data(self) -> pd.DataFrame:
-        """Post-process specific node attributes after constructing the DataFrame."""
+        """Add node lifetime information and forward-fill attributes.
+
+        Computes start/end times for each node appearance and fills
+        missing attribute values using forward-fill within node groups.
+
+        Returns:
+            Processed DataFrame with start/end time columns
+        """
         # Post-processing from parent class
         super()._post_process_node_data()
 
@@ -80,7 +113,12 @@ class TemporalNetworkPlot(NetworkPlot):
         self.data["nodes"] = nodes
 
     def _compute_edge_data(self) -> None:
-        """Generate the data structure for the edges."""
+        """Generate temporal edge data with time-based attributes.
+
+        Creates edge DataFrame with temporal index (source, target, time).
+        Handles edge attributes from network data, config defaults, and
+        user arguments. Adds start/end time columns for edge lifetime.
+        """
         # initialize values
         edges: pd.DataFrame = pd.DataFrame(
             index=pd.MultiIndex.from_tuples(self.network.temporal_edges, names=["source", "target", "time"])
@@ -99,9 +137,9 @@ class TemporalNetworkPlot(NetworkPlot):
                 edges[attribute] = self.network.data["edge_weight"]
             # check if attribute is given as argument
             if attribute in self.edge_args:
-                edges = self.assign_argument(attribute, self.edge_args[attribute], edges)
+                edges = self._assign_argument(attribute, self.edge_args[attribute], edges)
             elif attribute == "size" and "weight" in self.edge_args:
-                edges = self.assign_argument("size", self.edge_args["weight"], edges)
+                edges = self._assign_argument("size", self.edge_args["weight"], edges)
 
         # convert needed attributes to useful values
         edges["color"] = self._convert_to_rgb_tuple(edges["color"])
@@ -114,7 +152,17 @@ class TemporalNetworkPlot(NetworkPlot):
         self.data["edges"] = edges
 
     def _compute_layout(self) -> None:
-        """Create temporal layout."""
+        """Compute time-aware node layout using sliding window approach.
+
+        Uses configurable time windows to create smooth layout transitions.
+        For each time step, considers edges from surrounding time steps
+        based on layout_window_size configuration.
+
+        !!! tip "Window Configuration"
+            - Integer: symmetric window around current time
+            - [past, future]: asymmetric window sizes
+            - Negative values: use all past/future time steps
+        """
         # get layout from the config
         layout_type = self.config.get("layout")
         max_time = int(
@@ -126,9 +174,11 @@ class TemporalNetworkPlot(NetworkPlot):
             window_size = [window_size // 2, ceil(window_size / 2)]
         elif isinstance(window_size, list | tuple):
             if window_size[0] < 0:
-                window_size[0] = max_time  # use all previous time steps
+                # use all previous time steps
+                window_size[0] = max_time  # type: ignore[index]
             if window_size[1] < 0:
-                window_size[1] = max_time  # use all following time steps
+                # use all following time steps
+                window_size[1] = max_time  # type: ignore[index]
         elif not isinstance(window_size, (list, tuple)):
             logger.error("The provided layout_window_size is not valid!")
             raise AttributeError
@@ -158,9 +208,7 @@ class TemporalNetworkPlot(NetworkPlot):
             # update x,y position of the nodes
             new_layout_df = pd.DataFrame.from_dict(pos, orient="index", columns=["x", "y"])
             if self.network.order > 1 and not isinstance(new_layout_df.index[0], str):
-                new_layout_df.index = new_layout_df.index.map(
-                    lambda x: self.config["higher_order"]["separator"].join(map(str, x))
-                )
+                new_layout_df.index = new_layout_df.index.map(lambda x: self.config["separator"].join(map(str, x)))
             # scale x and y to [0,1]
             new_layout_df["x"] = (new_layout_df["x"] - new_layout_df["x"].min()) / (
                 new_layout_df["x"].max() - new_layout_df["x"].min()
@@ -177,7 +225,11 @@ class TemporalNetworkPlot(NetworkPlot):
         self.data["nodes"] = self.data["nodes"].join(layout_df, how="outer")
 
     def _compute_config(self) -> None:
-        """Add additional configs."""
+        """Set temporal-specific visualization configuration.
+
+        Forces directed=True and curved=False for temporal networks.
+        Enables simulation mode (for `d3js` backend) when no layout algorithm is specified.
+        """
         self.config["directed"] = True
         self.config["curved"] = False
         self.config["simulation"] = self.config["layout"] is None

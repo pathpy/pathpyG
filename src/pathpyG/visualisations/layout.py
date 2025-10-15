@@ -1,3 +1,37 @@
+"""Network layout algorithms for node positioning.
+
+Provides comprehensive layout computation for network visualization using various
+algorithms from NetworkX and custom implementations. Supports both weighted and 
+unweighted networks with flexible parameter configuration.
+
+!!! abstract "Key Features"
+    - NetworkX integration for proven algorithms
+    - Custom grid layout for regular structures  
+    - Weighted layout support for better positioning
+    - Automatic algorithm selection and validation
+
+!!! info "Available Algorithms"
+    - All layouts that are implemented in `networkx`
+        - Random layout
+        - Circular layout
+        - Shell layout
+        - Spectral layout
+        - Kamada-Kawai layout
+        - Fruchterman-Reingold force-directed algorithm
+        - ForceAtlas2 layout algorithm
+    - Grid layout
+
+Examples:
+    Compute a spring layout for a simple graph:
+
+    >>> from pathpyG import Graph
+    >>> from pathpyG.visualisations import layout
+    >>> 
+    >>> g = Graph.from_edge_list([('a', 'b'), ('b', 'c')])
+    >>> positions = layout(g, layout='spring', k=0.5)
+    >>> print(positions)
+    {'a': array([ 0.61899711, -1.        ]), 'b': array([-0.00132282,  0.00213747]), 'c': array([-0.61767429,  0.99786253])}
+"""
 #!/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -33,36 +67,49 @@ from pathpyG.core.graph import Graph
 
 
 def layout(network: Graph, layout: str = "random", weight: None | str | Iterable = None, **kwargs):
-    """Function to generate a layout for the network.
+    """Generate node positions using specified layout algorithm.
 
-    This function generates a layout configuration for the nodes in the
-    network. Thereby, different layouts and options can be chosen. The layout
-    function is directly included in the plot function or can be separately
-    called.
-
-    Currently supported algorithms are:
-
-    - All layouts that are implemented in `networkx`
-        - Random layout
-        - Circular layout
-        - Shell layout
-        - Spectral layout
-        - Kamada-Kawai layout
-        - Fruchterman-Reingold force-directed algorithm
-        - ForceAtlas2 layout algorithm
-    - Grid layout
-
-    The appearance of the layout can be modified by keyword arguments which will
-    be explained in more detail below.
+    Computes 2D coordinates for all nodes in the network using various layout
+    algorithms. Supports edge weighting for physics-based layouts and provides
+    flexible parameter passing to underlying algorithms.
 
     Args:
-        network (network object): Network to be drawn.
-        weight (str or Iterable): Edge attribute that should be used as weight.
-            If a string is provided, the attribute must be present in the edge
-            attributes of the network. If an iterable is provided, it must have
-            the same length as the number of edges in the network.
-        layout (str): Layout algorithm that should be used.
-        **kwargs (Optional dict): Attributes that will be passed to the layout function.
+        network: Graph instance to generate layout for
+        layout: Algorithm name (see supported algorithms below)
+        weight: Edge weights as attribute name, iterable, or None
+        **kwargs: Algorithm-specific parameters passed to layout function
+
+    Returns:
+        dict: Node positions as {node_id: (x, y)} coordinate mapping
+
+    Raises:
+        ValueError: If weight attribute not found or weight length mismatch
+        ValueError: If layout algorithm not recognized
+
+    Examples:
+        ```python
+        # Basic spring layout
+        pos = layout(graph, 'spring')
+        
+        # Weighted layout with edge attribute
+        pos = layout(graph, 'kamada-kawai', weight='edge_weight')
+        
+        # Custom parameters
+        pos = layout(graph, 'spring', k=0.3, iterations=100)
+        ```
+
+    !!! note "Supported Algorithms"
+        
+        | Algorithm | Aliases | Best For |
+        |-----------|---------|----------|
+        | `spring` | `fruchterman-reingold`, `fr` | General networks |
+        | `kamada-kawai` | `kk`, `kamada` | Small/medium networks |
+        | `forceatlas2` | `fa2`, `force-atlas2` | Large networks |
+        | `circular` | `circle`, `ring` | Cycle structures |
+        | `shell` | `concentric` | Hierarchical data |
+        | `grid` | `lattice-2d` | Regular structures |
+        | `spectral` | `eigen` | Community detection |
+        | `random` | `rand` | Testing/baseline |
     """
     # initialize variables
     if isinstance(weight, str):
@@ -72,7 +119,7 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
             raise ValueError(f"Weight attribute '{weight}' not found in edge attributes.")
     elif isinstance(weight, Iterable) and not isinstance(weight, torch.Tensor):
         n_edges = network.m * 2 if network.is_undirected() else network.m
-        if len(weight) == n_edges:
+        if len(weight) == n_edges:  # type: ignore[arg-type]
             weight = torch.tensor(weight)
         else:
             raise ValueError("Length of weight iterable does not match number of edges in the network.")
@@ -86,29 +133,37 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
 
 
 class Layout(object):
-    """Default class to create layouts.
+    """Layout computation engine for network node positioning.
 
-    The [`Layout`][pathpyG.visualisations.layout.Layout] class is used to generate node a layout drawer and
-    return the calculated node positions as a dictionary, where the keywords
-    represents the node ids and the values represents a two dimensional tuple
-    with the x and y coordinates for the associated nodes.
+    Core class that handles algorithm selection, parameter management, and
+    coordinate generation. Integrates with NetworkX for proven algorithms
+    while providing custom implementations for specialized cases.
 
     Args:
-        nodes (list): list with node ids.
-            The list contain a list of unique node ids.
-        edge_index (Tensor): Edge index of the network.
-            The edge index is a tensor of shape [2, num_edges] and contains the
-            source and target nodes of each edge.
-        
-        weight (Tensor): Edge weights of the network.
-            The edge weights is a tensor of shape [num_edges] and contains the
-            weight of each edge.
-        **kwargs (dict): Keyword arguments to modify the layout. Will be passed
-            to the layout function.
+        nodes: List of unique node identifiers
+        edge_index: Tensor containing source/target indices for each edge
+        layout_type: Algorithm name for position computation
+        weight: Optional edge weights as tensor with shape [num_edges]
+        **kwargs: Algorithm-specific parameters
+
+    Attributes:
+        nodes: Node identifier list
+        edge_index: Edge connectivity tensor
+        weight: Edge weight tensor (optional)
+        layout_type: Selected algorithm name
+        kwargs: Algorithm parameters
     """
 
     def __init__(self, nodes: list, edge_index: Optional[Tensor] = None, layout_type: str = "random", weight: Optional[Tensor] = None, **kwargs):
-        """Initialize the Layout class."""
+        """Initialize layout computation with network data and parameters.
+        
+        Args:
+            nodes: List of unique node identifiers
+            edge_index: Edge connectivity tensor (creates empty if None)
+            layout_type: Algorithm name for position computation
+            weight: Optional edge weights tensor
+            **kwargs: Algorithm-specific parameters
+        """
         # initialize variables
         self.nodes = nodes
         if edge_index is None:
@@ -120,7 +175,14 @@ class Layout(object):
         self.kwargs = kwargs
 
     def generate_layout(self):
-        """Function to pick and generate the right layout."""
+        """Select and execute appropriate layout algorithm.
+        
+        Routes computation to either custom grid implementation or 
+        NetworkX-based algorithms based on layout_type specification.
+        
+        Returns:
+            dict: Node positions as {node_id: (x, y)} coordinate mapping
+        """
         # method names
         names_grid = ["grid", "2d-lattice", "lattice-2d"]
         # check which layout should be plotted
@@ -132,7 +194,21 @@ class Layout(object):
         return self.layout
 
     def generate_nx_layout(self):
-        """Function to generate a layout using networkx."""
+        """Compute layout using NetworkX algorithms with weight support.
+        
+        Converts pathpyG network to NetworkX format, applies selected algorithm
+        with proper weight handling, and returns position dictionary.
+        
+        Returns:
+            dict: Node positions from NetworkX layout algorithm
+            
+        Raises:
+            ValueError: If layout algorithm name not recognized
+            
+        !!! note "Algorithm Mapping"
+            Multiple aliases map to the same underlying NetworkX function
+            for user convenience and compatibility with different naming conventions.
+        """
         import networkx as nx
 
         sp_matrix = to_scipy_sparse_matrix(self.edge_index.as_tensor(), edge_attr=self.weight, num_nodes=len(self.nodes))
@@ -171,12 +247,13 @@ class Layout(object):
         return layout
 
     def grid(self):
-        """Position nodes on a two-dimensional grid.
+        """Position nodes on regular 2D grid for lattice-like structures.
 
-        This algorithm can be enabled with the keywords: `grid`, `lattice-2d`, `2d-lattice`, `lattice`
+        Arranges nodes in a square grid pattern with uniform spacing.
+        Useful for regular networks, lattices.
 
         Returns:
-            layout (dict): A dictionary of positions keyed by node
+            dict: Grid positions as {node_id: (x, y)} coordinates
         """
         n = len(self.nodes)
         width = 1.0

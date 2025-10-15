@@ -1,4 +1,43 @@
-"""Class to plot pathpy networks."""
+"""Network visualization orchestration module.
+
+Provides the main plotting interface for pathpyG networks with automatic backend
+selection and plot type detection. Serves as the unified entry point for all 
+visualization functionality across different backends and graph types.
+
+Key Features:
+    - Multi-backend support (matplotlib, TikZ, d3.js, manim)
+    - Automatic plot type detection (static vs temporal)
+    - File format-based backend inference
+    - Unified plotting interface for all graph types
+
+Supported Backends:
+    - **matplotlib**: PNG, JPG plots for static visualization
+    - **TikZ**: PDF, SVG, TEX for publication-quality vector graphics
+    - **d3.js**: HTML for interactive web visualization
+    - **manim**: MP4, GIF for animated temporal networks
+
+Examples:
+    Plot a static network with the matplotlib backend and save it as `network.png`:
+
+    >>> import pathpyG as pp
+    >>> g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c')])
+    >>> pp.plot(g, filename='network.png')
+
+    <img src="../plot/network.png" alt="Example static network plot" width="550"/>
+    
+    Plot a temporal network with the default d3.js backend:
+    
+    >>> import pathpyG as pp
+    >>> tg = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('a', 'c', 3)])
+    >>> pp.plot(tg)
+
+    <iframe src="../plot/temporal_network.html" width="650" height="520"></iframe>
+    ```
+
+!!! tip "Backend Selection"
+    Backends are auto-selected from file extensions or can be explicitly 
+    specified via the `backend` parameter.
+"""
 
 # !/usr/bin/python -tt
 # -*- coding: utf-8 -*-
@@ -28,7 +67,11 @@ logger = logging.getLogger("root")
 
 # supported backends
 class Backends(str, Enum):
-    """Supported backends."""
+    """Enumeration of supported visualization backends.
+    
+    Defines the available backend engines for network visualization,
+    each optimized for different output formats and use cases.
+    """
     d3js = "d3js"
     matplotlib = "matplotlib"
     tikz = "tikz"
@@ -36,7 +79,14 @@ class Backends(str, Enum):
 
     @staticmethod
     def is_backend(backend: str) -> bool:
-        """Check if value is a valid backend."""
+        """Check if string is a valid backend identifier.
+        
+        Args:
+            backend: Backend name to validate
+            
+        Returns:
+            True if backend is supported, False otherwise
+        """
         return backend in Backends.__members__.values()
 
 # supported file formats
@@ -57,7 +107,24 @@ PLOT_CLASSES: dict = {
 }
 
 def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: str) -> type[PlotBackend]:
-    """Return the plotting backend to use."""
+    """Determine and import the appropriate plotting backend.
+    
+    Resolves backend selection based on explicit backend parameter,
+    file extension inference, or default fallback. Dynamically imports
+    the selected backend module.
+    
+    Args:
+        backend: Explicit backend name or None for auto-detection
+        filename: Output filename for extension-based inference
+        default: Fallback backend when no preference specified
+        
+    Returns:
+        Backend class ready for instantiation
+        
+    Raises:
+        KeyError: If specified backend is not supported
+        ImportError: If backend module cannot be imported
+    """
     # check if backend is valid backend type based on enum
     if backend is not None and not Backends.is_backend(backend):
         logger.error(f"The backend <{backend}> was not found.")
@@ -100,46 +167,49 @@ def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: A
     and potentially other types if specified in `kind`.
 
     Args:
-        graph (Graph): A `pathpyG` object representing the network data. This can
+        graph: A `pathpyG` object representing the network data. This can
             be a `Graph` or `TemporalGraph` object, or other compatible types.
-        kind (Optional[str], optional): A string keyword defining the type of
-            plot to generate. Options include:
-            - 'static' : Generates a static (aggregated) network plot. Ideal
-              for `Graph` objects.
-            - 'temporal' : Creates a temporal network plot, which includes time
-              components. Suitable for `TemporalGraph` objects.
-            - 'hist' : Produces a histogram of network properties. (Note:
-              Implementation for 'hist' is not present in the given function
-              code, it's mentioned for possible extension.)
-            The default behavior (when `kind` is None) is to infer the plot type from the graph type.
-        show_labels (Optional[bool], optional): Whether to display node labels
-            on the plot. If None, the function will decide based on the IndexMap.
-        **kwargs (Any): Optional keyword arguments to customize the plot. These
-              arguments are passed directly to the plotting class. Common options
-              could include layout parameters, color schemes, and plot size.
+        kind: A string keyword defining the type of plot to generate. Options include:
+            **'static'**, and **'temporal'**.
+        show_labels: Whether to display node labels (None uses graph.mapping.has_ids)
+        **kwargs: Backend-specific plotting parameters including:
+            **filename**: Output file path (triggers backend auto-selection);
+            **backend**: Explicit backend choice;
+            **layout**: Layout algorithm name;
+            **style**: Various styling parameters (colors, sizes, etc.)
 
     Returns:
-        PathPyPlot: A `PathPyPlot` object representing the generated plot.
-            This could be an instance of a plot class from
-            `pathpyG.visualisations.network_plots`, depending on the kind of
-             plot generated.
+        Configured backend instance ready for display or saving
 
     Raises:
-        NotImplementedError: If the `kind` is not recognized or if the function
-        cannot infer the plot type from the `graph` type.
+        NotImplementedError: If graph type cannot be auto-detected for plotting
+        KeyError: If specified backend is not supported
+        ImportError: If required backend cannot be loaded
 
     Examples:
         This will create a static network plot of the `graph` and save it to 'graph.png'.
 
         >>> import pathpyG as pp
-        >>> graph = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-        >>> plot(graph, kind="static", filename="graph.png")
+        >>> graph = pp.Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+        >>> pp.plot(graph, kind="static", filename="graph.png")
 
+        <img src="../plot/graph.png" alt="Example static network plot" width="550"/>
+        
     Note:
         - If a 'filename' is provided in `kwargs`, the plot will be saved to
           that file. Otherwise, it will be displayed using `plt.show()`.
         - The function's behavior and the available options in `kwargs` might
           change based on the type of plot being generated.
+
+    !!! abstract "Backend Auto-Selection"
+        When filename is provided, backend is inferred from extension:
+        
+        | Extension | Backend | Best For |
+        |-----------|---------|----------|
+        | .png, .jpg | matplotlib | Quick visualization |
+        | .pdf, .svg, .tex | tikz | Publication quality |
+        | .html | d3js | Interactive exploration |
+        | .mp4, .gif | manim | Animated sequences |
     """
     if kind is None:
         if isinstance(graph, TemporalGraph):

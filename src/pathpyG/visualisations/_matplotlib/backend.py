@@ -1,3 +1,9 @@
+"""Matplotlib backend for raster graphics network visualization.
+
+High-performance matplotlib implementation with optimized collections for
+efficient rendering. Supports both directed and undirected networks with
+curved edges, proper arrowheads, and comprehensive styling options.
+"""
 from __future__ import annotations
 
 import logging
@@ -20,27 +26,71 @@ SUPPORTED_KINDS = {
 
 
 class MatplotlibBackend(PlotBackend):
-    """Matplotlib plotting backend."""
+    """Matplotlib backend for network visualization with optimized rendering.
+
+    Uses matplotlib collections (EllipseCollection, LineCollection, PathCollection)
+    for efficient batch rendering of network elements. Provides high-quality
+    output with proper edge-node intersection handling and curved edge support.
+
+    Features:
+        - Batch rendering via matplotlib collections
+        - Bezier curves for directed edges
+        - Automatic edge shortening to avoid node overlap
+
+    !!! note "Performance Optimization"
+        Uses collections instead of individual plot calls for 10-100x
+        faster rendering on networks with many edges.
+    """
 
     def __init__(self, plot: PathPyPlot, show_labels: bool):
+        """Initialize matplotlib backend with plot validation.
+
+        Args:
+            plot: PathPyPlot instance containing network data
+            show_labels: Whether to display node labels
+
+        Raises:
+            ValueError: If plot type not supported by matplotlib backend
+        """
         super().__init__(plot, show_labels=show_labels)
-        self._kind = SUPPORTED_KINDS.get(type(plot), None)
+        self._kind = SUPPORTED_KINDS.get(type(plot), None)  # type: ignore[arg-type]
         if self._kind is None:
             logger.error(f"Plot of type {type(plot)} not supported by Matplotlib backend.")
             raise ValueError(f"Plot of type {type(plot)} not supported.")
 
     def save(self, filename: str) -> None:
-        """Save the plot to the hard drive."""
+        """Save plot to file with automatic format detection.
+
+        Args:
+            filename: Output file path (format inferred from extension)
+        """
         fig, ax = self.to_fig()
         fig.savefig(filename)
 
     def show(self) -> None:
-        """Show the plot on the device."""
+        """Display plot in interactive matplotlib window.
+
+        Opens plot in default matplotlib backend for interactive exploration.
+        """
         fig, ax = self.to_fig()
         plt.show()
 
     def to_fig(self) -> tuple[plt.Figure, plt.Axes]:
-        """Convert data to figure."""
+        """Generate complete matplotlib figure with network visualization.
+
+        Creates figure with proper sizing, renders edges and nodes using optimized
+        collections, adds labels if enabled, and sets appropriate axis limits.
+
+        Returns:
+            tuple: (Figure, Axes) matplotlib objects ready for display/saving
+
+        !!! info "Rendering Pipeline"
+            1. **Setup**: Create figure with configured dimensions and DPI
+            2. **Edges**: Render using LineCollection (undirected) or PathCollection (directed)
+            3. **Nodes**: Render using EllipseCollection for precise sizing
+            4. **Labels**: Add text annotations at node centers
+            5. **Layout**: Set axis limits with margin configuration
+        """
         size_factor = 1 / 200  # scale node size to reasonable values
         fig, ax = plt.subplots(
             figsize=(unit_str_to_float(self.config["width"], "in"), unit_str_to_float(self.config["height"], "in")),
@@ -95,7 +145,21 @@ class MatplotlibBackend(PlotBackend):
         return fig, ax
 
     def add_undirected_edges(self, source_coords, target_coords, ax, size_factor):
-        """Add undirected edges to the plot based on LineCollection."""
+        """Render undirected edges using LineCollection for efficiency.
+
+        Computes edge shortening to prevent overlap with nodes and renders
+        all edges in a single matplotlib LineCollection for optimal performance.
+
+        Args:
+            source_coords: Source node coordinates array
+            target_coords: Target node coordinates array  
+            ax: Matplotlib axes for rendering
+            size_factor: Scaling factor for node size calculations
+
+        !!! tip "Edge Shortening"
+            Automatically shortens edges by node radius to create clean
+            visual separation between edges and node boundaries.
+        """
         # shorten edges so they don't overlap with nodes
         vec = target_coords - source_coords
         dist = np.linalg.norm(vec, axis=1, keepdims=True)
@@ -116,7 +180,22 @@ class MatplotlibBackend(PlotBackend):
         )
 
     def add_directed_edges(self, source_coords, target_coords, ax, size_factor):
-        """Add directed edges with arrowheads to the plot based on Bezier curves."""
+        """Render directed edges using Bezier curves with arrowheads.
+
+        Creates curved edges using quadratic Bezier curves and adds proportional
+        arrowheads. Handles edge shortening and automatic fallback to straight
+        edges when curves would be too short.
+
+        Args:
+            source_coords: Source node coordinates array
+            target_coords: Target node coordinates array
+            ax: Matplotlib axes for rendering  
+            size_factor: Scaling factor for node size calculations
+
+        !!! warning "Curve Limitations"
+            Falls back to straight edges when arrowheads would be too large
+            relative to edge length to maintain visual clarity.
+        """
         # get bezier curve vertices and codes
         head_length = 0.02
         vertices, codes = self.get_bezier_curve(
@@ -166,19 +245,31 @@ class MatplotlibBackend(PlotBackend):
         head_length,
         shorten=0.005,
     ):
-        """Calculates the vertices and codes for a quadratic Bézier curve path.
+        """Generate quadratic Bezier curve paths for directed edges.
+
+        Computes control points for smooth curved edges with automatic shortening
+        to accommodate node sizes and arrowheads. Uses perpendicular offset for
+        curve control points based on curvature configuration.
 
         Args:
-            source_coords (np.array): Start points (x, y) for all edges.
-            target_coords (np.array): End points (x, y) for all edges.
-            source_node_size (np.array): Size of the source nodes to adjust the curve shortening.
-            target_node_size (np.array): Size of the target nodes to adjust the curve shortening.
-            head_length (float): Length of the arrowhead to adjust the curve shortening.
-            shorten (float): Amount to shorten the curve at both ends to avoid overlap with nodes.
-                Will shorten double at the target end to make space for the arrowhead.
+            source_coords: Start points (x, y) for all edges
+            target_coords: End points (x, y) for all edges  
+            source_node_size: Source node radii for edge shortening
+            target_node_size: Target node radii for edge shortening
+            head_length: Arrowhead length for target-end shortening
+            shorten: Additional shortening amount to prevent visual overlap
 
         Returns:
-            tuple: A tuple containing (vertices, codes) for the Path object.
+            tuple: (vertices, codes) for matplotlib Path objects
+
+        !!! info "Bezier Curve Mathematics"
+            Uses quadratic Bezier curves with control point positioned
+            perpendicular to edge midpoint. Curvature parameter controls
+            the distance of control point from edge midpoint.
+
+        !!! note "Fallback Behavior" 
+            Returns straight line paths when curves would be too short
+            for proper arrowhead placement.
         """
         # Start and end points for the Bézier curve
         P0 = source_coords
@@ -225,15 +316,24 @@ class MatplotlibBackend(PlotBackend):
         return vertices, codes
 
     def get_arrowhead(self, vertices, head_length=0.01, head_width=0.02):
-        """Calculates the vertices and codes for a triangular arrowhead path.
+        """Generate triangular arrowhead paths for directed edges.
+
+        Creates proportional arrowheads at curve endpoints using tangent vectors
+        for proper orientation. Arrowhead size scales with edge width for
+        consistent visual appearance across different edge weights.
 
         Args:
-            vertices (list): List of vertices from the Bézier curve.
-            head_length (float): Length of the arrowhead.
-            head_width (float): Width of the arrowhead.
+            vertices: Bezier curve vertices list for tangent calculation
+            head_length: Base arrowhead length (scaled by edge size)
+            head_width: Base arrowhead width (scaled by edge size)
 
         Returns:
-            tuple: A tuple containing (vertices, codes) for the Path object.
+            tuple: (vertices, codes) for matplotlib Path objects
+
+        !!! tip "Proportional Scaling"
+            Arrowhead dimensions automatically scale with edge width
+            to maintain consistent visual proportions across different
+            edge weights in the same network.
         """
         # Extract the last segment of the Bézier curve
         P1, P2 = vertices[-2], vertices[-1]

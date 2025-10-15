@@ -1,3 +1,38 @@
+"""TikZ/LaTeX Backend for High-Quality Network Visualizations.
+
+This backend generates publication-ready vector graphics using LaTeX's TikZ package.
+It provides precise control over visual elements and produces scalable output suitable
+for academic papers, presentations, and professional documentation.
+
+!!! abstract "Backend Capabilities"
+    - **Static networks only** - Temporal networks not supported
+    - **Vector output** - SVG, PDF, and raw TeX formats
+    - **LaTeX compilation** - Automatic document generation and compilation
+    - **Custom styling** - Full control over colors, sizes, and layouts
+
+The backend handles the complete workflow from graph data to compiled output,
+including template processing, LaTeX compilation, and format conversion.
+
+## Workflow Overview
+
+```mermaid
+graph LR
+    A[Graph Data] --> B[TikZ Template]
+    B --> C[LaTeX Document]
+    C --> D[Compilation]
+    D --> E[PDF Output]
+    D --> F[DVI Output]
+    F --> H[Conversion]
+    H --> I[SVG Output]
+    C --> G[TeX Output]
+```
+
+!!! tip "Performance Considerations"
+    - Compilation time scales with network complexity
+    - Large networks (>500 nodes) may require significant processing time
+    - Consider `matplotlib` backend for rapid prototyping of complex networks
+"""
+
 from __future__ import annotations
 
 import logging
@@ -7,6 +42,8 @@ import subprocess
 import time
 import webbrowser
 from string import Template
+
+import pandas as pd
 
 from pathpyG import config
 from pathpyG.visualisations.network_plot import NetworkPlot
@@ -23,18 +60,79 @@ SUPPORTED_KINDS = {
 
 
 class TikzBackend(PlotBackend):
-    """Backend for tikz/latex output."""
+    """TikZ/LaTeX Backend for Publication-Quality Network Graphics.
+    
+    Generates high-quality vector graphics using LaTeX's TikZ package. 
+    The backend mainly uses the [`tikz-network`](https://github.com/hackl/tikz-network)
+    package to create detailed and customizable visualizations. This backend
+    is optimized for static networks and provides publication-ready output with
+    precise control over visual elements.
+    
+    !!! info "Supported Operations"
+        - **Formats**: SVG, PDF, TeX
+        - **Networks**: Static graphs only
+        - **Styling**: Full customization support
+        - **Layouts**: All pathpyG layout algorithms
+    
+    The backend automatically handles LaTeX compilation, temporary file management,
+    and format conversion to deliver clean, scalable graphics suitable for
+    academic publications and professional presentations.
+    
+    Attributes:
+        plot: The PathPyPlot instance containing graph data and configuration
+        show_labels: Whether to display node labels in the output
+        _kind: Type of plot being processed (for now only "static" supported)
+    
+    Example:
+        ```python
+        # The backend is typically used via pp.plot()
+        import pathpyG as pp
+        g = pp.Graph.from_edge_list([("A", "B"), ("B", "C")])
+        pp.plot(g, backend="tikz")
+        ```
+        <img src="../../plot/tikz_backend_example.svg" alt="Example TikZ Backend Output" width="550"/>
+    """
 
     def __init__(self, plot: PathPyPlot, show_labels: bool):
-        """Initialize the backend with a plot."""
+        """Initialize the TikZ backend with plot data and configuration.
+        
+        Sets up the backend to process the provided plot data and validates
+        that the plot type is supported by the TikZ backend.
+        
+        Args:
+            plot: PathPyPlot instance containing graph data, layout, and styling
+            show_labels: Whether to display node labels in the generated output
+            
+        Raises:
+            ValueError: If the plot type is not supported by the TikZ backend
+            
+        Note:
+            Currently only static NetworkPlot instances are supported.
+            Temporal networks require, e.g. the manim backend instead.
+        """
         super().__init__(plot, show_labels=show_labels)
-        self._kind = SUPPORTED_KINDS.get(type(plot), None)
+        self._kind = SUPPORTED_KINDS.get(type(plot), None)  # type: ignore[arg-type]
         if self._kind is None:
             logger.error(f"Plot of type {type(plot)} not supported by Tikz backend.")
             raise ValueError(f"Plot of type {type(plot)} not supported.")
 
     def save(self, filename: str) -> None:
-        """Save the plot to the hard drive."""
+        """Save the network visualization to a file in the specified format.
+        
+        Automatically detects the output format from the file extension and
+        performs the necessary compilation steps. Supports TeX (raw LaTeX),
+        PDF (compiled document), and SVG (vector graphics) formats.
+        
+        Args:
+            filename: Output file path with extension (.tex, .pdf, or .svg)
+            
+        Raises:
+            NotImplementedError: If the file extension is not supported
+            
+        Note:
+            PDF and SVG compilation requires LaTeX toolchain installation.
+            The method handles temporary file creation and cleanup automatically.
+        """
         if filename.endswith("tex"):
             with open(filename, "w+") as new:
                 new.write(self.to_tex())
@@ -56,7 +154,23 @@ class TikzBackend(PlotBackend):
             raise NotImplementedError
 
     def show(self) -> None:
-        """Show the plot on the device."""
+        """Display the network visualization in the current environment.
+        
+        Compiles the network to SVG format and displays it either inline
+        (in Jupyter notebooks) or opens it in the default web browser.
+        The display method is automatically chosen based on the environment.
+        
+        The method creates temporary files for compilation and cleans them
+        up automatically after display.
+        
+        Environment Detection:
+            - **Interactive (Jupyter)**: Displays SVG inline using IPython.display
+            - **Non-interactive**: Opens SVG file in default web browser
+            
+        Note:
+            Requires LaTeX toolchain with TikZ and dvisvgm for SVG compilation.
+            Temporary files are automatically cleaned up after a brief delay.
+        """
         # compile temporary pdf
         temp_file, temp_dir = self.compile_svg()
 
@@ -80,7 +194,27 @@ class TikzBackend(PlotBackend):
         shutil.rmtree(temp_dir)
 
     def compile_svg(self) -> tuple:
-        """Compile svg from tex."""
+        """Compile LaTeX source to SVG format using the LaTeX toolchain.
+        
+        Performs a complete compilation workflow: TeX → DVI → SVG conversion.
+        Uses latexmk for robust LaTeX compilation and dvisvgm for high-quality
+        SVG conversion with proper text rendering.
+        
+        Returns:
+            tuple: (svg_file_path, temp_directory_path) for the compiled SVG
+            
+        Raises:
+            AttributeError: If LaTeX compilation fails or required tools are missing
+            
+        Compilation Steps:
+            1. Generate temporary directory and save TeX source
+            2. Run latexmk to compile TeX → DVI
+            3. Use dvisvgm to convert DVI → SVG
+            4. Return paths for file access and cleanup
+            
+        Note:
+            Both latexmk and dvisvgm must be available in the system PATH.
+        """
         temp_dir, current_dir = prepare_tempfile()
         # save the tex file
         self.save("default.tex")
@@ -117,7 +251,21 @@ class TikzBackend(PlotBackend):
         return os.path.join(temp_dir, "default.svg"), temp_dir
 
     def compile_pdf(self) -> tuple:
-        """Compile pdf from tex."""
+        """Compile LaTeX source to PDF format using pdflatex.
+        
+        Generates a high-quality PDF document suitable for printing and
+        publication. Uses latexmk with PDF mode for robust compilation
+        and automatic dependency handling.
+        
+        Returns:
+            tuple: (pdf_file_path, temp_directory_path) for the compiled PDF
+            
+        Raises:
+            AttributeError: If LaTeX compilation fails or pdflatex is not available
+
+        Note:
+            Requires latexmk and a PDF-capable LaTeX engine (pdflatex, xelatex, etc.).
+        """
         temp_dir, current_dir = prepare_tempfile()
         # save the tex file
         self.save("default.tex")
@@ -144,7 +292,31 @@ class TikzBackend(PlotBackend):
         return os.path.join(temp_dir, "default.pdf"), temp_dir
 
     def to_tex(self) -> str:
-        """Convert data to tex."""
+        """Generate complete LaTeX document with TikZ network visualization.
+        
+        Combines the network data with a LaTeX template to create a complete
+        document ready for compilation. The template includes all necessary
+        packages, document setup, and TikZ drawing commands.
+        
+        Returns:
+            str: Complete LaTeX document source code
+            
+        Process:
+            1. **Load template** - Retrieves the appropriate template for the plot type
+            2. **Generate TikZ** - Converts network data to TikZ drawing commands  
+            3. **Template substitution** - Fills template variables with graph data
+            4. **Return final string** - Complete LaTeX document ready for compilation
+            
+        Template Variables:
+            - `$classoptions`: LaTeX class options
+            - `$width`, `$height`: Document dimensions
+            - `$margin`: Margin around the drawing area
+            - `$tikz`: TikZ drawing commands for nodes and edges
+            
+        Note:
+            The generated document is self-contained and includes all necessary
+            TikZ packages and configuration for network visualization.
+        """
         # get path to the pathpy templates
         template_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
@@ -161,8 +333,8 @@ class TikzBackend(PlotBackend):
         # fill template with data
         tex = Template(tex_template).substitute(
             classoptions=self.config.get("latex_class_options"),
-            width=unit_str_to_float(self.config.get("width"), "cm"),
-            height=unit_str_to_float(self.config.get("height"), "cm"),
+            width=unit_str_to_float(self.config.get("width"), "cm"),  # type: ignore[arg-type]
+            height=unit_str_to_float(self.config.get("height"), "cm"),  # type: ignore[arg-type]
             margin=self.config.get("margin"),
             tikz=data,
         )
@@ -170,10 +342,27 @@ class TikzBackend(PlotBackend):
         return tex
 
     def to_tikz(self) -> str:
-        """Convert to Tex."""
+        r"""Generate TikZ drawing commands for the network visualization.
+        
+        Converts the processed graph data (nodes, edges, layout) into TikZ-specific
+        drawing commands. Handles node positioning, styling, edge routing, and
+        label placement according to the configured visualization parameters.
+        
+        Returns:
+            str: TikZ drawing commands ready for inclusion in LaTeX document
+            
+        Generated Elements:
+            - **Node commands** - `\Vertex` with labels, positions, colors, and sizes
+            - **Edge commands** - `\Edge` with styling and optional curvature
+
+        Note:
+            The output assumes the tikz-network package is loaded in the template.
+            Coordinates are assumed to be normalized to [0, 1] range and scaled
+            according to the specified document dimensions.
+        """
         tikz = ""
         # generate node strings
-        node_strings = "\\Vertex["
+        node_strings: pd.Series = "\\Vertex["
         # show labels if specified
         if self.show_labels:
             node_strings += (
@@ -203,7 +392,7 @@ class TikzBackend(PlotBackend):
         tikz += node_strings.str.cat()
 
         # generate edge strings
-        edge_strings = "\\Edge["
+        edge_strings: pd.Series = "\\Edge["
         if self.config["directed"]:
             edge_strings += "bend=15,Direct,"
         if self.data["edges"]["color"].str.startswith("#").all():
@@ -231,9 +420,9 @@ class TikzBackend(PlotBackend):
             "<=>": r"\Leftrightarrow ",
             "!=": r"\neq ",
         }
-        if self.config["higher_order"]["separator"].strip() in replacements:
+        if self.config["separator"].strip() in replacements:
             node_label = node_label.replace(
-                self.config["higher_order"]["separator"],
-                replacements[self.config["higher_order"]["separator"].strip()],
+                self.config["separator"],
+                replacements[self.config["separator"].strip()],
             )
         return node_label
