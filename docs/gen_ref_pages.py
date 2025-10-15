@@ -28,7 +28,14 @@ for path in sorted(Path("src").rglob("*.py")):
     elif parts[-1] == "__main__":
         continue
 
-    nav[(part.split("_")[-1] for part in parts)] = doc_path.as_posix()
+    parts_list = []
+    for part in parts:
+        if part.startswith("_"):
+            parts_list.append(part.split("_")[-1])
+        else:
+            parts_list.append(part)
+    
+    nav[tuple(parts_list)] = doc_path.as_posix()
 
     print(f"Checking {full_doc_path}")
     if not (Path("docs") / full_doc_path).exists():
