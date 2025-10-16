@@ -304,7 +304,7 @@ class NetworkPlot(PathPyPlot):
                 except ValueError:
                     logger.error(f"The provided color {color} is not valid!")
                     raise AttributeError
-        elif color is None or pd.isna(color):
+        elif not isinstance(color, Sized) and (color is None or pd.isna(color)):
             return pd.NA  # will be filled with self._fill_node_values()
         else:
             logger.error(f"The provided color {color} is not valid!")

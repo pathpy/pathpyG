@@ -110,7 +110,7 @@ def rgb_to_hex(rgb: tuple) -> str:
     """
     if all(0.0 <= val <= 1.0 for val in rgb):
         rgb = tuple(int(val * 255) for val in rgb)
-    elif not all(0 <= val <= 255 for val in rgb):
+    elif not all(0 <= val <= 255 for val in rgb) or any(not isinstance(val, int) for val in rgb):
         raise ValueError("RGB values must be in range 0-1 or 0-255.")
     return "#%02x%02x%02x" % rgb
 
@@ -141,7 +141,7 @@ def hex_to_rgb(value: str) -> tuple:
     """
     value = value.lstrip("#")
     _l = len(value)
-    return tuple(int(value[i : i + _l // 3], 16) for i in range(0, _l, _l // 3))
+    return tuple((int(value[i : i + _l // 3], 16) + 1)**(6 // _l) - 1 for i in range(0, _l, _l // 3))
 
 
 def cm_to_inch(value: float) -> float:
@@ -291,7 +291,7 @@ def unit_str_to_float(value: str, unit: str) -> float:
         "in_to_px": inch_to_px,
         "px_to_in": px_to_inch,
         "cm_to_px": lambda x: inch_to_px(cm_to_inch(x)),
-        "px_to_cm": lambda x: cm_to_inch(px_to_inch(x)),
+        "px_to_cm": lambda x: inch_to_cm(px_to_inch(x)),
     }
     conversion_key = f"{value[-2:]}_to_{unit}"
     if conversion_key in conversion_functions:

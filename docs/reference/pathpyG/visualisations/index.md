@@ -66,7 +66,7 @@ The table below provides an overview of the supported backends and their availab
 |---------------|------------|-------------|--------------|
 | **d3.js**     | ✔️         | ✔️           | `html` |
 | **manim**     | ❌         | ✔️           | `mp4`, `gif` | 
-| **matplotlib**| ✔️         | ❌           | `png` |
+| **matplotlib**| ✔️         | ❌           | `png`, `jpg` |
 | **tikz**      | ✔️         | ❌           | `svg`, `pdf`, `tex`|
 
 #### Details

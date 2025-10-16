@@ -96,6 +96,8 @@ FORMATS: dict = {
     ".pdf": Backends.tikz,
     ".svg": Backends.tikz,
     ".png": Backends.matplotlib,
+    ".jpg": Backends.matplotlib,
+    ".jpeg": Backends.matplotlib,
     ".mp4": Backends.manim,
     ".gif": Backends.manim,
 }
@@ -136,8 +138,8 @@ def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: 
     # if no backend was given use the backend suggested for the file format
     else:
         # Get file ending and try to infer backend
-        if isinstance(filename, str):
-            _backend = FORMATS.get(os.path.splitext(filename)[1], default)
+        if isinstance(filename, str) and os.path.splitext(filename)[1] in FORMATS:
+            _backend = FORMATS[os.path.splitext(filename)[1]]
             logger.debug(f"Using backend <{_backend}> inferred from file ending.")
         else:
             # use default backend per default

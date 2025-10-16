@@ -70,6 +70,15 @@ class TemporalGraph(Graph):
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore
         """Create a temporal graph from a list of tuples containing edges with timestamps."""
+        if len(edge_list) == 0:
+            return TemporalGraph(
+                data=Data(
+                    edge_index=torch.empty((2, 0), dtype=torch.long, device=device),
+                    time=torch.empty((0,), dtype=torch.long, device=device),
+                    num_nodes=num_nodes,
+                ),
+            )
+        
         edge_array = np.array(edge_list)
 
         # Convert timestamps to tensor

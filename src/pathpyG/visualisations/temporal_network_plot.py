@@ -4,6 +4,7 @@ Prepares temporal graphs for visualization, handling time-based
 node and edge dynamics, windowed layout computation, and
 attribute interpolation.
 """
+
 from __future__ import annotations
 
 import logging
@@ -107,7 +108,7 @@ class TemporalNetworkPlot(NetworkPlot):
         # add end time step with the start the node appears the next time or max time step + 1
         nodes["end"] = nodes.groupby("uid")["start"].shift(-1)
         max_node_time = nodes["start"].max() + 1
-        if max_node_time < self.network.data.time[-1].item() + 1:
+        if self.network.data.time.size(0) > 0 and max_node_time < self.network.data.time[-1].item() + 1:
             max_node_time = self.network.data.time[-1].item() + 1
         nodes["end"] = nodes["end"].fillna(max_node_time)
         self.data["nodes"] = nodes
@@ -165,6 +166,11 @@ class TemporalNetworkPlot(NetworkPlot):
         """
         # get layout from the config
         layout_type = self.config.get("layout")
+
+        # if no layout is considered or the graph is empty stop this process
+        if layout_type is None or len(self.data["nodes"]) == 0:
+            return
+
         max_time = int(
             max(self.data["nodes"].index.get_level_values("time").max() + 1, self.data["edges"]["end"].max())
         )
@@ -183,12 +189,8 @@ class TemporalNetworkPlot(NetworkPlot):
             logger.error("The provided layout_window_size is not valid!")
             raise AttributeError
 
-        # if no layout is considered stop this process
-        if layout_type is None:
-            return
-
         pos = network_layout(self.network, layout="random")  # initial layout
-        num_steps = max_time - window_size[1]
+        num_steps = max(max_time - window_size[1], 0)
         layout_df = pd.DataFrame()
         for step in range(num_steps + 1):
             start_time = max(0, step - window_size[0])

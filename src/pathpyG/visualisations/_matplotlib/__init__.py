@@ -4,6 +4,7 @@ Raster graphics backend using matplotlib for static network images.
 
 !!! info "Output Formats"
     - **PNG**: High-quality raster images for presentations
+    - **JPG**: Compressed raster images for web usage
 
 ## Basic Usage
 

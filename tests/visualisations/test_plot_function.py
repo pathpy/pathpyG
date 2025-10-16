@@ -1,18 +1,18 @@
-import torch
+import logging
+
 import pytest
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.visualisations._d3js.backend import D3jsBackend
+from pathpyG.visualisations._manim.backend import ManimBackend
 from pathpyG.visualisations._matplotlib.backend import MatplotlibBackend
 from pathpyG.visualisations._tikz.backend import TikzBackend
-from pathpyG.visualisations._manim.backend import ManimBackend
-from pathpyG.visualisations._d3js.backend import D3jsBackend
-from pathpyG.visualisations.plot_function import _get_plot_backend, plot
+from pathpyG.visualisations.plot_function import Backends, _get_plot_backend, plot
 
 
 def test_get_plot_backend() -> None:
     """Test to get a valid plot backend."""
-
     # backend which does not exist
     with pytest.raises(ImportError):
         _get_plot_backend(default="does not exist", backend=None, filename=None)
@@ -63,65 +63,66 @@ def test_get_plot_backend() -> None:
 
 
 # Uses a default pytest fixture: see https://docs.pytest.org/en/6.2.x/tmpdir.html
-def test_network_plot_png(tmp_path) -> None:
-    """Test to plot a static network as png file."""
-    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-    net.data["edge_weight"] = torch.tensor([[1], [1], [2]])
-    net.data["edge_size"] = torch.tensor([[3], [4], [5]])
-    net.data["node_size"] = torch.tensor([[90], [8], [7]])
-
-    out = plot(net, edge_color="green", layout="fr")
-    out.save(tmp_path / "test.png")
-    assert (tmp_path / "test.png").exists()
-
-
-def test_network_plot_html(tmp_path) -> None:
-    """Test to plot a static network as html file."""
-    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-    net.data["node_size"] = torch.tensor([[90], [8], [7]])
-    out = plot(net)
-    out.save(tmp_path / "test.html")
-    assert (tmp_path / "test.html").exists()
-
-
-def test_plot_function(tmp_path) -> None:
-    """Test generic plot function."""
-    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-    fig = plot(net)
-    fig.save(tmp_path / "generic.html")
-    assert (tmp_path / "generic.html").exists()
-
-
-def test_network_plot_tex(tmp_path) -> None:
-    """Test to plot a static network as tex file."""
+# Runs the test for all different file endings
+@pytest.mark.parametrize("file_ending", [".jpg", ".png", ".html", ".tex", ".pdf", ".svg"])
+def test_network_plot_save(caplog, tmp_path, file_ending) -> None:
+    """Test to plot a static network as a file."""
     net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
 
-    out = plot(net, layout="fr")
-    out.save(tmp_path / "test.tex")
-    assert (tmp_path / "test.tex").exists()
+    with caplog.at_level(logging.DEBUG):
+        plot(net, filename=(tmp_path / ("test" + file_ending)).as_posix())
+    assert (tmp_path / ("test" + file_ending)).exists()
+    assert "Using backend" in caplog.text
 
 
-def test_temporal_plot(tmp_path) -> None:
+def test_network_plot_save_fails(caplog, tmp_path) -> None:
+    """Test to plot a static network as a file with unsupported file type."""
+    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
+
+    with caplog.at_level(logging.DEBUG):
+        plot(net, filename=(tmp_path / "test.exe").as_posix())
+    assert (tmp_path / "test.exe").exists()
+    assert "Using default backend" in caplog.text
+
+
+@pytest.mark.parametrize("file_ending", [".html", ".mp4", ".gif"])
+def test_temporal_plot_save(caplog, tmp_path, file_ending) -> None:
     """Test to plot a temporal network."""
     net = TemporalGraph.from_edge_list(
         [
             ("a", "b", 1),
-            ("b", "c", 5),
-            ("c", "d", 9),
-            ("d", "a", 9),
-            ("a", "b", 10),
-            ("b", "c", 10),
+            ("b", "c", 2),
+            ("c", "d", 4),
         ]
     )
-    net.data["edge_size"] = torch.tensor([[3], [4], [5], [1], [2], [3]])
 
-    color = {"a": "blue", "b": "red", "c": "green", "d": "yellow"}
-    out = plot(
-        net,
-        node_color=color,
-        delta=1000,
-        layout="fr",
-        d3js_local=False,
+    with caplog.at_level(logging.DEBUG):
+        plot(net, filename=(tmp_path / ("temp" + file_ending)).as_posix())
+    assert (tmp_path / ("temp" + file_ending)).exists()
+    assert "Using backend" in caplog.text
+
+
+def test_temporal_plot_save_fails(caplog, tmp_path) -> None:
+    """Test to plot a temporal network with unsupported file type."""
+    net = TemporalGraph.from_edge_list(
+        [
+            ("a", "b", 1),
+            ("b", "c", 2),
+            ("c", "d", 4),
+        ]
     )
-    out.save(tmp_path / "temp.html")
-    assert (tmp_path / "temp.html").exists()
+
+    with caplog.at_level(logging.DEBUG):
+        plot(net, filename=(tmp_path / "temp.exe").as_posix())
+    assert (tmp_path / "temp.exe").exists()
+    assert "Using default backend" in caplog.text
+
+
+def test_backend_enum() -> None:
+    """Test the Backends enum."""
+    assert Backends.matplotlib == "matplotlib"
+    assert Backends.tikz == "tikz"
+    assert Backends.d3js == "d3js"
+    assert Backends.manim == "manim"
+    assert Backends.is_backend("matplotlib")
+    assert not Backends.is_backend("not_a_backend")
