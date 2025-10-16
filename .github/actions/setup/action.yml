@@ -47,11 +47,27 @@ runs:
       shell: bash
 
     - name: Set up TeX Live
-      uses: paolobrasolin/setup-texlive-action@v1
+      uses: TeX-Live/setup-texlive-action@v3
       with:
-        profile-path: ${{ github.workspace }}/.github/texlive.profile
-        packages-path: ${{ github.workspace }}/.github/texlive.packages
-        cache-key: texlive-${{ runner.os }}-2025
+        cache: true
+        packages: |
+          tikz-network
+          standalone
+          xcolor
+          xifthen
+          tools
+          ifmtarg
+          pgf
+          datatool
+          etoolbox
+          tracklang
+          amsmath
+          trimspaces
+          epstopdf-pkg
+          dvisvgm
+          preview
+          babel-english
+
 
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
