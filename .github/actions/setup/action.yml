@@ -47,7 +47,7 @@ runs:
       shell: bash
 
     - name: Set up TeX Live
-      uses: teatimeguest/setup-texlive-action@v2
+      uses: paolobrasolin/setup-texlive-action@v1
       with:
         profile-path: ${{ github.workspace }}/.github/texlive.profile
         packages-path: ${{ github.workspace }}/.github/texlive.packages
