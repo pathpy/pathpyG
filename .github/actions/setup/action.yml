@@ -29,9 +29,7 @@ runs:
     - name: Cache uv virtual environment
       uses: actions/cache@v4
       with:
-        # The path to the virtual environment directory created by uv
         path: .venv
-        # The unique key for the cache. It changes when dependencies change.
         key: uv-venv-${{ runner.os }}-py-${{ inputs.python-version }}-cuda-${{ inputs.cuda-version }}
 
     - name: Install pathpyG
@@ -71,7 +69,7 @@ runs:
 
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
-      uses: awalsh128/cache-apt-pkgs-action@latest
+      uses: awalsh128/cache-apt-pkgs-action@v1
       with:
         packages: |
           build-essential
@@ -79,3 +77,9 @@ runs:
           libcairo2-dev
           libpango1.0-dev
           ffmpeg
+
+    - name: Install optional Python dependencies
+      if: ${{ inputs.full_install == 'true' }}
+      run: |
+        uv sync --frozen --extra vis --extra ${{ inputs.cuda-version }}
+      shell: bash
