@@ -47,14 +47,11 @@ runs:
       shell: bash
 
     - name: Set up TeX Live
-      uses: teatimeguest/setup-texlive-action@v3
+      uses: teatimeguest/setup-texlive-action@v2
       with:
-        # Use a minimal installation scheme
-        scheme: minimal
-        
         # List only the packages your document needs
         # mirrors package list in .devcontainer/devcontainer.json
-        packages: >
+        packages: >-
           tikz-network
           standalone
           xcolor
