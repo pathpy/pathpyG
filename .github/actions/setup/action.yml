@@ -49,28 +49,9 @@ runs:
     - name: Set up TeX Live
       uses: teatimeguest/setup-texlive-action@v2
       with:
-        # List only the packages your document needs
-        # mirrors package list in .devcontainer/devcontainer.json
-        packages: >-
-          tikz-network
-          standalone
-          xcolor
-          xifthen
-          tools
-          ifmtarg
-          pgf
-          datatool
-          etoolbox
-          tracklang
-          amsmath
-          trimspaces
-          epstopdf-pkg
-          dvisvgm
-          preview
-          babel-english
-
-        # Enable caching to speed up subsequent runs
-        cache: true
+        profile-path: ${{ github.workspace }}/.github/texlive.profile
+        packages-path: ${{ github.workspace }}/.github/texlive.packages
+        cache-key: texlive-${{ runner.os }}-2025
 
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
