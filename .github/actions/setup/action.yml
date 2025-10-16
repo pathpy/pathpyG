@@ -69,13 +69,13 @@ runs:
           preview
           babel-english
 
-    - name: Set up FFmpeg
-      if: ${{ inputs.full_install == 'true' }}
-      uses: FedericoCarboni/setup-ffmpeg@v3
-
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
-      run: |
-        sudo apt-get update && sudo apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev
-        uv sync --frozen --extra vis --extra ${{ inputs.cuda-version }}
-      shell: bash
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: |
+          build-essential
+          python3-dev
+          libcairo2-dev
+          libpango1.0-dev
+          ffmpeg
