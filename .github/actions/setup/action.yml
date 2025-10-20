@@ -72,6 +72,7 @@ runs:
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
       uses: awalsh128/cache-apt-pkgs-action@v1
+      execute_install_scripts: true
       with:
         packages: |
           build-essential
