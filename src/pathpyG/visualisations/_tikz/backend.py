@@ -362,50 +362,52 @@ class TikzBackend(PlotBackend):
         """
         tikz = ""
         # generate node strings
-        node_strings: pd.Series = "\\Vertex["
-        # show labels if specified
-        if self.show_labels:
+        if not self.data["nodes"].empty:
+            node_strings: pd.Series = "\\Vertex["
+            # show labels if specified
+            if self.show_labels:
+                node_strings += (
+                    "label=$" + self.data["nodes"].index.astype(str).map(self._replace_with_LaTeX_math_symbol) + "$,"
+                )
+                node_strings += (
+                    "fontsize=\\fontsize{" + str(int(0.6 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
+                )
+            # Convert hex colors to rgb if necessary
+            if self.data["nodes"]["color"].str.startswith("#").all():
+                self.data["nodes"]["color"] = self.data["nodes"]["color"].map(hex_to_rgb)
+                node_strings += "RGB,color={" + self.data["nodes"]["color"].astype(str).str.strip("()") + "},"
+            else:
+                node_strings += "color=" + self.data["nodes"]["color"] + ","
+            # add other options
+            node_strings += "size=" + (self.data["nodes"]["size"] * 0.075).astype(str) + ","
+            node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
+            # add position
             node_strings += (
-                "label=$" + self.data["nodes"].index.astype(str).map(self._replace_with_LaTeX_math_symbol) + "$,"
+                "x=" + ((self.data["nodes"]["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")).astype(str) + ","
             )
             node_strings += (
-                "fontsize=\\fontsize{" + str(int(0.6 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
+                "y=" + ((self.data["nodes"]["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")).astype(str) + "]"
             )
-        # Convert hex colors to rgb if necessary
-        if self.data["nodes"]["color"].str.startswith("#").all():
-            self.data["nodes"]["color"] = self.data["nodes"]["color"].map(hex_to_rgb)
-            node_strings += "RGB,color={" + self.data["nodes"]["color"].astype(str).str.strip("()") + "},"
-        else:
-            node_strings += "color=" + self.data["nodes"]["color"] + ","
-        # add other options
-        node_strings += "size=" + (self.data["nodes"]["size"] * 0.075).astype(str) + ","
-        node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
-        # add position
-        node_strings += (
-            "x=" + ((self.data["nodes"]["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")).astype(str) + ","
-        )
-        node_strings += (
-            "y=" + ((self.data["nodes"]["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")).astype(str) + "]"
-        )
-        # add node name
-        node_strings += "{" + self.data["nodes"].index.astype(str) + "}\n"
-        tikz += node_strings.str.cat()
+            # add node name
+            node_strings += "{" + self.data["nodes"].index.astype(str) + "}\n"
+            tikz += node_strings.str.cat()
 
         # generate edge strings
-        edge_strings: pd.Series = "\\Edge["
-        if self.config["directed"]:
-            edge_strings += "bend=15,Direct,"
-        if self.data["edges"]["color"].str.startswith("#").all():
-            self.data["edges"]["color"] = self.data["edges"]["color"].map(hex_to_rgb)
-            edge_strings += "RGB,color={" + self.data["edges"]["color"].astype(str).str.strip("()") + "},"
-        else:
-            edge_strings += "color=" + self.data["edges"]["color"] + ","
-        edge_strings += "lw=" + self.data["edges"]["size"].astype(str) + ","
-        edge_strings += "opacity=" + self.data["edges"]["opacity"].astype(str) + "]"
-        edge_strings += (
-            "(" + self.data["edges"].index.get_level_values("source").astype(str) + ")(" + self.data["edges"].index.get_level_values("target").astype(str) + ")\n"
-        )
-        tikz += edge_strings.str.cat()
+        if not self.data["edges"].empty:
+            edge_strings: pd.Series = "\\Edge["
+            if self.config["directed"]:
+                edge_strings += "bend=15,Direct,"
+            if self.data["edges"]["color"].str.startswith("#").all():
+                self.data["edges"]["color"] = self.data["edges"]["color"].map(hex_to_rgb)
+                edge_strings += "RGB,color={" + self.data["edges"]["color"].astype(str).str.strip("()") + "},"
+            else:
+                edge_strings += "color=" + self.data["edges"]["color"] + ","
+            edge_strings += "lw=" + self.data["edges"]["size"].astype(str) + ","
+            edge_strings += "opacity=" + self.data["edges"]["opacity"].astype(str) + "]"
+            edge_strings += (
+                "(" + self.data["edges"].index.get_level_values("source").astype(str) + ")(" + self.data["edges"].index.get_level_values("target").astype(str) + ")\n"
+            )
+            tikz += edge_strings.str.cat()
 
         return tikz
 

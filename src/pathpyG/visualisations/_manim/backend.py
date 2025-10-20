@@ -113,7 +113,6 @@ class ManimBackend(PlotBackend):
         # Optional config settings
         manim_config.pixel_height = int(unit_str_to_float(self.config.get("height"), "px"))  # type: ignore[arg-type]
         manim_config.pixel_width = int(unit_str_to_float(self.config.get("width"), "px"))  # type: ignore[arg-type]
-        manim_config.frame_rate = 15
         manim_config.quality = "high_quality"
         manim_config.background_color = WHITE
 

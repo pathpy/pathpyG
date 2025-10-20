@@ -5,6 +5,7 @@ evolution. Handles smooth transitions, proper edge-node boundary calculations,
 and time indicator display.
 """
 import logging
+from copy import deepcopy
 
 import numpy as np
 from manim import BLACK, RIGHT, UP, Arrow, Create, Dot, GrowArrow, LabeledDot, Scene, Text, Transform, Uncreate
@@ -33,7 +34,7 @@ class TemporalGraphScene(Scene):
             show_labels: Whether to display node labels
         """
         super().__init__()
-        self.data = data
+        self.data = deepcopy(data)
         self.data["nodes"]["size"] *= 0.025  # scale sizes down
         self.data["nodes"] = self.data["nodes"].rename(
             columns={"size": "radius", "color": "fill_color", "opacity": "fill_opacity"}

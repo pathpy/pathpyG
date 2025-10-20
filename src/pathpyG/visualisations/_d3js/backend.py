@@ -4,7 +4,7 @@ Template-driven HTML generation using D3.js library for rich interactive
 visualizations. Supports both static and temporal networks with embedded
 JavaScript, and CSS styling.
 
-Features:
+!!! abstract "Features":
     - Interactive HTML output with drag-and-drop node movement
     - Template-based architecture for extensibility
     - Both static and temporal network support
