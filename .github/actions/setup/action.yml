@@ -50,6 +50,8 @@ runs:
       with:
         cache: true
         packages: |
+          scheme-basic
+          latexmk
           tikz-network
           standalone
           xcolor
