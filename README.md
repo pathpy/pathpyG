@@ -7,7 +7,7 @@
 pathpyG
 =======
 
-![image](docs/img/pathpy_logo_new.png)
+![image](docs/img/pathpy_logo.png)
 
 [![Testing Status][testing-image]][testing-url]
 [![Linting Status][linting-image]][linting-url]

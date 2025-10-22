@@ -6,7 +6,6 @@ site_description: >-
   An Open Source package facilitating next-generation network analytics and graph learning for time series data on graphs.
 
 # Repository
-# TODO: Check the number of stars and forks once repo is public
 # Currently displays wrong numbes
 repo_name: pathpy/pathpyG
 repo_url: https://github.com/pathpy/pathpyG
@@ -73,6 +72,7 @@ extra:
     provider: mike
 
 extra_css:
+  - overrides/assets/stylesheets/header.css  # Remove the sitename from the header, since the logo already contains it
   - overrides/assets/stylesheets/home.css
   - overrides/assets/stylesheets/code_select.css
   - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
@@ -89,7 +89,7 @@ extra_javascript:
 # Theme
 theme:
   name: material
-  logo: img/pathpy_logo.png
+  logo: img/pathpy_logo_white.png
   favicon: img/favicon.ico
   custom_dir: docs/overrides
   icon:
