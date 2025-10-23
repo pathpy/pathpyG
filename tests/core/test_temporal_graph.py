@@ -94,12 +94,26 @@ def test_get_batch(long_temporal_graph):
     assert t_2.n == 9
     assert t_2.m == 4
 
+    # Check that edge attributes are also batched correctly
+    long_temporal_graph.data.edge_tensor = torch.arange(long_temporal_graph.m)
+    long_temporal_graph.data.edge_array = np.arange(long_temporal_graph.m)
+    t_3 = long_temporal_graph.get_batch(1, 9)
+    assert (t_3.data.edge_tensor == torch.tensor([1, 2, 3, 4, 5, 6, 7, 8])).all()
+    assert (t_3.data.edge_array == np.array([1, 2, 3, 4, 5, 6, 7, 8])).all()
+
 
 def test_get_window(long_temporal_graph):
-    t_1 = long_temporal_graph.get_window(1, 9)
+    t_1 = long_temporal_graph.get_window(1, 10)
     assert t_1.m == 4
-    t_2 = long_temporal_graph.get_window(9, 13)
-    assert t_2.m == 4
+    t_2 = long_temporal_graph.get_window(10, 14)
+    assert t_2.m == 2
+
+    # Check that edge attributes are also windowed correctly
+    long_temporal_graph.data.edge_tensor = torch.arange(long_temporal_graph.m)
+    long_temporal_graph.data.edge_array = np.arange(long_temporal_graph.m)
+    t_3 = long_temporal_graph.get_window(2, 10)
+    assert (t_3.data.edge_tensor == torch.tensor([1, 2, 3])).all()
+    assert (t_3.data.edge_array == np.array([1, 2, 3])).all()
 
 
 def test_str(simple_temporal_graph):

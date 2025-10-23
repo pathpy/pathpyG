@@ -47,10 +47,22 @@ pip install git+https://github.com/pathpy/pathpyG.git
 
 ### Optional Visualisation Backends
 
-We provide multiple visualisation backends for PathpyG. The default backend [D3.js](https://d3js.org/) does not require any additional dependencies. We further provide a [Matplotlib](https://matplotlib.org/) backend that is installed by default. Additionally, we implemented a [Manim](https://www.manim.community/) backend that is not installed by default due to its dependencies that are required for installation. Please refer to the [Manim installation instructions](https://docs.manim.community/en/stable/installation/uv.html) for more information. Once installed, you can use the Manim backend for visualisation by setting the `backend` in the `PathpyG.plot` function to `manim`: 
-```python
-import pathpyg as pp
+We provide multiple visualisation backends for PathpyG. The default backend [D3.js](https://d3js.org/) does not require any additional dependencies. We further provide a [Matplotlib](https://matplotlib.org/) backend that is installed by default. Additionally, we implemented a [tikz](https://tikz.dev/) and a [Manim](https://www.manim.community/) backend that are not installed by default due to their dependencies that are required for installation. You can use the tikz backend if you have a LaTeX distribution installed on your system. 
 
-t_graph = TemporalGraph.from_edge_list([('a', 'b', 1),('b', 'a', 3), ('b', 'c', 3)])
-pp.plot(t_graph, backend='manim')
-```
+To use the Manim backend, please refer to the [Manim installation instructions](https://docs.manim.community/en/stable/installation/uv.html) for more information. Once installed, you can use the backends for visualisation by setting the `backend` in the `PathpyG.plot` function to `tikz` or `manim`:
+
+??? example "Using the TikZ Backend"
+    ```python
+    import pathpyg as pp
+
+    g = pp.Graph.from_edge_list([('a', 'b'),('b', 'c'),('c', 'a')])
+    pp.plot(g, backend='tikz')
+    ```
+
+??? example "Using the Manim Backend"
+    ```python
+    import pathpyg as pp
+
+    t_graph = TemporalGraph.from_edge_list([('a', 'b', 1),('b', 'a', 3), ('b', 'c', 3)])
+    pp.plot(t_graph, backend='manim')
+    ```

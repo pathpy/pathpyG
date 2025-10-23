@@ -12,7 +12,7 @@ ignored_modules_path = Path("docs", "reference", "ignored_modules.yaml")
 ignored_modules = yaml.safe_load(ignored_modules_path.read_text("utf-8"))
 
 for path in sorted(Path("src").rglob("*.py")):
-    if str(path.relative_to(".")) in ignored_modules:
+    if ignored_modules and str(path.relative_to(".")) in ignored_modules:
         print(f"Skipping {path} as it is in the ignored modules list.")
         continue
     module_path = path.relative_to("src").with_suffix("")
@@ -28,7 +28,14 @@ for path in sorted(Path("src").rglob("*.py")):
     elif parts[-1] == "__main__":
         continue
 
-    nav[(part.split("_")[-1] for part in parts)] = doc_path.as_posix()
+    parts_list = []
+    for part in parts:
+        if part.startswith("_"):
+            parts_list.append(part.split("_")[-1])
+        else:
+            parts_list.append(part)
+    
+    nav[tuple(parts_list)] = doc_path.as_posix()
 
     print(f"Checking {full_doc_path}")
     if not (Path("docs") / full_doc_path).exists():

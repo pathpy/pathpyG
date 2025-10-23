@@ -15,34 +15,31 @@ frequency = "frequency"
 [object]
 separator =","
 
-[node]
-color = "CornFlowerBlue"
-size = 15
-
-[edge]
-color = "darkgray"
-width = 2
-curved = true
-
 [path]
 separator = "|"
 replace = "_"
 max_name_length = 5
 
-[hon]
-separator = "="
-replace = "_"
+[visualisation]
+default_backend = "d3js"  # Default backend for visualisations
+cmap = "cividis"  # Color map that is used if color is given integer values
+layout = "spring_layout"  # Default layout algorithm
+width = "12cm"  # Width of the plot in all backends
+height = "12cm"  # Height of the plot in all backends
+latex_class_options = ""  # LaTeX class options for TikZ visualisations
+margin = 0.1  # Margin around the plot in all backends
+curvature = 0.25  # Curvature for curved edges between nodes
+layout_window_size = [-1, -1]  # Window size for layout algorithms that use temporal information. Default is [-1, -1] meaning that all timestamps in both directions is used. If an integer is given, this defines the number of time steps that are used to compute the layout at a specific time step. If  tuple of two integers is given, this defines the number of time steps before and after the current time step that are used to compute the layout at a specific time step.
+delta = 1000  # Time between frames in milliseconds
+separator = "->"  # Separator for higher-order node labels
 
-[temporal]
-start = "start"
-end = "end"
-timestamp = "timestamp"
-duration = "duration"
-duration_value = 1
-start_synonyms = ["beginning", "begin"]
-end_synonyms = ["finished", "ending"]
-timestamp_synonyms = ['time', "t"]
-duration_synonyms = ["delta", "dt"]
-active = "active"
-is_active = true
-unit = "s"
+[visualisation.node]
+color = [36, 74, 92]  # Node color in RGB from the pathpyG logo
+size = 15  # Node size given as diameter
+opacity = 0.75  # Node opacity between 0 and 1
+image_padding = 5  # Padding around images if image link is provided in d3js visualisations
+
+[visualisation.edge]
+color = [76, 112, 123]  # Edge color in RGB from the pathpyG logo
+size = 2  # Edge width
+opacity = 0.5  # Edge opacity between 0 and 1

@@ -1,39 +1,20 @@
-"""Initialize matplotlib plotting functions."""
+"""Matplotlib Backend for PathpyG Visualizations.
 
-# !/usr/bin/python -tt
-# -*- coding: utf-8 -*-
-# =============================================================================
-# File      : __init__.py -- matplotlib plotting cunctions
-# Author    : Jürgen Hackl <hackl@princeton.edu>
-# Time-stamp: <Sun 2023-11-19 15:38 juergen>
-#
-# Copyright (c) 2016-2023 Pathpy Developers
-# =============================================================================
-# flake8: noqa
-# pylint: disable=unused-import
-from typing import Any
-from pathpyG.visualisations._matplotlib.network_plots import NetworkPlot
-from pathpyG.visualisations._matplotlib.network_plots import StaticNetworkPlot
-from pathpyG.visualisations._matplotlib.network_plots import TemporalNetworkPlot
+Raster graphics backend using matplotlib for static network images.
 
-PLOT_CLASSES: dict = {
-    "network": NetworkPlot,
-    "static": StaticNetworkPlot,
-    "temporal": TemporalNetworkPlot,
-}
+!!! info "Output Formats"
+    - **PNG**: High-quality raster images for presentations
+    - **JPG**: Compressed raster images for web usage
 
+## Basic Usage
 
-def plot(data: dict, kind: str = "network", **kwargs: Any) -> Any:
-    """Plot function."""
-    return PLOT_CLASSES[kind](data, **kwargs)
+```python
+import pathpyG as pp
 
-
-# =============================================================================
-# eof
-#
-# Local Variables:
-# mode: python
-# mode: linum
-# mode: auto-fill
-# fill-column: 79
-# End:
+# Simple network visualization
+edges = [("A", "B"), ("B", "C"), ("C", "A")]
+g = pp.Graph.from_edge_list(edges)
+pp.plot(g, backend="matplotlib")
+```
+<img src="../plot/network.png" alt="Example Matplotlib Backend Output" width="550"/>
+"""

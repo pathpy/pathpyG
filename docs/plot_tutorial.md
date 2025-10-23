@@ -1,238 +1,238 @@
-# Develop Custom Plot Functions
+# Developing your own Plots
 
-This tutorial guides you through the process of creating your own plotting functions in pathpyG.
+!!! abstract "Overview"
+    Add a new histogram plot to pathpyG’s visualisation stack, wire it into [`pp.plot(...)`][pathpyG.plot], and render it with Matplotlib. This guide explains the data-prep vs. rendering split and shows the minimal pieces to implement.
 
-The visualization framework of pathpyg is designed in such a way that is easy to extend it according your own needs.
+This tutorial shows how to add a new plotting capability to pathpyG’s visualisation backend by implementing a histogram plot. You’ll learn how plot types, backends, and configuration work together, and how to add a new plot into the public [`pp.plot(...)`][pathpyG.plot] entry point.
 
-For this tutorial we want to implement capabilities to plot histograms.
+**What you’ll do**
 
-You will learn:
+- :material-family-tree: Understand the new visualisation architecture
+- :material-chart-bar: Implement a new `HistogramPlot` that prepares data
+- :material-vector-link: Wire it into the plot orchestrator and select backends
+- :material-image-multiple: Add Matplotlib rendering support for the new type
+- :material-test-tube: Use and (optionally) test your new plot
 
-- How to set up a generic plot function
-- How to convert `pathpyG` data to plot data
-- How to plot with `d3js` 
-- How to plot with `tikz`
-- How to plot with `matplotlib`
+!!! tip "Scope"
+    This guide focuses on Matplotlib for rendering histograms (a natural fit). You can add other backends later following the same pattern.
 
-## Structure
+## Visualisation architecture at a glance
 
-Plotting commands and functions are located under `/src/pathpyG/visualisation/`
+The visualisation module is built around two core abstractions and a single entry point:
 
-```tree
-visualisation
-    __init__.py
-    _d3js
-        ...
-    _matplotlib
-        ...
-    _tikz
-        ...
-    layout.py
-    network_plots.py
-    plot.py
-    utils.py
-```
+- :material-database-cog: [`PathPyPlot`][pathpyG.visualisations.pathpy_plot.PathPyPlot] prepares data/config for rendering. Subclass it for each plot type.
+- :material-cog: [`PlotBackend`][pathpyG.visualisations.plot_backend.PlotBackend] renders a given [`PathPyPlot`][pathpyG.visualisations.pathpy_plot.PathPyPlot] using a concrete engine ([Matplotlib][pathpyG.visualisations._matplotlib], [TikZ][pathpyG.visualisations._tikz], [d3.js][pathpyG.visualisations._d3js], [Manim][pathpyG.visualisations._manim]).
+- :material-play-circle: [`plot(...)`][pathpyG.plot] is the public API. It chooses a plot class (kind) and a backend (by argument or filename extension), instantiates both, then saves or shows.
 
-Folders with `_...` indicate the supported backends. We will have a look at them later.
+!!! info "Reference"
+    See the [module overview](/reference/pathpyG/visualisations) for supported backends, formats, and styling options. For existing plot types, see [`NetworkPlot`][pathpyG.visualisations.network_plot.NetworkPlot] (static) and [`TemporalNetworkPlot`][pathpyG.visualisations.temporal_network_plot.TemporalNetworkPlot] (temporal). For existing backends, see e.g. [`MatplotlibBackend`][pathpyG.visualisations._matplotlib.backend.MatplotlibBackend] which we will be using.
 
-The `layout.py` file includes algorithms to calculate the positions of the nodes.
+## Define a new plot type: HistogramPlot
 
-In the `utils.py` file are useful helper functions collected. E.g. among others a function that converts `hex_to_rgb`, `rgb_to_hex`, or a simple [`Colormap`][pathpyG.visualisations.utils.Colormap] class. If your plot needs generic functions which might be helpful for other plots as well, this would be a good place to store them.
+Start by creating a new subclass of [`PathPyPlot`][pathpyG.visualisations.pathpy_plot.PathPyPlot] (e.g., in `src/pathpyG/visualisations/histogram_plot.py`). Its job is to:
 
-The `network_plots.py` file includes all plots related to network visualization. We will create in this tutorial a similar collection for histograms.
+- Accept the input object(s) (typically a [`Graph`][pathpyG.core.graph.Graph]) and user options
+- Compute or collect the values to be binned
+- Populate `self.data` with a clean, backend-agnostic structure
+- Update `self.config` with plot configuration (bins, labels, etc.)
 
-Finally, the `plot.py` file contains our generic [`PathPyPlot`][pathpyG.visualisations.plot.PathPyPlot] class which we will use to build our own class. 
+!!! info "Minimal class attributes"
+    Inputs: `graph: Graph`, `key: str` (what to measure), `bins: int | sequence`, plus style options via `**kwargs`.
 
-This abstract class has a property `_kind` which will specify the type of plot for the generic plot function. Similar to `pandas` we should be able to call:
+    Data format (suggested):
+    - `self.data["hist_values"]: list[float | int]` — the values to bin
+    - optionally precomputed bins/edges (if you want backend-agnostic binning)
+    - `self.config` should include `title`, `xlabel`, `ylabel`, and `bins`
 
-```python
-pp.plot(graph, kind="hist")
-```
-
-This abstract class has two dict variables `self.data` and `self.config`. The `self.data` variable is used to store the data needed for the plot, while the `self.config` stores all the configurations passed to the plot.
-
-Furthermore this class has three abstract methods we have to define later for our supported backends: `generate` to generate the plot, `save` to save the plot to a file, `show` to show the current plot.
-
-
-## Let's get started
-
-In order to get started, we have to create a new python file where we will store our histogram plots. So let's generate a new file `hist_plots.py`
-
-```
-touch hist_plots.py
-```
-
-We start with creating a function which allows us later to plot a histogram.
-
-This function will take a `Graph` object as input and has the parameters `key` and `bins` as well as a dict of `kwargs` for furthermore specifications.
-
-We will use the `key` variable to define the data type of the histogram e.g. `by='betweenes'` to get the betweenes centrality plotted. With the `bins` parameters we will change the amount of bins in the histogram. all other options will by passed to the function as keyword arguments and can be backend specific.
+### Example outline:
 
 ```python
-"""Histogram plot classes."""
+# src/pathpyG/visualisations/histogram_plot.py
 from __future__ import annotations
-
 import logging
+from typing import Any
+from pathpyG.visualisations.pathpy_plot import PathPyPlot
+from pathpyG.core.graph import Graph
 
-from typing import TYPE_CHECKING, Any
+logger = logging.getLogger("root")
 
-# pseudo load class for type checking
-if TYPE_CHECKING:
-    from pathpyG.core.graph import Graph
-
-# create logger
-logger = logging.getLogger("pathpyG")
-
-
-def hist(network: Graph, key: str = 'degree', bins: int = 10, **kwargs: Any) -> HistogramPlot:
-    """Plot a histogram."""
-    return HistogramPlot(network, key, bins, **kwargs)
-
-```
-
-pathpyG is using logging to print out messages and errors. It's a good habit to use it also for your plotting function.
-
-Our `hist` function will be callable via the package. e.g. `pp.hist(...)`. Itself it will return a plotting class which we have to create.
-
-
-```python
-from pathpyG.visualisations.plot import PathPyPlot
 
 class HistogramPlot(PathPyPlot):
-    """Histogram plot class for a network properties."""
+    """Prepare data for histogram visualisation.
 
-    _kind = "hist"
+    Collects values from a Graph according to `key` and exposes them in
+    `self.data["hist_values"]` for backends to render.
+    """
 
-    def __init__(self, network: Graph, key: str = 'degree', bins: int = 10, **kwargs: Any) -> None:
-        """Initialize network plot class."""
+    _kind = "histogram"
+
+    def __init__(self, graph: Graph, key: str = "degree", bins: int | list[int] = 10, **kwargs: Any) -> None:
         super().__init__()
-        self.network = network
-        self.config = kwargs
-        self.config['bins'] = bins
-        self.config['key'] = key
+        self.graph = graph
+        # merge kwargs into config; ensure required fields are present
+        self.config.update({
+            "bins": bins,
+            "title": kwargs.pop("title", f"{key.title()} distribution"),
+            "xlabel": kwargs.pop("xlabel", key),
+            "ylabel": kwargs.pop("ylabel", "count"),
+        })
+        self.key = key
+        self.config.update(kwargs)
         self.generate()
 
     def generate(self) -> None:
-        """Generate the plot."""
-        logger.debug("Generate histogram.")
+        # Compute values to bin based on `key`
+        if self.key in ("degree", "degrees"):
+            values = list(self.graph.degrees().values())
+        elif self.key in ("in_degree", "indegree", "in-degrees"):
+            values = list(self.graph.degrees(mode="in").values())
+        elif self.key in ("out_degree", "outdegree", "out-degrees"):
+            values = list(self.graph.degrees(mode="out").values())
+        else:
+            logger.error(f"Histogram key '{self.key}' not supported.")
+            raise KeyError(self.key)
+
+        self.data["hist_values"] = values
 ```
 
-The `HistogramPlot` plotting class is a child from our abstract `PathPyPlot` function. We will overwrite the abstract `generate()` function in order to get the data needed for our plot.
+!!! note 
+    - Keep the class small: gather values and fill `self.data`/`self.config`.
+    - Choose names that are clear for backends (`hist_values`, `bins`, labels).
 
-By convention we assume `d3js` will be the default plot backend, hence the final data generated by this function should provide the necessary data structure for this backend. 
+## Add the new plot to the public API
 
-For other backends, this data might be needed to be converted e.g. keywords might be different. We will address this later in our tutorial.
-
-
-## Testing, Testing, Testing
-
-Before we start developing our histogram plot, we should set up a test environment so that we can directly develop the unit test next to our plot function.
-
-Therefore we are going to our testing folder an create a new test file.
-
-```
-cd ../../../tests/
-touch test_hist.py
-```
-
-Now we can create a simple test environment with a simple graph and call our `hist(...)` function.
+[`plot(...)`][pathpyG.plot] uses the `PLOT_CLASSES` mapping to instantiate the right plot class for a given `kind`. Extend it with your new class:
 
 ```python
-from pathpyG.core.graph import Graph
-from pathpyG.visualisations.hist_plots import hist
+# src/pathpyG/visualisations/plot_function.py
+from pathpyG.visualisations.histogram_plot import HistogramPlot
 
-
-def test_hist_plot() -> None:
-    """Test to plot a histogram."""
-    net = Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
-    hist(net)
+PLOT_CLASSES: dict = {
+    "static": NetworkPlot,
+    "temporal": TemporalNetworkPlot,
+    "histogram": HistogramPlot,  # add this line
+}
 ```
 
-Note: If you only want to run this function and not all other test you can use:
+??? example "Usage"
 
-```
-pytest -s -k 'test_hist_plot'
-```
+    ```python
+    import pathpyG as pp
 
-## Generating the plot data
+    g = pp.Graph.from_edge_list([("a", "b"), ("b", "c"), ("a", "c")])
+    # Matplotlib is the natural backend for histograms
+    pp.plot(g, kind="histogram", backend="matplotlib", key="degree", bins=10, filename="degree_hist.png")
+    ```
 
-To plot our histogram we first have to generate the required data from our graph.
+!!! tip "Backend selection"
+    [`plot(...)`][pathpyG.plot] auto-selects a backend from the filename extension if you omit `backend`. For histograms, prefer PNG via Matplotlib by passing `filename="...png"` or `backend="matplotlib"`.
 
-In the future we might want to add more options for histograms, hence we use the `match`-`case` function form python.
- 
-```python
-    def generate(self) -> None:
-        """Generate the plot."""
-        logger.debug("Generate histogram.")
+## Add Matplotlib support for HistogramPlot
 
-        data: dict = {}
+Backends validate supported plot types. The [Matplotlib backend][pathpyG.visualisations._matplotlib] currently supports `NetworkPlot` and renders nodes/edges. We’ll extend it to also support `HistogramPlot`.
 
-        match self.config["key"]:
-            case "indegrees":
-                logger.debug("Generate data for in-degrees")
-                data["values"] = list(self.network.degrees(mode="in").values())
-            case "outdegrees":
-                logger.debug("Generate data for out-degrees")
-                data["values"] = list(self.network.degrees(mode="out").values())
-            case _:
-                logger.error(
-                    f"The <{self.config['key']}> property",
-                    "is currently not supported for hist plots.",
-                )
-                raise KeyError
+Implementation approach:
 
-        data["title"] = self.config["key"]
-        self.data["data"] = data
-```
+1. Add `HistogramPlot` to `SUPPORTED_KINDS` so the backend accepts the plot type.
+2. Branch in [`to_fig()`](/reference/pathpyG/visualisations/_matplotlib/backend/#pathpyG.visualisations._matplotlib.backend.MatplotlibBackend.to_fig) (or factor out into a helper) to draw a histogram when the plot is a `HistogramPlot`.
 
-First we initialize a dictionary `data` to store our values. In this case we are interested in the in and out-degrees of our graph, which are already implemented in `pathpyG` (state 2023-11-26). 
-
-If the keyword is not supported the function will raise a `KeyError`.
-
-To provide a default title for our plot we also store the keyword in the data dict. If further data is required for the plot it can be stored here.
-
-Finally, we add the data dict to our `self.data` variable of the plotting class. This variable will be used later in the backend classes.
-
-With this our basic histogram plot function is finished. We are now able to call the plot function, get the data from our graph and create a data-set which can be passed down to the backend for visualization.
-
-## The matplotlib backend
-
-Let's open the `_matplotlib` folder located under `/src/pathpyG/visualisation/_matplotlib`, where all matplotlib functions are stored.
-
-```tree
-_matplotlib
-    __init__.py
-    core.py
-    network_plots.py
-```
-
-The `_init_.py` holds the configuration for the plot function, which we will modify later. The `core.py` file contains the generic `MatplotlibPlot` class, which provides `save` and `show` functionalities for our plots. We do not need to modify these functions. Instead, we have to generate a translation function from our generic data dict (see above) to a histogram in matplotlib. To do so, lets create first a new python file named `hist_plots.py`
-
-```
-cd _matplotlib
-touch hist_plots.py
-```
-
-Here we will add our missing piece for a functional matplotlib plot.
+Sketch of the required changes (condensed for illustration):
 
 ```python
-"""Histogram plot classes."""
-from __future__ import annotations
+# src/pathpyG/visualisations/_matplotlib/backend.py
+from pathpyG.visualisations.histogram_plot import HistogramPlot
 
-import logging
+SUPPORTED_KINDS = {
+    NetworkPlot: "static",
+    HistogramPlot: "histogram",  # add support
+}
 
-from typing import TYPE_CHECKING, Any
+class MatplotlibBackend(PlotBackend):
+    ...
+    def to_fig(self) -> tuple[plt.Figure, plt.Axes]:
+        # If histogram: render using ax.hist
+        if self._kind == "histogram":
+            return self._to_fig_histogram()
+        # Else: existing network rendering
+        return self._to_fig_network()
 
-# pseudo load class for type checking
-if TYPE_CHECKING:
-    from pathpyG.core.graph import Graph
+    def _to_fig_histogram(self) -> tuple[plt.Figure, plt.Axes]:
+        fig, ax = plt.subplots(
+            figsize=(unit_str_to_float(self.config["width"], "in"), unit_str_to_float(self.config["height"], "in")),
+            dpi=150,
+        )
+        ax.set_axis_on()
+        ax.hist(self.data["hist_values"], bins=self.config.get("bins", 10), color=rgb_to_hex(self.config["node"]["color"]), alpha=0.9)
+        ax.set_title(self.config.get("title", "Histogram"))
+        ax.set_xlabel(self.config.get("xlabel", "value"))
+        ax.set_ylabel(self.config.get("ylabel", "count"))
+        return fig, ax
 
-# create logger
-logger = logging.getLogger("pathpyG")
-
-
-def hist(network: Graph, key: str = 'degree', bins: int = 10, **kwargs: Any) -> HistogramPlot:
-    """Plot a histogram."""
-    return HistogramPlot(network, key, bins, **kwargs)
-
+    def _to_fig_network(self) -> tuple[plt.Figure, plt.Axes]:
+        # move existing implementation of `to_fig` here
+        ...
 ```
+
+!!! tip "Tips"
+    - Reuse `unit_str_to_float` so sizing behaves like other plots.
+    - Use a default color from `self.config["node"]["color"]` for consistency.
+    - Keep the new code path fully separate from the network drawing code to avoid regressions.
+
+??? info "If you want web or LaTeX histograms"
+    The current d3.js and TikZ backends are tailored to network visualisation (they expect `nodes`/`edges` in `self.data`). To add histogram support there, you would:
+
+    - Create a new JS or TeX template for histograms
+    - Extend the backend to accept `HistogramPlot` and dispatch to the new template
+
+    Start with Matplotlib first — it's a good starting point.
+
+## Try it out
+
+Once you’ve added the `HistogramPlot`, updated `PLOT_CLASSES`, and extended the Matplotlib backend as shown, you can create and save a histogram in a single call:
+
+```python
+import pathpyG as pp
+
+g = pp.Graph.from_edge_list([("a", "b"), ("b", "c"), ("a", "c"), ("c", "d")])
+pp.plot(
+    g,
+    kind="histogram",
+    backend="matplotlib",  # or infer via filename extension
+    key="degree",
+    bins=5,
+    title="Node Degree Distribution",
+    filename="degree_hist.png",
+)
+```
+
+In notebooks, omit `filename` to show inline.
+
+## Testing (optional but recommended)
+
+Create a small unit test to exercise the new path end-to-end:
+
+```python
+# tests/visualisations/test_histogram.py
+import pathpyG as pp
+
+def test_histogram_plot_matplotlib(tmp_path):
+    g = pp.Graph.from_edge_list([("a", "b"), ("b", "c"), ("a", "c")])
+    out = tmp_path / "deg_hist.png"
+    pp.plot(g, kind="histogram", backend="matplotlib", key="degree", bins=3, filename=str(out))
+    assert out.exists()
+```
+
+## Where to look for guidance and consistency
+
+- :material-cog-outline: Backends: see other backends like [`Matplotlib`][pathpyG.visualisations._matplotlib] and [`d3.js`][pathpyG.visualisations._d3js] for how plot instances are validated and rendered.
+- :material-database-outline: Plot classes: study [`NetworkPlot`][pathpyG.visualisations.network_plot.NetworkPlot] and [`TemporalNetworkPlot`][pathpyG.visualisations.temporal_network_plot.TemporalNetworkPlot] to understand how [`PathPyPlot`][pathpyG.visualisations.pathpy_plot.PathPyPlot] subclasses fill `self.data` and `self.config`.
+- :material-file-document: The [module overview](/reference/pathpyG/visualisations) explains backend selection, saving, and common styling options.
+
+## Recap
+
+- :material-plus-circle: New plots are [`PathPyPlot`][pathpyG.visualisations.pathpy_plot.PathPyPlot] subclasses that prepare data and config.
+- :material-merge: Register your plot in `PLOT_CLASSES` so [`pp.plot(..., kind=...)`][pathpyG.plot] can instantiate it.
+- :material-image-multiple: Extend at least one backend to render your plot type. For histograms, Matplotlib is a clean first target.
+- :material-link-variant: Keep a small, clear data contract between your plot class and backend rendering.
+
+With this, you have a clean, maintainable path to add new visualisations to pathpyG while leveraging the unified [`pp.plot(...)`][pathpyG.plot] API and existing backend infrastructure.

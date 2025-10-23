@@ -1,6 +1,6 @@
 name: Setup # Inspired by https://github.com/pyg-team/pytorch_geometric/blob/737707c37fc2bd712a2289b683ec14549926ff49/.github/actions/setup/action.yml
 
-description: Set up Python, PyTorch and PyTorch Geometric.
+description: Set up environment with dependencies
 
 inputs: # defaults are set to the version used in the dev container
   python-version:
@@ -26,6 +26,12 @@ runs:
         python-version: ${{ inputs.python-version }}
         activate-environment: true
 
+    - name: Cache uv virtual environment
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: uv-venv-${{ runner.os }}-py-${{ inputs.python-version }}-cuda-${{ inputs.cuda-version }}
+
     - name: Install pathpyG
       run: |
         uv sync --frozen --extra ${{ inputs.cuda-version }}
@@ -38,9 +44,48 @@ runs:
         uv run python -c "import torch; print('CUDA:', torch.version.cuda)"
       shell: bash
 
+    - name: Set up TeX Live
+      if: ${{ inputs.full_install == 'true' }}
+      uses: TeX-Live/setup-texlive-action@v3
+      with:
+        cache: true
+        packages: |
+          scheme-basic
+          latexmk
+          tikz-network
+          standalone
+          xcolor
+          xifthen
+          tools
+          ifmtarg
+          pgf
+          datatool
+          etoolbox
+          tracklang
+          amsmath
+          trimspaces
+          epstopdf-pkg
+          dvisvgm
+          preview
+          babel-english
+
     - name: Install extension packages
       if: ${{ inputs.full_install == 'true' }}
-      run: | # ToDo: Add LaTeX installation
-        sudo apt-get update && sudo apt-get install -y build-essential python3-dev libcairo2-dev libpango1.0-dev ffmpeg
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        execute_install_scripts: true
+        packages: |
+          build-essential
+          python3-dev
+          libcairo2-dev
+          libpango1.0-dev
+
+    - name: Install ffmpeg
+      if: ${{ inputs.full_install == 'true' }}
+      uses: FedericoCarboni/setup-ffmpeg@v3
+      
+    - name: Install optional Python dependencies
+      if: ${{ inputs.full_install == 'true' }}
+      run: |
         uv sync --frozen --extra vis --extra ${{ inputs.cuda-version }}
       shell: bash

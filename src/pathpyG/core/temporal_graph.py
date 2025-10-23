@@ -11,6 +11,7 @@ from torch_geometric import EdgeIndex
 
 from pathpyG import Graph
 from pathpyG.core.index_map import IndexMap
+from pathpyG.utils import to_numpy
 
 
 class TemporalGraph(Graph):
@@ -59,12 +60,25 @@ class TemporalGraph(Graph):
             (e[0].item(), e[1].item(), t.item()): i for i, (e, t) in enumerate(zip([e for e in self.data.edge_index.t()], self.data.time))
         }
 
-        self.start_time = self.data.time[0].item()
-        self.end_time = self.data.time[-1].item()
+        if self.data.time.size(0) > 0:
+            self.start_time = self.data.time[0].item()
+            self.end_time = self.data.time[-1].item()
+        else:
+            self.start_time = 0
+            self.end_time = 0
 
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore
         """Create a temporal graph from a list of tuples containing edges with timestamps."""
+        if len(edge_list) == 0:
+            return TemporalGraph(
+                data=Data(
+                    edge_index=torch.empty((2, 0), dtype=torch.long, device=device),
+                    time=torch.empty((0,), dtype=torch.long, device=device),
+                    num_nodes=num_nodes,
+                ),
+            )
+        
         edge_array = np.array(edge_list)
 
         # Convert timestamps to tensor
@@ -109,7 +123,9 @@ class TemporalGraph(Graph):
             ('b', 'c', 2)
             ('c', 'a', 3)
         """
-        return [(*self.mapping.to_ids(e), t.item()) for e, t in zip(self.data.edge_index.t(), self.data.time)]
+        edge_ids = self.mapping.to_ids(self.data.edge_index)
+        times = to_numpy(self.data.time)
+        return list(zip(edge_ids[0], edge_ids[1], times))
     
     def to(self, device: torch.device) -> TemporalGraph:
         """Moves all graph data to the specified device (CPU or GPU).
@@ -187,21 +203,74 @@ class TemporalGraph(Graph):
         return TemporalGraph(data=Data(edge_index=edge_index, time=times), mapping=self.mapping)
 
     def get_batch(self, start_idx: int, end_idx: int) -> TemporalGraph:
-        """Return an instance of the TemporalGraph that captures all time-stamped
+        """Return a batch of temporal edges based on start and end indices.
+        
+        Return an instance of the TemporalGraph that captures all time-stamped
         edges in a given batch defined by start and (non-inclusive) end, where start
-        and end refer to the index of the first and last event in the time-ordered list of events."""
+        and end refer to the index of the first and last event in the time-ordered list of events.
+        
+        Args:
+            start_idx: The starting index of the batch (inclusive).
+            end_idx: The ending index of the batch (exclusive).
+
+        Examples:
+            Get a batch of temporal edges:
+
+            >>> g = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)])
+            >>> batch = g.get_batch(0, 2)
+            >>> print(batch.temporal_edges)
+            [('a', 'b', 1), ('b', 'c', 2)]
+        """
+        # Create new Data object with the selected batch of edges and times
+        data = Data(edge_index=self.data.edge_index[:, start_idx:end_idx], time=self.data.time[start_idx:end_idx])
+        
+        # Copy all node attributes
+        for node_attr in self.node_attrs():
+            data[node_attr] = self.data[node_attr]
+        # Copy only edge attributes for the selected batch
+        for edge_attr in self.edge_attrs():
+            data[edge_attr] = self.data[edge_attr][start_idx:end_idx]
 
         return TemporalGraph(
-            data=Data(edge_index=self.data.edge_index[:, start_idx:end_idx], time=self.data.time[start_idx:end_idx]),
+            data=data,
             mapping=self.mapping,
         )
 
     def get_window(self, start_time: int, end_time: int) -> TemporalGraph:
-        """Return an instance of the TemporalGraph that captures all time-stamped
+        """Return a time window of temporal edges based on start and end timestamps.
+        
+        Return an instance of the TemporalGraph that captures all time-stamped
         edges in a given time window defined by start and (non-inclusive) end, where start
-        and end refer to the time stamps"""
+        and end refer to the time stamps.
+        
+        Args:
+            start_time: The starting timestamp of the window (inclusive).
+            end_time: The ending timestamp of the window (exclusive).
 
-        return TemporalGraph(data=self.data.snapshot(start_time, end_time), mapping=self.mapping)
+        Examples:
+            Get a time window of temporal edges:
+
+            >>> g = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)])
+            >>> window = g.get_window(0, 2)
+            >>> print(window.temporal_edges)
+            [('a', 'b', 1)]
+        """
+        # While there is a PyG function `Data.snapshot`,
+        # we do it manually since it cannot handle numpy arrays as edge attributes.
+        edge_mask = (self.data.time >= start_time).logical_and(self.data.time < end_time)
+        # Create a new Data object with the selected edges and times
+        data = Data(
+            edge_index=self.data.edge_index[:, edge_mask],
+            time=self.data.time[edge_mask],
+        )
+        # Copy all node attributes
+        for node_attr in self.node_attrs():
+            data[node_attr] = self.data[node_attr]
+        # Copy only edge attributes for the selected edges
+        for edge_attr in self.edge_attrs():
+            data[edge_attr] = self.data[edge_attr][edge_mask]
+
+        return TemporalGraph(data=data, mapping=self.mapping)
 
     def __getitem__(self, key: Union[tuple, str]) -> Any:
         """Return node, edge, temporal edge, or graph attribute.
