@@ -1,20 +1,29 @@
 """Algorithms for the analysis of time-respecting paths in temporal graphs."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, Union, List, Tuple
+
+from typing import Tuple
 
 import numpy as np
-from tqdm import tqdm
 import torch
 from scipy.sparse.csgraph import dijkstra
+from tqdm import tqdm
 
 from pathpyG import Graph
-from pathpyG.utils import to_numpy
 from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.utils import to_numpy
 
 
 def lift_order_temporal(g: TemporalGraph, delta: int = 1):
+    """Lift a temporal graph to a second-order temporal event graph.
 
+    Args:
+        g: Temporal graph to lift.
+        delta: Maximum time difference between events to consider them connected.
+
+    Returns:
+        ho_index: Edge index of the second-order temporal event graph.
+    """
     # first-order edge index
     edge_index, timestamps = g.data.edge_index, g.data.time
 
@@ -26,7 +35,6 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
 
     # lift order: find possible continuations for edges in each time stamp
     for t in tqdm(unique_t):
-
         # find indices of all source edges that occur at unique timestamp t
         src_time_mask = timestamps == t
         src_edge_idx = indices[src_time_mask]
@@ -36,7 +44,6 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
         dst_edge_idx = indices[dst_time_mask]
 
         if dst_edge_idx.size(0) > 0 and src_edge_idx.size(0) > 0:
-
             # compute second-order edges between src and dst idx
             # for all edges where dst in src_edges (edge_index[1, x[:, 0]]) matches src in dst_edges (edge_index[0, x[:, 1]])
             x = torch.cartesian_prod(src_edge_idx, dst_edge_idx)

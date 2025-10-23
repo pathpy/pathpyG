@@ -66,7 +66,6 @@ def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int | None = None
     # Map outdegree to each destination node to create an edge for each combination
     # of incoming and outgoing edges for each destination node
     outdegree_per_dst = outdegree[edge_index[1]]
-    num_new_edges = outdegree_per_dst.sum()
     # Create sources of the new higher-order edges
     ho_edge_srcs = torch.repeat_interleave(outdegree_per_dst)
 
@@ -74,7 +73,7 @@ def lift_order_edge_index(edge_index: torch.Tensor, num_nodes: int | None = None
     # of all previous nodes in the ordered sequence of nodes
     ptrs = cumsum(outdegree, dim=0)[:-1]
     ho_edge_dsts = torch.repeat_interleave(ptrs[edge_index[1]], outdegree_per_dst)
-    idx_correction = torch.arange(num_new_edges, dtype=torch.long, device=edge_index.device)
+    idx_correction = torch.arange(ho_edge_srcs.size(0), dtype=torch.long, device=edge_index.device)
     idx_correction -= cumsum(outdegree_per_dst, dim=0)[ho_edge_srcs]
     ho_edge_dsts += idx_correction
     return torch.stack([ho_edge_srcs, ho_edge_dsts], dim=0)
