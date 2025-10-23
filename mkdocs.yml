@@ -26,7 +26,8 @@ nav:
     - Path Data and Higher-Order Models: tutorial/paths_higher_order.ipynb    
     - Higher-Order Models for Time-Respecting Paths: tutorial/trp_higher_order.ipynb    
     - Causality-Aware GNNs: tutorial/dbgnn.ipynb    
-    - Generative Models for Random Graphs: tutorial/generative_models.ipynb    
+    - Generative Models for Random Graphs: tutorial/generative_models.ipynb
+    - Implementation Concepts: tutorial/implementation_concepts.ipynb
     - Develop your own plot Functions: plot_tutorial.md
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
