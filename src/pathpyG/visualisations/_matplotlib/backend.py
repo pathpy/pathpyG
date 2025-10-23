@@ -16,12 +16,14 @@ from matplotlib.path import Path
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
+from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
 from pathpyG.visualisations.utils import unit_str_to_float
 
 logger = logging.getLogger("root")
 
 SUPPORTED_KINDS = {
     NetworkPlot: "static",
+    TimeUnfoldedNetworkPlot: "unfolded",
 }
 
 
@@ -139,16 +141,44 @@ class MatplotlibBackend(PlotBackend):
 
         # add node labels
         if self.show_labels:
-            for label in self.data["nodes"].index:
-                x, y = self.data["nodes"].loc[label, ["x", "y"]]
-                # Annotate the node label with text in the center of the node
-                ax.annotate(
-                    label,
-                    (x, y),
-                    fontsize=0.4 * self.data["nodes"]["size"].mean(),
-                    ha="center",
-                    va="center",
-                )
+            if self._kind == "static":
+                for label in self.data["nodes"].index:
+                    x, y = self.data["nodes"].loc[[label], ["x", "y"]].values.flatten()
+                    # Annotate the node label with text in the center of the node
+                    ax.annotate(
+                        label,
+                        (x, y),
+                        fontsize=0.4 * self.data["nodes"]["size"].mean(),
+                        ha="center",
+                        va="center",
+                    )
+            elif self._kind == "unfolded":
+                # add labels at the starting nodes only
+                min_time = self.data["nodes"]["start"].min()
+                offset = 0.005 * self.data["nodes"]["size"].mean()
+                sign = 1 if self.config["orientation"] in ["down", "left"] else -1
+                label_df = self.data["nodes"][self.data["nodes"]["start"] == min_time]
+                for label in label_df.index:
+                    x, y = label_df.loc[[label], ["x", "y"]].values.flatten()
+                    ax.annotate(
+                        label[0],
+                        (x, y + offset * sign) if self.config["orientation"] in ["down", "up"] else (x + offset * sign, y),
+                        fontsize=0.5 * self.data["nodes"]["size"].mean(),
+                        ha="center",
+                        va="center",
+                    )
+                
+                # add timestamps at the border
+                times = self.data["nodes"]["start"].unique()
+                for time in times[:-1]:  # skip last time as it would be outside the plot
+                    x, y = self.data["nodes"].iloc[time:time+2, :][["x", "y"]].values.mean(axis=0)
+                    ax.annotate(
+                        str(time),
+                        (x - offset, y) if self.config["orientation"] in ["down", "up"] else (x, y - offset),
+                        fontsize=0.5 * self.data["nodes"]["size"].mean(),
+                        ha="center",
+                        va="center",
+                    )
 
         # set limits
         ax.set_xlim(-1 * self.config["margin"], 1 + (1*self.config["margin"]))
@@ -308,7 +338,7 @@ class MatplotlibBackend(PlotBackend):
         direction_P2_P1 = (P1 - P2) / distance_P2_P1
         P0_offset_dist = shorten + source_node_size
         P2_offset_dist = shorten + target_node_size + (head_length * self.data["edges"]["size"].values[:, np.newaxis])
-        if np.any(distance_P2_P1/2 < P2_offset_dist):
+        if (not self.config["curved"]) or np.any(distance_P2_P1/2 < P2_offset_dist):
             logger.warning("Arrowhead length is too long for some edges. Please reduce the edge size. Using non-curved edges instead.")
             direction_P0_P2 = vec / dist
             P0 += direction_P0_P2 * P0_offset_dist
@@ -326,7 +356,7 @@ class MatplotlibBackend(PlotBackend):
         ]
         return vertices, codes
 
-    def get_arrowhead(self, vertices, head_length=0.01, head_width=0.02):
+    def get_arrowhead(self, vertices, head_length, head_width=0.02):
         """Generate triangular arrowhead paths for directed edges.
 
         Creates proportional arrowheads at curve endpoints using tangent vectors

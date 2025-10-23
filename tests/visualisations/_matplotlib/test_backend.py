@@ -226,7 +226,7 @@ class TestMatplotlibBackendArrowheads:
         P2 = np.array([[1, 0], [1, 0]], dtype=float)
         vertices = [P0, P1, P2]
         
-        arrow_vertices, arrow_codes = self.backend.get_arrowhead(vertices)
+        arrow_vertices, arrow_codes = self.backend.get_arrowhead(vertices, head_length=0.02)
         
         assert len(arrow_vertices) == 4
         assert len(arrow_codes) == 4
@@ -241,7 +241,7 @@ class TestMatplotlibBackendArrowheads:
         # Set different edge sizes
         self.backend.data["edges"]["size"] = np.array([1.0, 5.0])
         
-        arrow_vertices, arrow_codes = self.backend.get_arrowhead(vertices)
+        arrow_vertices, arrow_codes = self.backend.get_arrowhead(vertices, head_length=0.02)
         
         # First arrowhead vertices
         arrow1_vertices = [v[0] for v in arrow_vertices]

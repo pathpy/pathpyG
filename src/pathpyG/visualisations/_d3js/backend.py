@@ -26,6 +26,7 @@ from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
+from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
 from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
 
 # create logger
@@ -34,6 +35,7 @@ logger = logging.getLogger("root")
 SUPPORTED_KINDS: dict[type, str] = {
     NetworkPlot: "static",
     TemporalNetworkPlot: "temporal",
+    # TimeUnfoldedNetworkPlot: "unfolded",
 }
 
 
