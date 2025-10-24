@@ -13,6 +13,21 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations._matplotlib.backend import MatplotlibBackend
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
+from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
+
+
+def test_supports_unfolded_network_plot():
+    """Test that Matplotlib backend supports TimeUnfoldedNetworkPlot."""
+    tg = TemporalGraph.from_edge_list(
+        [("a", "b", 1), ("b", "c", 2), ("c", "a", 3)]
+    )
+    unfolded_plot = TimeUnfoldedNetworkPlot(tg)
+
+    backend = MatplotlibBackend(unfolded_plot, show_labels=True)
+    assert backend.data is unfolded_plot.data
+    assert backend.config is unfolded_plot.config
+    assert backend.show_labels is True
+    assert backend._kind == "unfolded"
 
 
 class TestMatplotlibBackendInitialization:
