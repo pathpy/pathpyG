@@ -63,32 +63,33 @@ SUPPORTED_KINDS = {
 
 class TikzBackend(PlotBackend):
     """TikZ/LaTeX Backend for Publication-Quality Network Graphics.
-    
-    Generates high-quality vector graphics using LaTeX's TikZ package. 
+
+    Generates high-quality vector graphics using LaTeX's TikZ package.
     The backend mainly uses the [`tikz-network`](https://github.com/hackl/tikz-network)
     package to create detailed and customizable visualizations. This backend
     is optimized for static networks and provides publication-ready output with
     precise control over visual elements.
-    
+
     !!! info "Supported Operations"
         - **Formats**: SVG, PDF, TeX
         - **Networks**: Static graphs only
         - **Styling**: Full customization support
         - **Layouts**: All pathpyG layout algorithms
-    
+
     The backend automatically handles LaTeX compilation, temporary file management,
     and format conversion to deliver clean, scalable graphics suitable for
     academic publications and professional presentations.
-    
+
     Attributes:
         plot: The PathPyPlot instance containing graph data and configuration
         show_labels: Whether to display node labels in the output
         _kind: Type of plot being processed (for now only "static" supported)
-    
+
     Example:
         ```python
         # The backend is typically used via pp.plot()
         import pathpyG as pp
+
         g = pp.Graph.from_edge_list([("A", "B"), ("B", "C")])
         pp.plot(g, backend="tikz")
         ```
@@ -97,17 +98,17 @@ class TikzBackend(PlotBackend):
 
     def __init__(self, plot: PathPyPlot, show_labels: bool):
         """Initialize the TikZ backend with plot data and configuration.
-        
+
         Sets up the backend to process the provided plot data and validates
         that the plot type is supported by the TikZ backend.
-        
+
         Args:
             plot: PathPyPlot instance containing graph data, layout, and styling
             show_labels: Whether to display node labels in the generated output
-            
+
         Raises:
             ValueError: If the plot type is not supported by the TikZ backend
-            
+
         Note:
             Currently only static NetworkPlot instances are supported.
             Temporal networks require, e.g. the manim backend instead.
@@ -120,17 +121,17 @@ class TikzBackend(PlotBackend):
 
     def save(self, filename: str) -> None:
         """Save the network visualization to a file in the specified format.
-        
+
         Automatically detects the output format from the file extension and
         performs the necessary compilation steps. Supports TeX (raw LaTeX),
         PDF (compiled document), and SVG (vector graphics) formats.
-        
+
         Args:
             filename: Output file path with extension (.tex, .pdf, or .svg)
-            
+
         Raises:
             NotImplementedError: If the file extension is not supported
-            
+
         Note:
             PDF and SVG compilation requires LaTeX toolchain installation.
             The method handles temporary file creation and cleanup automatically.
@@ -157,18 +158,18 @@ class TikzBackend(PlotBackend):
 
     def show(self) -> None:
         """Display the network visualization in the current environment.
-        
+
         Compiles the network to SVG format and displays it either inline
         (in Jupyter notebooks) or opens it in the default web browser.
         The display method is automatically chosen based on the environment.
-        
+
         The method creates temporary files for compilation and cleans them
         up automatically after display.
-        
+
         Environment Detection:
             - **Interactive (Jupyter)**: Displays SVG inline using IPython.display
             - **Non-interactive**: Opens SVG file in default web browser
-            
+
         Note:
             Requires LaTeX toolchain with TikZ and dvisvgm for SVG compilation.
             Temporary files are automatically cleaned up after a brief delay.
@@ -197,23 +198,23 @@ class TikzBackend(PlotBackend):
 
     def compile_svg(self) -> tuple:
         """Compile LaTeX source to SVG format using the LaTeX toolchain.
-        
+
         Performs a complete compilation workflow: TeX → DVI → SVG conversion.
         Uses latexmk for robust LaTeX compilation and dvisvgm for high-quality
         SVG conversion with proper text rendering.
-        
+
         Returns:
             tuple: (svg_file_path, temp_directory_path) for the compiled SVG
-            
+
         Raises:
             AttributeError: If LaTeX compilation fails or required tools are missing
-            
+
         Compilation Steps:
             1. Generate temporary directory and save TeX source
             2. Run latexmk to compile TeX → DVI
             3. Use dvisvgm to convert DVI → SVG
             4. Return paths for file access and cleanup
-            
+
         Note:
             Both latexmk and dvisvgm must be available in the system PATH.
         """
@@ -254,14 +255,14 @@ class TikzBackend(PlotBackend):
 
     def compile_pdf(self) -> tuple:
         """Compile LaTeX source to PDF format using pdflatex.
-        
+
         Generates a high-quality PDF document suitable for printing and
         publication. Uses latexmk with PDF mode for robust compilation
         and automatic dependency handling.
-        
+
         Returns:
             tuple: (pdf_file_path, temp_directory_path) for the compiled PDF
-            
+
         Raises:
             AttributeError: If LaTeX compilation fails or pdflatex is not available
 
@@ -295,26 +296,26 @@ class TikzBackend(PlotBackend):
 
     def to_tex(self) -> str:
         """Generate complete LaTeX document with TikZ network visualization.
-        
+
         Combines the network data with a LaTeX template to create a complete
         document ready for compilation. The template includes all necessary
         packages, document setup, and TikZ drawing commands.
-        
+
         Returns:
             str: Complete LaTeX document source code
-            
+
         Process:
             1. **Load template** - Retrieves the appropriate template for the plot type
-            2. **Generate TikZ** - Converts network data to TikZ drawing commands  
+            2. **Generate TikZ** - Converts network data to TikZ drawing commands
             3. **Template substitution** - Fills template variables with graph data
             4. **Return final string** - Complete LaTeX document ready for compilation
-            
+
         Template Variables:
             - `$classoptions`: LaTeX class options
             - `$width`, `$height`: Document dimensions
             - `$margin`: Margin around the drawing area
             - `$tikz`: TikZ drawing commands for nodes and edges
-            
+
         Note:
             The generated document is self-contained and includes all necessary
             TikZ packages and configuration for network visualization.
@@ -326,7 +327,7 @@ class TikzBackend(PlotBackend):
         )
 
         # get template files
-        with open(os.path.join(template_dir, f"{self._kind}.tex")) as template:
+        with open(os.path.join(template_dir, f"static.tex")) as template:
             tex_template = template.read()
 
         # generate data
@@ -345,14 +346,14 @@ class TikzBackend(PlotBackend):
 
     def to_tikz(self) -> str:
         r"""Generate TikZ drawing commands for the network visualization.
-        
+
         Converts the processed graph data (nodes, edges, layout) into TikZ-specific
         drawing commands. Handles node positioning, styling, edge routing, and
         label placement according to the configured visualization parameters.
-        
+
         Returns:
             str: TikZ drawing commands ready for inclusion in LaTeX document
-            
+
         Generated Elements:
             - **Node commands** - `\Vertex` with labels, positions, colors, and sizes
             - **Edge commands** - `\Edge` with styling and optional curvature
@@ -367,7 +368,7 @@ class TikzBackend(PlotBackend):
         if not self.data["nodes"].empty:
             node_strings: pd.Series = "\\Vertex["
             # show labels if specified
-            if self.show_labels:
+            if self.show_labels and self._kind == "static":
                 node_strings += (
                     "label=$" + self.data["nodes"].index.astype(str).map(self._replace_with_LaTeX_math_symbol) + "$,"
                 )
@@ -385,20 +386,86 @@ class TikzBackend(PlotBackend):
             node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
             # add position
             node_strings += (
-                "x=" + ((self.data["nodes"]["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")).astype(str) + ","
+                "x="
+                + ((self.data["nodes"]["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")).astype(str)
+                + ","
             )
             node_strings += (
-                "y=" + ((self.data["nodes"]["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")).astype(str) + "]"
+                "y="
+                + ((self.data["nodes"]["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")).astype(str)
+                + "]"
             )
             # add node name
-            node_strings += "{" + self.data["nodes"].index.astype(str) + "}\n"
+            node_strings += (
+                "{"
+                + self.data["nodes"].index.map(lambda x: f"{x[0]}{x[1]}" if isinstance(x, tuple) else str(x))
+                + "};\n"
+            )
             tikz += node_strings.str.cat()
+
+            if self.show_labels and self._kind == "unfolded":
+                # add labels at the starting nodes only
+                min_time = self.data["nodes"]["start"].min()
+                offset = 0.06 * self.data["nodes"]["size"].mean()
+                sign = 1 if self.config["orientation"] in ["down", "left"] else -1
+                label_df = self.data["nodes"][self.data["nodes"]["start"] == min_time]
+                label_strings: pd.Series = "\\Vertex["
+                label_strings += "label=$" + label_df.index.map(lambda x: str(x[0])) + "$,"
+                label_strings += "fontsize=\\fontsize{" + str(int(label_df["size"].mean())) + "}{10}\\selectfont,"
+                label_strings += "opacity=0.0,style={draw=none},"
+                label_strings += (
+                    "x="
+                    + (
+                        (label_df["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")
+                        + (sign * offset if self.config["orientation"] in ["left", "right"] else 0)
+                    ).astype(str)
+                    + ","
+                )
+                label_strings += (
+                    "y="
+                    + (
+                        (label_df["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")
+                        + (sign * offset if self.config["orientation"] in ["down", "up"] else 0)
+                    ).astype(str)
+                    + "]"
+                )
+                label_strings += "{" + label_df.index.map(lambda x: "label_" + str(x[0])) + "};\n"
+                tikz += label_strings.str.cat()
+
+                # add timestamps at the border
+                time_df = self.data["nodes"].iloc[: self.data["nodes"]["end"].max()]
+                time_df.loc[:, ["x", "y"]] = (time_df[["x", "y"]] + time_df[["x", "y"]].shift(-1)) / 2
+                time_df = time_df.iloc[:-1]
+                time_strings: pd.Series = "\\Vertex["
+                time_strings += "label=$" + time_df["start"].astype(str) + "$,"
+                time_strings += "fontsize=\\fontsize{" + str(int(time_df["size"].mean())) + "}{10}\\selectfont,"
+                time_strings += "opacity=0.0,style={draw=none},"
+                time_strings += (
+                    "x="
+                    + (
+                        (time_df["x"] - 0.5) * unit_str_to_float(self.config["width"], "cm")
+                        - (offset if self.config["orientation"] in ["up", "down"] else 0)
+                    ).astype(str)
+                    + ","
+                )
+                time_strings += (
+                    "y="
+                    + (
+                        (time_df["y"] - 0.5) * unit_str_to_float(self.config["height"], "cm")
+                        - (offset if self.config["orientation"] in ["left", "right"] else 0)
+                    ).astype(str)
+                    + "]"
+                )
+                time_strings += "{" + time_df.index.map(lambda x: "time_" + str(x[0])) + "};\n"
+                tikz += time_strings.str.cat()
 
         # generate edge strings
         if not self.data["edges"].empty:
             edge_strings: pd.Series = "\\Edge["
+            if self.config["curved"]:
+                edge_strings += "bend=15,"
             if self.config["directed"]:
-                edge_strings += "bend=15,Direct,"
+                edge_strings += "Direct,"
             if self.data["edges"]["color"].str.startswith("#").all():
                 self.data["edges"]["color"] = self.data["edges"]["color"].map(hex_to_rgb)
                 edge_strings += "RGB,color={" + self.data["edges"]["color"].astype(str).str.strip("()") + "},"
@@ -407,7 +474,15 @@ class TikzBackend(PlotBackend):
             edge_strings += "lw=" + self.data["edges"]["size"].astype(str) + ","
             edge_strings += "opacity=" + self.data["edges"]["opacity"].astype(str) + "]"
             edge_strings += (
-                "(" + self.data["edges"].index.get_level_values("source").astype(str) + ")(" + self.data["edges"].index.get_level_values("target").astype(str) + ")\n"
+                "("
+                + self.data["edges"]
+                .index.to_frame()["source"]
+                .map(lambda x: f"{x[0]}{x[1]}" if isinstance(x, tuple) else str(x))
+                + ")("
+                + self.data["edges"]
+                .index.to_frame()["target"]
+                .map(lambda x: f"{x[0]}{x[1]}" if isinstance(x, tuple) else str(x))
+                + ");\n"
             )
             tikz += edge_strings.str.cat()
 
