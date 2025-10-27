@@ -116,7 +116,7 @@ class TestNetworkPlot:
 
     def test_edge_attribute_dict_assignment(self):
         """Test assigning dictionaries mapping edge tuples to attributes."""
-        color_map = {("a", "b"): "#ff0000", ("b", "c"): "#00ff00"}
+        color_map = {("a", "b"): "#ff0000", ("b", "c"): (0, 255, 0)}
         size_map = {("a", "b"): 10, ("c", "a"): 20}
         plot = NetworkPlot(self.g, edge_color=color_map, edge_size=size_map)
         edges = plot.data["edges"]

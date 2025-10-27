@@ -256,3 +256,28 @@ class TestTemporalNetworkPlotEdgeCases:
             TemporalGraph.from_edge_list([("a", "b", 0)]), layout="spring"
         )
         assert plot.config["simulation"] is False
+
+    def test_rgb_color_assignment(self):
+        """Test that RGB tuple colors are converted to hex strings."""
+        tg = TemporalGraph.from_edge_list(
+            [("a", "b", 0), ("b", "c", 1), ("c", "a", 2), ("a", "d", 3)]
+        )
+        node_colors = {
+            "a": (255, 0, 0),
+            ("b", 1): (0, 255, 0),
+            ("c", 2): (0, 0, 255),
+        }
+        edge_colors = {
+            ("a", "b", 0): (255, 255, 0),
+            ("b", "c", 1): (0, 255, 255),
+        }
+        plot = TemporalNetworkPlot(tg, node_color=node_colors, edge_color=edge_colors)
+        nodes = plot.data["nodes"]
+        edges = plot.data["edges"]
+        # Check that colors are hex strings
+        for color in nodes["color"].dropna().unique():
+            assert isinstance(color, str)
+            assert color.startswith("#") and len(color) == 7
+        for color in edges["color"].dropna().unique():
+            assert isinstance(color, str)
+            assert color.startswith("#") and len(color) == 7
