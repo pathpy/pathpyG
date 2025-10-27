@@ -15,6 +15,7 @@ import pandas as pd
 
 from pathpyG.visualisations.layout import layout as network_layout
 from pathpyG.visualisations.network_plot import NetworkPlot
+from pathpyG.visualisations.utils import rgb_to_hex
 
 # pseudo load class for type checking
 if TYPE_CHECKING:
@@ -78,7 +79,11 @@ class TemporalNetworkPlot(NetworkPlot):
                     for key in self.node_args[attribute].keys():  # type: ignore[union-attr]
                         if isinstance(key, tuple):
                             # add node attribute according to node-time keys
-                            new_nodes.loc[key, attribute] = self.node_args[attribute][key]  # type: ignore[index]
+                            value = self.node_args[attribute][key]
+                            # convert color tuples to hex strings to avoid pandas sequence assignment
+                            if attribute == "color" and isinstance(value, tuple) and len(value) == 3:
+                                value = rgb_to_hex(value)
+                            new_nodes.loc[key, attribute] = value  # type: ignore[index]
                         else:
                             # add node attributes to start nodes according to node keys
                             start_nodes.loc[(key, 0), attribute] = self.node_args[attribute][key]  # type: ignore[index]
@@ -138,6 +143,12 @@ class TemporalNetworkPlot(NetworkPlot):
                 edges[attribute] = self.network.data["edge_weight"]
             # check if attribute is given as argument
             if attribute in self.edge_args:
+                if attribute == "color" and isinstance(self.edge_args[attribute], dict):
+                    # convert color tuples to hex strings to avoid pandas sequence assignment
+                    for key in self.edge_args[attribute].keys():  # type: ignore[union-attr]
+                        value = self.edge_args[attribute][key]
+                        if isinstance(value, tuple) and len(value) == 3:
+                            self.edge_args[attribute][key] = rgb_to_hex(value)  # type: ignore[index]
                 edges = self._assign_argument(attribute, self.edge_args[attribute], edges)
             elif attribute == "size" and "weight" in self.edge_args:
                 edges = self._assign_argument("size", self.edge_args["weight"], edges)
