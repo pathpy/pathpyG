@@ -228,6 +228,12 @@ class NetworkPlot(PathPyPlot):
         """
         if isinstance(attr_value, dict):
             # if dict does not contain values for all edges, only update those that are given
+            if attr_key == "color":
+                # convert color tuples to hex strings to avoid pandas sequence assignment
+                for key in self.edge_args[attr_key].keys():  # type: ignore[union-attr]
+                    value = self.edge_args[attr_key][key]
+                    if isinstance(value, tuple) and len(value) == 3:
+                        self.edge_args[attr_key][key] = rgb_to_hex(value)  # type: ignore[index]
             new_attrs = df.index.map(attr_value)
             # Check if all values are assigned
             if (~new_attrs.isna()).sum() == df.shape[0]:

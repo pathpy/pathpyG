@@ -383,7 +383,7 @@ class TikzBackend(PlotBackend):
                 node_strings += "color=" + self.data["nodes"]["color"] + ","
             # add other options
             node_strings += "size=" + (self.data["nodes"]["size"] * 0.075).astype(str) + ","
-            node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ","
+            node_strings += "opacity=" + self.data["nodes"]["opacity"].astype(str) + ",style={draw opacity=" + self.data["nodes"]["opacity"].astype(str) + "}," 
             # add position
             node_strings += (
                 "x="

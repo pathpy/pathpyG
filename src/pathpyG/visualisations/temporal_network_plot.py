@@ -143,12 +143,6 @@ class TemporalNetworkPlot(NetworkPlot):
                 edges[attribute] = self.network.data["edge_weight"]
             # check if attribute is given as argument
             if attribute in self.edge_args:
-                if attribute == "color" and isinstance(self.edge_args[attribute], dict):
-                    # convert color tuples to hex strings to avoid pandas sequence assignment
-                    for key in self.edge_args[attribute].keys():  # type: ignore[union-attr]
-                        value = self.edge_args[attribute][key]
-                        if isinstance(value, tuple) and len(value) == 3:
-                            self.edge_args[attribute][key] = rgb_to_hex(value)  # type: ignore[index]
                 edges = self._assign_argument(attribute, self.edge_args[attribute], edges)
             elif attribute == "size" and "weight" in self.edge_args:
                 edges = self._assign_argument("size", self.edge_args["weight"], edges)
