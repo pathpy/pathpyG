@@ -51,6 +51,22 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
+from IPython.core.getipython import get_ipython
+
+
+def in_jupyter_notebook() -> bool:
+    """Detects whether the current Python session is running inside a Jupyter Notebook.
+
+    Returns:
+        bool: True if running inside a Jupyter notebook, False otherwise
+    """
+    try:
+        return "IPKernelApp" in get_ipython().config
+    except NameError:
+        return False
+    except AttributeError:
+        return False
+
 
 def prepare_tempfile() -> tuple[str, str]:
     """Prepare temporary directory for backend compilation processes.

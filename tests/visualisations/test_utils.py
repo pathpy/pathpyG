@@ -2,6 +2,7 @@
 
 import base64
 import os
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -9,6 +10,7 @@ from pathpyG.visualisations.utils import (
     cm_to_inch,
     hex_to_rgb,
     image_to_base64,
+    in_jupyter_notebook,
     inch_to_cm,
     inch_to_px,
     prepare_tempfile,
@@ -16,6 +18,53 @@ from pathpyG.visualisations.utils import (
     rgb_to_hex,
     unit_str_to_float,
 )
+
+
+class TestJupyterDetection:
+    """Test Jupyter notebook detection utilities."""
+
+    def test_in_jupyter_notebook_true(self, monkeypatch):
+        """Test that in_jupyter_notebook returns True when running in Jupyter."""
+        mock_ipython = MagicMock()
+        mock_ipython.config = {"IPKernelApp": {}}
+        
+        def mock_get_ipython():
+            return mock_ipython
+        
+        monkeypatch.setattr("pathpyG.visualisations.utils.get_ipython", mock_get_ipython)
+        assert in_jupyter_notebook() is True
+
+    def test_in_jupyter_notebook_false_no_ipkernelapp(self, monkeypatch):
+        """Test that in_jupyter_notebook returns False when IPKernelApp not in config."""
+        mock_ipython = MagicMock()
+        mock_ipython.config = {"SomeOtherApp": {}}
+        
+        def mock_get_ipython():
+            return mock_ipython
+        
+        monkeypatch.setattr("pathpyG.visualisations.utils.get_ipython", mock_get_ipython)
+        assert in_jupyter_notebook() is False
+
+    def test_in_jupyter_notebook_name_error(self, monkeypatch):
+        """Test that in_jupyter_notebook returns False when get_ipython raises NameError."""
+        def mock_get_ipython_raises_name_error():
+            raise NameError("name 'get_ipython' is not defined")
+        
+        monkeypatch.setattr("pathpyG.visualisations.utils.get_ipython", mock_get_ipython_raises_name_error)
+        
+        assert in_jupyter_notebook() is False
+
+    def test_in_jupyter_notebook_attribute_error(self, monkeypatch):
+        """Test that in_jupyter_notebook returns False when get_ipython().config raises AttributeError."""
+        mock_ipython = MagicMock()
+        del mock_ipython.config  # Remove config attribute to trigger AttributeError
+        
+        def mock_get_ipython():
+            return mock_ipython
+        
+        monkeypatch.setattr("pathpyG.visualisations.utils.get_ipython", mock_get_ipython)
+        
+        assert in_jupyter_notebook() is False
 
 
 class TestColorConversion:

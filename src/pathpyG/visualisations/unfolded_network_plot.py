@@ -105,4 +105,4 @@ class TimeUnfoldedNetworkPlot(TemporalNetworkPlot):
         """
         self.config["directed"] = True
         self.config["curved"] = False
-        self.config["simulation"] = self.config["layout"] is None
+        self.config["simulation"] = False
