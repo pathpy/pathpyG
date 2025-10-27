@@ -79,11 +79,11 @@ class TemporalNetworkPlot(NetworkPlot):
                     for key in self.node_args[attribute].keys():  # type: ignore[union-attr]
                         if isinstance(key, tuple):
                             # add node attribute according to node-time keys
-                            value = self.node_args[attribute][key]
+                            value = self.node_args[attribute][key]  # type: ignore[index]
                             # convert color tuples to hex strings to avoid pandas sequence assignment
                             if attribute == "color" and isinstance(value, tuple) and len(value) == 3:
                                 value = rgb_to_hex(value)
-                            new_nodes.loc[key, attribute] = value  # type: ignore[index]
+                            new_nodes.loc[key, attribute] = value
                         else:
                             # add node attributes to start nodes according to node keys
                             start_nodes.loc[(key, 0), attribute] = self.node_args[attribute][key]  # type: ignore[index]
