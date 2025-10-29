@@ -45,7 +45,7 @@
 		"ghcr.io/prulloac/devcontainer-features/latex:1": {
 			"scheme": "minimal",
 			"mirror": "https://mirror.ctan.org/systems/texlive/tlnet/",
-			"packages": "tikz-network,standalone,xcolor,xifthen,tools,ifmtarg,pgf,datatool,etoolbox,tracklang,amsmath,trimspaces,epstopdf-pkg,dvisvgm"
+			"packages": "tikz-network,standalone,xcolor,xifthen,tools,ifmtarg,pgf,datatool,etoolbox,tracklang,amsmath,trimspaces,epstopdf-pkg,dvisvgm,preview,babel-english"
 		}
 	}
 }

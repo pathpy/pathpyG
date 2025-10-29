@@ -20,15 +20,16 @@ requires-python = ">=3.10" # We are using `match` statements
 version = "0.2.0"
 dependencies = [
     'singledispatchmethod', # Adds decorator that allows to use different methods for different types of arguments (similar to method overloading in Java)
-    'zstandard',            # Compression library
-    'numpy',                # Numerical computing library
-    'scipy',                # Scientific computing library
-    'scikit-learn',         # Machine learning library
-    'pandas',               # Data analysis library
-    'matplotlib',           # Plotting library
-    'seaborn',              # High-level plotting library
-    'jupyter',              # To run the tutorial notebooks
-    'torch_geometric',      # PyTorch Geometric library for graph deep learning
+    'zstandard', # Compression library
+    'numpy', # Numerical computing library
+    'scipy', # Scientific computing library
+    'scikit-learn', # Machine learning library
+    'pandas', # Data analysis library
+    'matplotlib', # Plotting library
+    'seaborn', # High-level plotting library
+    'jupyter', # To run the tutorial notebooks
+    'torch_geometric', # PyTorch Geometric library for graph deep learning
+    "networkx", # NetworkX for basic network analysis and visualisation
 ]
 
 [project.optional-dependencies]
@@ -175,7 +176,7 @@ addopts = "--cov=src -m \"not benchmark and not gpu\""
 branch = true
 
 [tool.coverage.report]
-fail_under = 65
+fail_under = 85
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -202,6 +203,12 @@ docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "D", "I"]
+# "S101": Disable checks for assert statements, which are standard in tests.
+# "D100": Disable "Missing docstring in public module".
+# "D101": Disable "Missing docstring in public class".
+# "D102": Disable "Missing docstring in public method".
+# "D103": Disable "Missing docstring in public function".
+per-file-ignores = { "tests/*" = [ "S101",  "D100", "D101", "D102", "D103" ] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
