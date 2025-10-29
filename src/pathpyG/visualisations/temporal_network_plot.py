@@ -93,7 +93,7 @@ class TemporalNetworkPlot(NetworkPlot):
         # save node data and combine start nodes with new nodes by making sure start nodes are overwritten
         self.data["nodes"] = new_nodes.combine_first(start_nodes)
 
-    def _post_process_node_data(self) -> pd.DataFrame:
+    def _post_process_node_data(self) -> None:
         """Add node lifetime information and forward-fill attributes.
 
         Computes start/end times for each node appearance and fills
@@ -115,7 +115,7 @@ class TemporalNetworkPlot(NetworkPlot):
         max_node_time = nodes["start"].max() + 1
         if self.network.data.time.size(0) > 0 and max_node_time < self.network.data.time[-1].item() + 1:
             max_node_time = self.network.data.time[-1].item() + 1
-        nodes["end"] = nodes["end"].fillna(max_node_time)
+        nodes["end"] = nodes["end"].fillna(max_node_time).astype(int)
         self.data["nodes"] = nodes
 
     def _compute_edge_data(self) -> None:

@@ -62,12 +62,12 @@ The default backend is `d3.js`, which is suitable for both static and temporal n
 We currently support a total of four plotting backends, each with different capabilities making them suitable for different use cases.
 The table below provides an overview of the supported backends and their available file formats:
 
-| Backend       | Static Networks  | Temporal Networks  | Available File Formats| 
-|---------------|------------|-------------|--------------|
-| **d3.js**     | ✔️         | ✔️           | `html` |
-| **manim**     | ❌         | ✔️           | `mp4`, `gif` | 
-| **matplotlib**| ✔️         | ❌           | `png`, `jpg` |
-| **tikz**      | ✔️         | ❌           | `svg`, `pdf`, `tex`|
+| Backend       | Static Networks  | Temporal Networks | Time-Unfolded Networks | Available File Formats| 
+|---------------|------------|-------------|--------------|-------------|
+| **d3.js**     | ✔️         | ✔️          | ✔️           | `html` |
+| **manim**     | ❌         | ✔️          | ❌           | `mp4`, `gif` | 
+| **matplotlib**| ✔️         | ❌          | ✔️           | `png`, `jpg` |
+| **tikz**      | ✔️         | ❌          | ✔️           | `svg`, `pdf`, `tex`|
 
 #### Details
 
@@ -427,6 +427,44 @@ The layout algorithm can be any of the supported static layout algorithms descri
         <img src="plot/manim_temporal_fa2.gif" alt="Manim Custom Properties Animation" width="650"/>
     </div>
 
+### Time-Unfolded Networks
+
+For temporal networks, you can use the time-unfolded visualisation to show a static representation of the temporal network.
+In this representation, each node is duplicated for each timestep, and edges are drawn between nodes at different timesteps to represent temporal interactions.
+You can enable this visualisation by setting the "kind" argument to `"unfolded"` in the `pp.plot()` function call.
+This visualisation is supported by all backends that support static networks, i.e. D3.js, Matplotlib, and TikZ.
+
+!!! example "Time-Unfolded Visualisation of Temporal Networks"
+    
+    In the example below, we create a time-unfolded visualisation of a temporal network using the `tikz` backend.
+    ```python
+    import pathpyG as pp
+
+    # Example temporal network data
+    tedges = [
+        ("a", "b", 1),
+        ("a", "b", 2),
+        ("b", "a", 3),
+        ("b", "c", 3),
+        ("d", "c", 4),
+        ("a", "b", 4),
+        ("c", "b", 4),
+        ("c", "d", 5),
+        ("b", "a", 5),
+        ("c", "b", 6),
+    ]
+    t = pp.TemporalGraph.from_edge_list(tedges)
+
+    # Create temporal plot and display inline
+    node_color = {"a": "red", ("a", 2): "darkred"}
+    edge_color = {("a", "b", 2): "blue"}
+    pp.plot(t, backend="tikz", kind="unfolded", node_size=12, node_color=node_color, edge_color=edge_color)
+    ```
+    <img src="plot/unfolded_graph.svg" alt="Example TikZ Time-Unfolded Layout" width="650"/>
+
+    !!! tip "Customising Time-Unfolded Visualisations"
+        In the time-unfolded visualisation, you can still customise node and edge properties as described in the [Node and Edge Customisation](#node-and-edge-customisation) section.
+
 ## Customisation Options
 
 Below is full list of supported keyword arguments for each backend and their descriptions.
@@ -445,6 +483,7 @@ Below is full list of supported keyword arguments for each backend and their des
 | `layout_window_size`      |    ✔️    |     ✔️    |     ❌    |     ❌    | Size of sliding window for temporal network layouts (int or tuple of int) |
 | `delta`                   |    ✔️    |     ✔️    |   ❌      |     ❌   | Duration of timestep in milliseconds (ms)                      |
 | `separator`               |     ✔️    |     ✔️    |     ✔️    |     ✔️    | Separator for higher-order node labels        |
+| `orientation`            |     ✔️   |      ✔️   |      ❌   |    ✔️   | Orientation of the time-unfolded network plot (`"up"`, `"down"`, `"left"`, or `"right"`)        |
 | **Nodes**                 |           |           |           |           |                                               |
 | `size`               |     ✔️    |     ✔️    |      ✔️   |    ✔️     | Radius of nodes (uniform or per-node)         |
 | `color`              |     ✔️    |     ✔️    |     ✔️    |     ✔️    | Node fill color           |

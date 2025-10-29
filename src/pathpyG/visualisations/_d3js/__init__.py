@@ -51,6 +51,8 @@ pp.plot(
 
 ## Network Visualization with custom Images
 
+With D3.js, you can easily use custom images for nodes by providing URLs or local paths.
+
 ```python
 import torch
 import pathpyG as pp
@@ -82,6 +84,29 @@ pp.plot(
     - **Standalone**: Self-contained HTML with embedded resources
     - **Jupyter**: Direct display in notebook cells
     - **Web Apps**: Easy integration into existing websites
+
+## Time-Unfolded Network
+
+Below is an example of a time-unfolded network visualization using the D3.js backend.
+
+```python
+import pathpyG as pp
+
+# Example temporal network data
+tedges = [
+    ("a", "d", 1),
+    ("b", "c", 2),
+    ("b", "c", 3),
+    ("b", "a", 3),
+    ("d", "b", 4),
+
+]
+t = pp.TemporalGraph.from_edge_list(tedges)
+
+# Create temporal plot and display inline
+pp.plot(t, kind="unfolded", show_labels=False)
+```
+<iframe src="../plot/unfolded_graph_d3js.html" width="650" height="520"></iframe>
 
 ## Templates
 PathpyG uses HTML templates to generate D3.js visualizations located in the `templates` directory.

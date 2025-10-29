@@ -10,6 +10,7 @@ JavaScript, and CSS styling.
     - Both static and temporal network support
     - Jupyter notebook integration with inline display
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,8 @@ from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
-from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
+from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
+from pathpyG.visualisations.utils import in_jupyter_notebook, rgb_to_hex, unit_str_to_float
 
 # create logger
 logger = logging.getLogger("root")
@@ -34,6 +36,7 @@ logger = logging.getLogger("root")
 SUPPORTED_KINDS: dict[type, str] = {
     NetworkPlot: "static",
     TemporalNetworkPlot: "temporal",
+    TimeUnfoldedNetworkPlot: "unfolded",
 }
 
 
@@ -62,7 +65,7 @@ class D3jsBackend(PlotBackend):
 
     !!! info "Template Architecture"
         Uses modular templates for extensibility:
-        
+
         - `styles.css`: Visual styling and responsive design
         - `setup.js`: Environment detection and D3.js loading
         - `network.js`: Core network visualization logic
@@ -105,12 +108,14 @@ class D3jsBackend(PlotBackend):
 
         !!! tip "Deployment Ready"
             Generated HTML files are standalone and can be:
-            
+
             - Opened directly in browsers
             - Served from web servers
             - Embedded in websites or documentation
             - Shared without additional dependencies
         """
+        # Default to the CDN version of d3js since browsers may block local scripts
+        self.config["d3js_local"] = self.config.get("d3js_local", False)
         with open(filename, "w+") as new:
             new.write(self.to_html())
 
@@ -125,6 +130,8 @@ class D3jsBackend(PlotBackend):
             Uses pathpyG config to detect interactive environment
             and choose appropriate display method automatically.
         """
+        # Default to local d3js in Jupyter notebooks for offline use
+        self.config["d3js_local"] = self.config.get("d3js_local", False or in_jupyter_notebook())
         if config["environment"]["interactive"]:
             from IPython.display import display_html, HTML  # noqa I001
 
@@ -149,16 +156,18 @@ class D3jsBackend(PlotBackend):
 
         !!! note "Data Structure"
             **Nodes**: Include uid, coordinates (xpos/ypos), and all attributes
-            
+
             **Edges**: Include uid, source/target references, and styling
         """
         node_data = self.data["nodes"].copy()
-        node_data["uid"] = self.data["nodes"].index
+        node_data["uid"] = self.data["nodes"].index.map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
         node_data = node_data.rename(columns={"x": "xpos", "y": "ypos"})
+        if self._kind == "unfolded":
+            node_data["ypos"] = 1 - node_data["ypos"]  # Invert y-axis for unfolded layout
         edge_data = self.data["edges"].copy()
         edge_data["uid"] = self.data["edges"].index.map(lambda x: f"{x[0]}-{x[1]}")
-        edge_data["source"] = edge_data.index.get_level_values("source")
-        edge_data["target"] = edge_data.index.get_level_values("target")
+        edge_data["source"] = edge_data.index.to_frame()["source"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
+        edge_data["target"] = edge_data.index.to_frame()["target"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
         data_dict = {
             "nodes": node_data.to_dict(orient="records"),
             "edges": edge_data.to_dict(orient="records"),
@@ -235,9 +244,8 @@ class D3jsBackend(PlotBackend):
             os.path.normpath("_d3js/templates"),
         )
 
-        # get d3js version
-        local = self.config.get("d3js_local", True)
-        if local:
+        # get d3js library path
+        if self.config.get("d3js_local", False):
             d3js = os.path.join(template_dir, "d3.v7.min.js")
         else:
             d3js = "https://d3js.org/d3.v7.min.js"
@@ -305,9 +313,9 @@ class D3jsBackend(PlotBackend):
 
         !!! info "Template Composition"
             **Core Template** (`network.js`): Base network visualization logic
-            
+
             **Plot Templates**: Type-specific functionality:
-            
+
             - `static.js`: Force simulation and interaction for static networks
             - `temporal.js`: Timeline controls and animation for temporal networks
 
@@ -319,7 +327,9 @@ class D3jsBackend(PlotBackend):
         with open(os.path.join(template_dir, "network.js")) as template:
             js_template += template.read()
 
-        with open(os.path.join(template_dir, f"{self._kind}.js")) as template:
+        with open(
+            os.path.join(template_dir, "static.js" if self._kind == "unfolded" else f"{self._kind}.js")
+        ) as template:
             js_template += template.read()
 
         return js_template

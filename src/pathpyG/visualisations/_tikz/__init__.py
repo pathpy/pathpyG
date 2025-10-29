@@ -49,6 +49,34 @@ pp.plot(
 ```
 <img src="../plot/tikz_init_advanced.svg" alt="Example TikZ Custom Properties" width="550"/>
 
+## Time-Unfolded Network Example
+
+You can also create time-unfolded visualizations of temporal networks using the TikZ backend with all customization options from the temporal animations.
+With the `orientation` parameter, you can control the layout direction of the time-unfolded graph.
+
+```python
+import pathpyG as pp
+
+# Example temporal network data
+tedges = [
+    ("a", "b", 1),
+    ("a", "b", 2),
+    ("b", "a", 3),
+    ("a", "b", 4),
+    ("c", "b", 4),
+    ("c", "d", 5),
+    ("b", "a", 5),
+    ("c", "b", 6),
+]
+t = pp.TemporalGraph.from_edge_list(tedges)
+
+# Create temporal plot and display inline
+node_color = {"a": "red", ("a", 2): "darkred"}
+edge_color = {("a", "b", 2): "blue"}
+pp.plot(t, backend="tikz", kind="unfolded", node_size=12, node_color=node_color, edge_color=edge_color, orientation="right")
+```
+<img src="../plot/unfolded_graph_tikz.svg" alt="Example TikZ Custom Properties" width="550"/>
+
 ## Templates
 
 PathpyG uses LaTeX templates to generate TikZ visualizations. Templates define standalone LaTeX documents with placeholders for dynamic content.

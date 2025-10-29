@@ -61,6 +61,7 @@ from pathpyG.visualisations._d3js.backend import D3jsBackend
 from pathpyG.visualisations.network_plot import NetworkPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
+from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
 
 # create logger
 logger = logging.getLogger("root")
@@ -106,6 +107,7 @@ FORMATS: dict = {
 PLOT_CLASSES: dict = {
     "static": NetworkPlot,
     "temporal": TemporalNetworkPlot,
+    "unfolded": TimeUnfoldedNetworkPlot,
 }
 
 def _get_plot_backend(backend: Optional[str], filename: Optional[str], default: str) -> type[PlotBackend]:
