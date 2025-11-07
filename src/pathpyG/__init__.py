@@ -14,6 +14,5 @@ from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG import io
 from pathpyG import nn
 from pathpyG import algorithms
-from pathpyG import processes
 from pathpyG import statistics
 from pathpyG.visualisations import plot, layout
