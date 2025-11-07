@@ -300,7 +300,7 @@ def temporal_betweenness_centrality(g: TemporalGraph, delta: int = 1) -> dict[st
     # map index-based centralities to node IDs
     bw_id = defaultdict(lambda: 0.0)
     for idx in bw:
-        bw_id[g.mapping.to_id(idx)] = bw[idx]
+        bw_id[g.mapping.to_id(idx)] = float(bw[idx])
     return bw_id
 
 
