@@ -171,7 +171,7 @@ class Layout(object):
         else:
             self.edge_index = edge_index
         self.weight = weight
-        self.layout_type = layout_type
+        self.layout_type = layout_type.lower()
         self.kwargs = kwargs
 
     def generate_layout(self):

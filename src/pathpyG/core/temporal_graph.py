@@ -1,13 +1,13 @@
 from __future__ import annotations
-from typing import Tuple, Union, Any, Optional, Generator
+
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
-
 import torch
 import torch_geometric
 import torch_geometric.utils
-from torch_geometric.data import Data
 from torch_geometric import EdgeIndex
+from torch_geometric.data import Data
 
 from pathpyG import Graph
 from pathpyG.core.index_map import IndexMap
@@ -117,6 +117,8 @@ class TemporalGraph(Graph):
             ('c', 'a', 3)
         """
         edge_ids = self.mapping.to_ids(self.data.edge_index)
+        if isinstance(edge_ids, torch.Tensor):
+            edge_ids = to_numpy(edge_ids)
         times = to_numpy(self.data.time)
         return list(zip(edge_ids[0], edge_ids[1], times))
     

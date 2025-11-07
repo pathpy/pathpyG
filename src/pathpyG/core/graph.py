@@ -244,6 +244,11 @@ class Graph:
         )
         return Graph(Data(edge_index=i, edge_weight=w, num_nodes=self.data.num_nodes), mapping=self.mapping)
 
+    @property
+    def device(self) -> torch.device:
+        """Return the device on which the graph is stored."""
+        return self.data.edge_index.device
+
     def to(self, device: torch.device) -> Graph:
         """Move all tensors to the given device.
         
