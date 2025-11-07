@@ -166,8 +166,9 @@ class D3jsBackend(PlotBackend):
             node_data["ypos"] = 1 - node_data["ypos"]  # Invert y-axis for unfolded layout
         edge_data = self.data["edges"].copy()
         edge_data["uid"] = self.data["edges"].index.map(lambda x: f"{x[0]}-{x[1]}")
-        edge_data["source"] = edge_data.index.to_frame()["source"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
-        edge_data["target"] = edge_data.index.to_frame()["target"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
+        if len(edge_data) > 0:
+            edge_data["source"] = edge_data.index.to_frame()["source"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
+            edge_data["target"] = edge_data.index.to_frame()["target"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
         data_dict = {
             "nodes": node_data.to_dict(orient="records"),
             "edges": edge_data.to_dict(orient="records"),

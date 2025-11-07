@@ -373,7 +373,7 @@ class TikzBackend(PlotBackend):
                     "label=$" + self.data["nodes"].index.astype(str).map(self._replace_with_LaTeX_math_symbol) + "$,"
                 )
                 node_strings += (
-                    "fontsize=\\fontsize{" + str(int(0.6 * self.data["nodes"]["size"].mean())) + "}{10}\selectfont,"
+                    r"fontsize=\fontsize{" + str(int(0.6 * self.data["nodes"]["size"].mean())) + r"}{10}\selectfont,"
                 )
             # Convert hex colors to rgb if necessary
             if self.data["nodes"]["color"].str.startswith("#").all():
