@@ -245,7 +245,10 @@ class IndexMap:
         """
         if self.has_ids:
             if self.id_shape == (-1,):
-                return self.node_ids[idx]  # type: ignore
+                if isinstance(self.node_ids, np.ndarray) and self.node_ids.dtype.type is np.str_:
+                    return str(self.node_ids[idx])
+                else:
+                    return self.node_ids[idx]  # type: ignore
             else:
                 return tuple(self.node_ids[idx])  # type: ignore
         else:

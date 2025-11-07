@@ -60,13 +60,6 @@ class TemporalGraph(Graph):
             (e[0].item(), e[1].item(), t.item()): i for i, (e, t) in enumerate(zip([e for e in self.data.edge_index.t()], self.data.time))
         }
 
-        if self.data.time.size(0) > 0:
-            self.start_time = self.data.time[0].item()
-            self.end_time = self.data.time[-1].item()
-        else:
-            self.start_time = 0
-            self.end_time = 0
-
     @staticmethod
     def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore
         """Create a temporal graph from a list of tuples containing edges with timestamps."""
@@ -150,6 +143,16 @@ class TemporalGraph(Graph):
     def order(self) -> int:
         """Return order 1, since all temporal graphs must be order one."""
         return 1
+    
+    @property
+    def start_time(self) -> Union[int, float]:
+        """Return the timestamp of the first event in the temporal graph."""
+        return self.data.time.min().item()
+    
+    @property
+    def end_time(self) -> Union[int, float]:
+        """Return the timestamp of the last event in the temporal graph."""
+        return self.data.time.max().item()
 
     def shuffle_time(self) -> None:
         """Randomly shuffle the temporal order of edges by randomly permuting timestamps."""
