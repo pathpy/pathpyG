@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import tempfile
+import urllib
 import uuid
 import webbrowser
 from copy import deepcopy
@@ -28,7 +29,7 @@ from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
-from pathpyG.visualisations.utils import in_jupyter_notebook, rgb_to_hex, unit_str_to_float
+from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
 
 # create logger
 logger = logging.getLogger("root")
@@ -38,6 +39,7 @@ SUPPORTED_KINDS: dict[type, str] = {
     TemporalNetworkPlot: "temporal",
     TimeUnfoldedNetworkPlot: "unfolded",
 }
+_CDN_URL = "https://d3js.org/d3.v7.min.js"
 
 
 class D3jsBackend(PlotBackend):
@@ -130,8 +132,14 @@ class D3jsBackend(PlotBackend):
             Uses pathpyG config to detect interactive environment
             and choose appropriate display method automatically.
         """
-        # Default to local d3js in Jupyter notebooks for offline use
-        self.config["d3js_local"] = self.config.get("d3js_local", False or in_jupyter_notebook())
+        # Default to CDN version if reachable
+        # Check if CDN is reachable
+        try:
+            urllib.request.urlopen(_CDN_URL, timeout=2)
+            self.config["d3js_local"] = self.config.get("d3js_local", False)
+        except (urllib.error.URLError, urllib.error.HTTPError):
+            self.config["d3js_local"] = self.config.get("d3js_local", True)
+        
         if config["environment"]["interactive"]:
             from IPython.display import display_html, HTML  # noqa I001
 
@@ -249,7 +257,7 @@ class D3jsBackend(PlotBackend):
         if self.config.get("d3js_local", False):
             d3js = os.path.join(template_dir, "d3.v7.min.js")
         else:
-            d3js = "https://d3js.org/d3.v7.min.js"
+            d3js = _CDN_URL
 
         js_template = self.get_template(template_dir)
 
