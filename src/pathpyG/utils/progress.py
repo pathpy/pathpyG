@@ -10,8 +10,10 @@
 # Copyright (c) 2016-2019 Pathpy Developers
 # =============================================================================
 from typing import Any
+
 from tqdm import tqdm as tq  # pylint: disable=import-error
 from tqdm.notebook import tqdm as tqn  # pylint: disable=import-error
+
 from pathpyG import config
 
 
