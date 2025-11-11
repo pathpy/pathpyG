@@ -468,7 +468,7 @@ class Graph:
         return self.degrees(mode="out")
 
     def degrees(self, mode: str = "in", edge_attr: Any = None, return_tensor: bool = False) -> Union[Dict[str, float],
-                                                                                                     torch.tensor]:
+                                                                                                     torch.Tensor]:
         """
         Return (weighted) degrees of nodes.
 

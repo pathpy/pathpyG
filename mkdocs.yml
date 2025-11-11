@@ -78,16 +78,13 @@ extra_css:
   - overrides/assets/stylesheets/header.css  # Remove the sitename from the header, since the logo already contains it
   - overrides/assets/stylesheets/home.css
   - overrides/assets/stylesheets/code_select.css
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
+  - overrides/assets/stylesheets/reference_admonition.css  # Custom reference admonition icon
+  - https://unpkg.com/katex@0/dist/katex.min.css
 
 extra_javascript:
-  - overrides/assets/scripts/home.js
-  - overrides/assets/scripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
   - overrides/assets/scripts/katex.js
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js  
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js
+  - https://unpkg.com/katex@0/dist/katex.min.js
+  - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
 
 # Theme
 theme:
@@ -124,6 +121,7 @@ theme:
     - content.code.annotate
     # Tooltips
     - content.tooltips
+    - content.footnote.tooltips
     # Scroll toc sidebar with the page
     - toc.follow
 
