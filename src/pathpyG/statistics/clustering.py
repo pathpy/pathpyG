@@ -48,15 +48,15 @@ def avg_clustering_coefficient(g: Graph) -> float:
     $$
 
     Warning:
-        This measurement of globale clustering should not be confused with the global clustering coefficient
+        This measurement of global clustering should not be confused with the global clustering coefficient
         defined as the fraction of closed paths of length two over all paths of length two in the graph.
 
     ??? reference
         Proposed by Watts and Strogatz in their seminal paper on "Collective dynamics of 'small-world' networks"[^1].
         Further details can be found in in Chapter 7.3 in *Networks*[^2] by Mark Newman.
 
-    [^1] *Watts, D. J. & Strogatz, S. H. Collective dynamics of 'small-world' networks. Nature 393, 440-442 (1998).*
-    [^2] *Newman, M. E. J. Networks. (Oxford University Press, 2018). doi:10.1093/oso/9780198805090.001.0001.*
+    [^1]: *Watts, D. J. & Strogatz, S. H. Collective dynamics of 'small-world' networks. Nature 393, 440-442 (1998).*
+    [^2]: *Newman, M. E. J. Networks. (Oxford University Press, 2018). doi:10.1093/oso/9780198805090.001.0001.*
 
     Args:
         g (Graph): The graph in which to calculate the average clustering coefficient.

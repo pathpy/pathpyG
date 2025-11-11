@@ -304,7 +304,6 @@ def degree_generating_function(
         >>> print(y)
         tensor([  0.0000,   1.0000,   5.3333,  15.0000,  32.0000,  58.3333,  96.0000,
         147.0000, 213.3333, 297.0000])
-    ```
     """
     p_k = degree_distribution(graph, mode=mode)
 
