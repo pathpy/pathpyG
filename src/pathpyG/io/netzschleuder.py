@@ -1,30 +1,27 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Optional, Union
+"""PathpyG input/output module for the netzschleuder repository."""
 
 import json
-from urllib import request
-from urllib.error import HTTPError
 import tempfile
 import zipfile
 from io import BytesIO
+from typing import Any, Optional, Union
+from urllib import request
+from urllib.error import HTTPError
 
 import pandas as pd
 
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.io.pandas import df_to_graph, df_to_temporal_graph
-from pathpyG.io.pandas import add_node_attributes
+from pathpyG.io.pandas import add_node_attributes, df_to_graph, df_to_temporal_graph
 
 
 def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **kwargs: Any) -> Union[list, dict]:
-    """
-    Read a list of data sets available at the netzschleuder repository.
+    """Read a list of data sets available at the netzschleuder repository.
 
     Args:
         base_url: Base URL of netzschleuder repository
         **kwargs: Keyword arguments that will be passed to the netzschleuder repository as HTTP GET parameters.
             For supported parameters see https://networks.skewed.de/api
-
 
     Examples:
         Return a list of all data sets
@@ -35,7 +32,7 @@ def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **k
 
         Return a list of all data sets with a given tag
 
-        >>> pp.io.list_netzschleuder_records(tags='temporal')
+        >>> pp.io.list_netzschleuder_records(tags="temporal")
         ['reality_mining', 'sp_hypertext', ...]
 
         Return a dictionary containing all data set names (keys) as well as all network attributes
@@ -43,10 +40,8 @@ def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **k
         >>> pp.io.list_netzschleuder_records(full=True)
         { 'reality_mining': [...], 'karate': [...] }
 
-
     Returns:
         Either a list of data set names or a dictionary containing all data set names and network attributes.
-
     """
     url = "/api/nets"
     for k, v in kwargs.items():
@@ -61,8 +56,7 @@ def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **k
 
 
 def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewed.de") -> dict:
-    """
-    Read metadata of a single data record with given name from the netzschleuder repository
+    """Read metadata of a single data record with given name from the netzschleuder repository.
 
     Args:
         name: Name of the data set for which to retrieve the metadata
@@ -72,7 +66,7 @@ def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewe
         Retrieve metadata of karate club network
 
         >>> import pathpyG as pp
-        >>> metdata = pp.io.read_netzschleuder_record('karate')
+        >>> metdata = pp.io.read_netzschleuder_record("karate")
         >>> print(metadata)
         {
             'analyses': {'77': {'average_degree': 4.52... } }
@@ -95,7 +89,7 @@ def read_netzschleuder_graph(
     network: Optional[str] = None,
     multiedges: bool = False,
     time_attr: Optional[str] = None,
-    base_url: str = "https://networks.skewed.de"
+    base_url: str = "https://networks.skewed.de",
 ) -> Union[Graph, TemporalGraph]:
     """Read a graph or temporal graph from the netzschleuder repository.
 
@@ -103,16 +97,16 @@ def read_netzschleuder_graph(
         name: Name of the network data set to read from
         network: Identifier of the network within the data set to read. For data sets
             containing a single network only, this can be set to None.
-        ignore_temporal: If False, this function will return a static or temporal network depending
-            on whether edges contain a time attribute. If True, pathpy will not interpret
-            time attributes and thus always return a static network.
-        base_url: Base URL of netzschleuder repository
+        multiedges: Whether to allow multiedges in the constructed graph
+        time_attr: Name of the edge attribute containing time stamps. If None,
+            the function will read the graph as static network.
+        base_url: Base URL of netzschleuder repository.
 
     Examples:
         Read network '77' from karate club data set
 
         >>> import pathpyG as pp
-        >>> n = pp.io.read_netzschleuder_network(name='karate', network='77')
+        >>> n = pp.io.read_netzschleuder_network(name="karate", network="77")
         >>> print(type(n))
         >>> pp.plot(n)
         pp.Graph
@@ -125,7 +119,7 @@ def read_netzschleuder_graph(
         # retrieve properties of data record via API
         properties = json.loads(request.urlopen(f"{base_url}/api/net/{name}").read())
 
-        timestamps = not (time_attr is None)
+        timestamps = time_attr is not None
 
         if not network:
             analyses = properties["analyses"]
@@ -138,7 +132,7 @@ def read_netzschleuder_graph(
             num_nodes = analyses["num_vertices"]
         except KeyError as exc:
             raise Exception(f"Record {name} contains multiple networks, please specify network name.") from exc
-        
+
         # Retrieve CSV data
         url = f"{base_url}/net/{name}/files/{network}.csv.zip"
         try:
@@ -151,27 +145,25 @@ def read_netzschleuder_graph(
                 with tempfile.TemporaryDirectory() as temp_dir:
                     zip_ref.extractall(path=temp_dir)
 
-                    # the gprop file contains lines with property name/value pairs
-                    # gprops = pd.read_csv(f'{temp_dir}/gprops.csv', header=0, sep=',', 
-                    #           skip_blank_lines=True, skipinitialspace=True)
-
-                    # nodes.csv contains node indices with node properties (like name)
+                    # edges.csv contains edge list with edge properties
                     edges = pd.read_csv(
                         f"{temp_dir}/edges.csv", header=0, sep=",", skip_blank_lines=True, skipinitialspace=True
                     )
 
                     # rename columns
                     edges.rename(columns={"# source": "v", "target": "w"}, inplace=True)
-                    if timestamps and time_attr:
+                    if timestamps:
                         edges.rename(columns={time_attr: "t"}, inplace=True)
 
                     # construct graph and assign edge attributes
-                    if timestamps:
-                        g = df_to_temporal_graph(df=edges, multiedges=multiedges, num_nodes=num_nodes)
+                    if not timestamps:
+                        g = df_to_graph(
+                            df=edges, multiedges=multiedges, is_undirected=not is_directed, num_nodes=num_nodes
+                        )
                     else:
-                        g = df_to_graph(df=edges, multiedges=multiedges,
-                                        is_undirected=not is_directed, num_nodes=num_nodes)
+                        g = df_to_temporal_graph(df=edges, multiedges=multiedges, num_nodes=num_nodes)
 
+                    # nodes.csv contains node indices with node properties (like name)
                     node_attrs = pd.read_csv(
                         f"{temp_dir}/nodes.csv", header=0, sep=",", skip_blank_lines=True, skipinitialspace=True
                     )
