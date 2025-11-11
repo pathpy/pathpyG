@@ -1,15 +1,15 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Dict
+"""Module for node similarity measures in graphs."""
 
 import numpy as _np
 import scipy as _sp
 
-from pathpyG.core.graph import Graph
 from pathpyG.algorithms.shortest_paths import shortest_paths_dijkstra
+from pathpyG.core.graph import Graph
 from pathpyG.statistics.degrees import degree_sequence
 
 
 def inverse_path_length(graph: Graph, v, w) -> float:
+    """Compute the inverse path length similarity between two nodes."""
     dist, _ = shortest_paths_dijkstra(graph)
     d = dist[graph.mapping.to_idx(v), graph.mapping.to_idx(w)]
     if d == 0:
@@ -72,7 +72,7 @@ def LeichtHolmeNewman_index(graph: Graph, v, w, alpha) -> float:
     eigenvalues_sorted = _np.sort(_np.absolute(ev))
     m = graph.m
     lambda_1 = eigenvalues_sorted[1]
-    D = _sp.sparse.diags(degree_sequence(graph)).tocsc()
+    D = _sp.sparse.diags(degree_sequence(graph).numpy()).tocsc()
     I = _sp.sparse.identity(graph.n).tocsc()
     S = (
         2

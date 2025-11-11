@@ -134,7 +134,7 @@ def mean_degree(graph: Graph, mode: str = "total") -> float:
     return torch.mean(degree_sequence(graph, mode=mode).float()).item()
 
 
-def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink=False) -> float:
+def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink: bool = False) -> float:
     r"""Calculates the mean neighbor degree of a [graph][pathpyG.core.graph.Graph].
 
     The mean neighbor degree $\langle d_{\mathcal{N}} \rangle$ of a [graph][pathpyG.core.graph.Graph] $G=(V, E)$ is defined as
@@ -143,7 +143,12 @@ def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink=Fal
     \langle d_{\mathcal{N}} \rangle = \frac{1}{m} \sum_{v_i \in V} \sum_{v_j \in \mathcal{N}(v_i)} d_{mode}(v_j)
     $$
 
-    with the number of edges [$m$][pathpyG.core.graph.Graph.m], the set of neighbors $\mathcal{N}(v_i)$ of node $v_i$ and $d_{mode}(v_j)$ being the degree of neighbor node $v_j \in \mathcal{N}(v_i)$ in mode 'in', 'out' or 'total'.
+
+    with the number of edges [$m$][pathpyG.core.graph.Graph.m] (1), the set of neighbors $\mathcal{N}(v_i)$ of node $v_i$ and $d_{mode}(v_j)$ being the degree of neighbor node $v_j \in \mathcal{N}(v_i)$ in mode 'in', 'out' or 'total'.
+    { .annotate }
+    
+    1. This definition is for directed graphs. For undirected graphs, the denominator is $2m$.
+    
     The modes are defined as follows:
 
     - 'in': In-degree $d_{in}(v_i)$ of node $v_i$, i.e. the number of incoming edges $|\{(v_j, v_i) \in E\}|$ from any other node $v_j$
@@ -167,7 +172,7 @@ def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink=Fal
     degree_seq = degree_sequence(graph, mode=mode)
     if exclude_backlink:
         degree_seq = degree_seq - 1
-    return torch.sum(in_degree * degree_seq).item() / graph.m
+    return torch.sum(in_degree * degree_seq).item() / (2 * graph.m if graph.is_undirected() else graph.m)
 
 
 def degree_central_moment(graph: Graph, k: int = 1, mode: str = "total") -> float:
@@ -249,7 +254,7 @@ def degree_generating_function(
 
     Returns $f(x)$ where $f$ is the probability generating function for the degree
     distribution $P_{mode}(d)$ for a [graph][pathpyG.core.graph.Graph] $G=(V, E)$ defined as
-    
+
     $$
     f(x) = \sum_d P_{mode}(d) x^d.
     $$
