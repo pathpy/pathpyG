@@ -14,7 +14,7 @@ except ImportError:
             raise NotImplementedError("torch_geometric.Index is not available. Please upgrade to torch_geometric>=2.6.")
 
 
-def to_numpy(input_iterable: torch.Tensor | np.ndarray | list) -> np.ndarray:
+def to_numpy(input_iterable: torch.Tensor | np.ndarray | list | tuple) -> np.ndarray:
     """Convert an iterable (including a tensor or tensor subclasses like `torch_geometric.Edge_Index`) to numpy.
 
     Args:

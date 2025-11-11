@@ -1,10 +1,11 @@
 """IndexMap class for mapping node indices to IDs."""
 
 from __future__ import annotations
-from typing import List, Optional, Union, Any
 
-import torch
+from typing import List, Optional, Union
+
 import numpy as np
+import torch
 
 from pathpyG.utils.convert import to_numpy
 
@@ -148,7 +149,7 @@ class IndexMap:
         else:
             return len(self.node_ids)
 
-    def add_id(self, node_id: Any) -> None:
+    def add_id(self, node_id: str | tuple | list) -> None:
         """Assigns additional ID to the next consecutive index.
 
         Args:
@@ -171,13 +172,12 @@ class IndexMap:
         if node_id not in self.id_to_idx:
             idx = self.num_ids()
             if isinstance(node_id, (list, tuple)):
-                node_id = to_numpy(node_id)
-                self.id_shape = (-1, *node_id.shape)
-            self.node_ids = (
-                np.concatenate((self.node_ids, to_numpy([node_id])))
-                if self.node_ids is not None
-                else to_numpy([node_id])
-            )
+                node_id_arr = to_numpy(node_id)
+                self.id_shape = (-1, *node_id_arr.shape)
+                node_id_arr = node_id_arr.reshape(1, *node_id_arr.shape)
+            else:
+                node_id_arr = to_numpy([node_id])
+            self.node_ids = np.concatenate((self.node_ids, node_id_arr)) if self.node_ids is not None else node_id_arr
             self.id_to_idx[node_id] = idx
         else:
             raise ValueError("ID already present in the mapping.")
@@ -255,8 +255,9 @@ class IndexMap:
             return idx
 
     def to_ids(self, idxs: list | tuple | np.ndarray) -> np.ndarray:
-        """Map list of indices to IDs if mapping is defined, return indices otherwise. The shape of the given index
-        list will be preserved in the output.
+        """Map list of indices to IDs if mapping is defined, return indices otherwise.
+
+        The shape of the given index list will be preserved in the output.
 
         Args:
             idxs: Indices to map.
@@ -287,12 +288,12 @@ class IndexMap:
              ['C' 'D']
              ['D' 'A']]
         """
-        if self.has_ids:
+        if self.node_ids is not None:
             if not isinstance(idxs, np.ndarray):
                 idxs = to_numpy(idxs)
-            return self.node_ids[idxs]  # type: ignore
+            return self.node_ids[idxs]
         else:
-            return idxs  # type: ignore
+            return idxs  # type: ignore[return-value]
 
     def to_idx(self, node: str | int | tuple[str] | tuple[int]) -> int | tuple[int]:
         """Map argument (ID or index) to index if mapping is defined, return argument otherwise.
@@ -319,17 +320,19 @@ class IndexMap:
         n: str | int | tuple[str] | tuple[int] = node
         if self.has_ids:
             if self.id_shape != (-1,):
-                n = tuple(n)
+                n = tuple(n)  # type: ignore[arg-type,assignment]
             return self.id_to_idx[n]
         else:
-            return n
+            return n  # type: ignore[return-value]
 
     def to_idxs(self, nodes: list | tuple | np.ndarray, device: Optional[torch.device] = None) -> torch.Tensor:
-        """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise. The shape
-        of the given argument list will be preserved in the output.
+        """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise.
+
+        The shape of the given argument list will be preserved in the output.
 
         Args:
             nodes: IDs or indices to map.
+            device: Device on which to create the output tensor.
 
         Returns:
             Indices if mapping is defined, arguments otherwise.
@@ -363,9 +366,9 @@ class IndexMap:
             if self.id_shape == (-1,):
                 return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()], device=device).reshape(shape)
             else:
-                return torch.tensor([self.id_to_idx[tuple(node)] for node in nodes.reshape(self.id_shape)], device=device).reshape(
-                    shape[: -len(self.id_shape) + 1]
-                )
+                return torch.tensor(
+                    [self.id_to_idx[tuple(node)] for node in nodes.reshape(self.id_shape)], device=device
+                ).reshape(shape[: -len(self.id_shape) + 1])
         else:
             return torch.tensor(nodes, device=device)
 

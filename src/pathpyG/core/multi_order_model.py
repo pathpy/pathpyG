@@ -1,29 +1,29 @@
+"""MultiOrderModel module."""
+
 from __future__ import annotations
+
+import logging
 from typing import (
-    TYPE_CHECKING,
     Optional,
 )
 
-from scipy.stats import chi2
 import torch
+from scipy.stats import chi2
 from torch_geometric.data import Data
-from torch_geometric.utils import degree, cumsum
+from torch_geometric.utils import cumsum, degree
 
-
-import logging
-
-from pathpyG.core.graph import Graph
-from pathpyG.core.path_data import PathData
-from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.core.index_map import IndexMap
-from pathpyG.utils.dbgnn import generate_bipartite_edge_index
-from pathpyG.algorithms.temporal import lift_order_temporal
 from pathpyG.algorithms.lift_order import (
+    aggregate_edge_index,
     aggregate_node_attributes,
     lift_order_edge_index,
     lift_order_edge_index_weighted,
-    aggregate_edge_index,
 )
+from pathpyG.algorithms.temporal import lift_order_temporal
+from pathpyG.core.graph import Graph
+from pathpyG.core.index_map import IndexMap
+from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 logger = logging.getLogger("root")
 
