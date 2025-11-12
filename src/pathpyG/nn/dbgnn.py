@@ -25,6 +25,7 @@ first-order representations.
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, Module, ModuleList
+from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv, MessagePassing
 
 
@@ -117,7 +118,7 @@ class DBGNN(Module):
         # Linear layer
         self.lin = torch.nn.Linear(self.hidden_dims[-1], num_classes)
 
-    def forward(self, data):
+    def forward(self, data: Data) -> torch.Tensor:
         """Forward pass of the DBGNN.
 
         Args:
