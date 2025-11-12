@@ -14,7 +14,7 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
 
-def lift_order_temporal(g: TemporalGraph, delta: int = 1):
+def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
     """Lift a temporal graph to a second-order temporal event graph.
 
     Args:

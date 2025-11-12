@@ -192,7 +192,8 @@ def test_to_DBGNN_data(simple_temporal_graph):
 
 
 def test_paths_indexing():
-    """
+    """Indexing test.
+    
     This test was create to test that start indexes (ixs_start_paths_ho) of paths in 
     get_intermediate_order_log_likelihood work correcly. Paths 'shrink' when encoded 
     throgh higher-order nodes, and ixs_start_paths_ho has to correctly account for it.

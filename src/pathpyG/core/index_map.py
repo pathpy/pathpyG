@@ -67,7 +67,7 @@ class IndexMap:
         [[('A', 'B')], [('B', 'C')]]
     """
 
-    def __init__(self, node_ids: Union[List[str], None] = None) -> None:
+    def __init__(self, node_ids: Union[List[str], List[tuple], None] = None) -> None:
         """Initialize mapping from indices to node IDs.
 
         The mapping will keep the ordering of the IDs as provided by `node_ids`. If the IDs are not unique,
