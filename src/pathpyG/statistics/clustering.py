@@ -31,8 +31,8 @@ def local_clustering_coefficient(g: Graph, u: str) -> float:
             return 0.0
     else:
         k_u /= 2.0
-        if g.degrees()[u] > 1:
-            return 2.0 * k_u / (g.degrees()[u] * (g.degrees()[u] - 1))
+        if g.degrees()[u] > 1:  # type: ignore[index]
+            return 2.0 * k_u / (g.degrees()[u] * (g.degrees()[u] - 1))  # type: ignore[index]
         else:
             return 0.0
 

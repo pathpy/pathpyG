@@ -2,28 +2,28 @@
 
 # pylint: disable=missing-function-docstring
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 import torch
 from torch_geometric.data import Data
 
 from pathpyG import Graph, TemporalGraph
 from pathpyG.io.pandas import (
+    _integer_re,
     _iterable_re,
     _number_re,
-    _integer_re,
-    _parse_timestamp,
     _parse_df_column,
-    df_to_graph,
+    _parse_timestamp,
     add_edge_attributes,
     add_node_attributes,
+    df_to_graph,
     df_to_temporal_graph,
     graph_to_df,
-    temporal_graph_to_df,
     read_csv_graph,
-    read_csv_temporal_graph,
     read_csv_path_data,
+    read_csv_temporal_graph,
+    temporal_graph_to_df,
     write_csv,
 )
 

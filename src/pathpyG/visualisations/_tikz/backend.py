@@ -327,7 +327,7 @@ class TikzBackend(PlotBackend):
         )
 
         # get template files
-        with open(os.path.join(template_dir, f"static.tex")) as template:
+        with open(os.path.join(template_dir, "static.tex")) as template:
             tex_template = template.read()
 
         # generate data

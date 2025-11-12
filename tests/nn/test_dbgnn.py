@@ -3,9 +3,8 @@ from __future__ import annotations
 import torch
 from torch import equal, tensor
 
-from pathpyG import config
-from pathpyG.nn.dbgnn import DBGNN
 from pathpyG.core.multi_order_model import MultiOrderModel
+from pathpyG.nn.dbgnn import DBGNN
 from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 

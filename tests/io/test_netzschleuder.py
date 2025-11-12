@@ -1,7 +1,6 @@
 """This module tests high-level functions of the netzschleuder module."""
 
 import pytest
-
 import torch
 
 from pathpyG import Graph, TemporalGraph
@@ -10,7 +9,6 @@ from pathpyG.io import list_netzschleuder_records, read_netzschleuder_graph, rea
 
 def test_list_netzschleuder_records():
     """Test the list_netzschleuder_records() function."""
-
     # Test the function with a valid URL.
     records = list_netzschleuder_records()
     print(records)
@@ -23,7 +21,7 @@ def test_list_netzschleuder_records():
 
 
 def test_node_attrs():
-    """Test the extraction of node attributes"""
+    """Test the extraction of node attributes."""
     g = read_netzschleuder_graph("karate", "77")
     assert "node__pos" in g.node_attrs()
     assert "node_name" in g.node_attrs()
@@ -31,7 +29,7 @@ def test_node_attrs():
 
 
 def test_edge_attrs():
-    """Test the extraction of edge attributes"""
+    """Test the extraction of edge attributes."""
     # Original edge list:
     # source  target  weight
     # 0       1       1
@@ -68,7 +66,7 @@ def test_edge_attrs():
 
 
 def test_graph_attrs():
-    """Test the extraction of graph attributes"""
+    """Test the extraction of graph attributes."""
     g = read_netzschleuder_graph("karate", "77")
     assert "analyses_diameter" in g.data
     assert g.data.analyses_diameter == 5
@@ -76,7 +74,6 @@ def test_graph_attrs():
 
 def test_read_netzschleuder_record():
     """Test the read_netzschleuder_record() function."""
-
     # Test the function with a valid URL.
     record_name = list_netzschleuder_records()[0]
     record = read_netzschleuder_record(record_name)
@@ -91,7 +88,6 @@ def test_read_netzschleuder_record():
 
 def test_read_netzschleuder_graph():
     """Test the read_netzschleuder_graph() function for timestamped data."""
-
     g = read_netzschleuder_graph(name="email_company")
     assert isinstance(g, Graph)
     assert g.n == 167
@@ -100,7 +96,6 @@ def test_read_netzschleuder_graph():
 
 def test_read_netzschleuder_graph_temporal():
     """Test the read_netzschleuder_graph() function for timestamped data."""
-
     g = read_netzschleuder_graph(name="email_company", time_attr="time", multiedges=True)
     assert isinstance(g, TemporalGraph)
     assert g.n == 167

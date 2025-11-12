@@ -126,7 +126,7 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
 
     # create layout class
     layout_cls = Layout(
-        nodes=network.nodes, edge_index=network.data.edge_index, layout_type=layout, weight=weight, **kwargs
+        nodes=network.nodes, edge_index=network.data.edge_index, layout_type=layout, weight=weight, **kwargs  # type: ignore[arg-type]
     )
     # return the layout
     return layout_cls.generate_layout()

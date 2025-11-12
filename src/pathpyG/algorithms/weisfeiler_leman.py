@@ -6,7 +6,7 @@ from pathpyG.core.graph import Graph
 
 
 def WeisfeilerLeman_test(
-    g1: Graph, g2: Graph, features_g1: dict = None, features_g2: dict = None
+    g1: Graph, g2: Graph, features_g1: dict | None = None, features_g2: dict | None = None
 ) -> Tuple[bool, List[str], List[str]]:
     """Run Weisfeiler-Leman isomorphism test on two graphs.
 

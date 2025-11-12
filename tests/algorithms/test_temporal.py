@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from torch_geometric import EdgeIndex
 
+from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
 from pathpyG.core.graph import Graph
-from pathpyG.algorithms.temporal import temporal_shortest_paths, lift_order_temporal
 
 
 def test_lift_order_temporal(simple_temporal_graph):

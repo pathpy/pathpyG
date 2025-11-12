@@ -26,7 +26,6 @@ jobs:
         run: pip install ruff
 
       - name: Run linting
-        continue-on-error: true
         run: ruff check .
 
   mypy:
@@ -42,6 +41,5 @@ jobs:
           full_install: false
 
       - name: Check type hints
-        continue-on-error: true
         run: |
           mypy src/pathpyG

@@ -1,14 +1,13 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 
+import numpy as np
 import torch
+from scipy.stats import chi2
 from torch_geometric import EdgeIndex
 
-import numpy as np
-from scipy.stats import chi2
-
 from pathpyG.core.index_map import IndexMap
-from pathpyG.core.path_data import PathData
 from pathpyG.core.multi_order_model import MultiOrderModel
+from pathpyG.core.path_data import PathData
 
 
 def test_multi_order_model_init():

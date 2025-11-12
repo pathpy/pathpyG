@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as _np
 
-from pathpyG.algorithms.shortest_paths import shortest_paths_dijkstra, diameter, avg_path_length
+from pathpyG.algorithms.shortest_paths import avg_path_length, diameter, shortest_paths_dijkstra
 
 
 def test_shortest_paths_dijkstra(simple_graph_sp):

@@ -2,10 +2,10 @@ import pytest
 import torch
 
 from pathpyG.algorithms.lift_order import (
+    aggregate_edge_index,
     aggregate_node_attributes,
     lift_order_edge_index,
     lift_order_edge_index_weighted,
-    aggregate_edge_index,
 )
 
 
