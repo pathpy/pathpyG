@@ -64,7 +64,8 @@ class IndexMap:
         >>> print(index_map.to_id(1))
         ('A', 'C')
         >>> print(index_map.to_ids([[0], [2]]))
-        [[('A', 'B')], [('B', 'C')]]
+        [[['A' 'B']]
+         [['B' 'C']]]
     """
 
     def __init__(self, node_ids: Union[List[str], List[tuple], None] = None) -> None:
@@ -218,7 +219,7 @@ class IndexMap:
 
         self.node_ids = all_ids
         self.id_to_idx.update(
-            {tuple(v) if self.id_shape != (-1,) else v: i + cur_num_ids for i, v in enumerate(node_ids)}
+            {tuple(v.tolist()) if self.id_shape != (-1,) else v: i + cur_num_ids for i, v in enumerate(node_ids)}
         )
 
     def to_id(self, idx: int) -> Union[int, str, tuple]:
@@ -250,7 +251,7 @@ class IndexMap:
                 else:
                     return self.node_ids[idx]  # type: ignore
             else:
-                return tuple(self.node_ids[idx])  # type: ignore
+                return tuple(self.node_ids[idx].tolist())  # type: ignore
         else:
             return idx
 
@@ -276,7 +277,7 @@ class IndexMap:
 
             >>> index_map = IndexMap()
             >>> print(index_map.to_ids(torch.tensor([0, 2])))
-            tensor([0 2])
+            tensor([0, 2])
 
             Map edge_index tensor to array of edges:
 
@@ -367,7 +368,7 @@ class IndexMap:
                 return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()], device=device).reshape(shape)
             else:
                 return torch.tensor(
-                    [self.id_to_idx[tuple(node)] for node in nodes.reshape(self.id_shape)], device=device
+                    [self.id_to_idx[tuple(node.tolist())] for node in nodes.reshape(self.id_shape)], device=device
                 ).reshape(shape[: -len(self.id_shape) + 1])
         else:
             return torch.tensor(nodes, device=device)

@@ -129,3 +129,13 @@ def test_bulk_ids():
 
     assert mapping.to_ids(torch.tensor([[0, 2], [1, 3], [0, 4]])).tolist() == [["a", "c"], ["b", "d"], ["a", "e"]]
     assert (mapping.to_idxs([["a", "c"], ["b", "d"], ["a", "e"]]) == torch.tensor([[0, 2], [1, 3], [0, 4]])).all()
+
+
+def test_ho_ids():
+    mapping = IndexMap([("a", "b", "c"), ("d", "e", "f"), ("g", "h", "i")])
+
+    assert mapping.to_idx(("d", "e", "f")) == 1
+    assert mapping.to_id(2) == ("g", "h", "i")
+
+    assert (mapping.to_ids([0, 2]) == np.array([("a", "b", "c"), ("g", "h", "i")])).all()
+    assert (mapping.to_idxs([("a", "b", "c"), ("g", "h", "i")]) == torch.tensor([0, 2])).all()
