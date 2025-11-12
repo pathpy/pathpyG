@@ -28,17 +28,12 @@ def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **k
 
         >>> import pathpyG as pp
         >>> pp.io.list_netzschleuder_records()
-        ['karate', 'reality_mining', 'sp_hypertext', ...]
+        ['7th_graders', 'academia_edu', 'add_health', ...]
 
         Return a list of all data sets with a given tag
 
-        >>> pp.io.list_netzschleuder_records(tags="temporal")
-        ['reality_mining', 'sp_hypertext', ...]
-
-        Return a dictionary containing all data set names (keys) as well as all network attributes
-
-        >>> pp.io.list_netzschleuder_records(full=True)
-        { 'reality_mining': [...], 'karate': [...] }
+        >>> pp.io.list_netzschleuder_records(tags="Temporal")
+        ['ambassador', 'board_directors', 'caida_as', ...]
 
     Returns:
         Either a list of data set names or a dictionary containing all data set names and network attributes.
@@ -66,11 +61,9 @@ def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewe
         Retrieve metadata of karate club network
 
         >>> import pathpyG as pp
-        >>> metdata = pp.io.read_netzschleuder_record("karate")
+        >>> metadata = pp.io.read_netzschleuder_record("karate")
         >>> print(metadata)
-        {
-            'analyses': {'77': {'average_degree': 4.52... } }
-        }
+        {'analyses': {'77': {'average_degree': 4.52...}, ...}
 
     Returns:
         Dictionary containing key-value pairs of metadata
@@ -106,10 +99,12 @@ def read_netzschleuder_graph(
         Read network '77' from karate club data set
 
         >>> import pathpyG as pp
-        >>> n = pp.io.read_netzschleuder_network(name="karate", network="77")
-        >>> print(type(n))
+        >>> n = pp.io.read_netzschleuder_graph(name="karate", network="77")
         >>> pp.plot(n)
-        pp.Graph
+        <IPython.core.display.HTML object>
+        <pathpyG.visualisations._d3js.backend.D3jsBackend object at 0x...>
+
+        <iframe src="karate_club.html" width="550" height="450"></iframe>
 
     Returns:
         Graph or TemporalGraph object
