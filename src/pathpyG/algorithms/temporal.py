@@ -14,7 +14,7 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
 
-def lift_order_temporal(g: TemporalGraph, delta: int = 1):
+def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
     """Lift a temporal graph to a second-order temporal event graph.
 
     Args:
@@ -27,7 +27,7 @@ def lift_order_temporal(g: TemporalGraph, delta: int = 1):
     # first-order edge index
     edge_index, timestamps = g.data.edge_index, g.data.time
 
-    delta = torch.tensor(delta, device=edge_index.device)
+    delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
     indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
 
     unique_t = torch.unique(timestamps, sorted=True)

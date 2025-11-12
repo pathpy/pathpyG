@@ -1,22 +1,13 @@
 """Iterator interface for rolling time window analysis in temporal graphs."""
 
-from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, Union, List
-from collections import defaultdict
-
-import numpy as np
-import torch
-
-from pathpyG import Graph
-from pathpyG import TemporalGraph
-from pathpyG import config
-
 
 class RollingTimeWindow:
     """An iterable rolling time window that can be used to perform time slice analysis of temporal graphs."""
 
     def __init__(self, temporal_graph, window_size, step_size=1, return_window=False, weighted=True):
-        """Initialize a RollingTimeWindow instance that can be used to
+        """Initialize RollingTimeWindow.
+        
+        Initialize a RollingTimeWindow instance that can be used to
         iterate through a sequence of time-slice networks for a given
         TemporalNetwork instance.
 
@@ -53,9 +44,11 @@ class RollingTimeWindow:
         self.weighted = weighted
 
     def __iter__(self):
+        """Return the iterator object itself."""
         return self
 
     def __next__(self):
+        """Return the next time-slice network in the rolling time window sequence."""
         if self.current_time <= self.g.end_time:
             time_window = (self.current_time, self.current_time + self.window_size)
             s = self.g.to_static_graph(weighted=self.weighted, time_window=time_window)

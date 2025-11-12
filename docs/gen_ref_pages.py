@@ -3,8 +3,8 @@
 
 from pathlib import Path
 
-import yaml
 import mkdocs_gen_files
+import yaml
 
 nav = mkdocs_gen_files.Nav()
 # Load the ignored modules from the YAML file

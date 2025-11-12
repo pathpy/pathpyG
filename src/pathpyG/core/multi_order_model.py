@@ -1,37 +1,65 @@
-from __future__ import annotations
+"""MultiOrderModel module."""
+
+import logging
 from typing import (
-    TYPE_CHECKING,
     Optional,
 )
 
-from scipy.stats import chi2
 import torch
+from scipy.stats import chi2
 from torch_geometric.data import Data
-from torch_geometric.utils import degree, cumsum
+from torch_geometric.utils import cumsum, degree
 
-
-import logging
-
-from pathpyG.core.graph import Graph
-from pathpyG.core.path_data import PathData
-from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.core.index_map import IndexMap
-from pathpyG.utils.dbgnn import generate_bipartite_edge_index
-from pathpyG.algorithms.temporal import lift_order_temporal
 from pathpyG.algorithms.lift_order import (
+    aggregate_edge_index,
     aggregate_node_attributes,
     lift_order_edge_index,
     lift_order_edge_index_weighted,
-    aggregate_edge_index,
 )
+from pathpyG.algorithms.temporal import lift_order_temporal
+from pathpyG.core.graph import Graph
+from pathpyG.core.index_map import IndexMap
+from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 logger = logging.getLogger("root")
 
 
 class MultiOrderModel:
-    """MultiOrderModel based on torch_geometric.Data."""
+    """MultiOrderModel based on [torch_geometric.data.Data][].
+
+    This class stores multiple higher-order De Bruijn graphs as layers in a dictionary.
+    Each layer corresponds to a De Bruijn graph of order k, where k is the key in the dictionary.
+    Each graph layer is represented as a [pathpyG.Graph][] object.
+    This class provides methods to search for the optimal order of the model based on likelihood ratio tests,
+    as well as methods to compute the log-likelihood of observed paths given the model.
+
+    Attributes:
+        layers (dict[int, Graph]): A dictionary mapping the order k to the corresponding
+            higher-order De Bruijn graph of order k.
+
+    Examples:
+        Example where the optimal order is 1:
+        >>> import pathpyG as pp
+        >>> paths = PathData(IndexMap(list("abcde")))
+        >>> paths.append_walk(("a", "c", "d"), weight=3)
+        >>> paths.append_walk(("b", "c", "e"), weight=3)
+        >>> m = MultiOrderModel.from_path_data(paths, max_order=2)
+        >>> print(m.estimate_order(paths, max_order=2))
+        1
+
+        Example where the optimal order is 2:
+        >>> paths = PathData(IndexMap(list("abcde")))
+        >>> paths.append_walk(("a", "c", "d"), weight=4)
+        >>> paths.append_walk(("b", "c", "e"), weight=4)
+        >>> m = MultiOrderModel.from_path_data(paths, max_order=2)
+        >>> print(m.estimate_order(paths, max_order=2))
+        2
+    """
 
     def __init__(self) -> None:
+        """Initialize an empty MultiOrderModel."""
         self.layers: dict[int, Graph] = {}
 
     def __str__(self) -> str:
@@ -40,7 +68,7 @@ class MultiOrderModel:
         s = f"MultiOrderModel with max. order {max_order}"
         return s
 
-    def to(self, device: torch.device) -> MultiOrderModel:
+    def to(self, device: torch.device) -> "MultiOrderModel":
         """Convert the graph layers to the given device.
 
         Args:
@@ -62,6 +90,7 @@ class MultiOrderModel:
         save: bool = True,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, Graph | None]:
         """Lift order by one and save the result in the layers dictionary of the object.
+
         This is a helper function that should not be called directly.
         Only use for edge_indices after the special cases have been handled e.g.
         in the from_temporal_graph (filtering non-time-respecting paths of order 2).
@@ -69,6 +98,7 @@ class MultiOrderModel:
         Args:
             edge_index: The edge index of the (k-1)-th order graph.
             node_sequence: The node sequences of the (k-1)-th order graph.
+            mapping: The [IndexMap][pathpyG.IndexMap] mapping higher-order nodes to first-order nodes.
             edge_weight: The edge weights of the (k-1)-th order graph.
             k: The order of the graph that should be computed.
             aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
@@ -99,7 +129,7 @@ class MultiOrderModel:
         weight: str = "edge_weight",
         cached: bool = True,
         event_graph: Optional[torch.Tensor] = None,
-    ) -> MultiOrderModel:
+    ) -> "MultiOrderModel":
         """Creates multiple higher-order De Bruijn graph models for paths in a temporal graph.
 
         Args:
@@ -158,23 +188,22 @@ class MultiOrderModel:
                     save=cached or k == max_order,
                 )
                 if cached or k == max_order:
-                    m.layers[k] = gk
+                    m.layers[k] = gk  # type: ignore[assignment]
         return m
 
     @staticmethod
     def from_path_data(
         path_data: PathData, max_order: int = 1, mode: str = "propagation", cached: bool = True
-    ) -> MultiOrderModel:
-        """
-        Creates multiple higher-order De Bruijn graphs modelling paths in PathData.
+    ) -> "MultiOrderModel":
+        """Creates multiple higher-order De Bruijn graphs modelling paths in [PathData][pathpyG.PathData].
 
         Args:
-            path_data: `PathData` object containing paths as list of PyG Data objects
+            path_data: [PathData][pathpyG.PathData] object containing paths as list of [Data][torch_geometric.data.Data] objects
                 with sorted edge indices, node sequences and num_nodes.
-            max_order: The maximum order of the MultiOrderModel that should be computed
+            max_order: The maximum order of the [MultiOrderModel][pathpyG.MultiOrderModel] that should be computed
             mode: The process that we assume. Can be "diffusion" or "propagation".
             cached: Whether to save the aggregated higher-order graphs smaller than max order
-                in the MultiOrderModel.
+                in the [MultiOrderModel][pathpyG.MultiOrderModel].
 
         Returns:
             MultiOrderModel: The MultiOrderModel.
@@ -207,12 +236,13 @@ class MultiOrderModel:
                 save=cached or k == max_order,
             )
             if cached or k == max_order:
-                m.layers[k] = gk
+                m.layers[k] = gk  # type: ignore[assignment]
 
         return m
 
     def get_mon_dof(self, max_order: Optional[int] = None, assumption: str = "paths") -> int:
-        """
+        """Calculate the degrees of freedom of the multi-order model.
+
         The degrees of freedom for the kth layer of a multi-order model. This depends on the number of different paths of exactly length `k` in the graph.
         Therefore, we can obtain these values by summing the entries of the `k`-th power of the binary adjacency matrix of the graph.
         Finally, we must consider that, due the conservation of probablility, all non-zero rows of the transition matrix of the higher-order network must sum to one.
@@ -244,7 +274,6 @@ class MultiOrderModel:
             logger.error("max_order cannot be larger than maximum order of multi-order network")
             raise ValueError("max_order cannot be larger than maximum order of multi-order network")
 
-
         dof = self.layers[1].data.num_nodes - 1  # Degrees of freedom for zeroth order
 
         if assumption == "paths":
@@ -275,18 +304,15 @@ class MultiOrderModel:
 
         elif assumption == "ngrams":
             for order in range(1, max_order + 1):
-                dof += (self.layers[1].data.num_nodes**order) * (self.layers[1].data.num_nodes - 1)
+                dof += (self.layers[1].data.num_nodes ** order) * (self.layers[1].data.num_nodes - 1)
         else:
             logger.error("Unknown assumption %s. Only 'path' and 'ngram' are accepted.", assumption)
-            raise ValueError(
-                f"Unknown assumption {assumption}. Only 'path' and 'ngram' are accepted."
-            )
+            raise ValueError(f"Unknown assumption {assumption}. Only 'path' and 'ngram' are accepted.")
 
         return int(dof)
 
     def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
-        """
-        Compute the zeroth order log likelihood.
+        """Compute the zeroth order log likelihood.
 
         Args:
             dag_graph (Data): Input DAG graph data.
@@ -300,12 +326,12 @@ class MultiOrderModel:
 
         # Get ixs starting nodes
         # Q: Is dag_graph.path_index[:-1] enough to get the start_ixs?
-        mask = torch.ones(dag_graph.num_nodes, dtype=bool)
+        mask = torch.ones(dag_graph.num_nodes, dtype=bool)  # type: ignore[call-overload]
         mask[dag_graph.edge_index[1]] = False
         start_ixs = dag_graph.node_sequence.squeeze()[mask]
 
         # Compute node emission probabilities
-        # TODOL modify once we have zeroth order in mon
+        # TODO: modify once we have zeroth order in mon
         _, counts = torch.unique(dag_graph.node_sequence, return_counts=True)
         # WARNING: Only works if all nodes in the first-order graph are also in `node_sequence`
         # Otherwise the missing nodes will not be included in `counts` which can lead to elements at the wrong index.
@@ -313,8 +339,7 @@ class MultiOrderModel:
         return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
 
     def get_intermediate_order_log_likelihood(self, dag_graph: Data, order: int) -> float:
-        """
-        Compute the intermediate order log likelihood.
+        """Compute the intermediate order log likelihood.
 
         Args:
             m (MultiOrderModel): Multi-order model.
@@ -344,8 +369,7 @@ class MultiOrderModel:
         return llh_by_subpath.sum().item()
 
     def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
-        """
-        Compute the likelihood of the walks given a multi-order model.
+        """Compute the likelihood of the walks given a multi-order model.
 
         Args:
             m (MultiOrderModel): The multi-order model.
@@ -356,7 +380,7 @@ class MultiOrderModel:
         Returns:
             float: The log likelihood of the walks given the multi-order model.
         """
-        llh = 0
+        llh = 0.0
 
         # Adding likelihood of zeroth order
         llh += self.get_zeroth_order_log_likelihood(dag_graph)
@@ -392,8 +416,7 @@ class MultiOrderModel:
         assumption: str = "paths",
         significance_threshold: float = 0.01,
     ) -> tuple:
-        """
-        Perform a likelihood ratio test to compare two models of different order.
+        """Perform a likelihood ratio test to compare two models of different order.
 
         Args:
             dag_graph (Data): The input DAG graph data.
@@ -415,7 +438,9 @@ class MultiOrderModel:
             raise ValueError("order of null hypothesis must be smaller than order of alternative hypothesis")
         if max_order > max(self.layers):
             logger.error("order of hypotheses must be smaller than max. order of MultiOrderModel")
-            raise ValueError(f"order of hypotheses ({max_order_null} and {max_order}) must be smaller than max. order of MultiOrderModel {max(self.layers)}")
+            raise ValueError(
+                f"order of hypotheses ({max_order_null} and {max_order}) must be smaller than max. order of MultiOrderModel {max(self.layers)}"
+            )
         # let L0 be the likelihood for the null model and L1 be the likelihood for the alternative model
 
         # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
@@ -433,14 +458,17 @@ class MultiOrderModel:
         p = 1 - chi2.cdf(x, dof_diff)
         return (p < significance_threshold), p
 
-    def estimate_order(self, dag_data: PathData, max_order: Optional[int] = None, significance_threshold: float = 0.01) -> int:
-        """
+    def estimate_order(
+        self, dag_data: PathData, max_order: Optional[int] = None, significance_threshold: float = 0.01
+    ) -> int:
+        """Estimate the optimal maximum order of the multi-order network model.
+
         Selects the optimal maximum order of a multi-order network model for the
         observed paths, based on a likelihood ratio test with p-value threshold of p
         By default, all orders up to the maximum order of the multi-order model will be tested.
 
         Args:
-            dag_data (DAGData): The path statistics data for which to estimate the optimal order.
+            dag_data: The path statistics data for which to estimate the optimal order.
             max_order (int, optional): The maximum order to consider during the estimation process.
                 If not provided, the maximum order of the multi-order model is used.
             significance_threshold (float, optional): The p-value threshold for the likelihood ratio test.
@@ -451,7 +479,7 @@ class MultiOrderModel:
 
         Raises:
             ValueError: If the provided max_order is larger than the maximum order of the multi-order model
-                or if the input DAGData does not have the same set of nodes as the multi-order network
+                or if the input does not have the same set of nodes as the multi-order network
         """
         if max_order is None:
             max_order = max(self.layers)
@@ -461,9 +489,11 @@ class MultiOrderModel:
         if max_order <= 1:
             logger.error("max_order must be larger than one")
             raise ValueError("max_order must be larger than one")
-        if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(dag_data.mapping.node_ids):
+        if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(  # type: ignore[arg-type]
+            dag_data.mapping.node_ids  # type: ignore[arg-type]
+        ):
             logger.error("Input paths do not have same set of nodes as multi-order network")
-            raise ValueError("Input paths do not have same set of nodes as multi-order network")        
+            raise ValueError("Input paths do not have same set of nodes as multi-order network")
 
         max_accepted_order = 1
         dag_graph = dag_data.data
@@ -479,9 +509,7 @@ class MultiOrderModel:
         return max_accepted_order
 
     def to_dbgnn_data(self, max_order: int = 2, mapping: str = "last") -> Data:
-        """
-        Convert the MultiOrderModel to a De Bruijn graph for the given maximum order
-        that can be used in `pathpyG.nn.dbgnn.DBGNN`.
+        """Convert the MultiOrderModel to a De Bruijn graph for the given maximum order that can be used in the [DBGNN][pathpyG.nn.dbgnn.DBGNN]-model.
 
         Args:
             max_order: The maximum order of the De Bruijn graph to be computed.

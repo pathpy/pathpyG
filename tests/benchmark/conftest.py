@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import pytest
-import torch
 
-from pathpyG import Graph
-from pathpyG import TemporalGraph
 
 # from pathpyG import PathData
 

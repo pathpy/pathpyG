@@ -1,19 +1,19 @@
-from __future__ import annotations
-from typing import Any, Optional, Union
+""""Functions to read and write graphs from and to pandas DataFrames."""
 
 import ast
-import re
 import logging
+import re
+from typing import Any, Optional, Union
 
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 from torch_geometric.data import Data
 
 from pathpyG.core.graph import Graph
+from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.core.index_map import IndexMap
 from pathpyG.utils.convert import to_numpy
 
 logger = logging.getLogger("root")
@@ -108,7 +108,7 @@ def _parse_df_column(
 def df_to_graph(
     df: pd.DataFrame, is_undirected: bool = False, multiedges: bool = False, num_nodes: int | None = None
 ) -> Graph:
-    """Reads a network from a pandas data frame.
+    """Reads a network from a [pandas.DataFrame][].
 
     The data frame is expected to have a minimum of two columns
     that give the source and target nodes of edges. Additional columns in the
@@ -127,15 +127,10 @@ def df_to_graph(
 
     Example:
         ```py
-
         import pathpyG as pp
         import pandas as pd
 
-        df = pd.DataFrame({
-            'v': ['a', 'b', 'c'],
-            'w': ['b', 'c', 'a'],
-            'edge_weight': [1.0, 5.0, 2.0]
-            })
+        df = pd.DataFrame({"v": ["a", "b", "c"], "w": ["b", "c", "a"], "edge_weight": [1.0, 5.0, 2.0]})
         g = pp.io.df_to_graph(df)
         print(n)
         ```
@@ -185,10 +180,9 @@ def df_to_graph(
 
 
 def add_node_attributes(df: pd.DataFrame, g: Graph):
-    """Add node attributes from `DataFrame` to existing `Graph`.
+    """Add node attributes from [pandas.DataFrame][] to existing [graph][pathpyG.Graph].
 
-    Add node attributes from `pandas.DataFrame` to existing graph, where node
-    IDs or indices are given in column `v` and node attributes x are given in columns `node_x`.
+    Node IDs or indices are given in column `v` and node attributes x are given in columns `node_x`.
 
     Args:
         df: A DataFrame with rows containing nodes and optional node attributes.
@@ -240,10 +234,10 @@ def add_node_attributes(df: pd.DataFrame, g: Graph):
 
 
 def add_edge_attributes(df: pd.DataFrame, g: Graph, time_attr: str | None = None) -> None:
-    """Add (temporal) edge attributes from pandas data frame to existing `Graph`.
+    """Add (temporal) edge attributes from [pandas.DataFrame][] to existing [graph][pathpyG.Graph].
 
-    Add edge attributes from `pandas.DataFrame` to existing `Graph`, where source/target node
-    IDs are given in columns `v` and `w`  and edge attributes x are given in columns `edge_x`.
+    Edge attributes are mapped based on source/target node IDs in columns `v` and `w`,
+    and edge attributes x are given in columns `edge_x`.
     If `time_attr` is not None, the dataframe is expected to contain temporal data with a timestamp
     in a column named as specified in `time_attr`.
 
@@ -346,21 +340,14 @@ def df_to_temporal_graph(
 
     Example:
         ```py
-
         import pathpyG as pp
         import pandas as pd
-        df = pd.DataFrame({
-            'v': ['a', 'b', 'c'],
-            'w': ['b', 'c', 'a'],
-            't': [1, 2, 3]})
+
+        df = pd.DataFrame({"v": ["a", "b", "c"], "w": ["b", "c", "a"], "t": [1, 2, 3]})
         g = pp.io.df_to_temporal_graph(df)
         print(g)
 
-        df = pd.DataFrame([
-            ['a', 'b', 'c'],
-            ['b', 'c', 'a'],
-            [1, 2, 3]
-            ])
+        df = pd.DataFrame([["a", "b", "c"], ["b", "c", "a"], [1, 2, 3]])
         g = pp.io.df_to_temporal_graph(df)
         print(g)
         ```
@@ -409,13 +396,12 @@ def df_to_temporal_graph(
 
 
 def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFrame:
-    """Return a DataFrame for a given graph.
+    """Return a [pandas.DataFrame][] for a given [graph][pathpyG.Graph].
 
-    Returns a `pandas.DataFrame` that contains all edges including edge
-    attributes. Node and network-level attributes are not included. To
-    facilitate the import into network analysis tools that only support integer
-    node identifiers, node uids can be replaced by a consecutive, zero-based
-    index.
+    Contains all edges including edge attributes. Node and network-level 
+    attributes are not included. To facilitate the import into network analysis 
+    tools that only support integer node identifiers, node uids can be replaced 
+    by a consecutive, zero-based index.
 
     Args:
         graph: The graph to export as pandas DataFrame
@@ -425,7 +411,7 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
         ```py
         import pathpyG as pp
 
-        n = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('c', 'a')])
+        n = pp.Graph.from_edge_list([("a", "b"), ("b", "c"), ("c", "a")])
         df = pp.io.to_dataframe(n)
         print(df)
         ```
@@ -442,10 +428,13 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
 
 
 def temporal_graph_to_df(graph: TemporalGraph, node_indices: Optional[bool] = False) -> pd.DataFrame:
-    """Return a DataFrame for a given temporal graph.
+    """Return a [pandas.DataFrame][] for a given [temporal graph][pathpyG.TemporalGraph].
 
-    Returns a `pandas.DataFrame` that contains all edges including edge
-    attributes. Node and network-level attributes are not included. To
+    Contains all edges including edge attributes. Node and network-level 
+    attributes are not included. To facilitate the import into network analysis 
+    tools that only support integer node identifiers, node uids can be replaced 
+    by a consecutive, zero-based index.
+
     facilitate the import into network analysis tools that only support integer
     node identifiers, node uids can be replaced by a consecutive, zero-based
     index.
@@ -458,7 +447,7 @@ def temporal_graph_to_df(graph: TemporalGraph, node_indices: Optional[bool] = Fa
         ```py
         import pathpyG as pp
 
-        n = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)])
+        n = pp.TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 2), ("c", "a", 3)])
         df = pp.io.to_df(n)
         print(df)
         ```
@@ -506,8 +495,8 @@ def read_csv_graph(
         ```py
         import pathpyG as pp
 
-        g = pp.io.read_csv('example_graph.csv')
-        g = pp.io.read_csv('example_temporal_graph.csv')
+        g = pp.io.read_csv("example_graph.csv")
+        g = pp.io.read_csv("example_temporal_graph.csv")
         ```
     """
     if header:
@@ -545,7 +534,7 @@ def read_csv_temporal_graph(
         ```py
         import pathpyG as pp
 
-        g = pp.io.read_csv('example_temporal_graph.csv')
+        g = pp.io.read_csv("example_temporal_graph.csv")
         ```
     """
     if header:
@@ -555,8 +544,9 @@ def read_csv_temporal_graph(
     return df_to_temporal_graph(df, timestamp_format=timestamp_format, time_rescale=time_rescale, **kwargs)
 
 
-def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False, 
-              path_or_buf: Any = None, **pdargs: Any) -> None:
+def write_csv(
+    graph: Union[Graph, TemporalGraph], node_indices: bool = False, path_or_buf: Any = None, **pdargs: Any
+) -> None:
     """Store all edges of a graph or temporal graph in a csv file.
 
     This method stores a `Graph` or `TemporalGraph` as a `.csv` file. The csv file
@@ -568,8 +558,8 @@ def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False,
     Args:
         graph: The graph to export as pandas DataFrame
         node_indices: whether nodes should be exported as integer indices
-        path_or_buf: String, path, or file-like object (see documentation of `pandas.DaatFrame.to_csv`)
-        **pdargs: Additional keyword arguments passed to `pandas.DataFrame.to_csv`.
+        path_or_buf: String, path, or file-like object (see documentation of [pandas.DataFrame.to_csv][])
+        **pdargs: Additional keyword arguments passed to [pandas.DataFrame.to_csv][].
     """
     if isinstance(graph, TemporalGraph):
         frame = temporal_graph_to_df(graph=graph, node_indices=node_indices)
@@ -578,17 +568,17 @@ def write_csv(graph: Union[Graph, TemporalGraph], node_indices: bool = False,
     frame.to_csv(index=False, path_or_buf=path_or_buf, **pdargs)
 
 
-def read_csv_path_data(path_or_buf: Any = None, weight: bool = True, sep=',',
-                       device: Optional[torch.device] = None, **pdargs: Any) -> PathData:
-    """Read multiple paths stored in an n-gram csv file
-
+def read_csv_path_data(
+    path_or_buf: Any = None, weight: bool = True, sep=",", device: Optional[torch.device] = None
+) -> PathData:
+    """Read multiple paths stored in an n-gram csv file.
 
     Args:
-        path_or_buf: File, path or file-like object that the `pandas.read_table` function will read from        
+        path_or_buf: File, path or file-like object that the [pandas.read_table][] function will read from
         weight: If True the last column of each row in the CSV file will be interpreted as a count or weight
         sep: character that separates the nodes (and weight) in each line of the input file
+        device: The device on which the PathData object should be created
     """
-
     # Read raw data
     df = pd.read_table(filepath_or_buffer=path_or_buf, header=None)
     # split and expand non-uniform rows

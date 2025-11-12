@@ -1,10 +1,11 @@
 """IndexMap class for mapping node indices to IDs."""
 
 from __future__ import annotations
-from typing import List, Optional, Union, Any
 
-import torch
+from typing import List, Optional, Union
+
 import numpy as np
+import torch
 
 from pathpyG.utils.convert import to_numpy
 
@@ -14,12 +15,12 @@ class IndexMap:
 
     This class keeps a mapping from any node ID, e.g. names (strings) or higher-order IDs (tuples),
     to an index of the corresponding node in the initial list of IDs, enabling fast lookup of node IDs
-    from a `torch_geometric.data.Data` object.
+    from a [`Data`][torch_geometric.data.Data] object.
 
     Attributes:
-        node_ids: `numpy.ndarray` storing the node IDs, enabling fast lookup of multiple node IDs from indices.
-        id_to_idx: `dict` mapping each node ID to its index.
-        id_shape: `tuple` storing the shape of the ID. The default shape is (-1,) for first-order IDs.
+        node_ids: [`numpy.ndarray`][numpy.ndarray] storing the node IDs, enabling fast lookup of multiple node IDs from indices.
+        id_to_idx: [`dict`][dict] mapping each node ID to its index.
+        id_shape: [`tuple`][tuple] storing the shape of the ID. The default shape is (-1,) for first-order IDs.
             For higher-order IDs, the shape will be `(-1, k)` with order `k`.
 
     Examples:
@@ -63,10 +64,11 @@ class IndexMap:
         >>> print(index_map.to_id(1))
         ('A', 'C')
         >>> print(index_map.to_ids([[0], [2]]))
-        [[('A', 'B')], [('B', 'C')]]
+        [[['A' 'B']]
+         [['B' 'C']]]
     """
 
-    def __init__(self, node_ids: Union[List[str], None] = None) -> None:
+    def __init__(self, node_ids: Union[List[str], List[tuple], None] = None) -> None:
         """Initialize mapping from indices to node IDs.
 
         The mapping will keep the ordering of the IDs as provided by `node_ids`. If the IDs are not unique,
@@ -148,7 +150,7 @@ class IndexMap:
         else:
             return len(self.node_ids)
 
-    def add_id(self, node_id: Any) -> None:
+    def add_id(self, node_id: str | tuple | list) -> None:
         """Assigns additional ID to the next consecutive index.
 
         Args:
@@ -171,13 +173,12 @@ class IndexMap:
         if node_id not in self.id_to_idx:
             idx = self.num_ids()
             if isinstance(node_id, (list, tuple)):
-                node_id = to_numpy(node_id)
-                self.id_shape = (-1, *node_id.shape)
-            self.node_ids = (
-                np.concatenate((self.node_ids, to_numpy([node_id])))
-                if self.node_ids is not None
-                else to_numpy([node_id])
-            )
+                node_id_arr = to_numpy(node_id)
+                self.id_shape = (-1, *node_id_arr.shape)
+                node_id_arr = node_id_arr.reshape(1, *node_id_arr.shape)
+            else:
+                node_id_arr = to_numpy([node_id])
+            self.node_ids = np.concatenate((self.node_ids, node_id_arr)) if self.node_ids is not None else node_id_arr
             self.id_to_idx[node_id] = idx
         else:
             raise ValueError("ID already present in the mapping.")
@@ -218,7 +219,7 @@ class IndexMap:
 
         self.node_ids = all_ids
         self.id_to_idx.update(
-            {tuple(v) if self.id_shape != (-1,) else v: i + cur_num_ids for i, v in enumerate(node_ids)}
+            {tuple(v.tolist()) if self.id_shape != (-1,) else v: i + cur_num_ids for i, v in enumerate(node_ids)}
         )
 
     def to_id(self, idx: int) -> Union[int, str, tuple]:
@@ -245,15 +246,19 @@ class IndexMap:
         """
         if self.has_ids:
             if self.id_shape == (-1,):
-                return self.node_ids[idx]  # type: ignore
+                if isinstance(self.node_ids, np.ndarray) and self.node_ids.dtype.type is np.str_:
+                    return str(self.node_ids[idx])
+                else:
+                    return self.node_ids[idx]  # type: ignore
             else:
-                return tuple(self.node_ids[idx])  # type: ignore
+                return tuple(self.node_ids[idx].tolist())  # type: ignore
         else:
             return idx
 
     def to_ids(self, idxs: list | tuple | np.ndarray) -> np.ndarray:
-        """Map list of indices to IDs if mapping is defined, return indices otherwise. The shape of the given index
-        list will be preserved in the output.
+        """Map list of indices to IDs if mapping is defined, return indices otherwise.
+
+        The shape of the given index list will be preserved in the output.
 
         Args:
             idxs: Indices to map.
@@ -272,7 +277,7 @@ class IndexMap:
 
             >>> index_map = IndexMap()
             >>> print(index_map.to_ids(torch.tensor([0, 2])))
-            tensor([0 2])
+            tensor([0, 2])
 
             Map edge_index tensor to array of edges:
 
@@ -284,12 +289,12 @@ class IndexMap:
              ['C' 'D']
              ['D' 'A']]
         """
-        if self.has_ids:
+        if self.node_ids is not None:
             if not isinstance(idxs, np.ndarray):
                 idxs = to_numpy(idxs)
-            return self.node_ids[idxs]  # type: ignore
+            return self.node_ids[idxs]
         else:
-            return idxs  # type: ignore
+            return idxs  # type: ignore[return-value]
 
     def to_idx(self, node: str | int | tuple[str] | tuple[int]) -> int | tuple[int]:
         """Map argument (ID or index) to index if mapping is defined, return argument otherwise.
@@ -316,17 +321,19 @@ class IndexMap:
         n: str | int | tuple[str] | tuple[int] = node
         if self.has_ids:
             if self.id_shape != (-1,):
-                n = tuple(n)
+                n = tuple(n)  # type: ignore[arg-type,assignment]
             return self.id_to_idx[n]
         else:
-            return n
+            return n  # type: ignore[return-value]
 
     def to_idxs(self, nodes: list | tuple | np.ndarray, device: Optional[torch.device] = None) -> torch.Tensor:
-        """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise. The shape
-        of the given argument list will be preserved in the output.
+        """Map list of arguments (IDs or indices) to indices if mapping is defined, return argument otherwise.
+
+        The shape of the given argument list will be preserved in the output.
 
         Args:
             nodes: IDs or indices to map.
+            device: Device on which to create the output tensor.
 
         Returns:
             Indices if mapping is defined, arguments otherwise.
@@ -360,9 +367,9 @@ class IndexMap:
             if self.id_shape == (-1,):
                 return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()], device=device).reshape(shape)
             else:
-                return torch.tensor([self.id_to_idx[tuple(node)] for node in nodes.reshape(self.id_shape)], device=device).reshape(
-                    shape[: -len(self.id_shape) + 1]
-                )
+                return torch.tensor(
+                    [self.id_to_idx[tuple(node.tolist())] for node in nodes.reshape(self.id_shape)], device=device
+                ).reshape(shape[: -len(self.id_shape) + 1])
         else:
             return torch.tensor(nodes, device=device)
 

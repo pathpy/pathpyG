@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from torch import equal, tensor
 
-from pathpyG import config
-
-from pathpyG.core.path_data import PathData
 from pathpyG.core.index_map import IndexMap
+from pathpyG.core.path_data import PathData
 
 
 def test_constructor():

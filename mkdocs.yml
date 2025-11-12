@@ -56,12 +56,22 @@ plugins:
               annotations_path: full
               show_bases: True
               show_signature: False
+            import:
+              - https://docs.python.org/3/objects.inv
+              - https://docs.scipy.org/doc/scipy/objects.inv
+              - https://numpy.org/doc/stable/objects.inv
+              - https://pytorch-geometric.readthedocs.io/en/latest/objects.inv
+              - https://pytorch.org/docs/stable/objects.inv
+              - https://pandas.pydata.org/docs/objects.inv
+              - https://networkx.org/documentation/stable/objects.inv
   - mkdocs-jupyter:
       ignore_h1_titles: True
-      ignore: ["tutorial/new_paths.ipynb", "tutorial/xx_test.ipynb"]
-      execute: False # TODO: Set to True once all notebooks are executable
+      ignore: ["gen_ref_pages.py", "reference/pathpyG/visualisations/plot/documentation_plots.ipynb", "tutorial/archive/_higher_order_scalability.ipynb", "tutorial/archive/_scalability_analysis.ipynb"]
+      execute: True
+      execute_ignore: ["tutorial/manim_tutorial.ipynb", "tutorial/dbgnn.ipynb"]  # Skip notebooks that take too long
       allow_errors: False
       include_source: True
+      include_requirejs: False
   - git-revision-date-localized
   - mike: # Versioning
       alias_type: redirect
@@ -76,16 +86,13 @@ extra_css:
   - overrides/assets/stylesheets/header.css  # Remove the sitename from the header, since the logo already contains it
   - overrides/assets/stylesheets/home.css
   - overrides/assets/stylesheets/code_select.css
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css
+  - overrides/assets/stylesheets/reference_admonition.css  # Custom reference admonition icon
+  - https://unpkg.com/katex@0/dist/katex.min.css
 
 extra_javascript:
-  - overrides/assets/scripts/home.js
-  - overrides/assets/scripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
   - overrides/assets/scripts/katex.js
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js  
-  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js
+  - https://unpkg.com/katex@0/dist/katex.min.js
+  - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
 
 # Theme
 theme:
@@ -122,6 +129,7 @@ theme:
     - content.code.annotate
     # Tooltips
     - content.tooltips
+    - content.footnote.tooltips
     # Scroll toc sidebar with the page
     - toc.follow
 

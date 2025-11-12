@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from pathpyG.core.path_data import PathData
+
 from pathpyG.core.index_map import IndexMap
+from pathpyG.core.path_data import PathData
 
 
 @pytest.mark.gpu
