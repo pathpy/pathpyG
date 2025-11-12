@@ -56,6 +56,14 @@ plugins:
               annotations_path: full
               show_bases: True
               show_signature: False
+            import:
+              - https://docs.python.org/3/objects.inv
+              - https://docs.scipy.org/doc/scipy/objects.inv
+              - https://numpy.org/doc/stable/objects.inv
+              - https://pytorch-geometric.readthedocs.io/en/latest/objects.inv
+              - https://pytorch.org/docs/stable/objects.inv
+              - https://pandas.pydata.org/docs/objects.inv
+              - https://networkx.org/documentation/stable/objects.inv
   - mkdocs-jupyter:
       ignore_h1_titles: True
       ignore: ["gen_ref_pages.py", "reference/pathpyG/visualisations/plot/documentation_plots.ipynb", "tutorial/archive/_higher_order_scalability.ipynb", "tutorial/archive/_scalability_analysis.ipynb"]
