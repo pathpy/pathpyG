@@ -171,7 +171,8 @@ markers = [
     "benchmark: marks tests as benchmarking tests (deselect with '-m \"not benchmark\"')",
     "gpu: marks tests that require GPU support (deselect with '-m \"not gpu\"')"
 ]
-addopts = "--cov=src -m \"not benchmark and not gpu\""
+addopts = "--cov=src -m \"not benchmark and not gpu\" --doctest-modules"
+doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 
 [tool.coverage.run]
 branch = true

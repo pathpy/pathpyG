@@ -144,7 +144,7 @@ class Graph:
             You can also include a mapping of node IDs:
 
             >>> g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-            >>>                              mapping=pp.IndexMap(['a', 'b', 'c']))
+            ...                              mapping=pp.IndexMap(['a', 'b', 'c']))
             >>> print(g.mapping)
             a -> 0
             b -> 1
@@ -219,7 +219,8 @@ class Graph:
             >>> g = pp.Graph.from_edge_list([("a", "b"), ("b", "c"), ("c", "a")])
             >>> g_u = g.to_undirected()
             >>> print(g_u)
-            Undirected graph with 3 nodes and 6 (directed) edges
+            Undirected graph with 3 nodes and 3 edges
+            {'Edge Attributes': {}, 'Graph Attributes': {'num_nodes': "<class 'int'>"}, 'Node Attributes': {}}
         """
         # create undirected edge index by coalescing the directed edges and keep
         # track of the original edge index for the edge attributes
@@ -691,31 +692,44 @@ class Graph:
         Examples:
             Adding two graphs without node IDs:
 
-            >>> g1 = pp.Graph.from_edge_index(torch.Tensor([[0, 1, 1], [1, 2, 3]]))
-            >>> g1 = pp.Graph.from_edge_index(torch.Tensor([[0, 2, 3], [3, 2, 1]]))
+            >>> import pathpyG as pp
+            >>> g1 = pp.Graph.from_edge_index(torch.tensor([[0, 1, 1], [1, 2, 3]]))
+            >>> g2 = pp.Graph.from_edge_index(torch.tensor([[0, 2, 3], [3, 2, 1]]))
             >>> print(g1 + g2)
-            Graph with 3 nodes and 6 edges
+            Directed graph with 4 nodes and 6 edges
+            {   'Edge Attributes': {},
+                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([8, 1])", 'num_nodes': "<class 'int'>"},
+                'Node Attributes': {}}
 
             Adding two graphs with identical node IDs:
 
             >>> g1 = pp.Graph.from_edge_list([("a", "b"), ("b", "c")])
             >>> g2 = pp.Graph.from_edge_list([("a", "c"), ("c", "b")])
             >>> print(g1 + g2)
-            Graph with 3 nodes and 4 edges
+            Directed graph with 3 nodes and 4 edges
+            {   'Edge Attributes': {},
+                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
+                'Node Attributes': {}}
 
             Adding two graphs with non-overlapping node IDs:
 
             >>> g1 = pp.Graph.from_edge_list([("a", "b"), ("b", "c")])
             >>> g2 = pp.Graph.from_edge_list([("c", "d"), ("d", "e")])
             >>> print(g1 + g2)
-            Graph with 6 nodes and 4 edges
+            Directed graph with 5 nodes and 4 edges
+            {   'Edge Attributes': {},
+                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
+                'Node Attributes': {}}
 
             Adding two graphs with partly overlapping node IDs:
 
             >>> g1 = pp.Graph.from_edge_list([("a", "b"), ("b", "c")])
             >>> g2 = pp.Graph.from_edge_list([("b", "d"), ("d", "e")])
             >>> print(g1 + g2)
-            Graph with 5 nodes and 4 edges
+            Directed graph with 5 nodes and 4 edges
+            {   'Edge Attributes': {},
+                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
+                'Node Attributes': {}}
         """
         d1 = self.data.clone()
         m1 = self.mapping

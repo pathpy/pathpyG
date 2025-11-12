@@ -42,17 +42,17 @@ def max_edges(n: int, directed: bool = False, multi_edges: bool = False, self_lo
         Compute maximum number of edges in undirected network without self-loops and 100 nodes
 
         >>> import pathpyG as pp
-        >>> print(pp.algorithms.generative_models.max_edges(100)
+        >>> print(pp.algorithms.generative_models.max_edges(100))
         4950
 
         Directed networks without self-loops
 
-        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True)
+        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True))
         9900
 
         Directed networks with self-loops
 
-        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True, loops=True)
+        >>> print(pp.algorithms.generative_models.max_edges(100, directed=True, self_loops=True))
         10000
     """
     if multi_edges:
@@ -490,13 +490,16 @@ def molloy_reed(
         Network generation fails for non-graphic degree sequence
 
         >>> import pathpyG as pp
-        >>> random_network = pp.algorithms.generative_models.molloy_reed([1, 0])
-        raises AttributeError
+        >>> try:
+        ...     random_network = pp.algorithms.generative_models.molloy_reed([1, 0])
+        ... except ValueError:
+        ...     print("Caught expected ValueError for non-graphic degree sequence")
+        Caught expected ValueError for non-graphic degree sequence
     """
     # assume that we are given a graphical degree sequence
     if not is_graphic_erdos_gallai(degree_sequence):
         logger.error("given degree sequence is not graphic")
-        raise ValueError("gicen degree sequence is not graphic")
+        raise ValueError("given degree sequence is not graphic")
 
     # create empty network with n nodes
     n = len(degree_sequence)

@@ -46,7 +46,7 @@ class MultiOrderModel:
         >>> paths.append_walk(("a", "c", "d"), weight=3)
         >>> paths.append_walk(("b", "c", "e"), weight=3)
         >>> m = MultiOrderModel.from_path_data(paths, max_order=2)
-        >>> print(m.estimate_order(paths, max_order=2)
+        >>> print(m.estimate_order(paths, max_order=2))
         1
 
         Example where the optimal order is 2:
@@ -54,7 +54,7 @@ class MultiOrderModel:
         >>> paths.append_walk(("a", "c", "d"), weight=4)
         >>> paths.append_walk(("b", "c", "e"), weight=4)
         >>> m = MultiOrderModel.from_path_data(paths, max_order=2)
-        >>> print(m.estimate_order(paths, max_order=2)
+        >>> print(m.estimate_order(paths, max_order=2))
         2
     """
 

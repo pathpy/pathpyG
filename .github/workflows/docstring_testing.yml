@@ -1,0 +1,36 @@
+name: Docstring Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Only run workflow if certain files have been changed.
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            .github/workflows/notebook_testing.yml
+            src/**
+            tests/**
+            pyproject.toml
+
+      - name: Setup packages
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Run tests
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: | # ignore centrality.py because __getattr__ gets overwritten which causes issues with pytest
+          pytest --doctest-modules src/pathpyG/ --ignore="src/pathpyG/algorithms/centrality.py" --no-cov

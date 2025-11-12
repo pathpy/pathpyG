@@ -30,9 +30,9 @@ class PathData:
         >>> import pathpyG as pp
         >>> # Generate toy example graph
         >>> g = pp.Graph.from_edge_list([('a', 'c'),
-        >>>                      ('b', 'c'),
-        >>>                      ('c', 'd'),
-        >>>                      ('c', 'e')])
+        ...                      ('b', 'c'),
+        ...                      ('c', 'd'),
+        ...                      ('c', 'e')])
         >>> # Store observations of walks using the index mapping
         >>> # from the graph above
         >>> paths = pp.PathData(g.mapping)
@@ -177,7 +177,7 @@ class PathData:
         """
         start = self.data.dag_num_nodes[:i].sum().item()
         end = start + self.data.dag_num_nodes[i].item()
-        return tuple(self.mapping.to_ids(self.data.node_sequence[start:end].squeeze()))
+        return tuple(self.mapping.to_ids(self.data.node_sequence[start:end].squeeze()).tolist())
 
     def map_node_seq(self, node_seq: list | tuple) -> list:
         """Map a sequence of node indices (e.g. representing a higher-order node) to node IDs.

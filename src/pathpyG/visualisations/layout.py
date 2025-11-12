@@ -30,7 +30,7 @@ Examples:
     >>> g = Graph.from_edge_list([('a', 'b'), ('b', 'c')])
     >>> positions = layout(g, layout='spring', k=0.5)
     >>> print(positions)
-    {'a': array([ 0.61899711, -1.        ]), 'b': array([-0.00132282,  0.00213747]), 'c': array([-0.61767429,  0.99786253])}
+    {'a': array(...), 'b': array(...), 'c': array(...)}
 """
 #!/usr/bin/python -tt
 # -*- coding: utf-8 -*-

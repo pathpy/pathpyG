@@ -146,9 +146,9 @@ def mean_neighbor_degree(graph: Graph, mode: str = "total", exclude_backlink: bo
 
     with the number of edges [$m$][pathpyG.core.graph.Graph.m] (1), the set of neighbors $\mathcal{N}(v_i)$ of node $v_i$ and $d_{mode}(v_j)$ being the degree of neighbor node $v_j \in \mathcal{N}(v_i)$ in mode 'in', 'out' or 'total'.
     { .annotate }
-    
+
     1. This definition is for directed graphs. For undirected graphs, the denominator is $2m$.
-    
+
     The modes are defined as follows:
 
     - 'in': In-degree $d_{in}(v_i)$ of node $v_i$, i.e. the number of incoming edges $|\{(v_j, v_i) \in E\}|$ from any other node $v_j$
@@ -288,14 +288,15 @@ def degree_generating_function(
 
         >>> import pathpyG as pp
         >>>
-        >>> g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c'), ('c', 'd'),
-        >>>                              ('d', 'e'), ('d', 'f'), ('e', 'f')]).to_undirected()
+        >>> g = pp.Graph.from_edge_list(
+        ...         [('a', 'b'), ('b', 'c'), ('a', 'c'), ('c', 'd'), ('d', 'e'), ('d', 'f'), ('e', 'f')]
+        ...     ).to_undirected()
 
         Return single function value:
 
         >>> val = pp.statistics.degree_generating_function(g, 0.3)
         >>> print(val)
-        0.069
+        0.069...
 
         Plot generating function of degree distribution
 
