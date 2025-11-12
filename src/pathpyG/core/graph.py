@@ -31,7 +31,26 @@ class Graph:
 
     An object than be be used to store directed or undirected graphs with node
     and edge attributes. Data on nodes and edges are stored in an underlying instance of
-    [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data).
+    [`torch_geometric.data.Data`][torch_geometric.data.Data].
+
+    Info:
+        The `data` attribute is a PyG Data object that contains the following attributes:
+            
+        - `edge_index`: [Edge index][torch_geometric.EdgeIndex] of the graph. Entries correspond to indices in the node sequence.
+        - `node_sequence`: Node sequence [tensor][torch.Tensor] of shape `(num_nodes, order)` where each entry
+            corresponds to the index of first-order nodes in the underlying graph and mapping. For first-order graphs,
+            the indices in the node sequence is identical to the indices in the edge index. For higher-order graphs,
+            the node sequence contains tuples of node indices representing higher-order nodes that correspond to paths in
+            the underlying first-order graph.
+
+    Attributes:
+        data (Data): PyG Data object containing edges and attributes.
+        mapping (IndexMap): Mapping from node IDs to indices.
+        edge_to_index (dict): Mapping from edge tuples to their indices.
+        row_ptr (torch.Tensor): CSR row pointer for efficient successor retrieval.
+        col (torch.Tensor): CSR column indices for efficient successor retrieval.
+        col_ptr (torch.Tensor): CSC column pointer for efficient predecessor retrieval.
+        row (torch.Tensor): CSC row indices for efficient predecessor retrieval.
     """
 
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
@@ -103,7 +122,7 @@ class Graph:
     def from_edge_index(
         edge_index: torch.Tensor, mapping: Optional[IndexMap] = None, num_nodes: int | None = None
     ) -> Graph:
-        """Construct a graph from a torch Tensor containing an edge index.
+        """Construct a graph from a [Tensor][torch.Tensor] containing an edge index.
 
         An optional mapping can be used to transparently map node indices to string identifiers.
 
@@ -515,7 +534,7 @@ class Graph:
     def laplacian(self, normalization: Any = None, edge_attr: str | None = None) -> Any:
         """Return Laplacian matrix for a given graph.
 
-        This wrapper method will use [`torch_geometric.utils.laplacian`](https://pytorch-geometric.readthedocs.io/en/latest/modules/utils.html#torch_geometric.utils.laplacian)
+        This wrapper method will use [`torch_geometric.utils.get_laplacian`][torch_geometric.utils.get_laplacian]
         to return a Laplcian matrix representation of a given graph.
 
         Args:

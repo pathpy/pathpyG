@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Temporal Graph class for handling time-stamped edges."""
 
 from typing import Any, Optional, Tuple, Union
 
@@ -15,6 +15,21 @@ from pathpyG.utils import to_numpy
 
 
 class TemporalGraph(Graph):
+    """Class representing a temporal graph with time-stamped edges.
+
+    Info:
+        The [`data`][torch_geometric.data.Data] attribute is a PyG Data object that contains the following attributes:
+        
+        - `edge_index`: [Edge index][torch_geometric.EdgeIndex] tensor of shape `(2, num_edges)` representing directed edges.
+        - `time`: [Tensor][torch.Tensor] of shape `(num_edges,)` containing timestamps for each edge.
+    
+    Attributes:
+        data (Data): PyG Data object containing temporal edges and attributes.
+        mapping (IndexMap): Mapping from node IDs to indices.
+        edge_to_index (dict): Mapping from edge tuples to their indices.
+        tedge_to_index (dict): Mapping from temporal edge tuples to their indices.
+    """
+
     def __init__(self, data: Data, mapping: IndexMap | None = None) -> None:
         """Creates an instance of a temporal graph from a `TemporalData` object.
 
@@ -61,8 +76,23 @@ class TemporalGraph(Graph):
         }
 
     @staticmethod
-    def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> TemporalGraph:  # type: ignore
-        """Create a temporal graph from a list of tuples containing edges with timestamps."""
+    def from_edge_list(edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None) -> "TemporalGraph":  # type: ignore[override]
+        """Create a temporal graph from a list of tuples containing edges with timestamps.
+        
+        Args:
+            edge_list: A list of tuples in the format (source, destination, timestamp).
+            num_nodes: Optional number of nodes in the graph. If not provided, it will be inferred.
+            device: The device on which to create the tensors (CPU or GPU).
+
+        Returns:
+            TemporalGraph: An instance of the TemporalGraph class.
+
+        Examples:
+            Create a temporal graph from an edge list:
+
+            >>> edge_list = [('a', 'b', 1), ('b', 'c', 2), ('c', 'a', 3)]
+            >>> g = pp.TemporalGraph.from_edge_list(edge_list)
+        """
         if len(edge_list) == 0:
             return TemporalGraph(
                 data=Data(
@@ -122,7 +152,7 @@ class TemporalGraph(Graph):
         times = to_numpy(self.data.time)
         return list(zip(edge_ids[0], edge_ids[1], times))
     
-    def to(self, device: torch.device) -> TemporalGraph:
+    def to(self, device: torch.device) -> "TemporalGraph":
         """Moves all graph data to the specified device (CPU or GPU).
 
         Args:
@@ -186,13 +216,16 @@ class TemporalGraph(Graph):
         else:
             return Graph.from_edge_index(EdgeIndex(data=edge_index, sparse_size=(n, n)), self.mapping)
 
-    def to_undirected(self) -> TemporalGraph:
+    def to_undirected(self) -> "TemporalGraph":
         """Return an undirected version of a directed graph.
 
         This method transforms the current graph instance into an undirected graph by
-        adding all directed edges in opposite direction. It applies [`ToUndirected`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.transforms.ToUndirected.html#torch_geometric.transforms.ToUndirected)
-        transform to the underlying [`torch_geometric.Data`](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Data.html#torch_geometric.data.Data) object, which automatically
-        duplicates edge attributes for newly created directed edges.
+        adding all directed edges in opposite direction. 
+
+        Warning:
+            This method duplicates all temporal edges in the graph, which can lead to duplicated
+            edges if the original graph already contains bidirectional edges. As of now, edge attributes will
+            **not** be duplicated for the new edges.
 
         Example:
             ```py
@@ -202,12 +235,13 @@ class TemporalGraph(Graph):
             print(g_u)
             ```
         """
+        # TODO: Handle edge attributes for new edges
         rev_edge_index = self.data.edge_index.flip([0])
         edge_index = torch.cat([self.data.edge_index, rev_edge_index], dim=1)
         times = torch.cat([self.data.time, self.data.time])
         return TemporalGraph(data=Data(edge_index=edge_index, time=times), mapping=self.mapping)
 
-    def get_batch(self, start_idx: int, end_idx: int) -> TemporalGraph:
+    def get_batch(self, start_idx: int, end_idx: int) -> "TemporalGraph":
         """Return a batch of temporal edges based on start and end indices.
         
         Return an instance of the TemporalGraph that captures all time-stamped
@@ -241,7 +275,7 @@ class TemporalGraph(Graph):
             mapping=self.mapping,
         )
 
-    def get_window(self, start_time: int, end_time: int) -> TemporalGraph:
+    def get_window(self, start_time: int, end_time: int) -> "TemporalGraph":
         """Return a time window of temporal edges based on start and end timestamps.
         
         Return an instance of the TemporalGraph that captures all time-stamped
@@ -301,9 +335,7 @@ class TemporalGraph(Graph):
             raise KeyError(key[0] + " is not a node or edge attribute")
 
     def __str__(self) -> str:
-        """
-        Return a string representation of the graph
-        """
+        """Return a string representation of the graph."""
         s = "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]\n".format(
             self.data.num_nodes,
             self.data.edge_index.unique(dim=1).size(dim=1),
@@ -323,7 +355,7 @@ class TemporalGraph(Graph):
 
         from pprint import pformat
 
-        attribute_info = {"Node Attributes": {}, "Edge Attributes": {}, "Graph Attributes": {}}
+        attribute_info: dict[str, dict[str, Any]] = {"Node Attributes": {}, "Edge Attributes": {}, "Graph Attributes": {}}
         for a in self.node_attrs():
             attribute_info["Node Attributes"][a] = attr_types[a]
         for a in self.edge_attrs():

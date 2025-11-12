@@ -15,12 +15,12 @@ class IndexMap:
 
     This class keeps a mapping from any node ID, e.g. names (strings) or higher-order IDs (tuples),
     to an index of the corresponding node in the initial list of IDs, enabling fast lookup of node IDs
-    from a `torch_geometric.data.Data` object.
+    from a [`Data`][torch_geometric.data.Data] object.
 
     Attributes:
-        node_ids: `numpy.ndarray` storing the node IDs, enabling fast lookup of multiple node IDs from indices.
-        id_to_idx: `dict` mapping each node ID to its index.
-        id_shape: `tuple` storing the shape of the ID. The default shape is (-1,) for first-order IDs.
+        node_ids: [`numpy.ndarray`][numpy.ndarray] storing the node IDs, enabling fast lookup of multiple node IDs from indices.
+        id_to_idx: [`dict`][dict] mapping each node ID to its index.
+        id_shape: [`tuple`][tuple] storing the shape of the ID. The default shape is (-1,) for first-order IDs.
             For higher-order IDs, the shape will be `(-1, k)` with order `k`.
 
     Examples:
