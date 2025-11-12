@@ -27,7 +27,7 @@ def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
     # first-order edge index
     edge_index, timestamps = g.data.edge_index, g.data.time
 
-    delta = torch.tensor(delta, device=edge_index.device)
+    delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
     indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
 
     unique_t = torch.unique(timestamps, sorted=True)

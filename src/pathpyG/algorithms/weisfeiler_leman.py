@@ -1,5 +1,6 @@
-from __future__ import annotations
-from typing import Tuple, List, Dict
+""""Weisfeiler-Leman isomorphism test algorithm implementation."""
+
+from typing import Dict, List, Tuple
 
 from pathpyG.core.graph import Graph
 
@@ -21,12 +22,14 @@ def WeisfeilerLeman_test(
     are identical. If the test fails, the fingerprints do not correspond.
 
     Args:
-        g1: pp.Graph
-        g2: pp.Graph
+        g1: First graph.
+        g2: Second graph.
+        features_g1: Optional initial node features for graph 1.
+        features_g2: Optional initial node features for graph 2.
     """
     if g1.mapping is None or g2.mapping is None:
         raise Exception("Graphs must contain IndexMap that assigns node IDs")
-    if len(set(g1.mapping.node_ids).intersection(g2.mapping.node_ids)) > 0:
+    if len(set(g1.mapping.node_ids).intersection(g2.mapping.node_ids)) > 0:  # type: ignore[arg-type]
         raise Exception("node identifiers of graphs must not overlap")
     g_combined = g1 + g2
     # initialize labels of all nodes to zero
@@ -56,7 +59,7 @@ def WeisfeilerLeman_test(
             stop = True
         else:
             # update fingerprint and continue
-            fingerprint = new_fingerprint.copy()
+            fingerprint = new_fingerprint.copy()  # type: ignore[assignment]
 
     # Reduce fingerprints to nodes of g1 and g2 respectively
     fingerprint_1 = [fingerprint[v] for v in g1.nodes]

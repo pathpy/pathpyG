@@ -2,7 +2,7 @@
 
 import torch
 from torch_geometric.data import Data
-from torch_geometric.utils import degree, cumsum, coalesce
+from torch_geometric.utils import coalesce, cumsum, degree
 
 from pathpyG.core.graph import Graph
 
@@ -10,12 +10,12 @@ from pathpyG.core.graph import Graph
 def aggregate_node_attributes(
     edge_index: torch.Tensor, node_attribute: torch.Tensor, aggr: str = "src"
 ) -> torch.Tensor:
-    """
-    Aggregate the node attributes of each pair of nodes in the edge index
+    """Aggregate the node attributes of each pair of nodes in the edge index.
 
     This method aggregates the node attributes of each pair of nodes in the edge index
     using the aggregation method specified. The method returns an attribute for each edge.
     The aggregation methods are:
+
     - "src": Use the attribute of the source node for each edge.
     - "dst": Use the attribute of the destination node for each edge.
     - "max": Use the maximum of the attributes of the source and destination nodes for each edge.
@@ -109,7 +109,8 @@ def lift_order_edge_index_weighted(
 def aggregate_edge_index(
     edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None, aggr: str = "sum"
 ) -> Graph:
-    """
+    """Aggregate the possibly duplicated edges in the (higher-order) edge index.
+
     Aggregate the possibly duplicated edges in the (higher-order) edge index and return a graph object
     containing the (higher-order) edge index without duplicates and the node sequences.
 
@@ -121,6 +122,7 @@ def aggregate_edge_index(
             corresponds to a node which is an edge in the (k-1)-th order graph.
         node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to.
         edge_weight: The edge weights corresponding to the edge index.
+        aggr: The aggregation method to use for the edge weights. One of "sum", "mean", "min", "max".
 
     Returns:
         A graph object containing the aggregated edge index, the node sequences, the edge weights and the inverse index.
