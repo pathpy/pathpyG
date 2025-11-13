@@ -93,9 +93,9 @@ def test_parse_timestamp_datetime64():
 
 def test_parse_timestamp_rescale():
     df = pd.DataFrame({"t": ["2023-01-01 12:00:00", "2023-01-01 13:00:00"]})
-    _parse_timestamp(df, time_rescale=10**9)  # convert to seconds
+    _parse_timestamp(df, time_rescale=60)  # convert to minutes
     # Should be seconds since epoch
-    assert np.all(df["t"].diff().dropna() == 3600)
+    assert np.all(df["t"].diff().dropna() == 60)
 
 
 def test_parse_timestamp_invalid_type():
