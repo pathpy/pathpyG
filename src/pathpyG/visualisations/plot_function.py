@@ -95,15 +95,15 @@ class Backends(str, Enum):
 
 # supported file formats
 FORMATS: dict = {
-    ".html": Backends.d3js,
-    ".tex": Backends.tikz,
-    ".pdf": Backends.tikz,
-    ".svg": Backends.tikz,
-    ".png": Backends.matplotlib,
-    ".jpg": Backends.matplotlib,
-    ".jpeg": Backends.matplotlib,
-    ".mp4": Backends.manim,
-    ".gif": Backends.manim,
+    ".html": Backends.d3js.value,
+    ".tex": Backends.tikz.value,
+    ".pdf": Backends.tikz.value,
+    ".svg": Backends.tikz.value,
+    ".png": Backends.matplotlib.value,
+    ".jpg": Backends.matplotlib.value,
+    ".jpeg": Backends.matplotlib.value,
+    ".mp4": Backends.manim.value,
+    ".gif": Backends.manim.value,
 }
 
 # Supported Plot Classes
