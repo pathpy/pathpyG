@@ -1,4 +1,4 @@
-""""Functions to read and write graphs from and to pandas DataFrames."""
+"""Functions to read and write graphs from and to pandas DataFrames."""
 
 import ast
 import logging
@@ -25,9 +25,10 @@ _integer_re = re.compile(r"^\s*[+-]?\d+\s*$")
 
 
 def _parse_timestamp(df: pd.DataFrame, timestamp_format: str = "%Y-%m-%d %H:%M:%S", time_rescale: int = 1) -> None:
-    """Parse time stamps in a DataFrame.
+    """Parse time stamps in a [DataFrame][pandas.DataFrame].
 
-    Parses the time stamps in the DataFrame and rescales using the given time rescale factor.
+    Parses the time stamps in the [DataFrame][pandas.DataFrame] and returns them as seconds since the minimum timestamp.
+    The time stamps are then rescaled using the given time rescale factor.
     The time stamps are expected to be in a column named `t`. If the column is of type `object`, it is assumed to
     contain time stamps in the specified format.
 
@@ -38,17 +39,17 @@ def _parse_timestamp(df: pd.DataFrame, timestamp_format: str = "%Y-%m-%d %H:%M:%
     """
     # optionally parse time stamps
     if df["t"].dtype == "object" and isinstance(df["t"].values[0], str):
-        # convert time stamps to seconds since epoch
         df["t"] = pd.to_datetime(df["t"], format=timestamp_format)
-        # rescale time stamps
-        df["t"] = df["t"].astype("int64") // time_rescale
-        df["t"] = df["t"] - df["t"].min()  # rescale to start at 0
+        # convert time stamps to seconds since first timestamp
+        df["t"] = (df["t"] - df["t"].min()).dt.total_seconds().astype(int)  # rescale to start at 0
+        # rescale time stamps to seconds with optional rescaling
+        df["t"] = df["t"] // time_rescale
     elif df["t"].dtype == "int64" or df["t"].dtype == "float64":
         # rescale time stamps
         df["t"] = df["t"] // time_rescale
     elif pd.api.types.is_datetime64_any_dtype(df["t"]):
-        df["t"] = df["t"].astype("int64") // time_rescale
-        df["t"] = df["t"] - df["t"].min()  # rescale to start at 0
+        df["t"] = (df["t"] - df["t"].min()).dt.total_seconds().astype(int)  # rescale to start at 0
+        df["t"] = df["t"] // time_rescale
     else:
         raise ValueError(
             "Column `t` must be of type `object`, `int64`, `float64`, or a datetime type. "
@@ -398,9 +399,9 @@ def df_to_temporal_graph(
 def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [graph][pathpyG.Graph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     Args:
@@ -422,7 +423,7 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
     else:
         vs = graph.mapping.to_ids(to_numpy(graph.data.edge_index[0]))
         ws = graph.mapping.to_ids(to_numpy(graph.data.edge_index[1]))
-    df = pd.DataFrame({**{"v": vs, "w": ws}, **{a: graph.data[a].tolist() for a in graph.edge_attrs()}})
+    df = pd.DataFrame({**{"v": vs, "w": ws}, **{a: to_numpy(graph.data[a]) for a in graph.edge_attrs()}})
 
     return df
 
@@ -430,9 +431,9 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
 def temporal_graph_to_df(graph: TemporalGraph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [temporal graph][pathpyG.TemporalGraph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     facilitate the import into network analysis tools that only support integer
