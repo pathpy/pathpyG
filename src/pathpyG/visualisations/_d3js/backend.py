@@ -21,7 +21,6 @@ import urllib
 import uuid
 import webbrowser
 from copy import deepcopy
-from string import Template
 
 from pathpyG.utils.config import config
 from pathpyG.visualisations.network_plot import NetworkPlot
@@ -39,7 +38,7 @@ SUPPORTED_KINDS: dict[type, str] = {
     TemporalNetworkPlot: "temporal",
     TimeUnfoldedNetworkPlot: "unfolded",
 }
-_CDN_URL = "https://d3js.org/d3.v7.min.js"
+_CDN_URL = "https://cdn.jsdelivr.net/npm/d3@7/+esm"
 
 
 class D3jsBackend(PlotBackend):
@@ -116,8 +115,8 @@ class D3jsBackend(PlotBackend):
             - Embedded in websites or documentation
             - Shared without additional dependencies
         """
-        # Default to the CDN version of d3js since browsers may block local scripts
-        self.config["d3js_local"] = self.config.get("d3js_local", False)
+        # Default to embedded local version to obtain a self-contained file
+        self.config["d3js_local"] = config.get("d3js_local", True)
         with open(filename, "w+") as new:
             new.write(self.to_html())
 
@@ -133,13 +132,13 @@ class D3jsBackend(PlotBackend):
             and choose appropriate display method automatically.
         """
         # Default to CDN version if reachable
-        # Check if CDN is reachable
         try:
-            urllib.request.urlopen(_CDN_URL, timeout=2)
-            self.config["d3js_local"] = self.config.get("d3js_local", False)
+            # Attempt to access the CDN URL to check if it's reachable
+            urllib.request.urlopen(urllib.request.Request(_CDN_URL, headers={"User-Agent": "Mozilla/5.0"}), timeout=2)
+            self.config["d3js_local"] = config.get("d3js_local", False)
         except (urllib.error.URLError, urllib.error.HTTPError):
-            self.config["d3js_local"] = self.config.get("d3js_local", True)
-        
+            self.config["d3js_local"] = config.get("d3js_local", True)
+
         if config["environment"]["interactive"]:
             from IPython.display import display_html, HTML  # noqa I001
 
@@ -168,15 +167,21 @@ class D3jsBackend(PlotBackend):
             **Edges**: Include uid, source/target references, and styling
         """
         node_data = self.data["nodes"].copy()
-        node_data["uid"] = self.data["nodes"].index.map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
+        node_data["uid"] = self.data["nodes"].index.map(
+            lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x)
+        )
         node_data = node_data.rename(columns={"x": "xpos", "y": "ypos"})
         if self._kind == "unfolded":
             node_data["ypos"] = 1 - node_data["ypos"]  # Invert y-axis for unfolded layout
         edge_data = self.data["edges"].copy()
         edge_data["uid"] = self.data["edges"].index.map(lambda x: f"{x[0]}-{x[1]}")
         if len(edge_data) > 0:
-            edge_data["source"] = edge_data.index.to_frame()["source"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
-            edge_data["target"] = edge_data.index.to_frame()["target"].map(lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x))
+            edge_data["source"] = edge_data.index.to_frame()["source"].map(
+                lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x)
+            )
+            edge_data["target"] = edge_data.index.to_frame()["target"].map(
+                lambda x: f"({x[0]},{x[1]})" if isinstance(x, tuple) else str(x)
+            )
         data_dict = {
             "nodes": node_data.to_dict(orient="records"),
             "edges": edge_data.to_dict(orient="records"),
@@ -253,16 +258,7 @@ class D3jsBackend(PlotBackend):
             os.path.normpath("_d3js/templates"),
         )
 
-        # get d3js library path
-        if self.config.get("d3js_local", False):
-            d3js = os.path.join(template_dir, "d3.v7.min.js")
-        else:
-            d3js = _CDN_URL
-
         js_template = self.get_template(template_dir)
-
-        with open(os.path.join(template_dir, "setup.js")) as template:
-            setup_template = template.read()
 
         with open(os.path.join(template_dir, "styles.css")) as template:
             css_template = template.read()
@@ -277,17 +273,16 @@ class D3jsBackend(PlotBackend):
         # div environment for the plot object
         html += f'\n<div id = "{dom_id[1:]}"> </div>\n'
 
-        # add d3js library
-        html += f'<script charset="utf-8" src="{d3js}"></script>\n'
-
         # start JavaScript
         html += '<script charset="utf-8">\n'
 
-        # add setup code to run d3js in multiple environments
-        html += Template(setup_template).substitute(d3js=d3js)
+        # add d3 render function with unique name to avoid conflicts
+        callback_name = f"render_plot_{uuid.uuid4().hex}"
+        html += f"function {callback_name}() {{\n"
 
-        # start d3 environment
-        html += "require(['d3'], function(d3){ //START\n"
+        # define 'd3' inside the scope (standardizing access)
+        html += "  const d3 = window.d3;\n"
+        html += "  if (!d3) { console.error('D3 not loaded'); return; }\n"
 
         # add data and config
         html += f"const data = {data_json}\n"
@@ -299,11 +294,36 @@ class D3jsBackend(PlotBackend):
         # add JavaScript
         html += js_template
 
-        # end d3 environment
-        html += "\n}); //END\n"
+        # Close the render function
+        html += "\n}; //END of Render Function\n"
 
         # end JavaScript
         html += "\n</script>"
+
+        # add d3js library - either from CDN or as embedded script (local)
+        if self.config.get("d3js_local", False):
+            d3js_path = os.path.join(template_dir, "d3.v7.min.js")
+            with open(d3js_path, "r", encoding="utf-8") as f:
+                raw_d3_js = f.read()
+
+            # We wrap the local D3 code in an IIFE (Immediately Invoked Function Expression).
+            # Inside this function, we set 'define' and 'exports' to undefined.
+            # This forces D3 to ignore VS Code's module system and attach to window.d3.
+            html += "<script>\n"
+            html += "(function() { var define = undefined; var exports = undefined; \n"
+            html += raw_d3_js
+            html += "\n})();\n"
+            html += "</script>\n"
+            html += f"<script>{callback_name}();</script>\n"
+        else:
+            d3_url = _CDN_URL
+            html += f"""
+                <script type="module">
+                    import * as d3 from "{d3_url}";
+                    window.d3 = d3;
+                    {callback_name}();
+                </script>
+                """
 
         return html
 
