@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
+from pathpyG import config
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations._d3js.backend import D3jsBackend
@@ -359,11 +360,10 @@ class TestD3jsBackendFileOperations:
             assert len(content) > 0
             assert "<script" in content
 
-    @patch("pathpyG.visualisations._d3js.backend.config")
     @patch("pathpyG.visualisations._d3js.backend.webbrowser")
-    def test_show_in_browser_opens_file(self, mock_browser, mock_config):
+    def test_show_in_browser_opens_file(self, mock_browser):
         """Test that show opens browser in non-interactive mode."""
-        mock_config.__getitem__.return_value = {"interactive": False}
+        config["environment"]["interactive"] = False
 
         self.backend.show()
 
