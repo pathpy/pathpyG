@@ -93,8 +93,15 @@ def test_parse_timestamp_datetime64():
 
 def test_parse_timestamp_rescale():
     df = pd.DataFrame({"t": ["2023-01-01 12:00:00", "2023-01-01 13:00:00"]})
-    _parse_timestamp(df, time_rescale=10**9)  # convert to seconds
+    # check pandas version to determine expected time unit
+    if pd.__version__ >= "3.0.0":
+        expected_unit = 10**6  # pandas 3.0.0 and above automatically uses a unit determined by the input format
+    else:
+        expected_unit = 10**9  # pandas below 3.0.0 uses nanoseconds
+
+    _parse_timestamp(df, time_rescale=expected_unit)  # convert to seconds
     # Should be seconds since epoch
+    print(df["t"])
     assert np.all(df["t"].diff().dropna() == 3600)
 
 

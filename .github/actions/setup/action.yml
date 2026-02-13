@@ -5,7 +5,7 @@ description: Set up environment with dependencies
 inputs: # defaults are set to the version used in the dev container
   python-version:
     required: false
-    default: "3.10"
+    default: "3.13"
     description: "The Python version to use."
   cuda-version:
     required: false

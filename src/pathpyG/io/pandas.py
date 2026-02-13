@@ -37,7 +37,7 @@ def _parse_timestamp(df: pd.DataFrame, timestamp_format: str = "%Y-%m-%d %H:%M:%
         time_rescale: The factor by which to rescale the time stamps. Defaults to 1, meaning no rescaling.
     """
     # optionally parse time stamps
-    if df["t"].dtype == "object" and isinstance(df["t"].values[0], str):
+    if pd.api.types.is_string_dtype(df["t"]):
         # convert time stamps to seconds since epoch
         df["t"] = pd.to_datetime(df["t"], format=timestamp_format)
         # rescale time stamps
@@ -77,7 +77,7 @@ def _parse_df_column(
         idx = np.arange(len(df))
 
     # check if the attribute is a string, list, tuple, etc.
-    if df[attr].dtype == "object":
+    if df[attr].dtype == "object" or pd.api.types.is_string_dtype(df[attr]):
         if isinstance(df[attr].values[0], str):
             # if the attribute is a string, check if it is iterable or numeric
             if _iterable_re.match(str(df[attr].values[0])):
@@ -580,22 +580,27 @@ def read_csv_path_data(
         device: The device on which the PathData object should be created
     """
     # Read raw data
-    df = pd.read_table(filepath_or_buffer=path_or_buf, header=None)
-    # split and expand non-uniform rows
-    df = df[0].str.split(sep, expand=True)
+    df = pd.read_table(filepath_or_buffer=path_or_buf, header=None, sep=sep)
 
-    paths = []
-    weights = []
+    def get_path_weight_tuple(row):
+        path_weight = row.dropna().tolist()
+        path = path_weight[:-1]
+        weight = path_weight[-1]
+        # Convert to float or int if possible
+        if isinstance(weight, str):
+            if _number_re.match(weight):
+                if _integer_re.match(weight):
+                    weight = int(weight)
+                else:
+                    weight = float(weight)
+        return path, weight
 
-    # extract node sequences and edges
-    for row in df.itertuples(index=False):
-        p = [x for x in row if x]
-        if weight:
-            weights.append(float(p[-1]))
-            p.pop()
-        else:
-            weights.append(1.0)
-        paths.append(p)
+    if weight:
+        path_weight_tuples = df.apply(get_path_weight_tuple, axis=1).tolist()
+        paths, weights = zip(*path_weight_tuples)  # type: ignore[assignment]
+    else:
+        paths = df.apply(lambda row: row.dropna().tolist(), axis=1).tolist()
+        weights = [1.0] * len(paths)
 
     # create index mapping
     mapping = IndexMap()
