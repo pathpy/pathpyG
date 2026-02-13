@@ -586,8 +586,8 @@ def read_csv_path_data(
             data = [(row[:-1], ast.literal_eval(row[-1])) for row in reader]
             paths, weights = zip(*data)
         else:
-            paths = list(reader)
-            weights = [1.0] * len(paths)
+            paths = list(reader)  # type: ignore[assignment]
+            weights = [1.0] * len(paths)  # type: ignore[assignment]
 
     # create index mapping
     mapping = IndexMap()
