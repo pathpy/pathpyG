@@ -1,6 +1,7 @@
 """Functions to read and write graphs from and to pandas DataFrames."""
 
 import ast
+import csv
 import logging
 import re
 from typing import Any, Optional, Union
@@ -579,28 +580,14 @@ def read_csv_path_data(
         sep: character that separates the nodes (and weight) in each line of the input file
         device: The device on which the PathData object should be created
     """
-    # Read raw data
-    df = pd.read_table(filepath_or_buffer=path_or_buf, header=None, sep=sep)
-
-    def get_path_weight_tuple(row):
-        path_weight = row.dropna().tolist()
-        path = path_weight[:-1]
-        weight = path_weight[-1]
-        # Convert to float or int if possible
-        if isinstance(weight, str):
-            if _number_re.match(weight):
-                if _integer_re.match(weight):
-                    weight = int(weight)
-                else:
-                    weight = float(weight)
-        return path, weight
-
-    if weight:
-        path_weight_tuples = df.apply(get_path_weight_tuple, axis=1).tolist()
-        paths, weights = zip(*path_weight_tuples)
-    else:
-        paths = df.apply(lambda row: row.dropna().tolist(), axis=1).tolist()
-        weights = [1.0] * len(paths)  # type: ignore[assignment]
+    with open(path_or_buf, "r") as f:
+        reader = csv.reader(f, delimiter=sep)
+        if weight:
+            data = [(row[:-1], ast.literal_eval(row[-1])) for row in reader]
+            paths, weights = zip(*data)
+        else:
+            paths = list(reader)
+            weights = [1.0] * len(paths)
 
     # create index mapping
     mapping = IndexMap()
