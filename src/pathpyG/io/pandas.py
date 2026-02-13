@@ -1,6 +1,7 @@
-""""Functions to read and write graphs from and to pandas DataFrames."""
+"""Functions to read and write graphs from and to pandas DataFrames."""
 
 import ast
+import csv
 import logging
 import re
 from typing import Any, Optional, Union
@@ -37,7 +38,7 @@ def _parse_timestamp(df: pd.DataFrame, timestamp_format: str = "%Y-%m-%d %H:%M:%
         time_rescale: The factor by which to rescale the time stamps. Defaults to 1, meaning no rescaling.
     """
     # optionally parse time stamps
-    if df["t"].dtype == "object" and isinstance(df["t"].values[0], str):
+    if pd.api.types.is_string_dtype(df["t"]):
         # convert time stamps to seconds since epoch
         df["t"] = pd.to_datetime(df["t"], format=timestamp_format)
         # rescale time stamps
@@ -77,7 +78,7 @@ def _parse_df_column(
         idx = np.arange(len(df))
 
     # check if the attribute is a string, list, tuple, etc.
-    if df[attr].dtype == "object":
+    if df[attr].dtype == "object" or pd.api.types.is_string_dtype(df[attr]):
         if isinstance(df[attr].values[0], str):
             # if the attribute is a string, check if it is iterable or numeric
             if _iterable_re.match(str(df[attr].values[0])):
@@ -398,9 +399,9 @@ def df_to_temporal_graph(
 def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [graph][pathpyG.Graph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     Args:
@@ -430,9 +431,9 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
 def temporal_graph_to_df(graph: TemporalGraph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [temporal graph][pathpyG.TemporalGraph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     facilitate the import into network analysis tools that only support integer
@@ -579,23 +580,14 @@ def read_csv_path_data(
         sep: character that separates the nodes (and weight) in each line of the input file
         device: The device on which the PathData object should be created
     """
-    # Read raw data
-    df = pd.read_table(filepath_or_buffer=path_or_buf, header=None)
-    # split and expand non-uniform rows
-    df = df[0].str.split(sep, expand=True)
-
-    paths = []
-    weights = []
-
-    # extract node sequences and edges
-    for row in df.itertuples(index=False):
-        p = [x for x in row if x]
+    with open(path_or_buf, "r") as f:
+        reader = csv.reader(f, delimiter=sep)
         if weight:
-            weights.append(float(p[-1]))
-            p.pop()
+            data = [(row[:-1], ast.literal_eval(row[-1])) for row in reader]
+            paths, weights = zip(*data)
         else:
-            weights.append(1.0)
-        paths.append(p)
+            paths = list(reader)  # type: ignore[assignment]
+            weights = [1.0] * len(paths)  # type: ignore[assignment]
 
     # create index mapping
     mapping = IndexMap()
