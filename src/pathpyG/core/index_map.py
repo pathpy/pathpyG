@@ -68,14 +68,14 @@ class IndexMap:
          [['B' 'C']]]
     """
 
-    def __init__(self, node_ids: Union[List[str], List[tuple], None] = None) -> None:
+    def __init__(self, node_ids: Union[np.ndarray, List[str], List[tuple], None] = None) -> None:
         """Initialize mapping from indices to node IDs.
 
         The mapping will keep the ordering of the IDs as provided by `node_ids`. If the IDs are not unique,
         an error will be raised.
 
         Args:
-            node_ids: List of node IDs to initialize mapping.
+            node_ids: List or array of node IDs to initialize mapping.
 
         Raises:
             ValueError: If IDs are not unique.

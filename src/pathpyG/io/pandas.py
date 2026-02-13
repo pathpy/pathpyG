@@ -1,4 +1,4 @@
-""""Functions to read and write graphs from and to pandas DataFrames."""
+"""Functions to read and write graphs from and to pandas DataFrames."""
 
 import ast
 import logging
@@ -398,9 +398,9 @@ def df_to_temporal_graph(
 def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [graph][pathpyG.Graph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     Args:
@@ -430,9 +430,9 @@ def graph_to_df(graph: Graph, node_indices: Optional[bool] = False) -> pd.DataFr
 def temporal_graph_to_df(graph: TemporalGraph, node_indices: Optional[bool] = False) -> pd.DataFrame:
     """Return a [pandas.DataFrame][] for a given [temporal graph][pathpyG.TemporalGraph].
 
-    Contains all edges including edge attributes. Node and network-level 
-    attributes are not included. To facilitate the import into network analysis 
-    tools that only support integer node identifiers, node uids can be replaced 
+    Contains all edges including edge attributes. Node and network-level
+    attributes are not included. To facilitate the import into network analysis
+    tools that only support integer node identifiers, node uids can be replaced
     by a consecutive, zero-based index.
 
     facilitate the import into network analysis tools that only support integer
@@ -597,10 +597,10 @@ def read_csv_path_data(
 
     if weight:
         path_weight_tuples = df.apply(get_path_weight_tuple, axis=1).tolist()
-        paths, weights = zip(*path_weight_tuples)  # type: ignore[assignment]
+        paths, weights = zip(*path_weight_tuples)
     else:
         paths = df.apply(lambda row: row.dropna().tolist(), axis=1).tolist()
-        weights = [1.0] * len(paths)
+        weights = [1.0] * len(paths)  # type: ignore[assignment]
 
     # create index mapping
     mapping = IndexMap()
