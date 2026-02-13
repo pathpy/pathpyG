@@ -56,7 +56,7 @@ plugins:
               annotations_path: full
               show_bases: True
               show_signature: False
-            import:
+            inventories:
               - https://docs.python.org/3/objects.inv
               - https://docs.scipy.org/doc/scipy/objects.inv
               - https://numpy.org/doc/stable/objects.inv
