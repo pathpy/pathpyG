@@ -513,7 +513,7 @@ class Graph:
         if return_tensor:
             return d
         else:
-            return {str(self.mapping.to_id(i)): d[i].item() for i in range(self.n)}
+            return {node: degree.item() for node, degree in zip(self.nodes, d)}
 
     def transition_probabilities(self, edge_attr: str | None = None) -> torch.Tensor:
         """Compute transition probabilities based on (weighted) outdegrees.
