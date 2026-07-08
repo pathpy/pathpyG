@@ -77,6 +77,7 @@ def test_from_edge_list():
         ("b", "c"),
     ]
     g = Graph.from_edge_list(edge_list)
+    # Since node labels are strings, they are sorted lexicographically.
     assert g.mapping.to_idx("a") == 0
     assert g.mapping.to_idx("b") == 1
     assert g.mapping.to_idx("c") == 2
@@ -86,12 +87,15 @@ def test_from_edge_list():
         (2, 1),
     ]
     g = Graph.from_edge_list(edge_list)
+    # Since node labels are ints, they are sorted numerically.
     assert g.mapping.to_idx(1) == 0
     assert g.mapping.to_idx(2) == 1
     assert g.mapping.to_idx(12) == 2
 
     edge_list = [("1", "12"), ("2", "1"), ("21", "3")]
     g = Graph.from_edge_list(edge_list)
+    # Node labels are strings, but since ALL of them are numeric, they are sorted
+    # numerically, not lexicographically.
     assert g.mapping.to_idx("1") == 0
     assert g.mapping.to_idx("2") == 1
     assert g.mapping.to_idx("3") == 2
@@ -280,8 +284,8 @@ def test_add_operator_wo_indices():
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), num_nodes=4)
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), num_nodes=4)
     g = g1 + g2
-    assert g.n == g1.n
-    assert g.m == g1.m + g2.m
+    assert g.n == g1.n  # No relabeling - number of nodes stays the same
+    assert g.m == g1.m + g2.m  # No deduplication - number of edges goes up
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 2, 3]]))
 
     g3 = Graph.from_edge_index(torch.IntTensor([[0, 2, 3], [2, 3, 4]]), num_nodes=5)
@@ -296,8 +300,8 @@ def test_add_operator_complete_overlap():
     g1 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
     g2 = Graph.from_edge_index(torch.IntTensor([[0, 1, 1], [1, 2, 3]]), mapping=IndexMap(["a", "b", "c", "d"]))
     g = g1 + g2
-    assert g.n == g1.n
-    assert g.m == g1.m + g2.m
+    assert g.n == g1.n  # No relabeling - number of nodes stays the same
+    assert g.m == g1.m + g2.m  # No deduplication - number of edges goes up
     assert torch.equal(g.data.edge_index, torch.tensor([[0, 0, 1, 1, 1, 1], [1, 1, 2, 3, 2, 3]]))
 
 

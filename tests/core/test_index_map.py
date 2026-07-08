@@ -122,7 +122,7 @@ def test_bulk_ids():
     node_ids = np.array(["a", "c", "b", "d", "a", "e"])
     with pytest.raises(ValueError):
         mapping = IndexMap(node_ids)
-    mapping = IndexMap(np.unique(node_ids))
+    mapping = IndexMap(np.unique(node_ids))  # sorts
 
     assert mapping.to_idx("a") == 0
     assert mapping.to_idx("c") == 2
