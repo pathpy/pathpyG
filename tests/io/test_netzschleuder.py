@@ -7,6 +7,7 @@ from pathpyG import Graph, TemporalGraph
 from pathpyG.io import list_netzschleuder_records, read_netzschleuder_graph, read_netzschleuder_record
 
 
+@pytest.mark.network
 def test_list_netzschleuder_records():
     """Test the list_netzschleuder_records() function."""
     # Test the function with a valid URL.
@@ -20,6 +21,7 @@ def test_list_netzschleuder_records():
         records = list_netzschleuder_records(url)
 
 
+@pytest.mark.network
 def test_node_attrs():
     """Test the extraction of node attributes."""
     g = read_netzschleuder_graph("karate", "77")
@@ -28,6 +30,7 @@ def test_node_attrs():
     assert "node_groups" in g.node_attrs()
 
 
+@pytest.mark.network
 def test_edge_attrs():
     """Test the extraction of edge attributes."""
     # Original edge list:
@@ -65,6 +68,7 @@ def test_edge_attrs():
         assert (g.data.edge_weight[mask] == weight).all()
 
 
+@pytest.mark.network
 def test_graph_attrs():
     """Test the extraction of graph attributes."""
     g = read_netzschleuder_graph("karate", "77")
@@ -72,6 +76,7 @@ def test_graph_attrs():
     assert g.data.analyses_diameter == 5
 
 
+@pytest.mark.network
 def test_read_netzschleuder_record():
     """Test the read_netzschleuder_record() function."""
     # Test the function with a valid URL.
@@ -86,6 +91,7 @@ def test_read_netzschleuder_record():
         record = read_netzschleuder_record(record_name, url)
 
 
+@pytest.mark.network
 def test_read_netzschleuder_graph():
     """Test the read_netzschleuder_graph() function for timestamped data."""
     g = read_netzschleuder_graph(name="email_company")
@@ -94,6 +100,7 @@ def test_read_netzschleuder_graph():
     assert g.m == 5784
 
 
+@pytest.mark.network
 def test_read_netzschleuder_graph_temporal():
     """Test the read_netzschleuder_graph() function for timestamped data."""
     g = read_netzschleuder_graph(name="email_company", time_attr="time", multiedges=True)

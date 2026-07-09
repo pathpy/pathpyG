@@ -18,10 +18,10 @@ jobs:
       # Only run workflow if certain files have been changed.
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v42
+        uses: tj-actions/changed-files@v47
         with:
           files: |
-            .github/workflows/notebook_testing.yml
+            .github/workflows/docstring_testing.yml
             src/**
             tests/**
             pyproject.toml
