@@ -8,11 +8,10 @@ from torch_geometric.data import Data
 from torch_geometric.utils import to_scipy_sparse_matrix
 
 from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
-from pathpyG.core.index_map import IndexMap
-from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.event_graph import EventGraph
-
+from pathpyG.core.index_map import IndexMap
+from pathpyG.core.multi_order_model import MultiOrderModel
+from pathpyG.core.temporal_graph import TemporalGraph
 
 DELTA = 2
 
@@ -88,6 +87,7 @@ def event_graph(temporal_graph) -> EventGraph:
 
 
 def test_basic(event_graph, existing):
+    """Basic counts (delta, events, nodes) match the source temporal graph."""
     assert event_graph.delta == DELTA
     assert len(event_graph) == existing["m"] == 4
     assert event_graph.num_events == existing["m"] == 4
@@ -96,6 +96,7 @@ def test_basic(event_graph, existing):
 
 
 def test_str(event_graph):
+    """The string representation lists the delta and all events."""
     assert (
         str(event_graph)
         == "EventGraph (delta=2)\na->b@1\nb->c@2\nc->e@3\nb->d@5"
@@ -103,16 +104,19 @@ def test_str(event_graph):
 
 
 def test_node_time(event_graph, existing):
+    """Each event node carries the timestamp of its underlying edge."""
     assert torch.equal(event_graph.data.node_time, existing["node_time"])
     assert event_graph.data.node_time.tolist() == [1, 2, 3, 5]
 
 
 def test_node_sequence(event_graph, existing):
+    """Each event node stores the (source, target) first-order node pair."""
     assert torch.equal(event_graph.data.node_sequence, existing["node_sequence"])
     assert event_graph.data.node_sequence.tolist() == [[0, 1], [1, 2], [2, 4], [1, 3]]
 
 
 def test_fo_mapping(event_graph, temporal_graph):
+    """The first-order node mapping round-trips and matches the temporal graph."""
     fo = event_graph.fo_mapping
     assert fo.num_ids() == 5
     for node in "abcde":
@@ -121,6 +125,7 @@ def test_fo_mapping(event_graph, temporal_graph):
 
 
 def test_continuation_edge_index_matches_existing(event_graph, existing):
+    """The continuation edge index matches the existing lift-order result."""
     got = event_graph.data.edge_index.as_tensor()
     got_set = {tuple(c) for c in got.t().tolist()}
     assert got_set == {tuple(c) for c in existing["ho"].t().tolist()}
@@ -128,12 +133,13 @@ def test_continuation_edge_index_matches_existing(event_graph, existing):
 
 
 def test_event_time(event_graph, existing):
+    """event_time(i) returns the timestamp of the i-th event."""
     for i in range(len(event_graph)):
         assert event_graph.event_time(i) == existing["node_time"][i].item()
 
 
 def test_getitem(event_graph):
-    # (u, v, t) for each event
+    """Indexing an EventGraph yields the (u, v, t) tuple for each event."""
     assert event_graph[0] == ("a", "b", 1)
     assert event_graph[1] == ("b", "c", 2)
     assert event_graph[2] == ("c", "e", 3)
@@ -141,6 +147,7 @@ def test_getitem(event_graph):
 
 
 def test_isolated_events(event_graph):
+    """Events with no predecessors or successors are correctly identified."""
     isolated = [
         i
         for i in range(event_graph.num_events)
@@ -150,6 +157,7 @@ def test_isolated_events(event_graph):
 
 
 def test_continuations_and_gaps(event_graph):
+    """continuations(i) returns each successor event with its time gap."""
     cont = {i: event_graph.continuations(i) for i in range(event_graph.num_events)}
     assert cont[0] == [(1, 1)]  # (a->b)@1 -> (b->c)@2, gap 1
     assert cont[1] == [(2, 1)]  # (b->c)@2 -> (c->e)@3, gap 1
@@ -158,12 +166,14 @@ def test_continuations_and_gaps(event_graph):
 
 
 def test_continuation_deltas(event_graph):
+    """Every continuation gap lies within (0, delta]."""
     for i in range(event_graph.num_events):
         for _nxt, gap in event_graph.continuations(i):
             assert 0 < gap <= event_graph.delta
 
 
 def test_edge_delta_matches_existing(event_graph, existing):
+    """Per-edge time deltas match the existing lift-order result."""
     got = {
         tuple(c): d
         for c, d in zip(
@@ -180,28 +190,31 @@ def test_edge_delta_matches_existing(event_graph, existing):
 
 
 def test_shortest_paths_distances(event_graph, existing):
+    """shortest_paths() distances match the existing first-order result."""
     dist, _pred = event_graph.shortest_paths()
     np.testing.assert_array_equal(dist, existing["dist_fo"])
 
 
 def test_shortest_paths_predecessors(event_graph, existing):
+    """shortest_paths() predecessors match the existing first-order result."""
     _dist, pred = event_graph.shortest_paths()
     np.testing.assert_array_equal(pred, existing["pred_fo"])
 
 
 def test_shortest_paths_a_to_d_is_unreachable(event_graph):
-    """a -> d needs a->b@1 then b->d@5, gap of 4 > delta"""
+    """Transition a->d needs a->b@1 then b->d@5, gap of 4 > delta."""
     dist, _pred = event_graph.shortest_paths()
     assert dist[0, 3] == np.inf
 
 
 def test_fastest_path_distances(event_graph, existing):
+    """Fastest-path distances over edge deltas match the existing result."""
     fastest = dijkstra(event_graph.sparse_adj_matrix(edge_attr="edge_delta"), directed=True)
     np.testing.assert_array_equal(fastest, existing["fastest"])
 
 
 def test_to_temporal_graph_round_trip(event_graph, temporal_graph):
-    # An EventGraph can be converted to a TemporalGraph and back again.
+    """An EventGraph converts back to an equivalent TemporalGraph."""
     rebuilt = event_graph.to_temporal_graph()
     assert isinstance(rebuilt, TemporalGraph)
     assert torch.equal(
@@ -215,7 +228,7 @@ def test_to_temporal_graph_round_trip(event_graph, temporal_graph):
 
 
 def test_multi_order_model_construction(event_graph, temporal_graph):
-    # A MultiOrderModel can be constructed from an EventGraph or a TemporalGraph.
+    """A MultiOrderModel built from an EventGraph matches one from a TemporalGraph."""
     with pytest.raises(AttributeError):
         # no such attribute yet
         mom_eg = MultiOrderModel.from_event_graph(event_graph, max_order=2)
@@ -233,7 +246,7 @@ def test_multi_order_model_construction(event_graph, temporal_graph):
 
 
 def test_to_device(event_graph):
-    # Moving an EventGraph to a different device moves the underlying TemporalGraph too.
+    """Moving an EventGraph moves its underlying TemporalGraph too."""
     moved = event_graph.to(torch.device("cpu"))
     assert isinstance(moved, EventGraph)
     assert moved is event_graph
@@ -255,6 +268,7 @@ def event_data() -> Data:
 
 
 def test_construct_from_data(event_data):
+    """An EventGraph can be built from a raw Data object with correct edge deltas."""
     eg = EventGraph(event_data, delta=DELTA)
     got = {
         tuple(c): d
@@ -266,8 +280,7 @@ def test_construct_from_data(event_data):
 
 
 def test_construct_from_data_to_temporal_graph(event_data):
-    # An EventGraph constructed from raw `torch_geometric.data.Data` can still give us
-    # a `TemporalGraph` using `.to_temporal_graph()`
+    """An EventGraph built from raw Data still converts to a TemporalGraph."""
     fo = IndexMap(["a", "b", "c", "d", "e"])
     eg = EventGraph(event_data, delta=DELTA, fo_mapping=fo, num_fo_nodes=5)
     tg = eg.to_temporal_graph()
