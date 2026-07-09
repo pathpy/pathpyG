@@ -225,6 +225,7 @@ class TikzBackend(PlotBackend):
         # latex compiler
         command = [
             "latexmk",
+            "-dvi",
             "--interaction=nonstopmode",
             "default.tex",
         ]
