@@ -21,7 +21,7 @@ Example:
     ])
 
     # Extract DAG capturing causal interaction sequences in temporal graph.
-    e_i = pp.algorithms.lift_order_temporal(g, delta=1)
+    e_i = EventGraph.build_edge_index(g, delta=1)
     dag = pp.Graph.from_edge_index(e_i)
     print(dag)
 
@@ -33,11 +33,10 @@ Example:
 from pathpyG.algorithms import centrality, generative_models, shortest_paths
 from pathpyG.algorithms.components import connected_components, largest_connected_component
 from pathpyG.algorithms.rolling_time_window import RollingTimeWindow
-from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
+from pathpyG.algorithms.temporal import temporal_shortest_paths
 from pathpyG.algorithms.weisfeiler_leman import WeisfeilerLeman_test
 
 __all__ = [
-    "lift_order_temporal",
     "temporal_shortest_paths",
     "centrality",
     "generative_models",

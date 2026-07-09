@@ -6,8 +6,8 @@ from typing import Tuple
 import numpy as np
 import torch
 from torch_geometric.data import Data
+from tqdm import tqdm
 
-from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.temporal_graph import TemporalGraph
@@ -42,10 +42,53 @@ class EventGraph(Graph):
 
         self._temporal_graph: TemporalGraph | None = None
 
+    @staticmethod
+    def build_edge_index(g: TemporalGraph, delta: float | int = 1):
+        """Build the event-graph edge index by lifting a temporal graph to second order.
+
+        Each temporal edge of `g` becomes an event (node); two events are connected
+        when the second can continue the first within the time window `delta`.
+
+        Args:
+            g: Temporal graph to lift.
+            delta: Maximum time difference between events to consider them connected.
+
+        Returns:
+            ho_index: Edge index of the second-order temporal event graph.
+        """
+        # first-order edge index
+        edge_index, timestamps = g.data.edge_index, g.data.time
+
+        delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
+        indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
+
+        unique_t = torch.unique(timestamps, sorted=True)
+        second_order = []
+
+        # lift order: find possible continuations for edges in each time stamp
+        for t in tqdm(unique_t):
+            # find indices of all source edges that occur at unique timestamp t
+            src_time_mask = timestamps == t
+            src_edge_idx = indices[src_time_mask]
+
+            # find indices of all edges that can possibly continue edges occurring at time t for the given delta
+            dst_time_mask = (timestamps > t) & (timestamps <= t + delta)
+            dst_edge_idx = indices[dst_time_mask]
+
+            if dst_edge_idx.size(0) > 0 and src_edge_idx.size(0) > 0:
+                # compute second-order edges between src and dst idx
+                # for all edges where dst in src_edges (edge_index[1, x[:, 0]]) matches src in dst_edges (edge_index[0, x[:, 1]])
+                x = torch.cartesian_prod(src_edge_idx, dst_edge_idx)
+                ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
+                second_order.append(ho_edge_index)
+
+        ho_index = torch.cat(second_order, dim=0).t().contiguous()
+        return ho_index
+
     @classmethod
     def from_temporal_graph(cls, g: TemporalGraph, delta: int = 1) -> "EventGraph":
         """Build an EventGraph from a temporal graph by lifting its edges into events."""
-        ho_index = lift_order_temporal(g, delta)
+        ho_index = cls.build_edge_index(g, delta)
         m = g.data.time.size(0)  # number of events (== number of first-order edges)
         node_sequence = g.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
         node_time = g.data.time.clone()  # [m]
@@ -124,17 +167,11 @@ class EventGraph(Graph):
         u, v = self.data.node_sequence[i].tolist()
         return self.fo_mapping.to_id(u), self.fo_mapping.to_id(v), self.data.node_time[i].item()
 
-    def continuations(self, i: int) -> list:
-        """Return each successor event of i paired with its time gap."""
-        out = []
-        for nxt in self.get_successors(i):
-            nxt = int(nxt.item())
-            out.append((nxt, self.data.edge_delta[self.edge_to_index[(i, nxt)]].item()))
-        return out
-
     def shortest_paths(self) -> Tuple[np.ndarray, np.ndarray]:
         """Return first-order shortest-path distances and predecessors respecting delta."""
         # TODO: This is wasteful, since we already have the lifted edge index
         # Modify `temporal_shortest_paths` to take in an optional pre-computed
         # edge_index?
+        from pathpyG.algorithms.temporal import temporal_shortest_paths
+
         return temporal_shortest_paths(self.to_temporal_graph(), self.delta)

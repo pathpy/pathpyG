@@ -7,51 +7,11 @@ from typing import Tuple
 import numpy as np
 import torch
 from scipy.sparse.csgraph import dijkstra
-from tqdm import tqdm
 
 from pathpyG import Graph
+from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
-
-
-def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
-    """Lift a temporal graph to a second-order temporal event graph.
-
-    Args:
-        g: Temporal graph to lift.
-        delta: Maximum time difference between events to consider them connected.
-
-    Returns:
-        ho_index: Edge index of the second-order temporal event graph.
-    """
-    # first-order edge index
-    edge_index, timestamps = g.data.edge_index, g.data.time
-
-    delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
-    indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
-
-    unique_t = torch.unique(timestamps, sorted=True)
-    second_order = []
-
-    # lift order: find possible continuations for edges in each time stamp
-    for t in tqdm(unique_t):
-        # find indices of all source edges that occur at unique timestamp t
-        src_time_mask = timestamps == t
-        src_edge_idx = indices[src_time_mask]
-
-        # find indices of all edges that can possibly continue edges occurring at time t for the given delta
-        dst_time_mask = (timestamps > t) & (timestamps <= t + delta)
-        dst_edge_idx = indices[dst_time_mask]
-
-        if dst_edge_idx.size(0) > 0 and src_edge_idx.size(0) > 0:
-            # compute second-order edges between src and dst idx
-            # for all edges where dst in src_edges (edge_index[1, x[:, 0]]) matches src in dst_edges (edge_index[0, x[:, 1]])
-            x = torch.cartesian_prod(src_edge_idx, dst_edge_idx)
-            ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
-            second_order.append(ho_edge_index)
-
-    ho_index = torch.cat(second_order, dim=0).t().contiguous()
-    return ho_index
 
 
 def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -67,7 +27,7 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, n
         - pred: Predecessor matrix for shortest time-respecting paths between all first-order nodes.
     """
     # generate temporal event DAG
-    edge_index = lift_order_temporal(g, delta)
+    edge_index = EventGraph.build_edge_index(g, delta)
 
     # Add indices of first-order nodes as src and dst of paths in augmented
     # temporal event DAG

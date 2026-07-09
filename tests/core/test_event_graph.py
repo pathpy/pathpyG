@@ -5,9 +5,7 @@ import pytest
 import torch
 from scipy.sparse.csgraph import dijkstra
 from torch_geometric.data import Data
-from torch_geometric.utils import to_scipy_sparse_matrix
 
-from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
 from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
@@ -54,45 +52,17 @@ def temporal_graph() -> TemporalGraph:
 
 
 @pytest.fixture
-def existing(temporal_graph):
-    # Properties of `temporal_graph` computed using the existing API.
-    ho = lift_order_temporal(temporal_graph, DELTA)  # (2, 2)
-    m = temporal_graph.data.time.numel()  # 4 - number of events
-    n = temporal_graph.n  # 5 - number of FO nodes
-    node_time = temporal_graph.data.time
-    node_sequence = temporal_graph.data.edge_index.as_tensor().t()  # (m, 2)
-
-    edge_delta = node_time[ho[1]] - node_time[ho[0]]
-    adj = to_scipy_sparse_matrix(ho, edge_attr=edge_delta, num_nodes=m)
-    fastest = dijkstra(adj, directed=True)  # (m, m)
-
-    dist_fo, pred_fo = temporal_shortest_paths(temporal_graph, DELTA)  # (n, n)
-
-    return {
-        "ho": ho,
-        "m": m,
-        "n": n,
-        "node_time": node_time,
-        "node_sequence": node_sequence,
-        "edge_delta": edge_delta,
-        "fastest": fastest,
-        "dist_fo": dist_fo,
-        "pred_fo": pred_fo,
-    }
-
-
-@pytest.fixture
 def event_graph(temporal_graph) -> EventGraph:
     return EventGraph.from_temporal_graph(temporal_graph, delta=DELTA)
 
 
-def test_basic(event_graph, existing):
+def test_basic(event_graph):
     """Basic counts (delta, events, nodes) match the source temporal graph."""
     assert event_graph.delta == DELTA
-    assert len(event_graph) == existing["m"] == 4
-    assert event_graph.num_events == existing["m"] == 4
-    assert event_graph.n == existing["m"] == 4
-    assert event_graph.num_fo_nodes == existing["n"] == 5
+    assert len(event_graph) == 4
+    assert event_graph.num_events == 4
+    assert event_graph.n == 4
+    assert event_graph.num_fo_nodes == 5
 
 
 def test_str(event_graph):
@@ -103,15 +73,13 @@ def test_str(event_graph):
     )
 
 
-def test_node_time(event_graph, existing):
+def test_node_time(event_graph):
     """Each event node carries the timestamp of its underlying edge."""
-    assert torch.equal(event_graph.data.node_time, existing["node_time"])
     assert event_graph.data.node_time.tolist() == [1, 2, 3, 5]
 
 
-def test_node_sequence(event_graph, existing):
+def test_node_sequence(event_graph):
     """Each event node stores the (source, target) first-order node pair."""
-    assert torch.equal(event_graph.data.node_sequence, existing["node_sequence"])
     assert event_graph.data.node_sequence.tolist() == [[0, 1], [1, 2], [2, 4], [1, 3]]
 
 
@@ -124,18 +92,16 @@ def test_fo_mapping(event_graph, temporal_graph):
         assert fo.to_idx(node) == temporal_graph.mapping.to_idx(node)
 
 
-def test_continuation_edge_index_matches_existing(event_graph, existing):
-    """The continuation edge index matches the existing lift-order result."""
+def test_continuation_edge_index(event_graph):
+    """The continuation edge index matches the expected result."""
     got = event_graph.data.edge_index.as_tensor()
     got_set = {tuple(c) for c in got.t().tolist()}
-    assert got_set == {tuple(c) for c in existing["ho"].t().tolist()}
     assert got_set == {(0, 1), (1, 2)}
 
 
-def test_event_time(event_graph, existing):
+def test_event_time(event_graph, ):
     """event_time(i) returns the timestamp of the i-th event."""
-    for i in range(len(event_graph)):
-        assert event_graph.event_time(i) == existing["node_time"][i].item()
+    assert [event_graph.event_time(i) for i in range(event_graph.num_events)] == [1, 2, 3, 5]
 
 
 def test_getitem(event_graph):
@@ -156,24 +122,17 @@ def test_isolated_events(event_graph):
     assert isolated == [3]
 
 
-def test_continuations_and_gaps(event_graph):
-    """continuations(i) returns each successor event with its time gap."""
-    cont = {i: event_graph.continuations(i) for i in range(event_graph.num_events)}
-    assert cont[0] == [(1, 1)]  # (a->b)@1 -> (b->c)@2, gap 1
-    assert cont[1] == [(2, 1)]  # (b->c)@2 -> (c->e)@3, gap 1
-    assert cont[2] == []
-    assert cont[3] == []
-
-
-def test_continuation_deltas(event_graph):
-    """Every continuation gap lies within (0, delta]."""
+def test_edge_deltas(event_graph):
+    """Every edge_delta lies within (0, delta]."""
     for i in range(event_graph.num_events):
-        for _nxt, gap in event_graph.continuations(i):
-            assert 0 < gap <= event_graph.delta
+        for nxt in event_graph.get_successors(i):
+            nxt = int(nxt.item())
+            delta = event_graph.data.edge_delta[event_graph.edge_to_index[(i, nxt)]].item()
+            assert 0 < delta <= event_graph.delta
 
 
-def test_edge_delta_matches_existing(event_graph, existing):
-    """Per-edge time deltas match the existing lift-order result."""
+def test_edge_delta(event_graph):
+    """Per-edge time deltas match the expected value."""
     got = {
         tuple(c): d
         for c, d in zip(
@@ -181,24 +140,37 @@ def test_edge_delta_matches_existing(event_graph, existing):
             event_graph.data.edge_delta.tolist(),
         )
     }
-    expected = {
-        tuple(c): d
-        for c, d in zip(existing["ho"].t().tolist(), existing["edge_delta"].tolist())
-    }
-    assert got == expected
     assert got == {(0, 1): 1, (1, 2): 1}
 
 
-def test_shortest_paths_distances(event_graph, existing):
-    """shortest_paths() distances match the existing first-order result."""
+def test_shortest_paths_distances(event_graph):
+    """shortest_paths() distances match the expected result."""
     dist, _pred = event_graph.shortest_paths()
-    np.testing.assert_array_equal(dist, existing["dist_fo"])
+    expected = np.array(
+        [
+            [0, 1, 2, np.inf, 3],
+            [np.inf, 0, 1, 1, 2],
+            [np.inf, np.inf, 0, np.inf, 1],
+            [np.inf, np.inf, np.inf, 0, np.inf],
+            [np.inf, np.inf, np.inf, np.inf, 0],
+        ]
+    )
+    np.testing.assert_array_equal(dist, expected)
 
 
-def test_shortest_paths_predecessors(event_graph, existing):
-    """shortest_paths() predecessors match the existing first-order result."""
+def test_shortest_paths_predecessors(event_graph):
+    """shortest_paths() predecessors match the expected result."""
     _dist, pred = event_graph.shortest_paths()
-    np.testing.assert_array_equal(pred, existing["pred_fo"])
+    expected = np.array(
+        [
+            [0, 0, 1, -1, 2],
+            [-1, 1, 1, 1, 2],
+            [-1, -1, 2, -1, 2],
+            [-1, -1, -1, 3, -1],
+            [-1, -1, -1, -1, 4],
+        ]
+    )
+    np.testing.assert_array_equal(pred, expected)
 
 
 def test_shortest_paths_a_to_d_is_unreachable(event_graph):
@@ -207,10 +179,18 @@ def test_shortest_paths_a_to_d_is_unreachable(event_graph):
     assert dist[0, 3] == np.inf
 
 
-def test_fastest_path_distances(event_graph, existing):
-    """Fastest-path distances over edge deltas match the existing result."""
+def test_fastest_path_distances(event_graph):
+    """Fastest-path distances over edge deltas match the expected result."""
     fastest = dijkstra(event_graph.sparse_adj_matrix(edge_attr="edge_delta"), directed=True)
-    np.testing.assert_array_equal(fastest, existing["fastest"])
+    expected = np.array(
+        [
+            [0, 1, 2, np.inf],
+            [np.inf, 0, 1, np.inf],
+            [np.inf, np.inf, 0, np.inf],
+            [np.inf, np.inf, np.inf, 0],
+        ]
+    )
+    np.testing.assert_array_equal(fastest, expected)
 
 
 def test_to_temporal_graph_round_trip(event_graph, temporal_graph):
