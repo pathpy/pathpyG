@@ -1,8 +1,12 @@
+"""Event graph representation of a temporal graph and related operations."""
 from __future__ import annotations
+
 from typing import Tuple, Union
+
 import numpy as np
 import torch
 from torch_geometric.data import Data
+
 from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
@@ -10,6 +14,8 @@ from pathpyG.core.temporal_graph import TemporalGraph
 
 
 class EventGraph(Graph):
+    """A directed acyclic graph whose nodes are time-stamped events."""
+
     def __init__(
         self,
         data: Data,
@@ -18,7 +24,7 @@ class EventGraph(Graph):
         num_fo_nodes: int | None = None,
         mapping: IndexMap | None = None,
     ) -> None:
-
+        """Create an EventGraph from a `Data` object carrying per-event `node_time`."""
         if "node_time" not in data:
             raise ValueError("EventGraph requires a per-event `node_time` node attribute.")
 
@@ -38,6 +44,7 @@ class EventGraph(Graph):
 
     @classmethod
     def from_temporal_graph(cls, g: TemporalGraph, delta: Union[int, float] = 1) -> "EventGraph":
+        """Build an EventGraph from a temporal graph by lifting its edges into events."""
         ho_index = lift_order_temporal(g, delta)
         m = g.data.time.size(0)  # number of events (== number of first-order edges)
         node_sequence = g.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
@@ -57,6 +64,7 @@ class EventGraph(Graph):
         return eg
 
     def __str__(self) -> str:
+        """Return a human-readable summary listing the delta and all events."""
         events_str = ""
         for i in range(self.n):
             u_id, v_id, t = self.event_endpoints(i)
@@ -67,20 +75,24 @@ class EventGraph(Graph):
         )
 
     def __len__(self):
+        """Return the number of events in the graph."""
         return self.n
 
     def __getitem__(self, key):
+        """Return the (u, v, t) endpoints for an integer key, else delegate to `Graph`."""
         if isinstance(key, (int, np.integer)) and not isinstance(key, bool):
             return self.event_endpoints(int(key))
         return super().__getitem__(key)
 
     def to(self, device: torch.device) -> "EventGraph":
+        """Move the event graph and its underlying temporal graph to the given device."""
         super().to(device)
         if self._temporal_graph is not None:
             self._temporal_graph.to(device)
         return self
 
     def to_temporal_graph(self) -> TemporalGraph:
+        """Return the underlying temporal graph, reconstructing it if necessary."""
         if self._temporal_graph is None:
             edge_index = self.data.node_sequence.t().contiguous()  # [2, num_events]
             self._temporal_graph = TemporalGraph(
@@ -95,20 +107,25 @@ class EventGraph(Graph):
 
     @property
     def num_fo_nodes(self) -> int:
+        """Number of distinct first-order nodes underlying the events."""
         return self._num_fo_nodes
 
     @property
     def num_events(self) -> int:
+        """Number of events (nodes) in the event graph."""
         return self.n
 
     def event_time(self, i: int) -> Union[int, float]:
+        """Return the timestamp of the i-th event."""
         return self.data.node_time[i].item()
 
     def event_endpoints(self, i: int) -> Tuple:
+        """Return the (source id, target id, time) of the i-th event."""
         u, v = self.data.node_sequence[i].tolist()
         return self.fo_mapping.to_id(u), self.fo_mapping.to_id(v), self.data.node_time[i].item()
 
     def continuations(self, i: int) -> list:
+        """Return each successor event of i paired with its time gap."""
         out = []
         for nxt in self.get_successors(i):
             nxt = int(nxt.item())
@@ -116,6 +133,7 @@ class EventGraph(Graph):
         return out
 
     def shortest_paths(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Return first-order shortest-path distances and predecessors respecting delta."""
         # TODO: This is wasteful, since we already have the lifted edge index
         # Modify `temporal_shortest_paths` to take in an optional pre-computed
         # edge_index?
