@@ -1,7 +1,7 @@
 """Event graph representation of a temporal graph and related operations."""
 from __future__ import annotations
 
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -19,7 +19,7 @@ class EventGraph(Graph):
     def __init__(
         self,
         data: Data,
-        delta: Union[int, float],
+        delta: int,
         fo_mapping: IndexMap | None = None,
         num_fo_nodes: int | None = None,
         mapping: IndexMap | None = None,
@@ -43,7 +43,7 @@ class EventGraph(Graph):
         self._temporal_graph: TemporalGraph | None = None
 
     @classmethod
-    def from_temporal_graph(cls, g: TemporalGraph, delta: Union[int, float] = 1) -> "EventGraph":
+    def from_temporal_graph(cls, g: TemporalGraph, delta: int = 1) -> "EventGraph":
         """Build an EventGraph from a temporal graph by lifting its edges into events."""
         ho_index = lift_order_temporal(g, delta)
         m = g.data.time.size(0)  # number of events (== number of first-order edges)
@@ -115,7 +115,7 @@ class EventGraph(Graph):
         """Number of events (nodes) in the event graph."""
         return self.n
 
-    def event_time(self, i: int) -> Union[int, float]:
+    def event_time(self, i: int) -> int:
         """Return the timestamp of the i-th event."""
         return self.data.node_time[i].item()
 
