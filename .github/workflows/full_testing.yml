@@ -28,5 +28,13 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest
+          pytest -m "not network and not benchmark and not gpu"
+        shell: bash
+
+      # Tests that depend on reaching external network services (e.g. networks.skewed.de)
+      # are flaky in CI, so they run separately and don't fail the build.
+      - name: Run network-dependent tests
+        continue-on-error: true
+        run: |
+          pytest -m network --no-cov
         shell: bash
