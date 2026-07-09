@@ -21,7 +21,7 @@ jobs:
         uses: tj-actions/changed-files@v47
         with:
           files: |
-            .github/workflows/notebook_testing.yml
+            .github/workflows/docstring_testing.yml
             src/**
             tests/**
             pyproject.toml
