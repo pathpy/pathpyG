@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - 317-ci-tests-are-failing-because-ffmpeg-installation-does-not-work
   pull_request:
 
 jobs:
@@ -19,7 +20,7 @@ jobs:
       # Only run workflow if certain files have been changed.
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v42
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             .github/workflows/testing.yml

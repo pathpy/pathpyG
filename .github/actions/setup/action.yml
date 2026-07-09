@@ -21,13 +21,13 @@ runs:
 
   steps:
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v8.3.2
       with:
         python-version: ${{ inputs.python-version }}
         activate-environment: true
 
     - name: Cache uv virtual environment
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .venv
         key: uv-venv-${{ runner.os }}-py-${{ inputs.python-version }}-cuda-${{ inputs.cuda-version }}
@@ -46,7 +46,7 @@ runs:
 
     - name: Set up TeX Live
       if: ${{ inputs.full_install == 'true' }}
-      uses: TeX-Live/setup-texlive-action@v3
+      uses: TeX-Live/setup-texlive-action@v4
       with:
         cache: true
         packages: |
@@ -79,11 +79,8 @@ runs:
           python3-dev
           libcairo2-dev
           libpango1.0-dev
+          ffmpeg
 
-    - name: Install ffmpeg
-      if: ${{ inputs.full_install == 'true' }}
-      uses: FedericoCarboni/setup-ffmpeg@v3
-      
     - name: Install optional Python dependencies
       if: ${{ inputs.full_install == 'true' }}
       run: |
