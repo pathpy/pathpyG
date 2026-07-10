@@ -202,20 +202,18 @@ def test_to_temporal_graph_round_trip(event_graph, temporal_graph):
 
 def test_multi_order_model_construction(event_graph, temporal_graph):
     """A MultiOrderModel built from an EventGraph matches one from a TemporalGraph."""
-    with pytest.raises(AttributeError):
-        # no such attribute yet
-        mom_eg = MultiOrderModel.from_event_graph(event_graph, max_order=2)
-        mom_tg = MultiOrderModel.from_temporal_graph(temporal_graph, delta=DELTA, max_order=2)
+    mom_eg = MultiOrderModel.from_event_graph(event_graph, max_order=2)
+    mom_tg = MultiOrderModel.from_temporal_graph(temporal_graph, delta=DELTA, max_order=2)
 
-        for k in (1, 2):
-            assert torch.equal(
-                mom_eg.layers[k].data.edge_index.as_tensor(),
-                mom_tg.layers[k].data.edge_index.as_tensor(),
-            )
-            assert torch.equal(
-                mom_eg.layers[k].data.edge_weight,
-                mom_tg.layers[k].data.edge_weight,
-            )
+    for k in (1, 2):
+        assert torch.equal(
+            mom_eg.layers[k].data.edge_index.as_tensor(),
+            mom_tg.layers[k].data.edge_index.as_tensor(),
+        )
+        assert torch.equal(
+            mom_eg.layers[k].data.edge_weight,
+            mom_tg.layers[k].data.edge_weight,
+        )
 
 
 def test_to_device(event_graph):
