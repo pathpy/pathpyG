@@ -20,8 +20,8 @@ class EventGraph(Graph):
         self,
         data: Data,
         delta: int,
-        fo_mapping: IndexMap | None = None,
-        num_fo_nodes: int | None = None,
+        first_order_mapping: IndexMap | None = None,
+        n_first_order: int | None = None,
         mapping: IndexMap | None = None,
     ) -> None:
         """Create an EventGraph from a `Data` object carrying per-event `node_time`."""
@@ -31,11 +31,11 @@ class EventGraph(Graph):
         super().__init__(data, mapping=mapping)
 
         self.delta = delta
-        self.fo_mapping = fo_mapping if fo_mapping is not None else IndexMap()
-        if num_fo_nodes is not None:
-            self._num_fo_nodes = int(num_fo_nodes)
+        self.first_order_mapping = first_order_mapping if first_order_mapping is not None else IndexMap()
+        if n_first_order is not None:
+            self._n_first_order = int(n_first_order)
         else:
-            self._num_fo_nodes = int(self.data.node_sequence.max().item()) + 1
+            self._n_first_order = int(self.data.node_sequence.max().item()) + 1
 
         ei = self.data.edge_index
         self.data.edge_delta = self.data.node_time[ei[1]] - self.data.node_time[ei[0]]
@@ -93,13 +93,20 @@ class EventGraph(Graph):
         node_sequence = g.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
         node_time = g.data.time.clone()  # [m]
 
+        # Build an event mapping with IDs of the form "a->b@t" for each edge node
+        event_ids = [
+            f"{g.mapping.to_id(u)}->{g.mapping.to_id(v)}@{t}"
+            for (u, v), t in zip(node_sequence.tolist(), node_time.tolist())
+        ]
+        mapping = IndexMap(event_ids)
+
         data = Data(
             edge_index=ho_index,
             num_nodes=m,
             node_sequence=node_sequence,
             node_time=node_time,
         )
-        eg = cls(data, delta=delta, fo_mapping=g.mapping, num_fo_nodes=g.n)
+        eg = cls(data, delta=delta, first_order_mapping=g.mapping, n_first_order=g.n, mapping=mapping)
 
         # Attach a clone of the temporal graph since we already have it
         eg._temporal_graph = TemporalGraph(g.data.clone(), mapping=g.mapping)
@@ -108,13 +115,9 @@ class EventGraph(Graph):
 
     def __str__(self) -> str:
         """Return a human-readable summary listing the delta and all events."""
-        events_str = ""
-        for i in range(self.n):
-            u_id, v_id, t = self.event_endpoints(i)
-            events_str += f"\n{u_id}->{v_id}@{t}"
         return (
-            f"EventGraph (delta={self.delta})"
-            f"{events_str}"
+            f"EventGraph (delta={self.delta})\n" +
+            "\n".join(f"{self.mapping.to_id(i)}" for i in range(self.n))
         )
 
     def __len__(self):
@@ -124,7 +127,8 @@ class EventGraph(Graph):
     def __getitem__(self, key):
         """Return the (u, v, t) endpoints for an integer key, else delegate to `Graph`."""
         if isinstance(key, (int, np.integer)) and not isinstance(key, bool):
-            return self.event_endpoints(int(key))
+            u, v = self.data.node_sequence[key].tolist()
+            return self.first_order_mapping.to_id(u), self.first_order_mapping.to_id(v), self.data.node_time[key].item()
         return super().__getitem__(key)
 
     def to(self, device: torch.device) -> "EventGraph":
@@ -142,16 +146,16 @@ class EventGraph(Graph):
                 Data(
                     edge_index=edge_index,
                     time=self.data.node_time.clone(),
-                    num_nodes=self.num_fo_nodes,
+                    num_nodes=self.n_first_order,
                 ),
-                mapping=self.fo_mapping,
+                mapping=self.first_order_mapping,
             )
         return self._temporal_graph
 
     @property
-    def num_fo_nodes(self) -> int:
+    def n_first_order(self) -> int:
         """Number of distinct first-order nodes underlying the events."""
-        return self._num_fo_nodes
+        return self._n_first_order
 
     @property
     def num_events(self) -> int:
@@ -161,11 +165,6 @@ class EventGraph(Graph):
     def event_time(self, i: int) -> int:
         """Return the timestamp of the i-th event."""
         return self.data.node_time[i].item()
-
-    def event_endpoints(self, i: int) -> Tuple:
-        """Return the (source id, target id, time) of the i-th event."""
-        u, v = self.data.node_sequence[i].tolist()
-        return self.fo_mapping.to_id(u), self.fo_mapping.to_id(v), self.data.node_time[i].item()
 
     def shortest_paths(self) -> Tuple[np.ndarray, np.ndarray]:
         """Return first-order shortest-path distances and predecessors respecting delta."""

@@ -62,7 +62,7 @@ def test_basic(event_graph):
     assert len(event_graph) == 4
     assert event_graph.num_events == 4
     assert event_graph.n == 4
-    assert event_graph.num_fo_nodes == 5
+    assert event_graph.n_first_order == 5
 
 
 def test_str(event_graph):
@@ -83,9 +83,9 @@ def test_node_sequence(event_graph):
     assert event_graph.data.node_sequence.tolist() == [[0, 1], [1, 2], [2, 4], [1, 3]]
 
 
-def test_fo_mapping(event_graph, temporal_graph):
+def test_first_order_mapping(event_graph, temporal_graph):
     """The first-order node mapping round-trips and matches the temporal graph."""
-    fo = event_graph.fo_mapping
+    fo = event_graph.first_order_mapping
     assert fo.num_ids() == 5
     for node in "abcde":
         assert fo.to_id(fo.to_idx(node)) == node
@@ -261,8 +261,8 @@ def test_construct_from_data(event_data):
 
 def test_construct_from_data_to_temporal_graph(event_data):
     """An EventGraph built from raw Data still converts to a TemporalGraph."""
-    fo = IndexMap(["a", "b", "c", "d", "e"])
-    eg = EventGraph(event_data, delta=DELTA, fo_mapping=fo, num_fo_nodes=5)
+    first_order_mapping = IndexMap(["a", "b", "c", "d", "e"])
+    eg = EventGraph(event_data, delta=DELTA, first_order_mapping=first_order_mapping, n_first_order=5)
     tg = eg.to_temporal_graph()
     assert isinstance(tg, TemporalGraph)
     assert tg.n == 5
