@@ -14,20 +14,27 @@ from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
 
-def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, np.ndarray]:
+def temporal_shortest_paths(g: TemporalGraph | None, delta: int, eg: EventGraph | None = None) -> Tuple[np.ndarray, np.ndarray]:
     """Compute shortest time-respecting paths in a temporal graph.
 
     Args:
-        g: Temporal graph to compute shortest paths on.
+        g: Temporal graph to compute shortest paths on. If None, `eg` must be provided.
         delta: Maximum time difference between events in a path.
+        eg: Event graph to compute shortest paths on. If None, `g` must be provided.
 
     Returns:
         Tuple of two numpy arrays:
         - dist: Shortest time-respecting path distances between all first-order nodes.
         - pred: Predecessor matrix for shortest time-respecting paths between all first-order nodes.
     """
-    # generate temporal event DAG
-    edge_index = EventGraph.build_edge_index(g, delta)
+    assert g is None or eg is None, "Only one of g or eg can be provided"
+    if g is None:
+        assert eg is not None, "If g is None, eg must be provided"
+        edge_index = eg.data.edge_index
+        g = eg.to_temporal_graph()
+    else:
+        # generate temporal event DAG
+        edge_index = EventGraph.build_edge_index(g, delta)
 
     # Add indices of first-order nodes as src and dst of paths in augmented
     # temporal event DAG

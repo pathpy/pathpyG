@@ -169,9 +169,6 @@ class EventGraph(Graph):
 
     def shortest_paths(self) -> Tuple[np.ndarray, np.ndarray]:
         """Return first-order shortest-path distances and predecessors respecting delta."""
-        # TODO: This is wasteful, since we already have the lifted edge index
-        # Modify `temporal_shortest_paths` to take in an optional pre-computed
-        # edge_index?
         from pathpyG.algorithms.temporal import temporal_shortest_paths
 
-        return temporal_shortest_paths(self.to_temporal_graph(), self.delta)
+        return temporal_shortest_paths(g=None, delta=self.delta, eg=self)
