@@ -131,16 +131,9 @@ def test_edge_deltas(event_graph):
             assert 0 < delta <= event_graph.delta
 
 
-def test_edge_delta(event_graph):
-    """Per-edge time deltas match the expected value."""
-    got = {
-        tuple(c): d
-        for c, d in zip(
-            event_graph.data.edge_index.as_tensor().t().tolist(),
-            event_graph.data.edge_delta.tolist(),
-        )
-    }
-    assert got == {(0, 1): 1, (1, 2): 1}
+def test_edge_delta_map(event_graph):
+    """Per-edge time delta map matches the expected value."""
+    assert event_graph.edge_delta_map() == {(0, 1): 1, (1, 2): 1}
 
 
 def test_shortest_paths_distances(event_graph):
@@ -231,6 +224,29 @@ def test_to_device(event_graph):
     assert isinstance(moved, EventGraph)
     assert moved is event_graph
     assert moved.to_temporal_graph().data.edge_index.device.type == "cpu"
+
+
+def test_reduce_delta(temporal_graph, event_graph):
+    """Reducing delta reproduces the graph built directly with the smaller delta."""
+    eg_delta4 = EventGraph.from_temporal_graph(temporal_graph, delta=4)
+    eg_delta2 = eg_delta4.reduce_delta(decrement=2)
+
+    assert eg_delta2.delta == 2
+    assert eg_delta2.num_events == event_graph.num_events
+    assert eg_delta2.n_first_order == event_graph.n_first_order
+    assert torch.equal(eg_delta2.data.node_time, event_graph.data.node_time)
+    assert torch.equal(eg_delta2.data.node_sequence, event_graph.data.node_sequence)
+    assert eg_delta2.edge_delta_map() == event_graph.edge_delta_map()
+
+
+def test_reduce_delta_to_zero_removes_all_edges(event_graph):
+    """Reducing delta 2->0 leaves the events but drops every continuation edge."""
+    reduced = event_graph.reduce_delta(2)
+    assert reduced.delta == 0
+    assert reduced.num_events == event_graph.num_events
+    assert reduced.data.edge_index.as_tensor().numel() == 0
+    with pytest.raises(ValueError):
+        event_graph.reduce_delta(3)  # would make delta negative
 
 
 """

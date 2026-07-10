@@ -166,8 +166,45 @@ class EventGraph(Graph):
         """Return the timestamp of the i-th event."""
         return self.data.node_time[i].item()
 
+    def edge_delta_map(self) -> dict[tuple[int, int], int]:
+        """Return a mapping from each transition edge (src, dst) to its time delta."""
+        return {
+            tuple(c): d
+            for c, d in zip(
+                self.data.edge_index.as_tensor().t().tolist(),
+                self.data.edge_delta.tolist(),
+            )
+        }
+
     def shortest_paths(self) -> Tuple[np.ndarray, np.ndarray]:
         """Return first-order shortest-path distances and predecessors respecting delta."""
         from pathpyG.algorithms.temporal import temporal_shortest_paths
 
         return temporal_shortest_paths(g=None, delta=self.delta, eg=self)
+
+    def reduce_delta(self, decrement: int = 1) -> "EventGraph":
+        """Return a new EventGraph with a reduced time window `delta - decrement`."""
+        new_delta = self.delta - decrement
+        if new_delta < 0:
+            raise ValueError(
+                f"decrement={decrement} exceeds current delta={self.delta}"
+            )
+
+        ei = self.data.edge_index
+        edge_delta = self.data.node_time[ei[1]] - self.data.node_time[ei[0]]
+        mask = edge_delta <= new_delta
+        new_edge_index = ei[:, mask].contiguous()
+
+        data = Data(
+            edge_index=new_edge_index,
+            num_nodes=self.n,
+            node_sequence=self.data.node_sequence.clone(),
+            node_time=self.data.node_time.clone(),
+        )
+        return EventGraph(
+            data,
+            delta=new_delta,
+            first_order_mapping=self.first_order_mapping,
+            n_first_order=self.n_first_order,
+            mapping=self.mapping,
+        )
