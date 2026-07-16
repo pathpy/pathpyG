@@ -127,7 +127,7 @@ class NetworkPlot(PathPyPlot):
         # initialize values
         nodes: pd.DataFrame = pd.DataFrame(index=self.network.nodes)
         # if higher-order network, convert node tuples to string representation
-        if self.network.order > 1:
+        if self.network.mapping.has_tuple_ids:
             nodes.index = nodes.index.map(lambda x: self.config["separator"].join(map(str, x)))
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
@@ -172,7 +172,7 @@ class NetworkPlot(PathPyPlot):
         # initialize values
         edges: pd.DataFrame = pd.DataFrame(index=pd.MultiIndex.from_tuples(self.network.edges, names=["source", "target"]))
         # if higher-order network, convert node tuples to string representation
-        if self.network.order > 1:
+        if self.network.mapping.has_tuple_ids:
             edges.index = edges.index.map(lambda x: (self.config["separator"].join(map(str, x[0])), self.config["separator"].join(map(str, x[1]))))
         for attribute in self.attributes:
             # set default value for each attribute based on the pathpyG.toml config
@@ -365,7 +365,7 @@ class NetworkPlot(PathPyPlot):
 
         # update x,y position of the nodes
         layout_df = pd.DataFrame.from_dict(layout, orient="index", columns=["x", "y"])
-        if self.network.order > 1 and not isinstance(layout_df.index[0], str):
+        if self.network.mapping.has_tuple_ids and not isinstance(layout_df.index[0], str):
             layout_df.index = layout_df.index.map(lambda x: self.config["separator"].join(map(str, x)))
         # scale x and y to [0,1]
         layout_df["x"] = (layout_df["x"] - layout_df["x"].min()) / (layout_df["x"].max() - layout_df["x"].min())
