@@ -1,6 +1,6 @@
 """Temporal Graph class for handling time-stamped edges."""
 
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -10,6 +10,7 @@ from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 
 from pathpyG import Graph
+from pathpyG.core.graph import infer_mapping
 from pathpyG.core.index_map import IndexMap
 from pathpyG.utils import to_numpy
 
@@ -56,9 +57,15 @@ class TemporalGraph(Graph):
         # reorder temporal data
         # Note that we do not use `torch_geometric.self.data.Data.sort_by_time` because it cannot sort numpy arrays`
         sorted_idx = torch.argsort(self.data.time)
+        # slicing an EdgeIndex discards its metadata, so restore it after reordering
+        is_undirected = self.data.edge_index.is_undirected
         for edge_attr in set(self.data.edge_attrs()).union(set(["time"])):
             if edge_attr == "edge_index":
-                self.data.edge_index = self.data.edge_index[:, sorted_idx]
+                self.data.edge_index = EdgeIndex(
+                    data=self.data.edge_index[:, sorted_idx].as_tensor(),
+                    sparse_size=(self.data.num_nodes, self.data.num_nodes),
+                    is_undirected=is_undirected,
+                )
             else:
                 self.data[edge_attr] = self.data[edge_attr][sorted_idx]
 
@@ -75,14 +82,22 @@ class TemporalGraph(Graph):
         }
 
     @staticmethod
-    def from_edge_list(  # type: ignore[override]
-        edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None
+    def from_edge_list(  # type: ignore[override]  # temporal edges carry a timestamp, unlike those of `Graph`
+        edge_list: Iterable[Tuple[str, str, Union[int, float]]],
+        is_undirected: bool = False,
+        mapping: Optional[IndexMap] = None,
+        device: Optional[torch.device] = None,
     ) -> "TemporalGraph":
         """Create a temporal graph from a list of tuples containing edges with timestamps.
 
+        Edges can be given as string or integer tuples. If strings are used and no mapping is given,
+        a mapping of node IDs to indices will be automatically created based on a lexicographic ordering of
+        node IDs. Nodes that are contained in the mapping but not in any edge will be isolated nodes.
+
         Args:
-            edge_list: A list of tuples in the format (source, destination, timestamp).
-            num_nodes: Optional number of nodes in the graph. If not provided, it will be inferred.
+            edge_list: Iterable of temporal edges in the format (source, destination, timestamp).
+            is_undirected: Whether the edge list contains all bidirectional edges
+            mapping: optional mapping of string IDs to node indices
             device: The device on which to create the tensors (CPU or GPU).
 
         Returns:
@@ -95,28 +110,35 @@ class TemporalGraph(Graph):
             >>> edge_list = [("a", "b", 1), ("b", "c", 2), ("c", "a", 3)]
             >>> g = pp.TemporalGraph.from_edge_list(edge_list)
         """
-        if len(edge_list) == 0:
+        # handle empty graph
+        if len(edge_list) == 0:  # type: ignore[arg-type]
             return TemporalGraph(
                 data=Data(
                     edge_index=torch.empty((2, 0), dtype=torch.long, device=device),
                     time=torch.empty((0,), dtype=torch.long, device=device),
-                    num_nodes=num_nodes,
+                    num_nodes=0 if mapping is None else mapping.num_ids(),
                 ),
+                mapping=IndexMap() if mapping is None else mapping,
             )
 
         edge_array = np.array(edge_list)
 
         # Convert timestamps to tensor
-        if isinstance(edge_list[0][2], int):
+        if isinstance(edge_list[0][2], int):  # type: ignore[index]
             ts = torch.tensor(edge_array[:, 2].astype(np.int_), device=device)
         else:
             ts = torch.tensor(edge_array[:, 2].astype(np.double), device=device)
 
-        index_map = IndexMap(np.unique(edge_array[:, :2]))
-        edge_index = index_map.to_idxs(edge_array[:, :2].T, device=device)
+        if mapping is None:
+            mapping = infer_mapping(edge_array[:, :2])
 
-        if not num_nodes:
-            num_nodes = index_map.num_ids()
+        num_nodes = mapping.num_ids()
+
+        edge_index = EdgeIndex(
+            mapping.to_idxs(edge_array[:, :2].T, device=device),
+            sparse_size=(num_nodes, num_nodes),
+            is_undirected=is_undirected,
+        )
 
         return TemporalGraph(
             data=Data(
@@ -124,7 +146,7 @@ class TemporalGraph(Graph):
                 time=ts,
                 num_nodes=num_nodes,
             ),
-            mapping=index_map,
+            mapping=mapping,
         )
 
     @property

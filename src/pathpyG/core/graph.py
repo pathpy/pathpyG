@@ -26,6 +26,21 @@ from pathpyG.core.index_map import IndexMap
 logger = logging.getLogger("root")
 
 
+def infer_mapping(edge_array: np.ndarray) -> IndexMap:
+    """Infer an `IndexMap` from the node IDs occurring in an array of edges.
+
+    IDs are ordered lexicographically, except for IDs that are entirely numeric strings,
+    which are ordered numerically so that e.g. `2` precedes `10`.
+
+    Args:
+        edge_array: array of edges whose entries are node IDs.
+    """
+    node_ids = np.unique(edge_array)
+    if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
+        node_ids = np.sort(node_ids.astype(int)).astype(str)
+    return IndexMap(node_ids)
+
+
 class Graph:
     """A graph object storing nodes, edges, and attributes.
 
@@ -197,11 +212,7 @@ class Graph:
             )
 
         if mapping is None:
-            edge_array = np.array(edge_list)
-            node_ids = np.unique(edge_array)
-            if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
-                node_ids = np.sort(node_ids.astype(int)).astype(str)
-            mapping = IndexMap(node_ids)
+            mapping = infer_mapping(np.array(edge_list))
 
         num_nodes = mapping.num_ids()
 
