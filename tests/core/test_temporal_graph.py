@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import torch
 from torch import equal
 from torch_geometric.data import Data
 
+from pathpyG.core.index_map import IndexMap
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
@@ -17,7 +19,11 @@ def test_init():
     assert equal(tgraph.data.time, torch.tensor([1000, 1010, 1100, 2000]))
 
     # Case where n == m
-    tdata = Data(edge_index=torch.IntTensor([[0, 1, 2, 3], [1, 2, 3, 2]]), time=torch.Tensor([1000, 1100, 1010, 2000]), edge_weight=torch.Tensor([1, 2, 3, 4]))
+    tdata = Data(
+        edge_index=torch.IntTensor([[0, 1, 2, 3], [1, 2, 3, 2]]),
+        time=torch.Tensor([1000, 1100, 1010, 2000]),
+        edge_weight=torch.Tensor([1, 2, 3, 4]),
+    )
     tgraph = TemporalGraph(tdata)
     assert (to_numpy(tgraph.data.edge_index) == np.array([[0, 2, 1, 3], [1, 3, 2, 2]])).all()
     assert equal(tgraph.data.time, torch.tensor([1000, 1010, 1100, 2000]))
@@ -37,6 +43,43 @@ def test_from_edge_list():
     tedges = [("a", "b", 1.0), ("b", "c", 5.0), ("c", "d", 9.0), ("c", "e", 9.0)]
     tgraph = TemporalGraph.from_edge_list(tedges)
     assert tgraph.data.time.dtype == torch.float64
+
+
+@pytest.mark.xfail(reason="from_edge_list infers nodes from the edge list and drops isolated nodes")
+def test_from_edge_list_with_isolated_nodes():
+    tedges = [("a", "b", 1), ("b", "c", 5)]
+    tgraph = TemporalGraph.from_edge_list(tedges, mapping=IndexMap(["a", "b", "c", "d"]))
+
+    # d has no time-stamped edge, but it is a node of the graph and it has an ID
+    assert tgraph.n == 4
+    assert tgraph.m == 2
+    assert tgraph.nodes == ["a", "b", "c", "d"]
+    assert tgraph.temporal_edges == [("a", "b", 1), ("b", "c", 5)]
+
+
+@pytest.mark.xfail(reason="num_nodes is accepted without IDs for the extra nodes instead of being rejected")
+def test_from_edge_list_num_nodes_must_match_mapping():
+    tedges = [("a", "b", 1), ("b", "c", 5)]
+
+    # without a mapping there are no IDs for the additional nodes, so this must not silently pass
+    with pytest.raises(ValueError):
+        TemporalGraph.from_edge_list(tedges, num_nodes=4)
+
+    with pytest.raises(ValueError):
+        TemporalGraph.from_edge_list(tedges, num_nodes=4, mapping=IndexMap(["a", "b", "c"]))
+
+    tgraph = TemporalGraph.from_edge_list(tedges, num_nodes=4, mapping=IndexMap(["a", "b", "c", "d"]))
+    assert tgraph.n == 4
+
+
+@pytest.mark.xfail(reason="an empty edge list cannot be combined with a mapping")
+def test_from_edge_list_empty():
+    assert TemporalGraph.from_edge_list([]).n == 0
+
+    tgraph = TemporalGraph.from_edge_list([], mapping=IndexMap(["a", "b"]))
+    assert tgraph.n == 2
+    assert tgraph.nodes == ["a", "b"]
+    assert tgraph.m == 0
 
 
 def test_N(long_temporal_graph):
