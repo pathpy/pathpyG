@@ -45,7 +45,6 @@ def test_from_edge_list():
     assert tgraph.data.time.dtype == torch.float64
 
 
-@pytest.mark.xfail(reason="from_edge_list infers nodes from the edge list and drops isolated nodes")
 def test_from_edge_list_with_isolated_nodes():
     tedges = [("a", "b", 1), ("b", "c", 5)]
     tgraph = TemporalGraph.from_edge_list(tedges, mapping=IndexMap(["a", "b", "c", "d"]))
@@ -57,7 +56,6 @@ def test_from_edge_list_with_isolated_nodes():
     assert tgraph.temporal_edges == [("a", "b", 1), ("b", "c", 5)]
 
 
-@pytest.mark.xfail(reason="num_nodes is accepted without IDs for the extra nodes instead of being rejected")
 def test_from_edge_list_num_nodes_must_match_mapping():
     tedges = [("a", "b", 1), ("b", "c", 5)]
 
@@ -72,7 +70,6 @@ def test_from_edge_list_num_nodes_must_match_mapping():
     assert tgraph.n == 4
 
 
-@pytest.mark.xfail(reason="an empty edge list cannot be combined with a mapping")
 def test_from_edge_list_empty():
     assert TemporalGraph.from_edge_list([]).n == 0
 

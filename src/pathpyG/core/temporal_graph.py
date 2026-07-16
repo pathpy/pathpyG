@@ -12,6 +12,7 @@ from torch_geometric.data import Data
 from pathpyG import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.utils import to_numpy
+from pathpyG.utils.logger import logger
 
 
 class TemporalGraph(Graph):
@@ -75,18 +76,30 @@ class TemporalGraph(Graph):
         }
 
     @staticmethod
-    def from_edge_list(  # type: ignore[override]
-        edge_list, num_nodes: Optional[int] = None, device: Optional[torch.device] = None
+    def from_edge_list(
+        edge_list,
+        num_nodes: Optional[int] = None,
+        mapping: Optional[IndexMap] = None,
+        device: Optional[torch.device] = None,
     ) -> "TemporalGraph":
         """Create a temporal graph from a list of tuples containing edges with timestamps.
 
+        If no mapping is given, a mapping of node IDs to indices is created based on the node IDs
+        that occur in the edge list, i.e. the graph will have no isolated nodes. To include nodes
+        without any time-stamped edge, pass a mapping that also contains the IDs of those nodes.
+
         Args:
             edge_list: A list of tuples in the format (source, destination, timestamp).
-            num_nodes: Optional number of nodes in the graph. If not provided, it will be inferred.
+            num_nodes: Optional number of nodes in the graph. If not provided, it will be inferred
+                from the mapping.
+            mapping: Optional mapping of node IDs to indices.
             device: The device on which to create the tensors (CPU or GPU).
 
         Returns:
             TemporalGraph: An instance of the TemporalGraph class.
+
+        Raises:
+            ValueError: If `num_nodes` does not match the number of node IDs in the mapping.
 
         Examples:
             Create a temporal graph from an edge list:
@@ -94,7 +107,27 @@ class TemporalGraph(Graph):
             >>> import pathpyG as pp
             >>> edge_list = [("a", "b", 1), ("b", "c", 2), ("c", "a", 3)]
             >>> g = pp.TemporalGraph.from_edge_list(edge_list)
+
+            Create a temporal graph with an isolated node `d`:
+
+            >>> g = pp.TemporalGraph.from_edge_list(edge_list, mapping=pp.IndexMap(["a", "b", "c", "d"]))
         """
+        edge_array = np.array(edge_list)
+
+        if mapping is None:
+            mapping = IndexMap(np.unique(edge_array[:, :2])) if len(edge_list) > 0 else IndexMap()
+
+        # the number of nodes is determined by the mapping, since every node needs an ID
+        if num_nodes is None:
+            num_nodes = mapping.num_ids()
+        elif num_nodes != mapping.num_ids():
+            msg = (
+                f"num_nodes ({num_nodes}) must match the number of node IDs in the mapping ({mapping.num_ids()}). "
+                "Pass a mapping that contains the IDs of all nodes, including isolated ones."
+            )
+            logger.error(msg)
+            raise ValueError(msg)
+
         if len(edge_list) == 0:
             return TemporalGraph(
                 data=Data(
@@ -102,9 +135,8 @@ class TemporalGraph(Graph):
                     time=torch.empty((0,), dtype=torch.long, device=device),
                     num_nodes=num_nodes,
                 ),
+                mapping=mapping,
             )
-
-        edge_array = np.array(edge_list)
 
         # Convert timestamps to tensor
         if isinstance(edge_list[0][2], int):
@@ -112,11 +144,7 @@ class TemporalGraph(Graph):
         else:
             ts = torch.tensor(edge_array[:, 2].astype(np.double), device=device)
 
-        index_map = IndexMap(np.unique(edge_array[:, :2]))
-        edge_index = index_map.to_idxs(edge_array[:, :2].T, device=device)
-
-        if not num_nodes:
-            num_nodes = index_map.num_ids()
+        edge_index = mapping.to_idxs(edge_array[:, :2].T, device=device)
 
         return TemporalGraph(
             data=Data(
@@ -124,7 +152,7 @@ class TemporalGraph(Graph):
                 time=ts,
                 num_nodes=num_nodes,
             ),
-            mapping=index_map,
+            mapping=mapping,
         )
 
     @property
