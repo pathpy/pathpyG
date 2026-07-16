@@ -129,8 +129,9 @@ class Graph:
         Args:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
             mapping: `IndexMap` object that maps node indices to string identifiers
-            num_nodes: optional number of nodes (default: None). If None, the number of nodes will be
-                inferred based on the maximum node index in the edge index, i.e. there will be no isolated nodes.
+            num_nodes: optional number of nodes (default: None). If None, the number of nodes is taken
+                from `mapping`, or - if no mapping is given - inferred based on the maximum node index in
+                the edge index, i.e. there will be no isolated nodes.
 
         Examples:
             You can create a graph from an edge index tensor as follows:
@@ -150,6 +151,9 @@ class Graph:
             b -> 1
             c -> 2
         """
+        if num_nodes is None and mapping is not None:
+            num_nodes = mapping.num_ids()
+
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
