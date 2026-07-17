@@ -26,6 +26,21 @@ from pathpyG.core.index_map import IndexMap
 logger = logging.getLogger("root")
 
 
+def infer_mapping(edge_array: np.ndarray) -> IndexMap:
+    """Infer an `IndexMap` from the node IDs occurring in an array of edges.
+
+    IDs are ordered lexicographically, except for IDs that are entirely numeric strings,
+    which are ordered numerically so that e.g. `2` precedes `10`.
+
+    Args:
+        edge_array: array of edges whose entries are node IDs.
+    """
+    node_ids = np.unique(edge_array)
+    if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
+        node_ids = np.sort(node_ids.astype(int)).astype(str)
+    return IndexMap(node_ids)
+
+
 class Graph:
     """A graph object storing nodes, edges, and attributes.
 
@@ -129,8 +144,9 @@ class Graph:
         Args:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
             mapping: `IndexMap` object that maps node indices to string identifiers
-            num_nodes: optional number of nodes (default: None). If None, the number of nodes will be
-                inferred based on the maximum node index in the edge index, i.e. there will be no isolated nodes.
+            num_nodes: optional number of nodes (default: None). If None, the number of nodes is taken
+                from `mapping`, or - if no mapping is given - inferred based on the maximum node index in
+                the edge index, i.e. there will be no isolated nodes.
 
         Examples:
             You can create a graph from an edge index tensor as follows:
@@ -150,6 +166,9 @@ class Graph:
             b -> 1
             c -> 2
         """
+        if num_nodes is None and mapping is not None:
+            num_nodes = mapping.num_ids()
+
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
@@ -193,11 +212,7 @@ class Graph:
             )
 
         if mapping is None:
-            edge_array = np.array(edge_list)
-            node_ids = np.unique(edge_array)
-            if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
-                node_ids = np.sort(node_ids.astype(int)).astype(str)
-            mapping = IndexMap(node_ids)
+            mapping = infer_mapping(np.array(edge_list))
 
         num_nodes = mapping.num_ids()
 
