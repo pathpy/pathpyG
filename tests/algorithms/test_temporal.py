@@ -1,20 +1,8 @@
 from __future__ import annotations
 
 import numpy as np
-import torch
-from torch_geometric import EdgeIndex
 
-from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
-from pathpyG.core.graph import Graph
-
-
-def test_lift_order_temporal(simple_temporal_graph):
-    edge_index = lift_order_temporal(simple_temporal_graph, delta=5)
-    event_graph = Graph.from_edge_index(edge_index)
-    assert event_graph.n == simple_temporal_graph.m
-    # for delta=5 we have three time-respecting paths (a,b,1) -> (b,c,5), (b,c,5) -> (c,d,9) and (b,c,5) -> (c,e,9)
-    assert event_graph.m == 3
-    assert torch.equal(event_graph.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
+from pathpyG.algorithms.temporal import temporal_shortest_paths
 
 
 def test_temporal_shortest_paths(long_temporal_graph):

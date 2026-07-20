@@ -42,7 +42,8 @@ from networkx import centrality
 from torch_geometric.utils import to_networkx
 from tqdm import tqdm
 
-from pathpyG.algorithms.temporal import lift_order_temporal, temporal_shortest_paths
+from pathpyG.algorithms.temporal import temporal_shortest_paths
+from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.graph import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
@@ -193,7 +194,7 @@ def temporal_betweenness_centrality(graph: TemporalGraph, delta: int = 1) -> dic
         ```
     """
     # generate temporal event DAG
-    edge_index = lift_order_temporal(graph, delta)
+    edge_index = EventGraph.build_edge_index(graph, delta)
 
     # Add indices of first-order nodes as src of paths in augmented
     # temporal event DAG
