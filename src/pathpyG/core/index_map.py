@@ -124,6 +124,26 @@ class IndexMap:
         """
         return self.node_ids is not None
 
+    @property
+    def has_tuple_ids(self) -> bool:
+        """Return whether IDs are tuples of first-order IDs, as in higher-order graphs.
+
+        Returns:
+            Whether IDs are tuples.
+
+        Examples:
+            Check if mapping has tuple IDs:
+
+            >>> index_map = IndexMap(["A", "B", "C"])
+            >>> print(index_map.has_tuple_ids)
+            False
+
+            >>> index_map = IndexMap([("A", "B"), ("B", "C")])
+            >>> print(index_map.has_tuple_ids)
+            True
+        """
+        return len(self.id_shape) > 1
+
     def num_ids(self) -> int:
         """Return number of IDs. If mapping is not defined, return 0.
 

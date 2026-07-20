@@ -200,7 +200,7 @@ class TestNetworkPlot:
         plot = NetworkPlot(ho_g, node_color="#123456")
         nodes = plot.data["nodes"]
         # Index should be stringified tuples
-        assert all(isinstance(idx, str) for idx in nodes.index)
+        assert list(nodes.index) == ["a->b", "a->d", "b->c", "c->a"]
 
     def test_invalid_image_path_raises(self):
         with pytest.raises(AttributeError):
