@@ -352,7 +352,7 @@ class Graph:
             list: list of all nodes using IDs or indices (if no mapping is used)
         """
         node_list = self.mapping.to_ids(np.arange(self.n)).tolist()
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
@@ -369,7 +369,7 @@ class Graph:
             list: list object yielding all edges using IDs or indices (if no mapping is used)
         """
         edge_list = self.mapping.to_ids(self.data.edge_index.t()).tolist()
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return [tuple(map(tuple, x)) for x in edge_list]
         return list(map(tuple, edge_list))
 
@@ -421,7 +421,7 @@ class Graph:
         """
         node_list = self.mapping.to_ids(self.get_successors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
@@ -441,7 +441,7 @@ class Graph:
         """
         node_list = self.mapping.to_ids(self.get_predecessors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
