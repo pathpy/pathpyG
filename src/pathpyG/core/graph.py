@@ -117,8 +117,10 @@ class Graph:
 
         # sort EdgeIndex and validate
         data.edge_index, sorted_idx = data.edge_index.sort_by("row")
-        for edge_attr in self.edge_attrs():
-            data[edge_attr] = self.data[edge_attr][sorted_idx]
+        # an edge index that is already sorted is returned without a permutation
+        if sorted_idx is not None:
+            for edge_attr in self.edge_attrs():
+                data[edge_attr] = self.data[edge_attr][sorted_idx]
 
         data.edge_index.validate()
 

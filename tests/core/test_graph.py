@@ -35,7 +35,6 @@ def test_init_with_edge_index():
     assert isinstance(g.edge_to_index, dict)
 
 
-@pytest.mark.xfail(reason="edge attributes are indexed with a None permutation", strict=True)
 def test_init_with_presorted_edge_index_keeps_edge_attrs():
     # An EdgeIndex that already carries sort_order="row" is returned by sort_by without a
     # permutation, in which case the edge attributes must be left as they are.
