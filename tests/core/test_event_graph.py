@@ -112,6 +112,14 @@ def test_getitem(event_graph):
     assert event_graph[3] == ("b", "d", 5)
 
 
+def test_event_labels(event_graph):
+    """Events are labeled with as "u->v@t"."""
+    assert event_graph.nodes == ["a->b@1", "b->c@2", "c->e@3", "b->d@5"]
+    assert event_graph.edges == [("a->b@1", "b->c@2"), ("b->c@2", "c->e@3")]
+    assert event_graph.successors("a->b@1") == ["b->c@2"]
+    assert event_graph.predecessors("c->e@3") == ["b->c@2"]
+
+
 def test_isolated_events(event_graph):
     """Events with no predecessors or successors are correctly identified."""
     isolated = [
