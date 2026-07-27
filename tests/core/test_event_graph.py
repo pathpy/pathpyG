@@ -247,6 +247,64 @@ def test_reduce_delta(temporal_graph, event_graph):
     assert eg_delta2.edge_delta_map() == event_graph.edge_delta_map()
 
 
+@pytest.fixture
+def attributed_temporal_graph(temporal_graph) -> TemporalGraph:
+    """Temporal graph carrying one edge-, node- and graph-level attribute."""
+    # edges are sorted by time, i.e. (a,b)@1, (b,c)@2, (c,e)@3, (b,d)@5
+    temporal_graph.data.edge_weight = torch.tensor([10.0, 20.0, 30.0, 40.0])
+    temporal_graph.data.edge_temperature = np.array([4, 3, 2, 1])  # arbitrary edge-level attribute
+    temporal_graph.data.node_color = torch.arange(5)
+    temporal_graph.data.dataset_name = "toy"
+    return temporal_graph
+
+
+def test_lift_attrs(attributed_temporal_graph):
+    """Edge attributes become node attributes, node attributes are dropped, graph attributes stay."""
+    attrs = EventGraph.lift_attrs(attributed_temporal_graph)
+
+    assert set(attrs) == {"node_temperature", "node_weight", "dataset_name"}
+    assert torch.equal(attrs["node_weight"], torch.tensor([10.0, 20.0, 30.0, 40.0]))
+    np.testing.assert_array_equal(attrs["node_temperature"], np.array([4, 3, 2, 1]))
+    assert attrs["dataset_name"] == "toy"
+
+
+def test_lift_attrs_copies(attributed_temporal_graph):
+    """Lifted ndarray/tensor attributes are copies, so the event graph does not alias the temporal graph."""
+    attrs = EventGraph.lift_attrs(attributed_temporal_graph)
+    attrs["node_weight"][0] = -1.0
+    attrs["node_temperature"][0] = -1.0
+
+    assert attributed_temporal_graph.data.edge_weight[0].item() == 10.0
+    assert attributed_temporal_graph.data.edge_temperature[0].item() == 4
+
+
+def test_from_temporal_graph_propagates_attrs(attributed_temporal_graph):
+    """Building an event graph propagates the attributes of the temporal graph."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+
+    assert torch.equal(eg.data.node_weight, torch.tensor([10.0, 20.0, 30.0, 40.0]))
+    assert eg.data.dataset_name == "toy"
+    assert "node_color" not in eg.data
+    # the lifted attribute is recognized as a node attribute of the event graph
+    assert "node_weight" in eg.node_attrs()
+    assert "node_temperature" in eg.node_attrs()
+    assert "node_weight" not in eg.edge_attrs()
+
+
+def test_reduce_delta_keeps_attrs(attributed_temporal_graph):
+    """Reducing delta keeps node and graph attributes and masks edge attributes."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+    eg.data.edge_label = torch.arange(eg.m)
+    kept = eg.data.edge_delta <= 1
+
+    reduced = eg.reduce_delta(1)
+
+    assert torch.equal(reduced.data.node_weight, eg.data.node_weight)
+    assert reduced.data.dataset_name == "toy"
+    assert torch.equal(reduced.data.edge_label, eg.data.edge_label[kept])
+    assert reduced.data.edge_label.size(0) == reduced.m
+
+
 def test_reduce_delta_to_zero_removes_all_edges(event_graph):
     """Reducing delta 2->0 leaves the events but drops every continuation edge."""
     reduced = event_graph.reduce_delta(2)

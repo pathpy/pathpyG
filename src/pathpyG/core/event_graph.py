@@ -1,7 +1,8 @@
 """Event graph representation of a temporal graph and related operations."""
 from __future__ import annotations
 
-from typing import Tuple, Union
+import logging
+from typing import Any, Tuple, Union
 
 import numpy as np
 import torch
@@ -12,9 +13,24 @@ from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.temporal_graph import TemporalGraph
 
+logger = logging.getLogger("root")
+
+
+def _copy_attr(value: Any) -> Any:
+    """Return an independent copy of an attribute value, leaving immutable values as they are."""
+    if isinstance(value, torch.Tensor):
+        return value.clone()
+    if isinstance(value, np.ndarray):
+        return value.copy()
+    return value
+
 
 class EventGraph(Graph):
     """A directed acyclic graph whose nodes are time-stamped events."""
+
+    # Attributes that are constructed explicitly when lifting a temporal graph and that
+    # must therefore not be overwritten by propagated attributes.
+    _RESERVED_ATTRS = frozenset({"edge_index", "num_nodes", "node_sequence", "node_time"})
 
     def __init__(
         self,
@@ -85,9 +101,49 @@ class EventGraph(Graph):
         ho_index = torch.cat(second_order, dim=0).t().contiguous()
         return ho_index
 
+    @staticmethod
+    def lift_attrs(temporal_graph: TemporalGraph) -> dict[str, Any]:
+        """Map the attributes of a temporal graph to attributes of the lifted event graph.
+
+        Since every temporal edge becomes an event, edge attributes of the temporal graph
+        become node attributes of the event graph and are renamed from `edge_x` to `node_x`
+        accordingly. Node attributes refer to first-order nodes, which have no counterpart
+        among the events, so they are dropped. Graph attributes are kept unchanged.
+
+        Attributes that are constructed explicitly while lifting (`edge_index`, `num_nodes`,
+        `node_sequence` and the timestamps in `time`) are excluded.
+
+        Args:
+            temporal_graph: Temporal graph whose attributes shall be lifted.
+
+        Returns:
+            dict: mapping from attribute names in the event graph to their values.
+        """
+        attrs: dict[str, Any] = {}
+        for key in temporal_graph.data.keys():
+            if key in EventGraph._RESERVED_ATTRS or key == "time":
+                continue
+            if key.startswith("node_"):
+                # attributes of first-order nodes have no counterpart in the event graph
+                continue
+            if key.startswith("edge_"):
+                event_key = "node_" + key[len("edge_") :]
+                if event_key in EventGraph._RESERVED_ATTRS:
+                    logger.error("Edge attribute %s cannot be lifted to reserved attribute %s", key, event_key)
+                    raise ValueError(f"edge attribute '{key}' would be lifted to reserved attribute '{event_key}'")
+                attrs[event_key] = _copy_attr(temporal_graph.data[key])
+            else:
+                # graph-level attributes are kept as they are
+                attrs[key] = _copy_attr(temporal_graph.data[key])
+        return attrs
+
     @classmethod
     def from_temporal_graph(cls, temporal_graph: TemporalGraph, delta: int = 1) -> "EventGraph":
-        """Build an EventGraph from a temporal graph by lifting its edges into events."""
+        """Build an EventGraph from a temporal graph by lifting its edges into events.
+
+        Attributes of the temporal graph are propagated to the event graph as described in
+        [`lift_attrs`][pathpyG.core.event_graph.EventGraph.lift_attrs].
+        """
         ho_index = cls.build_edge_index(temporal_graph, delta)
         m = temporal_graph.data.time.size(0)  # number of events (== number of first-order edges)
         node_sequence = temporal_graph.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
@@ -106,6 +162,9 @@ class EventGraph(Graph):
             node_sequence=node_sequence,
             node_time=node_time,
         )
+        for key, value in cls.lift_attrs(temporal_graph).items():
+            data[key] = value
+
         event_graph = cls(data, delta=delta, first_order_mapping=temporal_graph.mapping, n_first_order=temporal_graph.n, mapping=mapping)
 
         # Attach a clone of the temporal graph since we already have it
@@ -197,7 +256,11 @@ class EventGraph(Graph):
         return temporal_shortest_paths(temporal_graph=None, delta=self.delta, event_graph=self)
 
     def reduce_delta(self, decrement: int = 1) -> "EventGraph":
-        """Return a new EventGraph with a reduced time window `delta - decrement`."""
+        """Return a new EventGraph with a reduced time window `delta - decrement`.
+
+        The events are unchanged, so node and graph attributes are carried over as they are,
+        while edge attributes are restricted to the edges that remain for the smaller `delta`.
+        """
         new_delta = self.delta - decrement
         if new_delta < 0:
             raise ValueError(
@@ -215,6 +278,14 @@ class EventGraph(Graph):
             node_sequence=self.data.node_sequence.clone(),
             node_time=self.data.node_time.clone(),
         )
+        for key in self.data.keys():
+            if key in self._RESERVED_ATTRS:
+                continue
+            if key.startswith("edge_"):
+                data[key] = self.data[key][mask]
+            else:
+                data[key] = _copy_attr(self.data[key])
+
         return EventGraph(
             data,
             delta=new_delta,
