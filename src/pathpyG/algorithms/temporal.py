@@ -50,10 +50,10 @@ def temporal_shortest_paths(temporal_graph: TemporalGraph | None, delta: int, ev
     edge_index = torch.cat([edge_index, src_edges, dst_edges], dim=1)
 
     # create sparse scipy matrix
-    event_graph = Graph.from_edge_index(edge_index, num_nodes=temporal_graph.m + 2 * temporal_graph.n)
-    m = event_graph.sparse_adj_matrix()
+    augmented_dag = Graph.from_edge_index(edge_index, num_nodes=temporal_graph.m + 2 * temporal_graph.n)
+    m = augmented_dag.sparse_adj_matrix()
 
-    # print(f"Created temporal event DAG with {event_graph.n} nodes and {event_graph.m} edges")
+    # print(f"Created temporal event DAG with {augmented_dag.n} nodes and {augmented_dag.m} edges")
 
     # run disjktra for all source nodes
     dist, pred = dijkstra(
