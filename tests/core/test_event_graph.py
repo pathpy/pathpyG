@@ -66,11 +66,13 @@ def test_basic(event_graph):
 
 
 def test_str(event_graph):
-    """The string representation lists the delta and all events."""
-    assert (
-        str(event_graph)
-        == "EventGraph (delta=2)\na->b@1\nb->c@2\nc->e@3\nb->d@5"
+    """The string representation summarizes counts, time range, delta and attributes."""
+    s = str(event_graph)
+    assert s.startswith(
+        "Event Graph (delta=2) with 5 first-order nodes, 4 events and 2 edges in [1, 5]\n"
     )
+    assert "'node_time'" in s
+    assert "'edge_delta'" in s
 
 
 def test_node_time(event_graph):

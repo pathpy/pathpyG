@@ -365,38 +365,12 @@ class TemporalGraph(Graph):
         else:
             raise KeyError(key[0] + " is not a node or edge attribute")
 
-    def __str__(self) -> str:
-        """Return a string representation of the graph."""
-        s = "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]\n".format(
+    def _summary(self) -> str:
+        """Return a one-line summary of the temporal graph."""
+        return "Temporal Graph with {0} nodes, {1} unique edges and {2} events in [{3}, {4}]".format(
             self.data.num_nodes,
             self.data.edge_index.unique(dim=1).size(dim=1),
             self.data.edge_index.size(1),
             self.start_time,
             self.end_time,
         )
-
-        attr = self.data.to_dict()
-        attr_types = {}
-        for k in attr:
-            t = type(attr[k])
-            if t == torch.Tensor:
-                attr_types[k] = str(t) + " -> " + str(attr[k].size())
-            else:
-                attr_types[k] = str(t)
-
-        from pprint import pformat
-
-        attribute_info: dict[str, dict[str, Any]] = {
-            "Node Attributes": {},
-            "Edge Attributes": {},
-            "Graph Attributes": {},
-        }
-        for a in self.node_attrs():
-            attribute_info["Node Attributes"][a] = attr_types[a]
-        for a in self.edge_attrs():
-            attribute_info["Edge Attributes"][a] = attr_types[a]
-        for a in self.data.keys():
-            if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
-                attribute_info["Graph Attributes"][a] = attr_types[a]
-        s += pformat(attribute_info, indent=4, width=160)
-        return s

@@ -1,7 +1,7 @@
 """Event graph representation of a temporal graph and related operations."""
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 import torch
@@ -43,21 +43,21 @@ class EventGraph(Graph):
         self._temporal_graph: TemporalGraph | None = None
 
     @staticmethod
-    def build_edge_index(g: TemporalGraph, delta: float | int = 1):
+    def build_edge_index(temporal_graph: TemporalGraph, delta: float | int = 1):
         """Build the event-graph edge index by lifting a temporal graph to second order.
 
-        Each temporal edge of `g` becomes an event (node); two events are connected
-        when the second can continue the first within the time window `delta`.
+        Each temporal edge of `temporal_graph` becomes an event (node); two events are
+        connected when the second can continue the first within the time window `delta`.
 
         Args:
-            g: Temporal graph to lift.
+            temporal_graph: Temporal graph to lift.
             delta: Maximum time difference between events to consider them connected.
 
         Returns:
             ho_index: Edge index of the second-order temporal event graph.
         """
         # first-order edge index
-        edge_index, timestamps = g.data.edge_index, g.data.time
+        edge_index, timestamps = temporal_graph.data.edge_index, temporal_graph.data.time
 
         delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
         indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
@@ -86,16 +86,16 @@ class EventGraph(Graph):
         return ho_index
 
     @classmethod
-    def from_temporal_graph(cls, g: TemporalGraph, delta: int = 1) -> "EventGraph":
+    def from_temporal_graph(cls, temporal_graph: TemporalGraph, delta: int = 1) -> "EventGraph":
         """Build an EventGraph from a temporal graph by lifting its edges into events."""
-        ho_index = cls.build_edge_index(g, delta)
-        m = g.data.time.size(0)  # number of events (== number of first-order edges)
-        node_sequence = g.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
-        node_time = g.data.time.clone()  # [m]
+        ho_index = cls.build_edge_index(temporal_graph, delta)
+        m = temporal_graph.data.time.size(0)  # number of events (== number of first-order edges)
+        node_sequence = temporal_graph.data.edge_index.as_tensor().t().contiguous()  # [m, 2]
+        node_time = temporal_graph.data.time.clone()  # [m]
 
         # Build an event mapping with IDs of the form "a->b@t" for each edge node
         event_ids = [
-            f"{g.mapping.to_id(u)}->{g.mapping.to_id(v)}@{t}"
+            f"{temporal_graph.mapping.to_id(u)}->{temporal_graph.mapping.to_id(v)}@{t}"
             for (u, v), t in zip(node_sequence.tolist(), node_time.tolist())
         ]
         mapping = IndexMap(event_ids)
@@ -106,18 +106,22 @@ class EventGraph(Graph):
             node_sequence=node_sequence,
             node_time=node_time,
         )
-        eg = cls(data, delta=delta, first_order_mapping=g.mapping, n_first_order=g.n, mapping=mapping)
+        event_graph = cls(data, delta=delta, first_order_mapping=temporal_graph.mapping, n_first_order=temporal_graph.n, mapping=mapping)
 
         # Attach a clone of the temporal graph since we already have it
-        eg._temporal_graph = TemporalGraph(g.data.clone(), mapping=g.mapping)
+        event_graph._temporal_graph = TemporalGraph(temporal_graph.data.clone(), mapping=temporal_graph.mapping)
 
-        return eg
+        return event_graph
 
-    def __str__(self) -> str:
-        """Return a human-readable summary listing the delta and all events."""
-        return (
-            f"EventGraph (delta={self.delta})\n" +
-            "\n".join(f"{self.mapping.to_id(i)}" for i in range(self.n))
+    def _summary(self) -> str:
+        """Return a one-line summary of the event graph."""
+        return "Event Graph (delta={0}) with {1} first-order nodes, {2} events and {3} edges in [{4}, {5}]".format(
+            self.delta,
+            self.n_first_order,
+            self.num_events,
+            self.m,
+            self.start_time,
+            self.end_time,
         )
 
     def __len__(self):
@@ -162,6 +166,16 @@ class EventGraph(Graph):
         """Number of events (nodes) in the event graph."""
         return self.n
 
+    @property
+    def start_time(self) -> Union[int, float]:
+        """Return the timestamp of the first event in the event graph."""
+        return self.data.node_time.min().item()
+
+    @property
+    def end_time(self) -> Union[int, float]:
+        """Return the timestamp of the last event in the event graph."""
+        return self.data.node_time.max().item()
+
     def event_time(self, i: int) -> int:
         """Return the timestamp of the i-th event."""
         return self.data.node_time[i].item()
@@ -180,7 +194,7 @@ class EventGraph(Graph):
         """Return first-order shortest-path distances and predecessors respecting delta."""
         from pathpyG.algorithms.temporal import temporal_shortest_paths
 
-        return temporal_shortest_paths(g=None, delta=self.delta, eg=self)
+        return temporal_shortest_paths(temporal_graph=None, delta=self.delta, event_graph=self)
 
     def reduce_delta(self, decrement: int = 1) -> "EventGraph":
         """Return a new EventGraph with a reduced time window `delta - decrement`."""
