@@ -206,7 +206,7 @@ class MultiOrderModel:
             cached: Whether to also keep the aggregated layers below `max_order`.
 
         Returns:
-            MultiOrderModel2: A multi-order model equivalent to
+            MultiOrderModel: A multi-order model equivalent to
             `MultiOrderModel.from_temporal_graph(eg.to_temporal_graph(), delta=eg.delta, ...)`.
         """
         m = cls()

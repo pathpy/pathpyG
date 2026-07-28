@@ -66,11 +66,13 @@ def test_basic(event_graph):
 
 
 def test_str(event_graph):
-    """The string representation lists the delta and all events."""
-    assert (
-        str(event_graph)
-        == "EventGraph (delta=2)\na->b@1\nb->c@2\nc->e@3\nb->d@5"
+    """The string representation summarizes counts, time range, delta and attributes."""
+    s = str(event_graph)
+    assert s.startswith(
+        "Event Graph (delta=2) with 5 first-order nodes, 4 events and 2 edges in [1, 5]\n"
     )
+    assert "'node_time'" in s
+    assert "'edge_delta'" in s
 
 
 def test_node_time(event_graph):
@@ -110,6 +112,14 @@ def test_getitem(event_graph):
     assert event_graph[1] == ("b", "c", 2)
     assert event_graph[2] == ("c", "e", 3)
     assert event_graph[3] == ("b", "d", 5)
+
+
+def test_event_labels(event_graph):
+    """Events are labeled with as "u->v@t"."""
+    assert event_graph.nodes == ["a->b@1", "b->c@2", "c->e@3", "b->d@5"]
+    assert event_graph.edges == [("a->b@1", "b->c@2"), ("b->c@2", "c->e@3")]
+    assert event_graph.successors("a->b@1") == ["b->c@2"]
+    assert event_graph.predecessors("c->e@3") == ["b->c@2"]
 
 
 def test_isolated_events(event_graph):

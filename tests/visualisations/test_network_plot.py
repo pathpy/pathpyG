@@ -4,10 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.visualisations.network_plot import NetworkPlot
 
 
@@ -200,7 +202,15 @@ class TestNetworkPlot:
         plot = NetworkPlot(ho_g, node_color="#123456")
         nodes = plot.data["nodes"]
         # Index should be stringified tuples
-        assert all(isinstance(idx, str) for idx in nodes.index)
+        assert list(nodes.index) == ["a->b", "a->d", "b->c", "c->a"]
+
+    def test_event_graph(self):
+        # An event graph has order 2, but its node IDs are plain strings
+        tg = TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 2), ("b", "d", 5), ("c", "e", 3)])
+        eg = EventGraph.from_temporal_graph(tg, delta=2)
+        plot = NetworkPlot(eg)
+        assert list(plot.data["nodes"].index) == ["a->b@1", "b->c@2", "c->e@3", "b->d@5"]
+        assert list(plot.data["edges"].index) == [("a->b@1", "b->c@2"), ("b->c@2", "c->e@3")]
 
     def test_invalid_image_path_raises(self):
         with pytest.raises(AttributeError):

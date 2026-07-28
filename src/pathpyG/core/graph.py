@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pprint import pformat
 from typing import (
     Any,
     Dict,
@@ -24,6 +25,21 @@ from torch_geometric.utils import scatter, to_undirected
 from pathpyG.core.index_map import IndexMap
 
 logger = logging.getLogger("root")
+
+
+def infer_mapping(edge_array: np.ndarray) -> IndexMap:
+    """Infer an `IndexMap` from the node IDs occurring in an array of edges.
+
+    IDs are ordered lexicographically, except for IDs that are entirely numeric strings,
+    which are ordered numerically so that e.g. `2` precedes `10`.
+
+    Args:
+        edge_array: array of edges whose entries are node IDs.
+    """
+    node_ids = np.unique(edge_array)
+    if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
+        node_ids = np.sort(node_ids.astype(int)).astype(str)
+    return IndexMap(node_ids)
 
 
 class Graph:
@@ -129,8 +145,9 @@ class Graph:
         Args:
             edge_index:  torch.Tensor or torch_geometric.EdgeIndex object containing an edge_index
             mapping: `IndexMap` object that maps node indices to string identifiers
-            num_nodes: optional number of nodes (default: None). If None, the number of nodes will be
-                inferred based on the maximum node index in the edge index, i.e. there will be no isolated nodes.
+            num_nodes: optional number of nodes (default: None). If None, the number of nodes is taken
+                from `mapping`, or - if no mapping is given - inferred based on the maximum node index in
+                the edge index, i.e. there will be no isolated nodes.
 
         Examples:
             You can create a graph from an edge index tensor as follows:
@@ -150,6 +167,9 @@ class Graph:
             b -> 1
             c -> 2
         """
+        if num_nodes is None and mapping is not None:
+            num_nodes = mapping.num_ids()
+
         if not num_nodes:
             d = Data(edge_index=edge_index)
         else:
@@ -193,11 +213,7 @@ class Graph:
             )
 
         if mapping is None:
-            edge_array = np.array(edge_list)
-            node_ids = np.unique(edge_array)
-            if np.issubdtype(node_ids.dtype, str) and np.char.isnumeric(node_ids).all():
-                node_ids = np.sort(node_ids.astype(int)).astype(str)
-            mapping = IndexMap(node_ids)
+            mapping = infer_mapping(np.array(edge_list))
 
         num_nodes = mapping.num_ids()
 
@@ -337,7 +353,7 @@ class Graph:
             list: list of all nodes using IDs or indices (if no mapping is used)
         """
         node_list = self.mapping.to_ids(np.arange(self.n)).tolist()
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
@@ -354,7 +370,7 @@ class Graph:
             list: list object yielding all edges using IDs or indices (if no mapping is used)
         """
         edge_list = self.mapping.to_ids(self.data.edge_index.t()).tolist()
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return [tuple(map(tuple, x)) for x in edge_list]
         return list(map(tuple, edge_list))
 
@@ -406,7 +422,7 @@ class Graph:
         """
         node_list = self.mapping.to_ids(self.get_successors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
@@ -426,7 +442,7 @@ class Graph:
         """
         node_list = self.mapping.to_ids(self.get_predecessors(self.mapping.to_idx(node))).tolist()  # type: ignore
 
-        if self.order > 1:
+        if self.mapping.has_tuple_ids:
             return list(map(tuple, node_list))
         return node_list
 
@@ -770,8 +786,14 @@ class Graph:
                     raise ValueError("Node attribute " + k + " is not a tensor and cannot be reduced.")
         return Graph(d, mapping=mapping)
 
-    def __str__(self) -> str:
-        """Return a string representation of the graph."""
+    def _summary(self) -> str:
+        """Return a one-line summary of the graph, to be overridden by subclasses."""
+        if self.is_undirected():
+            return "Undirected graph with {0} nodes and {1} edges".format(self.n, self.m)
+        return "Directed graph with {0} nodes and {1} edges".format(self.n, self.m)
+
+    def _attribute_summary(self) -> str:
+        """Return a pretty-printed summary of node-, edge- and graph-level attributes."""
         attr = self.data.to_dict()
         attr_types = {}
         for k in attr:
@@ -780,13 +802,6 @@ class Graph:
                 attr_types[k] = str(t) + " -> " + str(attr[k].size())
             else:
                 attr_types[k] = str(t)
-
-        from pprint import pformat
-
-        if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.n, self.m)
-        else:
-            s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
 
         attribute_info: dict[str, dict[str, str]] = {
             "Node Attributes": {},
@@ -800,5 +815,8 @@ class Graph:
         for a in self.data.keys():
             if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                 attribute_info["Graph Attributes"][a] = attr_types[a]
-        s += pformat(attribute_info, indent=4, width=160)
-        return s
+        return pformat(attribute_info, indent=4, width=160)
+
+    def __str__(self) -> str:
+        """Return a string representation of the graph."""
+        return self._summary() + "\n" + self._attribute_summary()

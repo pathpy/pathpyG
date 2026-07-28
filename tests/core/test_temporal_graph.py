@@ -5,6 +5,8 @@ import torch
 from torch import equal
 from torch_geometric.data import Data
 
+from pathpyG.core.graph import Graph
+from pathpyG.core.index_map import IndexMap
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
@@ -37,6 +39,39 @@ def test_from_edge_list():
     tedges = [("a", "b", 1.0), ("b", "c", 5.0), ("c", "d", 9.0), ("c", "e", 9.0)]
     tgraph = TemporalGraph.from_edge_list(tedges)
     assert tgraph.data.time.dtype == torch.float64
+
+
+def test_from_edge_list_mapping():
+    """A mapping can name nodes that occur in no edge, which become isolated nodes."""
+    tedges = [("a", "b", 1), ("b", "c", 5)]
+    tgraph = TemporalGraph.from_edge_list(tedges, mapping=IndexMap(["a", "b", "c", "d"]))
+    assert tgraph.n == 4
+    assert tgraph.mapping.num_ids() == 4
+    assert sorted(tgraph.nodes) == ["a", "b", "c", "d"]
+
+
+def test_from_edge_list_undirected():
+    tedges = [("a", "b", 1), ("b", "a", 5)]
+    tgraph = TemporalGraph.from_edge_list(tedges, is_undirected=True)
+    assert tgraph.is_undirected()
+    assert not tgraph.is_directed()
+
+
+def test_from_edge_list_numeric_ids_match_graph():
+    """Numeric node IDs must be indexed the same way as in the base class."""
+    tgraph = TemporalGraph.from_edge_list([("1", "2", 1), ("10", "2", 5)])
+    graph = Graph.from_edge_list([("1", "2"), ("10", "2")])
+    assert [tgraph.mapping.to_idx(i) for i in ["1", "2", "10"]] == [0, 1, 2]
+    assert [tgraph.mapping.to_idx(i) for i in ["1", "2", "10"]] == [graph.mapping.to_idx(i) for i in ["1", "2", "10"]]
+
+
+def test_from_edge_list_signature_matches_base_class():
+    """The subclass must be substitutable for the base class (Liskov)."""
+    import inspect
+
+    base = list(inspect.signature(Graph.from_edge_list).parameters)
+    temporal = list(inspect.signature(TemporalGraph.from_edge_list).parameters)
+    assert temporal == base
 
 
 def test_N(long_temporal_graph):

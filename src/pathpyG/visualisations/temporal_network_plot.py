@@ -217,7 +217,7 @@ class TemporalNetworkPlot(NetworkPlot):
 
             # update x,y position of the nodes
             new_layout_df = pd.DataFrame.from_dict(pos, orient="index", columns=["x", "y"])
-            if self.network.order > 1 and not isinstance(new_layout_df.index[0], str):
+            if self.network.mapping.has_tuple_ids and not isinstance(new_layout_df.index[0], str):
                 new_layout_df.index = new_layout_df.index.map(lambda x: self.config["separator"].join(map(str, x)))
             # scale x and y to [0,1]
             new_layout_df["x"] = (new_layout_df["x"] - new_layout_df["x"].min()) / (
