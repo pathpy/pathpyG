@@ -16,7 +16,7 @@ from pathpyG.algorithms.lift_order import (
     lift_order_edge_index,
     lift_order_edge_index_weighted,
 )
-from pathpyG.algorithms.temporal import lift_order_temporal
+from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
@@ -164,7 +164,7 @@ class MultiOrderModel:
         if max_order > 1:
             node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
             if event_graph is None:
-                edge_index = lift_order_temporal(g, delta)
+                edge_index = EventGraph.build_edge_index(g, delta)
             else:
                 edge_index = event_graph
             edge_weight = aggregate_node_attributes(edge_index, edge_weight, "src")
@@ -189,6 +189,34 @@ class MultiOrderModel:
                 )
                 if cached or k == max_order:
                     m.layers[k] = gk  # type: ignore[assignment]
+        return m
+
+    @classmethod
+    def from_event_graph(
+        cls,
+        eg: EventGraph,
+        max_order: int = 2,
+        cached: bool = True,
+    ) -> "MultiOrderModel":
+        """Create a multi-order model from a pre-built event graph.
+
+        Args:
+            eg: The second-order temporal `EventGraph` to build the model from.
+            max_order: The maximum order of the model to compute.
+            cached: Whether to also keep the aggregated layers below `max_order`.
+
+        Returns:
+            MultiOrderModel2: A multi-order model equivalent to
+            `MultiOrderModel.from_temporal_graph(eg.to_temporal_graph(), delta=eg.delta, ...)`.
+        """
+        m = cls()
+        m.layers = MultiOrderModel.from_temporal_graph(
+            eg.to_temporal_graph(),
+            delta=eg.delta,
+            max_order=max_order,
+            cached=cached,
+            event_graph=eg.data.edge_index.as_tensor(),
+        ).layers
         return m
 
     @staticmethod
