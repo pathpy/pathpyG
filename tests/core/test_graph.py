@@ -35,6 +35,16 @@ def test_init_with_edge_index():
     assert isinstance(g.edge_to_index, dict)
 
 
+def test_init_with_presorted_edge_index_keeps_edge_attrs():
+    # An EdgeIndex that already carries sort_order="row" is returned by sort_by without a
+    # permutation, in which case the edge attributes must be left as they are.
+    edge_index = EdgeIndex([[0, 0, 1], [1, 2, 2]], sparse_size=(3, 3), sort_order="row")
+    edge_weight = torch.tensor([1.0, 2.0, 3.0])
+    g = Graph(Data(edge_index=edge_index, num_nodes=3, edge_weight=edge_weight))
+    assert g.data.edge_weight.shape == edge_weight.shape
+    assert torch.equal(g.data.edge_weight, edge_weight)
+
+
 def test_init_with_mapping():
     edge_index = get_random_edge_index(100, 100, 1000)
     data = Data(edge_index=edge_index, num_nodes=100)
