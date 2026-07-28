@@ -417,7 +417,7 @@ const Network = (config) => {
                     .force('center', d3.forceCenter(width/2, height/2)) // Center the graph
                     .force('x', null) // Remove the static x-force
                     .force('y', null) // Remove the static y-force
-                    .force('boundary', forceBoundary(0, 0, width, height));
+                    .force('boundary', forceBoundary(margin*width, margin*height, (1-margin)*width, (1-margin)*height));
                 
                 // Adjust link force
                 simulation.force("link").strength(0.1).distance(70);

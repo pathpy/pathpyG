@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import torch
-
-from pathpyG.core.graph import Graph
-from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.algorithms.rolling_time_window import RollingTimeWindow
 
 

@@ -1,4 +1,4 @@
-FROM astral/uv:0.8.22-python3.10-bookworm-slim
+FROM astral/uv:0.10.2-python3.13-trixie-slim
 WORKDIR /workspaces/pathpyG
 
 # Install git (and gpg for signed commits: https://code.visualstudio.com/remote/advancedcontainers/sharing-git-credentials#_sharing-gpg-keys)

@@ -30,7 +30,7 @@ Examples:
     >>> g = Graph.from_edge_list([('a', 'b'), ('b', 'c')])
     >>> positions = layout(g, layout='spring', k=0.5)
     >>> print(positions)
-    {'a': array([ 0.61899711, -1.        ]), 'b': array([-0.00132282,  0.00213747]), 'c': array([-0.61767429,  0.99786253])}
+    {'a': array(...), 'b': array(...), 'c': array(...)}
 """
 #!/usr/bin/python -tt
 # -*- coding: utf-8 -*-
@@ -126,7 +126,7 @@ def layout(network: Graph, layout: str = "random", weight: None | str | Iterable
 
     # create layout class
     layout_cls = Layout(
-        nodes=network.nodes, edge_index=network.data.edge_index, layout_type=layout, weight=weight, **kwargs
+        nodes=network.nodes, edge_index=network.data.edge_index, layout_type=layout, weight=weight, **kwargs  # type: ignore[arg-type]
     )
     # return the layout
     return layout_cls.generate_layout()
@@ -171,7 +171,7 @@ class Layout(object):
         else:
             self.edge_index = edge_index
         self.weight = weight
-        self.layout_type = layout_type
+        self.layout_type = layout_type.lower()
         self.kwargs = kwargs
 
     def generate_layout(self):

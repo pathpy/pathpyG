@@ -27,10 +27,12 @@ from __future__ import annotations
 
 import logging
 import os
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Sized
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import torch
 from matplotlib.colors import to_rgb
 
 from pathpyG.visualisations.layout import layout as network_layout
@@ -78,7 +80,7 @@ class NetworkPlot(PathPyPlot):
             **kwargs: Styling options (node_color, edge_size, layout, etc.)
         """
         super().__init__()
-        self.network = network
+        self.network = network if network.device == torch.device("cpu") else deepcopy(network).to(torch.device("cpu"))
         self.node_args = {}
         self.edge_args = {}
         self.attributes = ["color", "size", "opacity", "image"]

@@ -13,6 +13,9 @@ classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Environment :: GPU :: NVIDIA CUDA :: 11.7",
     "Environment :: GPU :: NVIDIA CUDA :: 11.8",
 ]
@@ -61,6 +64,7 @@ test = [
     "pytest-cov",  # Code coverage plugin for pytest
     "pytest-mock", # Mocking plugin for pytest
     "pytest-benchmark", # Benchmarking plugin for pytest
+    "nbmake",    # To test tutorial Jupyter notebooks
 ]
 
 dev = [
@@ -168,9 +172,11 @@ pythonpath = ["src"]
 testpaths = "tests"
 markers = [
     "benchmark: marks tests as benchmarking tests (deselect with '-m \"not benchmark\"')",
-    "gpu: marks tests that require GPU support (deselect with '-m \"not gpu\"')"
+    "gpu: marks tests that require GPU support (deselect with '-m \"not gpu\"')",
+    "network: marks tests that depend on reaching an external network service (deselect with '-m \"not network\"')"
 ]
-addopts = "--cov=src -m \"not benchmark and not gpu\""
+addopts = "--cov=src -m \"not benchmark and not gpu\" --doctest-modules"
+doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 
 [tool.coverage.run]
 branch = true

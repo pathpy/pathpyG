@@ -1,32 +1,28 @@
 from collections import Counter
 
 import numpy as _np
-import scipy
-
-import pytest
-import torch
 import numpy as np
+import pytest
+import scipy
+import torch
 from torch_geometric.utils import sort_edge_index
 
 from pathpyG.algorithms.components import connected_components
-from pathpyG.utils import to_numpy
-
-from pathpyG.statistics.degrees import degree_sequence
-
-from pathpyG.core.index_map import IndexMap
 from pathpyG.algorithms.generative_models import (
     erdos_renyi_gnm,
+    erdos_renyi_gnm_randomize,
     erdos_renyi_gnp,
+    erdos_renyi_gnp_randomize,
+    generate_degree_sequence,
     is_graphic_erdos_gallai,
     max_edges,
-    erdos_renyi_gnp_randomize,
-    erdos_renyi_gnm_randomize,
-    stochastic_block_model,
-    erdos_renyi_gnp_mle,
     molloy_reed,
+    stochastic_block_model,
     watts_strogatz,
-    generate_degree_sequence,
 )
+from pathpyG.core.index_map import IndexMap
+from pathpyG.statistics.degrees import degree_sequence
+from pathpyG.utils import to_numpy
 
 
 def test_erdos_renyi_gnm():

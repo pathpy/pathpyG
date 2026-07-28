@@ -2,6 +2,8 @@ window.addEventListener('scroll', function () {
     var header = document.querySelector('.md-header');
     var firstSection = document.getElementById('firstSection');
 
+    if (!firstSection || !header) return;  // Exit early if elements don't exist
+
     if (window.scrollY > firstSection.offsetHeight) {
         header.classList.add('md-bg-color');
     } else {
@@ -34,6 +36,8 @@ window.addEventListener('scroll', function() {
     var imageElement = document.querySelector('.parallax__image');
     var imageHeight = imageElement ? imageElement.offsetHeight : 0;
     var scrollPosition = window.scrollY;
+
+    if (!heroContent) return;  // Exit early if element doesn't exist
 
     if (scrollPosition > imageHeight / 2) {
         heroContent.style.animation = "fadeOutUp 1s forwards";

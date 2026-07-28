@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import pytest
-import torch
 
-from pathpyG.core.graph import Graph
-from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.core.path_data import PathData
 from pathpyG import config
 from pathpyG.core.multi_order_model import MultiOrderModel
+from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
 
 # to run benchmarks, do the following:
 # > pip install pytest-benchmark
@@ -16,12 +14,12 @@ from pathpyG.core.multi_order_model import MultiOrderModel
 
 def higher_order_paths(max_order):
     paths = PathData.from_ngram("docs/data/tube_paths_train.ngram")
-    m = MultiOrderModel.from_PathData(paths, max_order=max_order)
+    MultiOrderModel.from_PathData(paths, max_order=max_order)
 
 
 def higher_order_temporal_graph(max_order):
     t = TemporalGraph.from_csv("docs/data/ants_1_1.tedges")
-    m = MultiOrderModel.from_temporal_graph(t, delta=30, max_order=max_order)
+    MultiOrderModel.from_temporal_graph(t, delta=30, max_order=max_order)
 
 
 @pytest.mark.benchmark

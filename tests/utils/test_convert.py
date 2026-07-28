@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 from torch_geometric import EdgeIndex
 
 from pathpyG.utils import to_numpy

@@ -1,9 +1,8 @@
-"""Algorithms to calculate shortest paths in static networks
+"""Algorithms to calculate shortest paths in static networks.
 
 The functions  in this module allow to compute shortest paths
-in static networks."""
-
-from __future__ import annotations
+in static networks.
+"""
 
 import numpy as _np
 from scipy.sparse.csgraph import dijkstra
@@ -44,6 +43,7 @@ def avg_path_length(graph: Graph) -> float:
 
     Args:
         graph (Graph): Input graph.
+        
     Returns:
         float: The average path length of the graph.
     """

@@ -2,28 +2,28 @@
 
 # pylint: disable=missing-function-docstring
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 import torch
 from torch_geometric.data import Data
 
 from pathpyG import Graph, TemporalGraph
 from pathpyG.io.pandas import (
+    _integer_re,
     _iterable_re,
     _number_re,
-    _integer_re,
-    _parse_timestamp,
     _parse_df_column,
-    df_to_graph,
+    _parse_timestamp,
     add_edge_attributes,
     add_node_attributes,
+    df_to_graph,
     df_to_temporal_graph,
     graph_to_df,
-    temporal_graph_to_df,
     read_csv_graph,
-    read_csv_temporal_graph,
     read_csv_path_data,
+    read_csv_temporal_graph,
+    temporal_graph_to_df,
     write_csv,
 )
 
@@ -93,8 +93,15 @@ def test_parse_timestamp_datetime64():
 
 def test_parse_timestamp_rescale():
     df = pd.DataFrame({"t": ["2023-01-01 12:00:00", "2023-01-01 13:00:00"]})
-    _parse_timestamp(df, time_rescale=10**9)  # convert to seconds
+    # check pandas version to determine expected time unit
+    if pd.__version__ >= "3.0.0":
+        expected_unit = 10**6  # pandas 3.0.0 and above automatically uses a unit determined by the input format
+    else:
+        expected_unit = 10**9  # pandas below 3.0.0 uses nanoseconds
+
+    _parse_timestamp(df, time_rescale=expected_unit)  # convert to seconds
     # Should be seconds since epoch
+    print(df["t"])
     assert np.all(df["t"].diff().dropna() == 3600)
 
 

@@ -11,9 +11,8 @@ else:
 
 from pathlib import Path
 
-
 # path to the module
-path = Path(sys.modules[__name__].__file__).resolve().parents[1]
+path = Path(sys.modules[__name__].__file__).resolve().parents[1]  # type: ignore[arg-type]
 
 # default config file name
 configfile_name = "pathpyG.toml"

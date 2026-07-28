@@ -22,6 +22,7 @@ Examples:
     >>> import pathpyG as pp
     >>> g = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c')])
     >>> pp.plot(g, filename='network.png')
+    <pathpyG.visualisations._matplotlib.backend.MatplotlibBackend object at 0x...>
 
     <img src="../plot/network.png" alt="Example static network plot" width="550"/>
     
@@ -30,6 +31,8 @@ Examples:
     >>> import pathpyG as pp
     >>> tg = pp.TemporalGraph.from_edge_list([('a', 'b', 1), ('b', 'c', 2), ('a', 'c', 3)])
     >>> pp.plot(tg)
+    <IPython.core.display.HTML object>
+    <pathpyG.visualisations._d3js.backend.D3jsBackend object at 0x...>
 
     <iframe src="../plot/temporal_network.html" width="650" height="520"></iframe>
     ```
@@ -92,15 +95,15 @@ class Backends(str, Enum):
 
 # supported file formats
 FORMATS: dict = {
-    ".html": Backends.d3js,
-    ".tex": Backends.tikz,
-    ".pdf": Backends.tikz,
-    ".svg": Backends.tikz,
-    ".png": Backends.matplotlib,
-    ".jpg": Backends.matplotlib,
-    ".jpeg": Backends.matplotlib,
-    ".mp4": Backends.manim,
-    ".gif": Backends.manim,
+    ".html": Backends.d3js.value,
+    ".tex": Backends.tikz.value,
+    ".pdf": Backends.tikz.value,
+    ".svg": Backends.tikz.value,
+    ".png": Backends.matplotlib.value,
+    ".jpg": Backends.matplotlib.value,
+    ".jpeg": Backends.matplotlib.value,
+    ".mp4": Backends.manim.value,
+    ".gif": Backends.manim.value,
 }
 
 # Supported Plot Classes
@@ -196,6 +199,7 @@ def plot(graph: Graph, kind: Optional[str] = None, show_labels=None, **kwargs: A
         >>> import pathpyG as pp
         >>> graph = pp.Graph.from_edge_list([["a", "b"], ["b", "c"], ["a", "c"]])
         >>> pp.plot(graph, kind="static", filename="graph.png")
+        <pathpyG.visualisations._matplotlib.backend.MatplotlibBackend object at 0x...>
 
         <img src="../plot/graph.png" alt="Example static network plot" width="550"/>
         

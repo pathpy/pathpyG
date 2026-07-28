@@ -1,6 +1,7 @@
 """This module contains fixtures for testing the io module of pathpyG."""
 
 import pytest
+
 from pathpyG import Graph, TemporalGraph
 
 

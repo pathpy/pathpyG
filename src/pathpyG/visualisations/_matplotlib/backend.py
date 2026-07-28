@@ -381,7 +381,10 @@ class MatplotlibBackend(PlotBackend):
         # 1. Calculate the tangent vector (direction of the curve at the end)
         # For a quadratic curve, this is the vector from the control point to the end point.
         tangent = P2 - P1
-        tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
+        tangent_norm = np.linalg.norm(tangent, axis=1, keepdims=True)
+        # Avoid division by zero
+        tangent_norm[tangent_norm == 0] = 1e-6
+        tangent /= tangent_norm
         # Avoid division by zero
         tangent[tangent == 0] = 1e-6
 

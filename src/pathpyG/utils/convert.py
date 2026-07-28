@@ -1,9 +1,7 @@
-"""
-Utility functions for converting between different data types.
-"""
+"""Utility functions for converting between different data types."""
 
-import torch
 import numpy as np
+import torch
 from torch_geometric import EdgeIndex
 
 # Ensure backward compatibility with torch_geometric==2.5
@@ -11,17 +9,17 @@ try:
     from torch_geometric import Index
 except ImportError:
 
-    class Index:
-        def __init__(self) -> None:
+    class Index:  # type: ignore[no-redef]
+        """Placeholder for torch_geometric.Index when not available."""
+        def __init__(self) -> None:  # noqa: D107
             raise NotImplementedError("torch_geometric.Index is not available. Please upgrade to torch_geometric>=2.6.")
 
 
-def to_numpy(input_iterable: torch.Tensor | np.ndarray | list) -> np.ndarray:
-    """
-    Convert an iterable (including a tensor or tensor subclasses like `torch_geometric.Edge_Index`) to numpy.
+def to_numpy(input_iterable: torch.Tensor | np.ndarray | list | tuple) -> np.ndarray:
+    """Convert an iterable (including a tensor or tensor subclasses like [`torch_geometric.EdgeIndex`][torch_geometric.EdgeIndex]) to numpy.
 
     Args:
-        input_iterable: Tensor, tensor subclass, numpy array or list.
+        input_iterable: [Tensor][torch.Tensor], tensor subclass, [numpy array][numpy.ndarray] or list.
 
     Returns:
         Numpy array.

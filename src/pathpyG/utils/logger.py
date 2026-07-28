@@ -1,3 +1,5 @@
+"""Logging utility module for pathpyG."""
+
 #!/usr/bin/python -tt
 # -*- coding: utf-8 -*-
 # =============================================================================
@@ -7,14 +9,13 @@
 #
 # Copyright (c) 2016-2019 Pathpy Developers
 # =============================================================================
+import logging.config
 import os
 import sys
-import logging.config
 from pathlib import Path
 
-
 # path to the module
-path = Path(sys.modules[__name__].__file__).resolve().parents[1]
+path = Path(sys.modules[__name__].__file__).resolve().parents[1]  # type: ignore[arg-type]
 
 # default logging config file name
 loggingfile_name = "logging.toml"

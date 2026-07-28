@@ -1,6 +1,4 @@
 import pytest
-
-import pytest
 import torch
 
 from pathpyG.core.graph import Graph

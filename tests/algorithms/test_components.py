@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as _np
 
-from pathpyG.core.graph import Graph
 from pathpyG.algorithms import connected_components, largest_connected_component
+from pathpyG.core.graph import Graph
 
 
 def test_connected_components_undirected_1():

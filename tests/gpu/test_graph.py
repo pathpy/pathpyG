@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch_geometric.edge_index import EdgeIndex
 from torch_geometric.data import Data
+from torch_geometric.edge_index import EdgeIndex
 from torch_geometric.testing import get_random_edge_index
 
 from pathpyG import Graph, IndexMap
