@@ -5,9 +5,11 @@ import torch
 from scipy.stats import chi2
 from torch_geometric import EdgeIndex
 
+from pathpyG.algorithms.temporal import extract_causal_paths
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
 
 
 def test_multi_order_model_init():
@@ -160,6 +162,81 @@ def test_estimate_order():
     toy_paths_ho.append_walk(("b", "c", "e"), weight=4)
     m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=max_order)
     assert m.estimate_order(toy_paths_ho, max_order=2, significance_threshold=significance_threshold) == 2
+
+
+def test_estimate_order_from_temporal_graph_first_order():
+    # A temporal graph whose time-respecting paths carry no second-order correlations:
+    # after b, both c and d follow regardless of whether a or x came first.
+    tedges = []
+    for i, (first, second) in enumerate([("a", "c"), ("a", "d"), ("x", "c"), ("x", "d")] * 3):
+        t = 3 * i
+        tedges += [(first, "b", t), ("b", second, t + 1)]
+    g = TemporalGraph.from_edge_list(tedges)
+
+    paths = extract_causal_paths(g, delta=1)
+    m = MultiOrderModel.from_path_data(paths, max_order=2)
+    assert m.estimate_order(paths, max_order=2) == 1
+
+
+def test_estimate_order_from_temporal_graph_second_order():
+    # Same topology, but now the continuation is fully determined by the predecessor:
+    # a is always followed by c and x always by d, so order 2 is warranted.
+    tedges = []
+    for i, (first, second) in enumerate([("a", "c"), ("x", "d")] * 12):
+        t = 3 * i
+        tedges += [(first, "b", t), ("b", second, t + 1)]
+    g = TemporalGraph.from_edge_list(tedges)
+
+    paths = extract_causal_paths(g, delta=1)
+    m = MultiOrderModel.from_path_data(paths, max_order=2)
+    assert m.estimate_order(paths, max_order=2) == 2
+
+
+def layer_edge_weights(m, k) -> dict:
+    """Map each De Bruijn edge of layer k to its weight, keyed by first-order node sequences."""
+    g = m.layers[k]
+    node_seq = g.data.node_sequence
+    edge_index = g.data.edge_index.as_tensor() if hasattr(g.data.edge_index, "as_tensor") else g.data.edge_index
+    return {
+        (tuple(node_seq[s].tolist()), tuple(node_seq[d].tolist())): w
+        for s, d, w in zip(edge_index[0].tolist(), edge_index[1].tolist(), g.data.edge_weight.tolist())
+    }
+
+
+def test_temporal_and_extracted_path_layers_share_topology(simple_temporal_graph):
+    # Both constructions must discover exactly the same set of higher-order De Bruijn edges,
+    # since every time-respecting walk lies on at least one maximal time-respecting path.
+    delta = 4
+    max_order = 3
+    m_temporal = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=max_order, delta=delta)
+    m_paths = MultiOrderModel.from_path_data(
+        extract_causal_paths(simple_temporal_graph, delta=delta), max_order=max_order
+    )
+
+    for k in range(1, max_order + 1):
+        assert layer_edge_weights(m_temporal, k).keys() == layer_edge_weights(m_paths, k).keys(), f"layer {k} topology"
+
+
+def test_temporal_and_extracted_path_layers_use_different_weights(simple_temporal_graph):
+    """Document that the two constructions count *different* things.
+
+    `from_temporal_graph` weights a layer-k edge by the number of time-respecting walks of k
+    events that realize it. Building from extracted maximal paths instead weights it by the
+    number of maximal paths containing such a walk, so a walk that branches downstream is
+    counted once per branch. The two agree only where no branching or merging occurs.
+    """
+    delta = 4
+    m_temporal = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=2, delta=delta)
+    m_paths = MultiOrderModel.from_path_data(extract_causal_paths(simple_temporal_graph, delta=delta), max_order=2)
+    a, b, c, d, e = (simple_temporal_graph.mapping.to_idx(x) for x in "abcde")
+
+    # One event each, regardless of how many paths traverse it.
+    assert layer_edge_weights(m_temporal, 1) == {((a,), (b,)): 1, ((b,), (c,)): 1, ((c,), (d,)): 1, ((c,), (e,)): 1}
+    # a->b and b->c lie on both maximal paths (a,b,c,d) and (a,b,c,e), so they count twice.
+    assert layer_edge_weights(m_paths, 1) == {((a,), (b,)): 2, ((b,), (c,)): 2, ((c,), (d,)): 1, ((c,), (e,)): 1}
+
+    assert layer_edge_weights(m_temporal, 2) == {((a, b), (b, c)): 1, ((b, c), (c, d)): 1, ((b, c), (c, e)): 1}
+    assert layer_edge_weights(m_paths, 2) == {((a, b), (b, c)): 2, ((b, c), (c, d)): 1, ((b, c), (c, e)): 1}
 
 
 def test_multi_order_model_from_paths(simple_walks_2):

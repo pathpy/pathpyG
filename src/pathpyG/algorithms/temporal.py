@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import torch
@@ -10,6 +10,7 @@ from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 
 from pathpyG import Graph
+from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
@@ -50,8 +51,91 @@ def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
             ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
             second_order.append(ho_edge_index)
 
+    if not second_order:
+        return torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
+
     ho_index = torch.cat(second_order, dim=0).t().contiguous()
     return ho_index
+
+
+def extract_causal_paths(g: TemporalGraph, delta: float | int = 1, max_paths: Optional[int] = None) -> PathData:
+    """Enumerate maximal time-respecting paths in a temporal graph into a [PathData][pathpyG.PathData] object.
+
+    A maximal time-respecting path is a sequence of temporal edges `(e_1, ..., e_L)` such that
+    each `e_{i+1}` continues `e_i` within `delta` (as defined by [lift_order_temporal][pathpyG.algorithms.lift_order_temporal]),
+    `e_1` has no time-respecting predecessor edge, and `e_L` has no time-respecting successor edge.
+    If an edge has more than one valid predecessor or successor, it is part of more than one
+    maximal path, so the returned [PathData][pathpyG.PathData] can contain overlapping paths
+    that share individual edges.
+
+    Warning:
+        The number of maximal time-respecting paths can grow exponentially in the branching
+        factor of the temporal graph (an edge with `b` valid continuations multiplies the
+        number of paths passing through it by `b`). This function enumerates paths explicitly
+        and is intended as a **reference implementation for small graphs** - e.g. to validate
+        higher-order model likelihoods computed directly from the event graph - and not as a
+        scalable path extraction routine. For large or densely connected temporal graphs, build
+        a [MultiOrderModel][pathpyG.MultiOrderModel] directly via
+        [MultiOrderModel.from_temporal_graph][pathpyG.MultiOrderModel.from_temporal_graph] instead,
+        which never materializes individual paths. Use `max_paths` to fail fast rather than
+        exhausting memory on inputs that are too large.
+
+    Args:
+        g: The temporal graph to extract paths from.
+        delta: The maximum time difference between two consecutive edges in a path.
+        max_paths: If set, raise a `RuntimeError` once more than this many maximal paths have
+            been found.
+
+    Returns:
+        PathData: A [PathData][pathpyG.PathData] object containing all maximal time-respecting
+            paths, each stored with weight 1.0.
+
+    Examples:
+        >>> import pathpyG as pp
+        >>> g = pp.TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)])
+        >>> paths = pp.algorithms.extract_causal_paths(g, delta=4)
+        >>> sorted(paths.get_walk(i) for i in range(paths.num_paths))
+        [('a', 'b', 'c', 'd'), ('a', 'b', 'c', 'e')]
+    """
+    num_events = g.data.edge_index.size(1)
+    paths = PathData(mapping=g.mapping, device=g.data.edge_index.device)
+    if num_events == 0:
+        return paths
+
+    ho_index = lift_order_temporal(g, delta)
+    src = g.data.edge_index[0].tolist()
+    dst = g.data.edge_index[1].tolist()
+
+    successors: list[list[int]] = [[] for _ in range(num_events)]
+    has_predecessor = [False] * num_events
+    for s, d in ho_index.t().tolist():
+        successors[s].append(d)
+        has_predecessor[d] = True
+
+    roots = [i for i in range(num_events) if not has_predecessor[i]]
+
+    node_seqs: list[list[int]] = []
+    # DFS over the event graph from each root to each reachable leaf. The event graph is
+    # acyclic because continuations strictly increase in time, so this always terminates.
+    stack: list[tuple[int, list[int]]] = [(root, [src[root], dst[root]]) for root in roots]
+    while stack:
+        event, seq = stack.pop()
+        succs = successors[event]
+        if not succs:
+            node_seqs.append(seq)
+            if max_paths is not None and len(node_seqs) > max_paths:
+                raise RuntimeError(
+                    f"Number of maximal time-respecting paths exceeds max_paths={max_paths}. "
+                    "extract_causal_paths does not scale to graphs with a high branching factor; "
+                    "consider building a MultiOrderModel directly from the temporal graph instead."
+                )
+        else:
+            for succ in succs:
+                stack.append((succ, seq + [dst[succ]]))
+
+    node_id_seqs = [g.mapping.to_ids(seq) for seq in node_seqs]
+    paths.append_walks(node_id_seqs, weights=[1.0] * len(node_seqs))
+    return paths
 
 
 def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, np.ndarray]:
