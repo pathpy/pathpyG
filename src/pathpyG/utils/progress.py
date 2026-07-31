@@ -14,7 +14,7 @@ from typing import Any
 from tqdm import tqdm as tq  # pylint: disable=import-error
 from tqdm.notebook import tqdm as tqn  # pylint: disable=import-error
 
-from pathpyG import config
+from pathpyG.utils.config import config
 
 
 def tqdm_disabled(it, *args, **kwargs):

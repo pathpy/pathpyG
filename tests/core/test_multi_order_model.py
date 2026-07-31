@@ -291,7 +291,7 @@ def test_intermediate_order_uses_weighted_transition_probabilities():
 def test_ho_node_and_lower_order_edge_orderings_coincide():
     """An order-(k+1) node is an order-k edge, and the two index spaces must line up elementwise.
 
-    `get_intermediate_order_log_likelihood` multiplies `layers[k+1].data.path_start_weight`
+    `get_intermediate_order_log_likelihood` multiplies `layers[k+1].data.node_path_start_weight`
     directly against `layers[k].transition_probabilities()`, which is only valid because
     `aggregate_edge_index` sorts higher-order node sequences and coalesced edges into the same
     lexicographic order.
@@ -317,7 +317,7 @@ def test_path_statistics_attached_to_layers(simple_walks_2):
     a, b, c = (simple_walks_2.mapping.to_idx(x) for x in ("A", "B", "C"))
 
     # Two walks A->C->D and B->C->E with weight 2 each.
-    start = m.layers[1].data.path_start_weight
+    start = m.layers[1].data.node_path_start_weight
     assert start[a].item() == 2.0
     assert start[b].item() == 2.0
     assert start[c].item() == 0.0
@@ -330,7 +330,7 @@ def test_path_statistics_attached_to_layers(simple_walks_2):
 
     # Each walk contributes exactly one first second-order node, so the order-2 starts also
     # sum to the total path weight.
-    assert m.layers[2].data.path_start_weight.sum().item() == 4.0
+    assert m.layers[2].data.node_path_start_weight.sum().item() == 4.0
 
 
 @pytest.mark.parametrize("delta", [1, 4, 10])
@@ -358,9 +358,9 @@ def test_walk_model_matches_enumerated_oracle(long_temporal_graph, delta, max_or
         for edge, weight in oracle_edges.items():
             assert dp_edges[edge] == pytest.approx(weight), f"order {k} weight of {edge}"
 
-        dp_starts = layer_node_statistic(m_dp, k, "path_start_weight")
-        oracle_starts = layer_node_statistic(m_oracle, k, "path_start_weight")
-        assert dp_starts == pytest.approx(oracle_starts), f"order {k} path_start_weight"
+        dp_starts = layer_node_statistic(m_dp, k, "node_path_start_weight")
+        oracle_starts = layer_node_statistic(m_oracle, k, "node_path_start_weight")
+        assert dp_starts == pytest.approx(oracle_starts), f"order {k} node_path_start_weight"
 
     dp_instances = layer_node_statistic(m_dp, 1, "node_instance_weight")
     oracle_instances = layer_node_statistic(m_oracle, 1, "node_instance_weight")
@@ -398,7 +398,7 @@ def test_walk_model_observation_set_is_independent_of_tested_order(simple_tempor
     num_walks = extract_time_respecting_walks(simple_temporal_graph, delta=4, length=3).num_paths
 
     for k in range(1, 4):
-        assert m.layers[k].data.path_start_weight.sum().item() == pytest.approx(num_walks)
+        assert m.layers[k].data.node_path_start_weight.sum().item() == pytest.approx(num_walks)
 
 
 def temporal_graph_from_blocks(pairs, repeats):

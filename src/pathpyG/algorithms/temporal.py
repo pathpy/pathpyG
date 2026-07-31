@@ -7,12 +7,12 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 from scipy.sparse.csgraph import dijkstra
-from tqdm import tqdm
 
 from pathpyG import Graph
 from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
+from pathpyG.utils.progress import tqdm
 
 
 def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):

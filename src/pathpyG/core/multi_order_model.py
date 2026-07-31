@@ -128,7 +128,7 @@ class MultiOrderModel:
         The likelihood of a set of observed paths under a multi-order model needs, besides the
         aggregated De Bruijn layers themselves, only two statistics:
 
-        - `path_start_weight`: for each order-`k` node, the total weight of observed paths whose
+        - `node_path_start_weight`: for each order-`k` node, the total weight of observed paths whose
           **first** order-`k` node it is. Paths with fewer than `k` nodes have no order-`k` node
           and drop out automatically.
         - `node_instance_weight` (order 1 only): for each first-order node, the total weight of
@@ -154,9 +154,9 @@ class MultiOrderModel:
         long_enough = num_instances > 0
         start_instances = cumsum(num_instances[long_enough])[:-1]
 
-        path_start_weight = torch.zeros(num_nodes, dtype=dag_weight.dtype, device=device)
-        path_start_weight.scatter_add_(0, inverse_idx[start_instances], dag_weight[long_enough])
-        layer.data.path_start_weight = path_start_weight
+        node_path_start_weight = torch.zeros(num_nodes, dtype=dag_weight.dtype, device=device)
+        node_path_start_weight.scatter_add_(0, inverse_idx[start_instances], dag_weight[long_enough])
+        layer.data.node_path_start_weight = node_path_start_weight
 
         if order == 1:
             node_instance_weight = torch.zeros(num_nodes, dtype=dag_weight.dtype, device=device)
@@ -386,9 +386,9 @@ class MultiOrderModel:
         num_first_order_nodes = layer_one.data.num_nodes
 
         # An observation starts at the source of its first event.
-        path_start_weight = torch.zeros(num_first_order_nodes, dtype=torch.float64, device=device)
-        path_start_weight.scatter_add_(0, kept_src, num_following[length - 1][observed_event])
-        layer_one.data.path_start_weight = path_start_weight
+        node_path_start_weight = torch.zeros(num_first_order_nodes, dtype=torch.float64, device=device)
+        node_path_start_weight.scatter_add_(0, kept_src, num_following[length - 1][observed_event])
+        layer_one.data.node_path_start_weight = node_path_start_weight
         # Every event contributes its source once per realization; the final node of an
         # observation is instead the destination of its last event.
         node_instance_weight = torch.zeros(num_first_order_nodes, dtype=torch.float64, device=device)
@@ -427,11 +427,11 @@ class MultiOrderModel:
                     gk.mapping = IndexMap([tuple(g.mapping.to_ids(v.cpu())) for v in gk.data.node_sequence])
                     # An observation starts with this order-k node if its remaining events can
                     # still be completed to the full walk length.
-                    path_start_weight = torch.zeros(gk.data.num_nodes, dtype=torch.float64, device=device)
-                    path_start_weight.scatter_add_(
+                    node_path_start_weight = torch.zeros(gk.data.num_nodes, dtype=torch.float64, device=device)
+                    node_path_start_weight.scatter_add_(
                         0, gk.data.inverse_idx, num_following[length - k + 1][node_last_event[used_nodes]]
                     )
-                    gk.data.path_start_weight = path_start_weight
+                    gk.data.node_path_start_weight = node_path_start_weight
                     m.layers[k] = gk
 
         return m
@@ -573,15 +573,15 @@ class MultiOrderModel:
             float: Zeroth order log likelihood.
         """
         node_instance_weight = self._require_statistic(1, "node_instance_weight")
-        path_start_weight = self._require_statistic(1, "path_start_weight")
+        node_path_start_weight = self._require_statistic(1, "node_path_start_weight")
 
         node_emission_probabilities = node_instance_weight / node_instance_weight.sum()
         # A node that starts no path contributes nothing; skip it so that nodes with zero
         # emission probability cannot turn the sum into NaN.
         llh = torch.where(
-            path_start_weight > 0,
-            path_start_weight * torch.log(node_emission_probabilities),
-            torch.zeros_like(path_start_weight),
+            node_path_start_weight > 0,
+            node_path_start_weight * torch.log(node_emission_probabilities),
+            torch.zeros_like(node_path_start_weight),
         )
         return llh.sum().item()
 
@@ -602,13 +602,13 @@ class MultiOrderModel:
         """
         # An order-(k+1) node *is* an order-k edge, and `aggregate_edge_index` sorts both
         # lexicographically, so the two index spaces coincide elementwise.
-        path_start_weight = self._require_statistic(order + 1, "path_start_weight")
+        node_path_start_weight = self._require_statistic(order + 1, "node_path_start_weight")
         transition_probabilities = self.layers[order].transition_probabilities(edge_attr="edge_weight")
 
         llh = torch.where(
-            path_start_weight > 0,
-            path_start_weight * torch.log(transition_probabilities),
-            torch.zeros_like(path_start_weight),
+            node_path_start_weight > 0,
+            node_path_start_weight * torch.log(transition_probabilities),
+            torch.zeros_like(node_path_start_weight),
         )
         return llh.sum().item()
 
