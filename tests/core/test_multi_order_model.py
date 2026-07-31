@@ -1,11 +1,12 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 
 import numpy as np
+import pytest
 import torch
 from scipy.stats import chi2
 from torch_geometric import EdgeIndex
 
-from pathpyG.algorithms.temporal import extract_causal_paths
+from pathpyG.algorithms.temporal import extract_causal_paths, extract_time_respecting_walks
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.path_data import PathData
@@ -203,6 +204,13 @@ def layer_edge_weights(m, k) -> dict:
     }
 
 
+def layer_node_statistic(m, k, name) -> dict:
+    """Map each De Bruijn node of layer k to a stored statistic, keyed by first-order node sequence."""
+    g = m.layers[k]
+    values = g.data[name].tolist()
+    return {tuple(seq.tolist()): value for seq, value in zip(g.data.node_sequence, values)}
+
+
 def test_temporal_and_extracted_path_layers_share_topology(simple_temporal_graph):
     # Both constructions must discover exactly the same set of higher-order De Bruijn edges,
     # since every time-respecting walk lies on at least one maximal time-respecting path.
@@ -323,6 +331,109 @@ def test_path_statistics_attached_to_layers(simple_walks_2):
     # Each walk contributes exactly one first second-order node, so the order-2 starts also
     # sum to the total path weight.
     assert m.layers[2].data.path_start_weight.sum().item() == 4.0
+
+
+@pytest.mark.parametrize("delta", [1, 4, 10])
+@pytest.mark.parametrize("max_order", [1, 2, 3])
+def test_walk_model_matches_enumerated_oracle(long_temporal_graph, delta, max_order):
+    """Statistics computed from the event graph must equal those from enumerated walks.
+
+    `from_time_respecting_walks` derives every layer weight and path statistic by dynamic
+    programming over the event graph. Enumerating the same observation set explicitly and
+    feeding it through `from_path_data` is an independent route to the same model, so the two
+    must agree exactly.
+    """
+    g = long_temporal_graph
+    walks = extract_time_respecting_walks(g, delta=delta, length=max_order)
+    if walks.num_paths == 0:
+        pytest.skip("no walks of this length for this delta")
+
+    m_dp = MultiOrderModel.from_time_respecting_walks(g, delta=delta, max_order=max_order)
+    m_oracle = MultiOrderModel.from_path_data(walks, max_order=max_order)
+
+    for k in range(1, max_order + 1):
+        dp_edges = layer_edge_weights(m_dp, k)
+        oracle_edges = layer_edge_weights(m_oracle, k)
+        assert dp_edges.keys() == oracle_edges.keys(), f"order {k} topology"
+        for edge, weight in oracle_edges.items():
+            assert dp_edges[edge] == pytest.approx(weight), f"order {k} weight of {edge}"
+
+        dp_starts = layer_node_statistic(m_dp, k, "path_start_weight")
+        oracle_starts = layer_node_statistic(m_oracle, k, "path_start_weight")
+        assert dp_starts == pytest.approx(oracle_starts), f"order {k} path_start_weight"
+
+    dp_instances = layer_node_statistic(m_dp, 1, "node_instance_weight")
+    oracle_instances = layer_node_statistic(m_oracle, 1, "node_instance_weight")
+    assert dp_instances == pytest.approx(oracle_instances)
+
+
+@pytest.mark.parametrize("delta", [1, 4, 10])
+@pytest.mark.parametrize("max_order", [1, 2, 3])
+def test_walk_model_likelihoods_match_oracle(long_temporal_graph, delta, max_order):
+    """The likelihoods, and hence the order estimate, must agree with the enumerated oracle."""
+    g = long_temporal_graph
+    walks = extract_time_respecting_walks(g, delta=delta, length=max_order)
+    if walks.num_paths == 0:
+        pytest.skip("no walks of this length for this delta")
+
+    m_dp = MultiOrderModel.from_time_respecting_walks(g, delta=delta, max_order=max_order)
+    m_oracle = MultiOrderModel.from_path_data(walks, max_order=max_order)
+
+    for order in range(0, max_order + 1):
+        assert m_dp.get_mon_log_likelihood(max_order=order) == pytest.approx(
+            m_oracle.get_mon_log_likelihood(max_order=order)
+        ), f"log-likelihood at order {order}"
+
+    if max_order > 1:
+        assert m_dp.estimate_order(max_order=max_order) == m_oracle.estimate_order(max_order=max_order)
+
+
+def test_walk_model_observation_set_is_independent_of_tested_order(simple_temporal_graph):
+    """The number of observations must not change with the order being tested.
+
+    This is what makes the likelihood ratio test valid: both hypotheses must be likelihoods of
+    the same data. Total path start weight equals the number of observed walks at every order.
+    """
+    m = MultiOrderModel.from_time_respecting_walks(simple_temporal_graph, delta=4, max_order=3)
+    num_walks = extract_time_respecting_walks(simple_temporal_graph, delta=4, length=3).num_paths
+
+    for k in range(1, 4):
+        assert m.layers[k].data.path_start_weight.sum().item() == pytest.approx(num_walks)
+
+
+def temporal_graph_from_blocks(pairs, repeats):
+    """Build a temporal graph of isolated two-event blocks first -> b -> second."""
+    tedges = []
+    for i, (first, second) in enumerate(list(pairs) * repeats):
+        t = 3 * i  # gap of 2 between blocks keeps them causally independent at delta=1
+        tedges += [(first, "b", t), ("b", second, t + 1)]
+    return TemporalGraph.from_edge_list(tedges)
+
+
+def test_estimate_order_on_temporal_graph_detects_first_order():
+    """No second-order correlation: b is followed by c or d regardless of what preceded it."""
+    g = temporal_graph_from_blocks([("a", "c"), ("a", "d"), ("x", "c"), ("x", "d")], repeats=3)
+    m = MultiOrderModel.from_time_respecting_walks(g, delta=1, max_order=2)
+    assert m.estimate_order(max_order=2) == 1
+
+
+def test_estimate_order_on_temporal_graph_detects_second_order():
+    """The continuation is fully determined by the predecessor, so order 2 is warranted."""
+    g = temporal_graph_from_blocks([("a", "c"), ("x", "d")], repeats=12)
+    m = MultiOrderModel.from_time_respecting_walks(g, delta=1, max_order=2)
+    assert m.estimate_order(max_order=2) == 2
+
+
+def test_estimate_order_requires_walk_statistics(simple_temporal_graph):
+    """A model built with the legacy per-walk weights carries no observation set to test against."""
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, delta=4, max_order=2)
+    with pytest.raises(ValueError, match="from_time_respecting_walks"):
+        m.estimate_order(max_order=2)
+
+
+def test_walk_model_rejects_walk_length_below_max_order(simple_temporal_graph):
+    with pytest.raises(ValueError, match="walk_length"):
+        MultiOrderModel.from_time_respecting_walks(simple_temporal_graph, delta=4, max_order=3, walk_length=2)
 
 
 def test_multi_order_model_from_paths(simple_walks_2):

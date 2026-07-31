@@ -16,7 +16,7 @@ from pathpyG.algorithms.lift_order import (
     lift_order_edge_index,
     lift_order_edge_index_weighted,
 )
-from pathpyG.algorithms.temporal import lift_order_temporal
+from pathpyG.algorithms.temporal import lift_order_temporal, walk_counts
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
@@ -175,7 +175,10 @@ class MultiOrderModel:
             logger.error("Layer of order %s does not carry the statistic '%s'.", order, name)
             raise ValueError(
                 f"Layer of order {order} does not carry '{name}', so its likelihood cannot be computed. "
-                "This statistic is attached by `MultiOrderModel.from_path_data`."
+                "Likelihoods need a fixed observation set: build the model with "
+                "`MultiOrderModel.from_path_data` or `MultiOrderModel.from_time_respecting_walks`. "
+                "`from_temporal_graph` weights each layer by the number of distinct walks of that "
+                "length, which makes the observed data depend on the order being tested."
             )
         return self.layers[order].data[name]
 
@@ -247,6 +250,190 @@ class MultiOrderModel:
                 )
                 if cached or k == max_order:
                     m.layers[k] = gk  # type: ignore[assignment]
+        return m
+
+    @staticmethod
+    def _aggregate_observed(
+        edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor
+    ) -> tuple[Graph, torch.Tensor, torch.Tensor]:
+        """Aggregate only the part of a lifted graph that some observation actually realizes.
+
+        The event graph contains walks that cannot be completed to the full observation length;
+        those carry weight zero and are not part of the observed data. Dropping them keeps the
+        model over the same support a model fitted on the enumerated observations would have,
+        and avoids `log(0)` in the likelihood.
+
+        Returns:
+            The aggregated graph, the retained node indices, and the map from old node indices
+            to positions in that retained set (`-1` where a node was dropped).
+        """
+        keep = edge_weight > 0
+        kept_index = edge_index[:, keep]
+        kept_weight = edge_weight[keep]
+        # Every observed node is an endpoint of an observed edge, because an observation spanning
+        # k-th order nodes always contains at least one k-th order edge.
+        used_nodes = torch.unique(kept_index)
+        remap = torch.full((node_sequence.size(0),), -1, dtype=torch.long, device=edge_index.device)
+        remap[used_nodes] = torch.arange(used_nodes.size(0), device=edge_index.device)
+        graph = aggregate_edge_index(remap[kept_index], node_sequence[used_nodes], kept_weight)
+        return graph, used_nodes, remap
+
+    @staticmethod
+    def from_time_respecting_walks(
+        g: TemporalGraph,
+        delta: float | int = 1,
+        max_order: int = 1,
+        walk_length: Optional[int] = None,
+        cached: bool = True,
+        event_graph: Optional[torch.Tensor] = None,
+    ) -> "MultiOrderModel":
+        """Create a multi-order model of the time-respecting walks in a temporal graph.
+
+        Unlike [from_temporal_graph][pathpyG.MultiOrderModel.from_temporal_graph], which weights a
+        layer-`k` edge by the number of *distinct* time-respecting walks of `k` events, this
+        treats a fixed observation set - **all time-respecting walks of exactly `walk_length`
+        events** - as the observed data, and weights every layer by how often it is realized
+        within that set.
+
+        This distinction matters for model selection. A likelihood ratio test requires both
+        hypotheses to be likelihoods of the *same* data, so the observation set must not depend
+        on the order being tested. Counting distinct `k`-event walks makes the data a function of
+        `k` and silently invalidates the test; fixing `walk_length` independently of `k` does not.
+
+        The statistics are computed directly from the temporal event graph by a depth-bounded
+        dynamic program (see [walk_counts][pathpyG.algorithms.walk_counts]), so no walk is ever
+        materialized and the cost stays linear in the size of the event graph.
+
+        Args:
+            g: The temporal graph.
+            delta: The maximum time difference between two consecutive edges in a walk.
+            max_order: The maximum order of the MultiOrderModel that should be computed.
+            walk_length: Number of events in each observed walk. Defaults to `max_order`, and
+                must be at least `max_order`. Models built with different `walk_length` describe
+                different observation sets and their likelihoods are not comparable.
+            cached: Whether to keep the aggregated higher-order graphs below the maximum order.
+                Required for [estimate_order][pathpyG.MultiOrderModel.estimate_order].
+            event_graph: Precomputed event graph edge index for the given delta, to avoid
+                recomputing it.
+
+        Returns:
+            MultiOrderModel: A multi-order model whose layers carry the path statistics needed to
+                evaluate multi-order likelihoods.
+
+        Examples:
+            >>> import pathpyG as pp
+            >>> g = pp.TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 5), ("c", "d", 9)])
+            >>> m = pp.MultiOrderModel.from_time_respecting_walks(g, delta=4, max_order=2)
+            >>> print(m)
+            MultiOrderModel with max. order 2
+        """
+        if max_order < 1:
+            logger.error("max_order must be at least one")
+            raise ValueError(f"max_order must be at least one, got {max_order}")
+        if walk_length is None:
+            walk_length = max_order
+        if walk_length < max_order:
+            logger.error("walk_length must be at least max_order")
+            raise ValueError(f"walk_length ({walk_length}) must be at least max_order ({max_order})")
+
+        length = walk_length
+        data = g.data if g.data.is_sorted_by_time() else g.data.sort_by_time()
+        edge_index = data.edge_index
+        flat_edge_index = edge_index.as_tensor() if hasattr(edge_index, "as_tensor") else edge_index
+        num_events = flat_edge_index.size(1)
+        device = flat_edge_index.device
+
+        if event_graph is None:
+            event_graph = lift_order_temporal(g, delta)
+        # Number of walks of m events continuing after (resp. preceding) each event.
+        num_following = walk_counts(event_graph, num_events, length)
+        num_preceding = walk_counts(event_graph, num_events, length, reverse=True)
+
+        def realization_weight(first: torch.Tensor, last: torch.Tensor, num_walk_events: int) -> torch.Tensor:
+            """Count (observed walk, position) pairs realizing a walk of `num_walk_events` events.
+
+            A walk that spans `j` events sits inside an observation of `length` events in as many
+            ways as its surroundings can be filled in, so the count convolves the number of
+            possible predecessors with the number of possible continuations.
+            """
+            total = torch.zeros(first.size(0), dtype=torch.float64, device=device)
+            for before in range(length - num_walk_events + 1):
+                total += num_preceding[before][first] * num_following[length - num_walk_events - before][last]
+            return total
+
+        m = MultiOrderModel()
+
+        # --- First order: every event is a walk of one event. ---
+        node_sequence = torch.arange(data.num_nodes, device=device).unsqueeze(1)
+        events = torch.arange(num_events, device=device)
+        edge_weight = realization_weight(events, events, 1)
+        observed_event = edge_weight > 0
+        if not bool(observed_event.any()):
+            logger.error("No time-respecting walk of length %s exists for delta=%s", length, delta)
+            raise ValueError(
+                f"The temporal graph contains no time-respecting walk of {length} events for delta={delta}, "
+                "so there is nothing to fit. Use a smaller walk_length or a larger delta."
+            )
+
+        layer_one, _, remap = MultiOrderModel._aggregate_observed(flat_edge_index, node_sequence, edge_weight)
+        layer_one.mapping = g.mapping
+        m.layers[1] = layer_one
+
+        # An event that realizes no observation also starts none, so restricting to observed
+        # events below loses nothing.
+        kept_src = remap[flat_edge_index[0][observed_event]]
+        kept_dst = remap[flat_edge_index[1][observed_event]]
+        num_first_order_nodes = layer_one.data.num_nodes
+
+        # An observation starts at the source of its first event.
+        path_start_weight = torch.zeros(num_first_order_nodes, dtype=torch.float64, device=device)
+        path_start_weight.scatter_add_(0, kept_src, num_following[length - 1][observed_event])
+        layer_one.data.path_start_weight = path_start_weight
+        # Every event contributes its source once per realization; the final node of an
+        # observation is instead the destination of its last event.
+        node_instance_weight = torch.zeros(num_first_order_nodes, dtype=torch.float64, device=device)
+        node_instance_weight.scatter_add_(0, kept_src, edge_weight[observed_event])
+        node_instance_weight.scatter_add_(0, kept_dst, num_preceding[length - 1][observed_event])
+        layer_one.data.node_instance_weight = node_instance_weight
+
+        if max_order > 1:
+            # Nodes of the working graph are walks of k-1 events; its edges are walks of k events.
+            node_sequence = torch.cat(
+                [node_sequence[flat_edge_index[0]], node_sequence[flat_edge_index[1]][:, -1:]], dim=1
+            )
+            working_index = event_graph
+            node_first_event = events.clone()
+            node_last_event = events.clone()
+
+            for k in range(2, max_order + 1):
+                if k > 2:
+                    ho_index = lift_order_edge_index(working_index, num_nodes=node_sequence.size(0))
+                    node_sequence = torch.cat(
+                        [node_sequence[working_index[0]], node_sequence[working_index[1]][:, -1:]], dim=1
+                    )
+                    # Nodes of the lifted graph are the edges of the previous one.
+                    node_first_event = node_first_event[working_index[0]]
+                    node_last_event = node_last_event[working_index[1]]
+                    working_index = ho_index
+
+                edge_weight = realization_weight(
+                    node_first_event[working_index[0]], node_last_event[working_index[1]], k
+                )
+
+                if cached or k == max_order:
+                    gk, used_nodes, _ = MultiOrderModel._aggregate_observed(
+                        working_index, node_sequence, edge_weight
+                    )
+                    gk.mapping = IndexMap([tuple(g.mapping.to_ids(v.cpu())) for v in gk.data.node_sequence])
+                    # An observation starts with this order-k node if its remaining events can
+                    # still be completed to the full walk length.
+                    path_start_weight = torch.zeros(gk.data.num_nodes, dtype=torch.float64, device=device)
+                    path_start_weight.scatter_add_(
+                        0, gk.data.inverse_idx, num_following[length - k + 1][node_last_event[used_nodes]]
+                    )
+                    gk.data.path_start_weight = path_start_weight
+                    m.layers[k] = gk
+
         return m
 
     @staticmethod

@@ -138,6 +138,115 @@ def extract_causal_paths(g: TemporalGraph, delta: float | int = 1, max_paths: Op
     return paths
 
 
+def walk_counts(event_graph: torch.Tensor, num_events: int, max_length: int, reverse: bool = False) -> torch.Tensor:
+    """Count time-respecting walks of bounded length starting (or ending) at each event.
+
+    This is a depth-bounded dynamic program over the temporal event graph, which is acyclic
+    because a continuation must occur strictly later in time. Each length level costs one
+    scatter over the event-graph edges, so the whole table is `O(max_length * |event edges|)`
+    and never enumerates a walk.
+
+    Args:
+        event_graph: Edge index of the temporal event graph, as returned by
+            [lift_order_temporal][pathpyG.algorithms.lift_order_temporal].
+        num_events: Number of events (nodes of the event graph).
+        max_length: Largest walk length to count.
+        reverse: If False, entry `[m, e]` counts walks of exactly `m` further events that
+            *continue after* event `e`. If True, it counts walks of exactly `m` events that
+            *precede* event `e`.
+
+    Returns:
+        Tensor of shape `(max_length + 1, num_events)`. Row 0 is all ones (the empty walk).
+
+    Examples:
+        >>> import pathpyG as pp
+        >>> g = pp.TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)])
+        >>> eg = pp.algorithms.lift_order_temporal(g, delta=4)
+        >>> counts = pp.algorithms.walk_counts(eg, num_events=4, max_length=2)
+        >>> int(counts[2].sum())  # two walks of three events: a-b-c-d and a-b-c-e
+        2
+    """
+    device = event_graph.device
+    counts = torch.ones((max_length + 1, num_events), dtype=torch.float64, device=device)
+    # Aggregate a successor's count back onto the event that reaches it (or the reverse).
+    into, frm = (event_graph[1], event_graph[0]) if reverse else (event_graph[0], event_graph[1])
+    for m in range(1, max_length + 1):
+        level = torch.zeros(num_events, dtype=torch.float64, device=device)
+        level.scatter_add_(0, into, counts[m - 1][frm])
+        counts[m] = level
+    return counts
+
+
+def extract_time_respecting_walks(
+    g: TemporalGraph, delta: float | int = 1, length: int = 1, max_walks: Optional[int] = None
+) -> PathData:
+    """Enumerate all time-respecting walks consisting of exactly `length` events.
+
+    Unlike [extract_causal_paths][pathpyG.algorithms.extract_causal_paths], which returns walks
+    that cannot be extended in either direction, this returns every walk of a fixed length. The
+    resulting observation set does not depend on the order of any model fitted to it, which is
+    what makes likelihood ratio tests between different orders comparable.
+
+    Warning:
+        This enumerates walks explicitly and is intended as a **reference implementation for
+        small graphs**, used to validate statistics computed directly from the event graph.
+        The number of walks grows like `branching ** length`. Use `max_walks` to fail fast.
+
+    Args:
+        g: The temporal graph to extract walks from.
+        delta: The maximum time difference between two consecutive edges in a walk.
+        length: The exact number of events each walk consists of.
+        max_walks: If set, raise a `RuntimeError` once more than this many walks are found.
+
+    Returns:
+        PathData: All time-respecting walks of `length` events, each with weight 1.0.
+
+    Examples:
+        >>> import pathpyG as pp
+        >>> g = pp.TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 5), ("c", "d", 9), ("c", "e", 9)])
+        >>> walks = pp.algorithms.extract_time_respecting_walks(g, delta=4, length=2)
+        >>> sorted(walks.get_walk(i) for i in range(walks.num_paths))
+        [('a', 'b', 'c'), ('b', 'c', 'd'), ('b', 'c', 'e')]
+    """
+    if length < 1:
+        raise ValueError(f"length must be at least 1, got {length}")
+
+    num_events = g.data.edge_index.size(1)
+    paths = PathData(mapping=g.mapping, device=g.data.edge_index.device)
+    if num_events == 0:
+        return paths
+
+    ho_index = lift_order_temporal(g, delta)
+    src = g.data.edge_index[0].tolist()
+    dst = g.data.edge_index[1].tolist()
+
+    successors: list[list[int]] = [[] for _ in range(num_events)]
+    for s, d in ho_index.t().tolist():
+        successors[s].append(d)
+
+    node_seqs: list[list[int]] = []
+    # Depth-limited DFS from every event, since a walk of fixed length may start anywhere.
+    stack: list[tuple[int, list[int], int]] = [(e, [src[e], dst[e]], 1) for e in range(num_events)]
+    while stack:
+        event, seq, num_walk_events = stack.pop()
+        if num_walk_events == length:
+            node_seqs.append(seq)
+            if max_walks is not None and len(node_seqs) > max_walks:
+                raise RuntimeError(
+                    f"Number of time-respecting walks exceeds max_walks={max_walks}. "
+                    "extract_time_respecting_walks does not scale to graphs with a high branching factor."
+                )
+        else:
+            for succ in successors[event]:
+                stack.append((succ, seq + [dst[succ]], num_walk_events + 1))
+
+    if not node_seqs:
+        return paths
+
+    paths.append_walks([g.mapping.to_ids(seq) for seq in node_seqs], weights=[1.0] * len(node_seqs))
+    return paths
+
+
 def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, np.ndarray]:
     """Compute shortest time-respecting paths in a temporal graph.
 

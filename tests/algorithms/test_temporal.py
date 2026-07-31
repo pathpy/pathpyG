@@ -5,7 +5,13 @@ import pytest
 import torch
 from torch_geometric import EdgeIndex
 
-from pathpyG.algorithms.temporal import extract_causal_paths, lift_order_temporal, temporal_shortest_paths
+from pathpyG.algorithms.temporal import (
+    extract_causal_paths,
+    extract_time_respecting_walks,
+    lift_order_temporal,
+    temporal_shortest_paths,
+    walk_counts,
+)
 from pathpyG.core.graph import Graph
 from pathpyG.core.temporal_graph import TemporalGraph
 
@@ -66,6 +72,55 @@ def test_extract_causal_paths_covers_all_events(long_temporal_graph):
     covered = {(w[i], w[i + 1]) for w in walks for i in range(len(w) - 1)}
     expected = {(s, d) for s, d, _ in long_temporal_graph.temporal_edges}
     assert expected.issubset(covered)
+
+
+def test_extract_time_respecting_walks_fixed_length(simple_temporal_graph):
+    walks = extract_time_respecting_walks(simple_temporal_graph, delta=4, length=2)
+    assert walk_set(walks) == [("a", "b", "c"), ("b", "c", "d"), ("b", "c", "e")]
+
+    walks = extract_time_respecting_walks(simple_temporal_graph, delta=4, length=3)
+    assert walk_set(walks) == [("a", "b", "c", "d"), ("a", "b", "c", "e")]
+
+    # No walk spans four events, so the observation set is empty.
+    assert extract_time_respecting_walks(simple_temporal_graph, delta=4, length=4).num_paths == 0
+
+
+def test_extract_time_respecting_walks_rejects_zero_length(simple_temporal_graph):
+    with pytest.raises(ValueError, match="length must be at least 1"):
+        extract_time_respecting_walks(simple_temporal_graph, delta=4, length=0)
+
+
+@pytest.mark.parametrize("delta", [1, 4, 10])
+@pytest.mark.parametrize("length", [1, 2, 3, 4])
+def test_walk_counts_dp_matches_enumeration(long_temporal_graph, delta, length):
+    """The depth-bounded DP must reproduce what explicit enumeration finds.
+
+    This is the correctness anchor for computing higher-order statistics from the event graph
+    without ever materializing a walk.
+    """
+    g = long_temporal_graph
+    num_events = g.data.edge_index.size(1)
+    event_graph = lift_order_temporal(g, delta)
+
+    counts = walk_counts(event_graph, num_events=num_events, max_length=length)
+    enumerated = extract_time_respecting_walks(g, delta=delta, length=length)
+
+    # Row `length - 1` counts continuations after a first event, so summing over all possible
+    # first events gives the total number of walks of `length` events.
+    assert counts[length - 1].sum().item() == pytest.approx(enumerated.num_paths)
+
+
+@pytest.mark.parametrize("delta", [1, 4, 10])
+def test_walk_counts_reverse_matches_forward_total(long_temporal_graph, delta):
+    """Counting walks backwards from their last event must give the same totals."""
+    g = long_temporal_graph
+    num_events = g.data.edge_index.size(1)
+    event_graph = lift_order_temporal(g, delta)
+
+    forward = walk_counts(event_graph, num_events, max_length=4, reverse=False)
+    backward = walk_counts(event_graph, num_events, max_length=4, reverse=True)
+    for m in range(5):
+        assert forward[m].sum().item() == pytest.approx(backward[m].sum().item())
 
 
 def test_lift_order_temporal(simple_temporal_graph):
