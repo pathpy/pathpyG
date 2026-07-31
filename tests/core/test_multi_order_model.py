@@ -239,6 +239,92 @@ def test_temporal_and_extracted_path_layers_use_different_weights(simple_tempora
     assert layer_edge_weights(m_paths, 2) == {((a, b), (b, c)): 2, ((b, c), (c, d)): 1, ((b, c), (c, e)): 1}
 
 
+def test_zeroth_order_emission_uses_path_weights():
+    """P0 must be estimated from weight-weighted node occurrences, not raw instance counts.
+
+    Previously `get_zeroth_order_log_likelihood` counted node instances with `torch.unique`,
+    ignoring `dag_weight`, while the max_order=0 branch of `get_mon_log_likelihood` used a
+    weighted bincount -- so the same P0 was estimated two different ways in one class.
+    """
+    paths = PathData(IndexMap(list("abcd")))
+    paths.append_walk(("a", "b", "c"), weight=1.0)
+    paths.append_walk(("d",), weight=9.0)
+    m = MultiOrderModel.from_path_data(paths, max_order=1)
+
+    # Weighted occurrences: a,b,c once each, d nine times -> total 12.
+    expected = 1.0 * np.log(1 / 12) + 9.0 * np.log(9 / 12)
+    assert np.isclose(m.get_zeroth_order_log_likelihood(), expected)
+    # Unweighted counts would have given every node 1/4.
+    assert not np.isclose(m.get_zeroth_order_log_likelihood(), 10.0 * np.log(1 / 4))
+
+    # Both estimators of P0 must now agree.
+    expected_zeroth_model = (1 * np.log(1 / 12)) * 3 + 9 * np.log(9 / 12)
+    assert np.isclose(m.get_mon_log_likelihood(max_order=0), expected_zeroth_model)
+
+
+def test_intermediate_order_uses_weighted_transition_probabilities():
+    """Intermediate orders must use the fitted (weight-weighted) transition probabilities.
+
+    Previously this called `transition_probabilities()` with no `edge_attr`, giving each
+    out-edge equal probability, while the max-order term used `edge_attr="edge_weight"`.
+    """
+    paths = PathData(IndexMap(list("abcdz")))
+    paths.append_walk(("a", "b", "c", "z"), weight=1.0)
+    paths.append_walk(("a", "b", "d", "z"), weight=9.0)
+    m = MultiOrderModel.from_path_data(paths, max_order=3)
+
+    # From (a,b) the walk continues to (b,c) with weight 1 and to (b,d) with weight 9.
+    expected = 1.0 * np.log(1 / 10) + 9.0 * np.log(9 / 10)
+    assert np.isclose(m.get_intermediate_order_log_likelihood(order=2), expected)
+    # Treating both continuations as equally likely would have given 10*log(1/2).
+    assert not np.isclose(m.get_intermediate_order_log_likelihood(order=2), 10.0 * np.log(1 / 2))
+
+
+def test_ho_node_and_lower_order_edge_orderings_coincide():
+    """An order-(k+1) node is an order-k edge, and the two index spaces must line up elementwise.
+
+    `get_intermediate_order_log_likelihood` multiplies `layers[k+1].data.path_start_weight`
+    directly against `layers[k].transition_probabilities()`, which is only valid because
+    `aggregate_edge_index` sorts higher-order node sequences and coalesced edges into the same
+    lexicographic order.
+    """
+    paths_list = [("d", "b", "c", "a"), ("a", "b", "c", "d"), ("a", "b", "e", "c"), ("d", "b", "e", "a")]
+    mapping = IndexMap()
+    mapping.add_ids(np.unique(np.hstack(paths_list)))
+    pathdata = PathData(mapping)
+    pathdata.append_walks(node_seqs=paths_list, weights=[1, 20, 1, 20])
+    max_order = 3
+    m = MultiOrderModel.from_path_data(pathdata, max_order=max_order)
+
+    for k in range(1, max_order):
+        node_seq_lower = m.layers[k].data.node_sequence
+        edge_index = m.layers[k].data.edge_index.as_tensor()
+        # The order-(k+1) node sequence implied by each order-k edge, in edge order.
+        implied = torch.cat([node_seq_lower[edge_index[0]], node_seq_lower[edge_index[1]][:, -1:]], dim=1)
+        assert torch.equal(implied, m.layers[k + 1].data.node_sequence), f"order {k} ordering mismatch"
+
+
+def test_path_statistics_attached_to_layers(simple_walks_2):
+    m = MultiOrderModel.from_path_data(simple_walks_2, max_order=2)
+    a, b, c = (simple_walks_2.mapping.to_idx(x) for x in ("A", "B", "C"))
+
+    # Two walks A->C->D and B->C->E with weight 2 each.
+    start = m.layers[1].data.path_start_weight
+    assert start[a].item() == 2.0
+    assert start[b].item() == 2.0
+    assert start[c].item() == 0.0
+    assert start.sum().item() == 4.0
+
+    # Six node instances in total, weighted by 2: C occurs in both walks.
+    instances = m.layers[1].data.node_instance_weight
+    assert instances[c].item() == 4.0
+    assert instances.sum().item() == 12.0
+
+    # Each walk contributes exactly one first second-order node, so the order-2 starts also
+    # sum to the total path weight.
+    assert m.layers[2].data.path_start_weight.sum().item() == 4.0
+
+
 def test_multi_order_model_from_paths(simple_walks_2):
     m = MultiOrderModel.from_path_data(simple_walks_2, max_order=2)
     g1 = m.layers[1]

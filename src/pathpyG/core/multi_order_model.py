@@ -122,6 +122,64 @@ class MultiOrderModel:
         return ho_index, node_sequence, edge_weight, gk
 
     @staticmethod
+    def attach_path_statistics(layer: Graph, dag_num_nodes: torch.Tensor, dag_weight: torch.Tensor, order: int) -> None:
+        """Attach the per-layer statistics needed to evaluate multi-order likelihoods.
+
+        The likelihood of a set of observed paths under a multi-order model needs, besides the
+        aggregated De Bruijn layers themselves, only two statistics:
+
+        - `path_start_weight`: for each order-`k` node, the total weight of observed paths whose
+          **first** order-`k` node it is. Paths with fewer than `k` nodes have no order-`k` node
+          and drop out automatically.
+        - `node_instance_weight` (order 1 only): for each first-order node, the total weight of
+          its occurrences across all observed paths. This is the sufficient statistic for the
+          zeroth-order node emission probabilities.
+
+        Storing these on the layers removes the need to pass the original path DAG to the
+        likelihood methods, and lets models built from different sources share one code path.
+
+        Args:
+            layer: The De Bruijn graph of order `order` to attach the statistics to.
+            dag_num_nodes: Number of first-order nodes of each observed path.
+            dag_weight: Weight (observation frequency) of each observed path.
+            order: The order of `layer`.
+        """
+        device = dag_weight.device
+        inverse_idx = layer.data.inverse_idx
+        num_nodes = layer.data.num_nodes
+
+        # A path with n first-order nodes contains n - order + 1 order-`order` nodes. Instances are
+        # laid out grouped by path, so the running sum over paths locates each path's first one.
+        num_instances = dag_num_nodes - order + 1
+        long_enough = num_instances > 0
+        start_instances = cumsum(num_instances[long_enough])[:-1]
+
+        path_start_weight = torch.zeros(num_nodes, dtype=dag_weight.dtype, device=device)
+        path_start_weight.scatter_add_(0, inverse_idx[start_instances], dag_weight[long_enough])
+        layer.data.path_start_weight = path_start_weight
+
+        if order == 1:
+            node_instance_weight = torch.zeros(num_nodes, dtype=dag_weight.dtype, device=device)
+            node_instance_weight.scatter_add_(0, inverse_idx, dag_weight.repeat_interleave(dag_num_nodes))
+            layer.data.node_instance_weight = node_instance_weight
+
+    def _require_statistic(self, order: int, name: str) -> torch.Tensor:
+        """Return a path statistic stored on a layer, with an actionable error if it is missing."""
+        if order not in self.layers:
+            logger.error("Layer of order %s is required to compute the likelihood but is missing.", order)
+            raise ValueError(
+                f"Layer of order {order} is required to compute the likelihood but is missing. "
+                "Build the model with `cached=True` so that all intermediate orders are kept."
+            )
+        if name not in self.layers[order].data:
+            logger.error("Layer of order %s does not carry the statistic '%s'.", order, name)
+            raise ValueError(
+                f"Layer of order {order} does not carry '{name}', so its likelihood cannot be computed. "
+                "This statistic is attached by `MultiOrderModel.from_path_data`."
+            )
+        return self.layers[order].data[name]
+
+    @staticmethod
     def from_temporal_graph(
         g: TemporalGraph,
         delta: float | int = 1,
@@ -225,6 +283,9 @@ class MultiOrderModel:
 
         m.layers[1] = aggregate_edge_index(edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight)
         m.layers[1].mapping = path_data.mapping
+        MultiOrderModel.attach_path_statistics(
+            m.layers[1], path_graph.dag_num_nodes, path_graph.dag_weight, order=1
+        )
 
         for k in range(2, max_order + 1):
             edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
@@ -237,6 +298,9 @@ class MultiOrderModel:
             )
             if cached or k == max_order:
                 m.layers[k] = gk  # type: ignore[assignment]
+                MultiOrderModel.attach_path_statistics(
+                    m.layers[k], path_graph.dag_num_nodes, path_graph.dag_weight, order=k
+                )
 
         return m
 
@@ -311,106 +375,100 @@ class MultiOrderModel:
 
         return int(dof)
 
-    def get_zeroth_order_log_likelihood(self, dag_graph: Data) -> float:
+    def get_zeroth_order_log_likelihood(self, dag_graph: Optional[Data] = None) -> float:
         """Compute the zeroth order log likelihood.
 
         Args:
-            dag_graph (Data): Input DAG graph data.
+            dag_graph (Data, optional): Deprecated and ignored. The required statistics are now
+                stored on the model layers by `attach_path_statistics`.
 
         Returns:
             float: Zeroth order log likelihood.
         """
-        # Get frequencies
-        # getting the index of the last edge of each path (to be used to extract weights)
-        frequencies = dag_graph.dag_weight
+        node_instance_weight = self._require_statistic(1, "node_instance_weight")
+        path_start_weight = self._require_statistic(1, "path_start_weight")
 
-        # Get ixs starting nodes
-        # Q: Is dag_graph.path_index[:-1] enough to get the start_ixs?
-        mask = torch.ones(dag_graph.num_nodes, dtype=bool)  # type: ignore[call-overload]
-        mask[dag_graph.edge_index[1]] = False
-        start_ixs = dag_graph.node_sequence.squeeze()[mask]
+        node_emission_probabilities = node_instance_weight / node_instance_weight.sum()
+        # A node that starts no path contributes nothing; skip it so that nodes with zero
+        # emission probability cannot turn the sum into NaN.
+        llh = torch.where(
+            path_start_weight > 0,
+            path_start_weight * torch.log(node_emission_probabilities),
+            torch.zeros_like(path_start_weight),
+        )
+        return llh.sum().item()
 
-        # Compute node emission probabilities
-        # TODO: modify once we have zeroth order in mon
-        _, counts = torch.unique(dag_graph.node_sequence, return_counts=True)
-        # WARNING: Only works if all nodes in the first-order graph are also in `node_sequence`
-        # Otherwise the missing nodes will not be included in `counts` which can lead to elements at the wrong index.
-        node_emission_probabilities = counts / counts.sum()
-        return torch.mul(frequencies, torch.log(node_emission_probabilities[start_ixs])).sum().item()
-
-    def get_intermediate_order_log_likelihood(self, dag_graph: Data, order: int) -> float:
+    def get_intermediate_order_log_likelihood(self, dag_graph: Optional[Data] = None, order: int = 1) -> float:
         """Compute the intermediate order log likelihood.
 
+        For each observed path long enough to reach order `order`, this accounts for the single
+        transition that takes the model from order `order` to order `order + 1`, i.e. the one
+        emitting the path's `(order + 1)`-th node given its first `order` nodes.
+
         Args:
-            m (MultiOrderModel): Multi-order model.
-            dag_graph (Data): Input DAG graph data.
+            dag_graph (Data, optional): Deprecated and ignored. The required statistics are now
+                stored on the model layers by `attach_path_statistics`.
             order (int): Order of the intermediate log likelihood.
 
         Returns:
             float: Intermediate order log likelihood.
         """
-        # Get frequencies
-        frequencies = dag_graph.dag_weight
-        path_lengths = dag_graph.dag_num_nodes
-        # paths shrink by 'order' if we encode them using higher-order nodes
-        paths_lenghts_ho = path_lengths - order
-        # selecting only path that didn t shrink to zero due to higher-order transformation
-        paths_lenghts_ho_filtered = paths_lenghts_ho[paths_lenghts_ho > 0]
-        frequencies = frequencies[paths_lenghts_ho > 0]
-        # start index of the path in the higher order space
-        ixs_start_paths_ho = cumsum(paths_lenghts_ho_filtered)[:-1]
+        # An order-(k+1) node *is* an order-k edge, and `aggregate_edge_index` sorts both
+        # lexicographically, so the two index spaces coincide elementwise.
+        path_start_weight = self._require_statistic(order + 1, "path_start_weight")
+        transition_probabilities = self.layers[order].transition_probabilities(edge_attr="edge_weight")
 
-        transition_probabilities = self.layers[order].transition_probabilities()[
-            self.layers[order + 1].data.inverse_idx[ixs_start_paths_ho]
-        ]
+        llh = torch.where(
+            path_start_weight > 0,
+            path_start_weight * torch.log(transition_probabilities),
+            torch.zeros_like(path_start_weight),
+        )
+        return llh.sum().item()
 
-        log_transition_probabilities = torch.log(transition_probabilities)
-        llh_by_subpath = torch.mul(frequencies, log_transition_probabilities)
-        return llh_by_subpath.sum().item()
-
-    def get_mon_log_likelihood(self, dag_graph: Data, max_order: int = 1) -> float:
+    def get_mon_log_likelihood(self, dag_graph: Optional[Data] = None, max_order: int = 1) -> float:
         """Compute the likelihood of the walks given a multi-order model.
 
         Args:
-            m (MultiOrderModel): The multi-order model.
-            dag_graph (Data): Dataset containing the walks.
+            dag_graph (Data, optional): Deprecated and ignored. The required statistics are now
+                stored on the model layers by `attach_path_statistics`.
             max_order (int, optional): The maximum order up to which model layers
                 shall be taken into account. Defaults to 1.
 
         Returns:
             float: The log likelihood of the walks given the multi-order model.
         """
+        if max_order == 0:
+            # A zeroth-order model emits every node instance independently, so each occurrence
+            # contributes, rather than only the first node of each path.
+            node_instance_weight = self._require_statistic(1, "node_instance_weight")
+            node_emission_probabilities = node_instance_weight / node_instance_weight.sum()
+            llh_by_node = torch.where(
+                node_instance_weight > 0,
+                node_instance_weight * torch.log(node_emission_probabilities),
+                torch.zeros_like(node_instance_weight),
+            )
+            return llh_by_node.sum().item()
+
         llh = 0.0
 
         # Adding likelihood of zeroth order
-        llh += self.get_zeroth_order_log_likelihood(dag_graph)
+        llh += self.get_zeroth_order_log_likelihood()
 
         # Adding the likelihood for all the intermediate orders
         for order in range(1, max_order):
-            llh += self.get_intermediate_order_log_likelihood(dag_graph, order)
+            llh += self.get_intermediate_order_log_likelihood(order=order)
 
         # Adding the likelihood of highest/stationary order
-        if max_order > 0:
-            transition_probabilities = self.layers[max_order].transition_probabilities(edge_attr="edge_weight")
-            log_transition_probabilities = torch.log(transition_probabilities)
-            llh_by_subpath = log_transition_probabilities * self.layers[max_order].data.edge_weight
-            llh += llh_by_subpath.sum().item()
-        else:
-            # Compute likelihood for zeroth order (to be modified)
-            # TODO: modify once we have zeroth order in mon
-            # (then won t need to compute emission probs from dag_graph -- which also hinders us from computing the lh that a new set of paths was generated by the model)
-            frequencies = dag_graph.dag_weight
-            counts = torch.bincount(
-                dag_graph.node_sequence.squeeze(), frequencies.repeat_interleave(dag_graph.dag_num_nodes)
-            )
-            node_emission_probabilities = counts / counts.sum()
-            llh = torch.mul(torch.log(node_emission_probabilities), counts).sum().item()
+        transition_probabilities = self.layers[max_order].transition_probabilities(edge_attr="edge_weight")
+        log_transition_probabilities = torch.log(transition_probabilities)
+        llh_by_subpath = log_transition_probabilities * self.layers[max_order].data.edge_weight
+        llh += llh_by_subpath.sum().item()
 
         return llh
 
     def likelihood_ratio_test(
         self,
-        dag_graph: Data,
+        dag_graph: Optional[Data] = None,
         max_order_null: int = 0,
         max_order: int = 1,
         assumption: str = "paths",
@@ -419,7 +477,8 @@ class MultiOrderModel:
         """Perform a likelihood ratio test to compare two models of different order.
 
         Args:
-            dag_graph (Data): The input DAG graph data.
+            dag_graph (Data, optional): Deprecated and ignored. The required statistics are now
+                stored on the model layers by `attach_path_statistics`.
             max_order_null (int, optional): The maximum order of the null hypothesis model.
                 Defaults to 0.
             max_order (int, optional): The maximum order of the alternative hypothesis model.
@@ -445,8 +504,8 @@ class MultiOrderModel:
 
         # we first compute a test statistic x = -2 * log (L0/L1) = -2 * (log L0 - log L1)
         x = -2 * (
-            self.get_mon_log_likelihood(dag_graph, max_order=max_order_null)
-            - self.get_mon_log_likelihood(dag_graph, max_order=max_order)
+            self.get_mon_log_likelihood(max_order=max_order_null)
+            - self.get_mon_log_likelihood(max_order=max_order)
         )
 
         # we calculate the additional degrees of freedom in the alternative model
@@ -459,7 +518,10 @@ class MultiOrderModel:
         return (p < significance_threshold), p
 
     def estimate_order(
-        self, dag_data: PathData, max_order: Optional[int] = None, significance_threshold: float = 0.01
+        self,
+        dag_data: Optional[PathData] = None,
+        max_order: Optional[int] = None,
+        significance_threshold: float = 0.01,
     ) -> int:
         """Estimate the optimal maximum order of the multi-order network model.
 
@@ -467,8 +529,12 @@ class MultiOrderModel:
         observed paths, based on a likelihood ratio test with p-value threshold of p
         By default, all orders up to the maximum order of the multi-order model will be tested.
 
+        The path statistics needed for the test are stored on the model layers when the model is
+        built, so no path data has to be passed in.
+
         Args:
-            dag_data: The path statistics data for which to estimate the optimal order.
+            dag_data: Deprecated. If given, only used to check that its nodes match those of the
+                model; the likelihood is always computed from the statistics stored on the layers.
             max_order (int, optional): The maximum order to consider during the estimation process.
                 If not provided, the maximum order of the multi-order model is used.
             significance_threshold (float, optional): The p-value threshold for the likelihood ratio test.
@@ -489,20 +555,20 @@ class MultiOrderModel:
         if max_order <= 1:
             logger.error("max_order must be larger than one")
             raise ValueError("max_order must be larger than one")
-        if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(  # type: ignore[arg-type]
-            dag_data.mapping.node_ids  # type: ignore[arg-type]
-        ):
-            logger.error("Input paths do not have same set of nodes as multi-order network")
-            raise ValueError("Input paths do not have same set of nodes as multi-order network")
+        if dag_data is not None:
+            if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(  # type: ignore[arg-type]
+                dag_data.mapping.node_ids  # type: ignore[arg-type]
+            ):
+                logger.error("Input paths do not have same set of nodes as multi-order network")
+                raise ValueError("Input paths do not have same set of nodes as multi-order network")
 
         max_accepted_order = 1
-        dag_graph = dag_data.data
 
         # Test for highest order that passes
         # likelihood ratio test against null model
         for k in range(2, max_order + 1):
             if self.likelihood_ratio_test(
-                dag_graph, max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
+                max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
             )[0]:
                 max_accepted_order = k
 
