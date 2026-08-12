@@ -187,13 +187,6 @@ class EventGraph(Graph):
         """Return the number of events in the graph."""
         return self.n
 
-    def __getitem__(self, key):
-        """Return the (u, v, t) endpoints for an integer key, else delegate to `Graph`."""
-        if isinstance(key, (int, np.integer)) and not isinstance(key, bool):
-            u, v = self.data.node_sequence[key].tolist()
-            return self.first_order_mapping.to_id(u), self.first_order_mapping.to_id(v), self.data.node_time[key].item()
-        return super().__getitem__(key)
-
     def to(self, device: torch.device) -> "EventGraph":
         """Move the event graph and its underlying temporal graph to the given device."""
         super().to(device)

@@ -106,14 +106,6 @@ def test_event_time(event_graph, ):
     assert [event_graph.event_time(i) for i in range(event_graph.num_events)] == [1, 2, 3, 5]
 
 
-def test_getitem(event_graph):
-    """Indexing an EventGraph yields the (u, v, t) tuple for each event."""
-    assert event_graph[0] == ("a", "b", 1)
-    assert event_graph[1] == ("b", "c", 2)
-    assert event_graph[2] == ("c", "e", 3)
-    assert event_graph[3] == ("b", "d", 5)
-
-
 def test_event_labels(event_graph):
     """Events are labeled with as "u->v@t"."""
     assert event_graph.nodes == ["a->b@1", "b->c@2", "c->e@3", "b->d@5"]
@@ -289,6 +281,16 @@ def test_from_temporal_graph_propagates_attrs(attributed_temporal_graph):
     assert "node_weight" in eg.node_attrs()
     assert "node_temperature" in eg.node_attrs()
     assert "node_weight" not in eg.edge_attrs()
+
+
+def test_from_temporal_graph_getitem(attributed_temporal_graph):
+    """Indexing an EventGraph works as expected."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+
+    assert eg["dataset_name"] == "toy"
+    assert eg["node_weight"][0].item() == 10.0
+    assert eg["node_temperature"][0].item() == 4
+    assert eg[("node_temperature", "b->c@2")] == 3
 
 
 def test_reduce_delta_keeps_attrs(attributed_temporal_graph):
