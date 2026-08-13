@@ -13,8 +13,9 @@ from torch_geometric.utils import cumsum, degree
 from pathpyG.algorithms.lift_order import (
     aggregate_edge_index,
     aggregate_node_attributes,
+    lift_node_sequence,
     lift_order_edge_index,
-    lift_order_edge_index_weighted,
+    lift_order_step,
 )
 from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.higher_order_graph import HigherOrderGraph
@@ -115,13 +116,9 @@ class MultiOrderModel:
                 Defaults to the number of IDs in `mapping`.
         """
         # Lift order
-        if edge_weight is None:
-            ho_index = lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
-        else:
-            ho_index, edge_weight = lift_order_edge_index_weighted(
-                edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
-            )
-        node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+        ho_index, node_sequence, edge_weight = lift_order_step(
+            edge_index, node_sequence, edge_weight=edge_weight, aggr=aggr
+        )
 
         # Aggregate
         if save:
@@ -180,7 +177,7 @@ class MultiOrderModel:
             )
 
         if max_order > 1:
-            node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+            node_sequence = lift_node_sequence(edge_index, node_sequence)
             if event_graph is None:
                 edge_index = EventGraph.build_edge_index(g, delta)
             else:

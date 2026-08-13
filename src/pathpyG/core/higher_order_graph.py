@@ -9,7 +9,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce
 
-from pathpyG.algorithms.lift_order import aggregate_edge_index, lift_order_edge_index_weighted
+from pathpyG.algorithms.lift_order import aggregate_edge_index, lift_order_step
 from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
@@ -385,11 +385,8 @@ class HigherOrderGraph(Graph):
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
 
-        ho_index, ho_weight = lift_order_edge_index_weighted(
-            edge_index, edge_weight=edge_weight, num_nodes=self.n, aggr=aggr
-        )
-        node_sequence = torch.cat(
-            [self.data.node_sequence[edge_index[0]], self.data.node_sequence[edge_index[1]][:, -1:]], dim=1
+        ho_index, node_sequence, ho_weight = lift_order_step(
+            edge_index, self.data.node_sequence, edge_weight=edge_weight, aggr=aggr
         )
 
         return HigherOrderGraph.from_aggregated(
