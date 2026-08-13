@@ -302,7 +302,6 @@ class HigherOrderGraph(Graph):
             [('a', 'c'), ('c', 'd')]
         """
         cls._validate_order(order)
-        # Imported here because `MultiOrderModel` builds `HigherOrderGraph` layers itself.
         from pathpyG.core.multi_order_model import MultiOrderModel
 
         return MultiOrderModel.from_temporal_graph(
