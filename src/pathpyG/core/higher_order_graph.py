@@ -338,11 +338,14 @@ class HigherOrderGraph(Graph):
     def from_event_graph(cls, eg: EventGraph, order: int = 2) -> HigherOrderGraph:
         """Aggregate an [`EventGraph`][pathpyG.core.event_graph.EventGraph] into an order-`k` graph.
 
-        For the default order 2, every event whose underlying `(u, v)` pair is the same
-        collapses into a single second-order node, and repeated continuations become an
-        edge weight. Timestamps and the time window `delta` are not represented in the
-        result. Other orders are computed from the time-respecting paths that the event
-        graph encodes, which for orders above 2 means lifting its continuations further.
+        The nodes are the time-respecting paths of `k` first-order nodes that the event
+        graph encodes: events sharing the same underlying path collapse into a single
+        higher-order node, and repeated continuations become an edge weight. Timestamps
+        and the time window `delta` are not represented in the result.
+
+        Equivalent to [`from_temporal_graph`][pathpyG.HigherOrderGraph.from_temporal_graph]
+        on the underlying temporal graph with the event graph's `delta`, but reuses the
+        already-computed continuations instead of lifting the temporal graph again.
 
         Args:
             eg: The second-order temporal event graph to aggregate.
@@ -352,24 +355,10 @@ class HigherOrderGraph(Graph):
             HigherOrderGraph: A higher-order graph of order `order`. It has no nodes if
             there is no time-respecting path of that length.
         """
-        if order != 2:
-            cls._validate_order(order)
-            from pathpyG.core.multi_order_model import MultiOrderModel
+        cls._validate_order(order)
+        from pathpyG.core.multi_order_model import MultiOrderModel
 
-            return MultiOrderModel.from_event_graph(eg, max_order=order, cached=False).layers[order]
-
-        edge_index = eg.data.edge_index.as_tensor()
-        # Each continuation carries the weight of the event it starts from, matching the
-        # "src" aggregation used when building order-2 layers from a temporal graph.
-        edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-
-        return cls.from_aggregated(
-            edge_index,
-            eg.data.node_sequence,
-            first_order_mapping=eg.first_order_mapping,
-            edge_weight=edge_weight,
-            n_first_order=eg.n_first_order,
-        )
+        return MultiOrderModel.from_event_graph(eg, max_order=order, cached=False).layers[order]
 
     def lift(self, aggr: str = "src") -> HigherOrderGraph:
         """Return the De Bruijn graph of order `k + 1` obtained by lifting this graph.
