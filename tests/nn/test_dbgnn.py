@@ -5,7 +5,6 @@ from torch import equal, tensor
 
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.nn.dbgnn import DBGNN
-from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 
 def test_bipartite_edge_index(simple_walks):
@@ -17,13 +16,13 @@ def test_bipartite_edge_index(simple_walks):
     print(g2.data.edge_index)
     print(g2.mapping)
 
-    bipartite_edge_index = generate_bipartite_edge_index(g, g2, mapping="last")
+    bipartite_edge_index = g2.bipartite_edge_index(g, mapping="last")
     print(bipartite_edge_index)
     # ensure that A,C and B,C are mapped to C, C,D is mapped to D and C,E is mapped to E
 
     assert equal(bipartite_edge_index, tensor([[0, 1, 2, 3], [2, 2, 3, 4]]))
 
-    bipartite_edge_index = generate_bipartite_edge_index(g, g2, mapping="first")
+    bipartite_edge_index = g2.bipartite_edge_index(g, mapping="first")
     print(bipartite_edge_index)
     # ensure that A,C is mapped A, B,C is mapped to B, and C,D and C,E are mapped to C
 

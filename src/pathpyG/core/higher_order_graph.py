@@ -454,10 +454,8 @@ class HigherOrderGraph(Graph):
         """Return the edge index connecting higher-order nodes to first-order nodes.
 
         Used by the [DBGNN][pathpyG.nn.dbgnn.DBGNN] model to pass messages from
-        higher-order node representations to first-order ones. Unlike the free function
-        [`generate_bipartite_edge_index`][pathpyG.utils.dbgnn.generate_bipartite_edge_index],
-        this works for any order: "last" refers to the last node of the path, whatever
-        its length.
+        higher-order node representations to first-order ones. This works for any order:
+        "last" refers to the last node of the path, whatever its length.
 
         Args:
             first_order_graph: The first-order graph. Optional; accepted so that call
