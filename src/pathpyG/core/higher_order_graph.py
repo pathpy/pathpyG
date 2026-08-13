@@ -6,7 +6,6 @@ import logging
 from typing import Optional, Union
 
 import torch
-from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce
 
@@ -86,14 +85,6 @@ class HigherOrderGraph(Graph):
         """
         if "node_sequence" not in data and order not in (None, 1):
             raise ValueError(f"A HigherOrderGraph of order {order} requires a `node_sequence` node attribute.")
-
-        if isinstance(data.edge_index, EdgeIndex):
-            # `Graph.__init__` re-sorts the edge index and reindexes every edge attribute by
-            # the returned permutation - but `EdgeIndex.sort_by` returns `None` for an index
-            # already known to be sorted, and `attr[None]` would add a dimension. Higher-order
-            # graphs are routinely built from already-aggregated (hence sorted) data, so hand
-            # the base class a plain tensor and let it derive a real permutation.
-            data.edge_index = data.edge_index.as_tensor()
 
         super().__init__(data, mapping=mapping)
 
@@ -195,9 +186,6 @@ class HigherOrderGraph(Graph):
         Returns:
             HigherOrderGraph: The aggregated higher-order graph.
         """
-        if isinstance(edge_index, torch.Tensor) and hasattr(edge_index, "as_tensor"):
-            edge_index = edge_index.as_tensor()
-
         order = node_sequence.size(1)
         if first_order_mapping is None:
             first_order_mapping = IndexMap()
