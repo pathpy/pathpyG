@@ -34,8 +34,7 @@ class MultiOrderModel:
     Each graph layer is represented as a
     [HigherOrderGraph][pathpyG.core.higher_order_graph.HigherOrderGraph] object, layer 1
     included. Each layer therefore knows its own order and the first-order nodes it was
-    built from, so results can be projected back onto entities without the caller keeping
-    track of it.
+    built from.
     This class provides methods to search for the optimal order of the model based on likelihood ratio tests,
     as well as methods to compute the log-likelihood of observed paths given the model.
 

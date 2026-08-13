@@ -22,11 +22,9 @@ logger = logging.getLogger("root")
 class HigherOrderGraph(Graph):
     """A De Bruijn graph of order `k`, whose nodes are paths of `k` first-order nodes.
 
-    Where a [`Graph`][pathpyG.Graph] has one node per entity and an
-    [`EventGraph`][pathpyG.core.event_graph.EventGraph] has one node per observed
-    interaction, a `HigherOrderGraph` has one node per *distinct* path of length `k`
+    A `HigherOrderGraph` has one node per distinct path of length `k`
     in the underlying first-order graph. Repeated observations of the same path are
-    aggregated into an `edge_weight`, so timestamps are no longer represented: this
+    aggregated into an `edge_weight`. Timestamps are not represented: this
     is a model of how paths flow rather than a record of what happened.
 
     Order 1 is the degenerate case and is simply the weighted first-order graph, with
@@ -170,10 +168,6 @@ class HigherOrderGraph(Graph):
     ) -> HigherOrderGraph:
         """Aggregate a (possibly duplicated) higher-order edge index into a De Bruijn graph.
 
-        This is the single place where higher-order nodes get their identity: duplicate
-        node sequences are merged, edge weights are aggregated, and the higher-order
-        `IndexMap` naming each node by its path is built.
-
         Args:
             edge_index: Edge index whose nodes are indices into `node_sequence`.
             node_sequence: Tensor of shape `(num_nodes, order)` with the first-order path
@@ -219,9 +213,6 @@ class HigherOrderGraph(Graph):
         n_first_order: Optional[int] = None,
     ) -> HigherOrderGraph:
         """Adopt an already-aggregated [`Graph`][pathpyG.Graph] as a higher-order graph.
-
-        Used to give the layers computed by a multi-order model their proper type. The
-        underlying `data` object is shared, not copied.
 
         Args:
             g: Aggregated graph carrying a `node_sequence` of shape `(num_nodes, order)`.
@@ -282,8 +273,7 @@ class HigherOrderGraph(Graph):
         Order 1 is simply the weighted static graph and ignores `delta`; for higher orders
         the nodes are the time-respecting paths of `k` nodes, i.e. those whose consecutive
         interactions are at most `delta` apart. Orders above 2 are reached by repeatedly
-        lifting the *unaggregated* data, so the edge weights count observed paths rather
-        than being implied by lower-order statistics (unlike [`lift`][pathpyG.HigherOrderGraph.lift]).
+        lifting the unaggregated data.
 
         Args:
             g: The temporal graph.
@@ -337,14 +327,8 @@ class HigherOrderGraph(Graph):
     def from_event_graph(cls, eg: EventGraph, order: int = 2) -> HigherOrderGraph:
         """Aggregate an [`EventGraph`][pathpyG.core.event_graph.EventGraph] into an order-`k` graph.
 
-        The nodes are the time-respecting paths of `k` first-order nodes that the event
-        graph encodes: events sharing the same underlying path collapse into a single
-        higher-order node, and repeated continuations become an edge weight. Timestamps
-        and the time window `delta` are not represented in the result.
-
         Equivalent to [`from_temporal_graph`][pathpyG.HigherOrderGraph.from_temporal_graph]
-        on the underlying temporal graph with the event graph's `delta`, but reuses the
-        already-computed continuations instead of lifting the temporal graph again.
+        on the underlying temporal graph with the event graph's `delta`.
 
         Args:
             eg: The second-order temporal event graph to aggregate.
@@ -364,12 +348,6 @@ class HigherOrderGraph(Graph):
 
         Nodes of the result are the edges of this graph, i.e. the paths of length `k + 1`
         that exist in this graph's topology.
-
-        Warning:
-            This lifts an *aggregated* graph, so the resulting edge weights are those
-            implied by the order-`k` statistics rather than counts of observed paths of
-            length `k + 1`. To fit a layer to observations, use
-            [`MultiOrderModel`][pathpyG.MultiOrderModel], which lifts the unaggregated data.
 
         Args:
             aggr: Aggregation used for the lifted edge weights. One of "src", "dst",
@@ -437,10 +415,6 @@ class HigherOrderGraph(Graph):
         device: Optional[torch.device] = None,
     ) -> torch.Tensor:
         """Return the edge index connecting higher-order nodes to first-order nodes.
-
-        Used by the [DBGNN][pathpyG.nn.dbgnn.DBGNN] model to pass messages from
-        higher-order node representations to first-order ones. This works for any order:
-        "last" refers to the last node of the path, whatever its length.
 
         Args:
             first_order_graph: The first-order graph. Optional; accepted so that call
