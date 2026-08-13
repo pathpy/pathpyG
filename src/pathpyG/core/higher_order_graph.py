@@ -285,6 +285,11 @@ class HigherOrderGraph(Graph):
             HigherOrderGraph: A higher-order graph of order `order`. It has no nodes if
             there is no time-respecting path of that length.
 
+        Note:
+            Each call rebuilds the whole chain of lifts from order 1. To obtain several
+            orders, build a [`MultiOrderModel`][pathpyG.MultiOrderModel] with
+            `cached=True` once and read its `layers` instead.
+
         Examples:
             >>> import pathpyG as pp
             >>> t = pp.TemporalGraph.from_edge_list([("a", "c", 1), ("c", "d", 2)])
@@ -310,6 +315,11 @@ class HigherOrderGraph(Graph):
         Returns:
             HigherOrderGraph: A higher-order graph of order `order`. It has no nodes if
             no observed path is that long.
+
+        Note:
+            Each call rebuilds the whole chain of lifts from order 1. To obtain several
+            orders, build a [`MultiOrderModel`][pathpyG.MultiOrderModel] with
+            `cached=True` once and read its `layers` instead.
 
         Examples:
             >>> import pathpyG as pp
@@ -337,6 +347,11 @@ class HigherOrderGraph(Graph):
         Returns:
             HigherOrderGraph: A higher-order graph of order `order`. It has no nodes if
             there is no time-respecting path of that length.
+
+        Note:
+            Each call rebuilds the whole chain of lifts from order 1. To obtain several
+            orders, build a [`MultiOrderModel`][pathpyG.MultiOrderModel] with
+            `cached=True` once and read its `layers` instead.
         """
         cls._validate_order(order)
         from pathpyG.core.multi_order_model import MultiOrderModel
