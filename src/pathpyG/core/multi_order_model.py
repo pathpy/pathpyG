@@ -13,15 +13,15 @@ from torch_geometric.utils import cumsum, degree
 from pathpyG.algorithms.lift_order import (
     aggregate_edge_index,
     aggregate_node_attributes,
+    lift_node_sequence,
     lift_order_edge_index,
-    lift_order_edge_index_weighted,
+    lift_order_step,
 )
 from pathpyG.core.event_graph import EventGraph
-from pathpyG.core.graph import Graph
+from pathpyG.core.higher_order_graph import HigherOrderGraph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.path_data import PathData
 from pathpyG.core.temporal_graph import TemporalGraph
-from pathpyG.utils.dbgnn import generate_bipartite_edge_index
 
 logger = logging.getLogger("root")
 
@@ -31,13 +31,16 @@ class MultiOrderModel:
 
     This class stores multiple higher-order De Bruijn graphs as layers in a dictionary.
     Each layer corresponds to a De Bruijn graph of order k, where k is the key in the dictionary.
-    Each graph layer is represented as a [pathpyG.Graph][] object.
+    Each graph layer is represented as a
+    [HigherOrderGraph][pathpyG.core.higher_order_graph.HigherOrderGraph] object, layer 1
+    included. Each layer therefore knows its own order and the first-order nodes it was
+    built from.
     This class provides methods to search for the optimal order of the model based on likelihood ratio tests,
     as well as methods to compute the log-likelihood of observed paths given the model.
 
     Attributes:
-        layers (dict[int, Graph]): A dictionary mapping the order k to the corresponding
-            higher-order De Bruijn graph of order k.
+        layers (dict[int, HigherOrderGraph]): A dictionary mapping the order k to the
+            corresponding higher-order De Bruijn graph of order k.
 
     Examples:
         Example where the optimal order is 1:
@@ -56,11 +59,15 @@ class MultiOrderModel:
         >>> m = MultiOrderModel.from_path_data(paths, max_order=2)
         >>> print(m.estimate_order(paths, max_order=2))
         2
+
+        Each layer knows the first-order path that each of its nodes represents:
+        >>> print(m.layers[2].order, m.layers[2].nodes)
+        2 [('a', 'c'), ('b', 'c'), ('c', 'd'), ('c', 'e')]
     """
 
     def __init__(self) -> None:
         """Initialize an empty MultiOrderModel."""
-        self.layers: dict[int, Graph] = {}
+        self.layers: dict[int, HigherOrderGraph] = {}
 
     def __str__(self) -> str:
         """Return a string representation of the higher-order graph."""
@@ -88,7 +95,8 @@ class MultiOrderModel:
         edge_weight: torch.Tensor | None = None,
         aggr: str = "src",
         save: bool = True,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, Graph | None]:
+        n_first_order: Optional[int] = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, HigherOrderGraph | None]:
         """Lift order by one and save the result in the layers dictionary of the object.
 
         This is a helper function that should not be called directly.
@@ -103,20 +111,23 @@ class MultiOrderModel:
             k: The order of the graph that should be computed.
             aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
             save: Whether to compute the aggregated graph and later save it in the layers dictionary.
+            n_first_order: The number of first-order nodes the node sequences refer to.
+                Defaults to the number of IDs in `mapping`.
         """
         # Lift order
-        if edge_weight is None:
-            ho_index = lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
-        else:
-            ho_index, edge_weight = lift_order_edge_index_weighted(
-                edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
-            )
-        node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+        ho_index, node_sequence, edge_weight = lift_order_step(
+            edge_index, node_sequence, edge_weight=edge_weight, aggr=aggr
+        )
 
         # Aggregate
         if save:
-            gk = aggregate_edge_index(ho_index, node_sequence, edge_weight)
-            gk.mapping = IndexMap([tuple(mapping.to_ids(v.cpu())) for v in gk.data.node_sequence])
+            gk = HigherOrderGraph.from_aggregated(
+                ho_index,
+                node_sequence,
+                first_order_mapping=mapping,
+                edge_weight=edge_weight,
+                n_first_order=n_first_order,
+            )
         else:
             gk = None
         return ho_index, node_sequence, edge_weight, gk
@@ -156,13 +167,16 @@ class MultiOrderModel:
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         if cached or max_order == 1:
-            m.layers[1] = aggregate_edge_index(
-                edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
+            m.layers[1] = HigherOrderGraph.from_aggregated(
+                edge_index=edge_index,
+                node_sequence=node_sequence,
+                edge_weight=edge_weight,
+                first_order_mapping=g.mapping,
+                n_first_order=g.n,
             )
-            m.layers[1].mapping = g.mapping
 
         if max_order > 1:
-            node_sequence = torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+            node_sequence = lift_node_sequence(edge_index, node_sequence)
             if event_graph is None:
                 edge_index = EventGraph.build_edge_index(g, delta)
             else:
@@ -171,11 +185,12 @@ class MultiOrderModel:
 
             # Aggregate
             if cached or max_order == 2:
-                m.layers[2] = aggregate_edge_index(
-                    edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight
-                )
-                m.layers[2].mapping = IndexMap(
-                    [tuple(g.mapping.to_ids(v.cpu())) for v in m.layers[2].data.node_sequence]
+                m.layers[2] = HigherOrderGraph.from_aggregated(
+                    edge_index=edge_index,
+                    node_sequence=node_sequence,
+                    edge_weight=edge_weight,
+                    first_order_mapping=g.mapping,
+                    n_first_order=g.n,
                 )
 
             for k in range(3, max_order + 1):
@@ -186,6 +201,7 @@ class MultiOrderModel:
                     edge_weight=edge_weight,
                     aggr="src",
                     save=cached or k == max_order,
+                    n_first_order=g.n,
                 )
                 if cached or k == max_order:
                     m.layers[k] = gk  # type: ignore[assignment]
@@ -251,17 +267,24 @@ class MultiOrderModel:
         elif mode == "propagation":
             aggr = "src"
 
-        m.layers[1] = aggregate_edge_index(edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight)
-        m.layers[1].mapping = path_data.mapping
+        g1 = aggregate_edge_index(edge_index=edge_index, node_sequence=node_sequence, edge_weight=edge_weight)
+        g1.mapping = path_data.mapping
+        # Nodes that are not traversed by any path are not part of the aggregated graph,
+        # so the first-order node set can be larger than the order-1 layer.
+        n_first_order = max(path_data.mapping.num_ids(), g1.n)
+        m.layers[1] = HigherOrderGraph.from_aggregated_graph(
+            g1, first_order_mapping=path_data.mapping, n_first_order=n_first_order
+        )
 
         for k in range(2, max_order + 1):
             edge_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
                 edge_index=edge_index,
                 node_sequence=node_sequence,
-                mapping=m.layers[1].mapping,
+                mapping=path_data.mapping,
                 edge_weight=edge_weight,
                 aggr=aggr,
                 save=cached or k == max_order,
+                n_first_order=n_first_order,
             )
             if cached or k == max_order:
                 m.layers[k] = gk  # type: ignore[assignment]
@@ -563,7 +586,7 @@ class MultiOrderModel:
         edge_index_max_order = g_max_order.data.edge_index
         edge_weight = g.data.edge_weight
         edge_weight_max_order = g_max_order.data.edge_weight
-        bipartite_edge_index = generate_bipartite_edge_index(g, g_max_order, mapping=mapping, device=edge_index.device)
+        bipartite_edge_index = g_max_order.bipartite_edge_index(g, mapping=mapping, device=edge_index.device)
 
         if g.data.y is not None:
             y = g.data.y
