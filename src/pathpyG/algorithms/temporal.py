@@ -29,7 +29,7 @@ def temporal_shortest_paths(temporal_graph: TemporalGraph | None, delta: int, ev
     """
     assert temporal_graph is None or event_graph is None, "Only one of temporal_graph or event_graph can be provided"
     if temporal_graph is None:
-        assert event_graph is not None, "If g is None, eg must be provided"
+        assert event_graph is not None, "If temporal_graph is None, event_graph must be provided"
         edge_index = event_graph.data.edge_index
         temporal_graph = event_graph.to_temporal_graph()
     else:
