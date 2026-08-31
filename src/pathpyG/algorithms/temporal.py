@@ -27,7 +27,7 @@ def temporal_shortest_paths(temporal_graph: TemporalGraph | None, delta: int, ev
         - dist: Shortest time-respecting path distances between all first-order nodes.
         - pred: Predecessor matrix for shortest time-respecting paths between all first-order nodes.
     """
-    assert temporal_graph is None or event_graph is None, "Only one of g or eg can be provided"
+    assert temporal_graph is None or event_graph is None, "Only one of temporal_graph or event_graph can be provided"
     if temporal_graph is None:
         assert event_graph is not None, "If g is None, eg must be provided"
         edge_index = event_graph.data.edge_index
