@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pprint import pformat
 from typing import (
     Any,
     Dict,
@@ -787,8 +788,14 @@ class Graph:
                     raise ValueError("Node attribute " + k + " is not a tensor and cannot be reduced.")
         return Graph(d, mapping=mapping)
 
-    def __str__(self) -> str:
-        """Return a string representation of the graph."""
+    def _summary(self) -> str:
+        """Return a one-line summary of the graph, to be overridden by subclasses."""
+        if self.is_undirected():
+            return "Undirected graph with {0} nodes and {1} edges".format(self.n, self.m)
+        return "Directed graph with {0} nodes and {1} edges".format(self.n, self.m)
+
+    def _attribute_summary(self) -> str:
+        """Return a pretty-printed summary of node-, edge- and graph-level attributes."""
         attr = self.data.to_dict()
         attr_types = {}
         for k in attr:
@@ -797,13 +804,6 @@ class Graph:
                 attr_types[k] = str(t) + " -> " + str(attr[k].size())
             else:
                 attr_types[k] = str(t)
-
-        from pprint import pformat
-
-        if self.is_undirected():
-            s = "Undirected graph with {0} nodes and {1} edges\n".format(self.n, self.m)
-        else:
-            s = "Directed graph with {0} nodes and {1} edges\n".format(self.n, self.m)
 
         attribute_info: dict[str, dict[str, str]] = {
             "Node Attributes": {},
@@ -817,5 +817,8 @@ class Graph:
         for a in self.data.keys():
             if not self.data.is_node_attr(a) and not self.data.is_edge_attr(a):
                 attribute_info["Graph Attributes"][a] = attr_types[a]
-        s += pformat(attribute_info, indent=4, width=160)
-        return s
+        return pformat(attribute_info, indent=4, width=160)
+
+    def __str__(self) -> str:
+        """Return a string representation of the graph."""
+        return self._summary() + "\n" + self._attribute_summary()

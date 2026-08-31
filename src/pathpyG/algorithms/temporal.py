@@ -7,75 +7,42 @@ from typing import Tuple
 import numpy as np
 import torch
 from scipy.sparse.csgraph import dijkstra
-from tqdm import tqdm
 
 from pathpyG import Graph
+from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.temporal_graph import TemporalGraph
 from pathpyG.utils import to_numpy
 
 
-def lift_order_temporal(g: TemporalGraph, delta: float | int = 1):
-    """Lift a temporal graph to a second-order temporal event graph.
-
-    Args:
-        g: Temporal graph to lift.
-        delta: Maximum time difference between events to consider them connected.
-
-    Returns:
-        ho_index: Edge index of the second-order temporal event graph.
-    """
-    # first-order edge index
-    edge_index, timestamps = g.data.edge_index, g.data.time
-
-    delta = torch.tensor(delta, device=edge_index.device)  # type: ignore[assignment]
-    indices = torch.arange(0, edge_index.size(1), device=edge_index.device)
-
-    unique_t = torch.unique(timestamps, sorted=True)
-    second_order = []
-
-    # lift order: find possible continuations for edges in each time stamp
-    for t in tqdm(unique_t):
-        # find indices of all source edges that occur at unique timestamp t
-        src_time_mask = timestamps == t
-        src_edge_idx = indices[src_time_mask]
-
-        # find indices of all edges that can possibly continue edges occurring at time t for the given delta
-        dst_time_mask = (timestamps > t) & (timestamps <= t + delta)
-        dst_edge_idx = indices[dst_time_mask]
-
-        if dst_edge_idx.size(0) > 0 and src_edge_idx.size(0) > 0:
-            # compute second-order edges between src and dst idx
-            # for all edges where dst in src_edges (edge_index[1, x[:, 0]]) matches src in dst_edges (edge_index[0, x[:, 1]])
-            x = torch.cartesian_prod(src_edge_idx, dst_edge_idx)
-            ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
-            second_order.append(ho_edge_index)
-
-    ho_index = torch.cat(second_order, dim=0).t().contiguous()
-    return ho_index
-
-
-def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, np.ndarray]:
+def temporal_shortest_paths(temporal_graph: TemporalGraph | None, delta: int, event_graph: EventGraph | None = None) -> Tuple[np.ndarray, np.ndarray]:
     """Compute shortest time-respecting paths in a temporal graph.
 
     Args:
-        g: Temporal graph to compute shortest paths on.
+        temporal_graph: Temporal graph to compute shortest paths on. If None, `eg` must be provided.
         delta: Maximum time difference between events in a path.
+        event_graph: Event graph to compute shortest paths on. If None, `g` must be provided.
 
     Returns:
         Tuple of two numpy arrays:
         - dist: Shortest time-respecting path distances between all first-order nodes.
         - pred: Predecessor matrix for shortest time-respecting paths between all first-order nodes.
     """
-    # generate temporal event DAG
-    edge_index = lift_order_temporal(g, delta)
+    assert temporal_graph is None or event_graph is None, "Only one of temporal_graph or event_graph can be provided"
+    if temporal_graph is None:
+        assert event_graph is not None, "If temporal_graph is None, event_graph must be provided"
+        edge_index = event_graph.data.edge_index
+        temporal_graph = event_graph.to_temporal_graph()
+    else:
+        # generate temporal event DAG
+        edge_index = EventGraph.build_edge_index(temporal_graph, delta)
 
     # Add indices of first-order nodes as src and dst of paths in augmented
     # temporal event DAG
-    src_edges_src = g.data.edge_index[0] + g.m
-    src_edges_dst = torch.arange(0, g.data.edge_index.size(1), device=g.data.edge_index.device)
+    src_edges_src = temporal_graph.data.edge_index[0] + temporal_graph.m
+    src_edges_dst = torch.arange(0, temporal_graph.data.edge_index.size(1), device=temporal_graph.data.edge_index.device)
 
-    dst_edges_src = torch.arange(0, g.data.edge_index.size(1), device=g.data.edge_index.device)
-    dst_edges_dst = g.data.edge_index[1] + g.m + g.n
+    dst_edges_src = torch.arange(0, temporal_graph.data.edge_index.size(1), device=temporal_graph.data.edge_index.device)
+    dst_edges_dst = temporal_graph.data.edge_index[1] + temporal_graph.m + temporal_graph.n
 
     # add edges from source to edges and from edges to destinations
     src_edges = torch.stack([src_edges_src, src_edges_dst])
@@ -83,25 +50,25 @@ def temporal_shortest_paths(g: TemporalGraph, delta: int) -> Tuple[np.ndarray, n
     edge_index = torch.cat([edge_index, src_edges, dst_edges], dim=1)
 
     # create sparse scipy matrix
-    event_graph = Graph.from_edge_index(edge_index, num_nodes=g.m + 2 * g.n)
-    m = event_graph.sparse_adj_matrix()
+    augmented_dag = Graph.from_edge_index(edge_index, num_nodes=temporal_graph.m + 2 * temporal_graph.n)
+    m = augmented_dag.sparse_adj_matrix()
 
-    # print(f"Created temporal event DAG with {event_graph.n} nodes and {event_graph.m} edges")
+    # print(f"Created temporal event DAG with {augmented_dag.n} nodes and {augmented_dag.m} edges")
 
     # run disjktra for all source nodes
     dist, pred = dijkstra(
-        m, directed=True, indices=np.arange(g.m, g.m + g.n), return_predecessors=True, unweighted=True
+        m, directed=True, indices=np.arange(temporal_graph.m, temporal_graph.m + temporal_graph.n), return_predecessors=True, unweighted=True
     )
 
     # limit to first-order destinations and correct distances
-    dist_fo = dist[:, g.m + g.n :] - 1
+    dist_fo = dist[:, temporal_graph.m + temporal_graph.n:] - 1
     np.fill_diagonal(dist_fo, 0)
 
     # limit to first-order destinations and correct predecessors
-    pred_fo = pred[:, g.n + g.m :]
+    pred_fo = pred[:, temporal_graph.n + temporal_graph.m:]
     pred_fo[pred_fo == -9999] = -1
-    idx_map = np.concatenate([to_numpy(g.data.edge_index[0].cpu()), [-1]])
+    idx_map = np.concatenate([to_numpy(temporal_graph.data.edge_index[0].cpu()), [-1]])
     pred_fo = idx_map[pred_fo]
-    np.fill_diagonal(pred_fo, np.arange(g.n))
+    np.fill_diagonal(pred_fo, np.arange(temporal_graph.n))
 
     return dist_fo, pred_fo

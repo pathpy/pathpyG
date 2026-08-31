@@ -1,0 +1,357 @@
+from __future__ import annotations
+
+import numpy as np
+import pytest
+import torch
+from scipy.sparse.csgraph import dijkstra
+from torch_geometric.data import Data
+
+from pathpyG.core.event_graph import EventGraph
+from pathpyG.core.index_map import IndexMap
+from pathpyG.core.multi_order_model import MultiOrderModel
+from pathpyG.core.temporal_graph import TemporalGraph
+
+DELTA = 2
+
+
+# Example temporal graph used in the tests:
+#
+#       a
+#       | t=1
+#       v
+#       b -------- t=5 --------> d
+#       | t=2
+#       v
+#       c
+#       | t=3
+#       v
+#       e
+#
+# Event graph corresponding to the above (with DELTA = 2):
+#
+#   0 --gap 1--> 1 --gap 1--> 2
+#   3 (isolated event)
+#
+#   where
+#
+#   event 0: (a->b)@1
+#   event 1: (b->c)@2
+#   event 2: (c->e)@3
+#   event 3: (b->d)@5
+
+@pytest.fixture
+def temporal_graph() -> TemporalGraph:
+    return TemporalGraph.from_edge_list(
+        [
+            ("a", "b", 1),
+            ("b", "c", 2),
+            ("b", "d", 5),
+            ("c", "e", 3),
+        ]
+    )
+
+
+@pytest.fixture
+def event_graph(temporal_graph) -> EventGraph:
+    return EventGraph.from_temporal_graph(temporal_graph, delta=DELTA)
+
+
+def test_basic(event_graph):
+    """Basic counts (delta, events, nodes) match the source temporal graph."""
+    assert event_graph.delta == DELTA
+    assert len(event_graph) == 4
+    assert event_graph.num_events == 4
+    assert event_graph.n == 4
+    assert event_graph.n_first_order == 5
+
+
+def test_str(event_graph):
+    """The string representation summarizes counts, time range, delta and attributes."""
+    s = str(event_graph)
+    assert s.startswith(
+        "Event Graph (delta=2) with 5 first-order nodes, 4 events and 2 edges in [1, 5]\n"
+    )
+    assert "'node_time'" in s
+    assert "'edge_delta'" in s
+
+
+def test_node_time(event_graph):
+    """Each event node carries the timestamp of its underlying edge."""
+    assert event_graph.data.node_time.tolist() == [1, 2, 3, 5]
+
+
+def test_node_sequence(event_graph):
+    """Each event node stores the (source, target) first-order node pair."""
+    assert event_graph.data.node_sequence.tolist() == [[0, 1], [1, 2], [2, 4], [1, 3]]
+
+
+def test_first_order_mapping(event_graph, temporal_graph):
+    """The first-order node mapping round-trips and matches the temporal graph."""
+    fo = event_graph.first_order_mapping
+    assert fo.num_ids() == 5
+    for node in "abcde":
+        assert fo.to_id(fo.to_idx(node)) == node
+        assert fo.to_idx(node) == temporal_graph.mapping.to_idx(node)
+
+
+def test_continuation_edge_index(event_graph):
+    """The continuation edge index matches the expected result."""
+    got = event_graph.data.edge_index.as_tensor()
+    got_set = {tuple(c) for c in got.t().tolist()}
+    assert got_set == {(0, 1), (1, 2)}
+
+
+def test_event_time(event_graph, ):
+    """event_time(i) returns the timestamp of the i-th event."""
+    assert [event_graph.event_time(i) for i in range(event_graph.num_events)] == [1, 2, 3, 5]
+
+
+def test_event_labels(event_graph):
+    """Events are labeled with as "u->v@t"."""
+    assert event_graph.nodes == ["a->b@1", "b->c@2", "c->e@3", "b->d@5"]
+    assert event_graph.edges == [("a->b@1", "b->c@2"), ("b->c@2", "c->e@3")]
+    assert event_graph.successors("a->b@1") == ["b->c@2"]
+    assert event_graph.predecessors("c->e@3") == ["b->c@2"]
+
+
+def test_isolated_events(event_graph):
+    """Events with no predecessors or successors are correctly identified."""
+    isolated = [
+        i
+        for i in range(event_graph.num_events)
+        if event_graph.get_successors(i).numel() == 0 and event_graph.get_predecessors(i).numel() == 0
+    ]
+    assert isolated == [3]
+
+
+def test_edge_deltas(event_graph):
+    """Every edge_delta lies within (0, delta]."""
+    for i in range(event_graph.num_events):
+        for nxt in event_graph.get_successors(i):
+            nxt = int(nxt.item())
+            delta = event_graph.data.edge_delta[event_graph.edge_to_index[(i, nxt)]].item()
+            assert 0 < delta <= event_graph.delta
+
+
+def test_edge_delta_map(event_graph):
+    """Per-edge time delta map matches the expected value."""
+    assert event_graph.edge_delta_map() == {(0, 1): 1, (1, 2): 1}
+
+
+def test_shortest_paths_distances(event_graph):
+    """shortest_paths() distances match the expected result."""
+    dist, _pred = event_graph.shortest_paths()
+    expected = np.array(
+        [
+            [0, 1, 2, np.inf, 3],
+            [np.inf, 0, 1, 1, 2],
+            [np.inf, np.inf, 0, np.inf, 1],
+            [np.inf, np.inf, np.inf, 0, np.inf],
+            [np.inf, np.inf, np.inf, np.inf, 0],
+        ]
+    )
+    np.testing.assert_array_equal(dist, expected)
+
+
+def test_shortest_paths_predecessors(event_graph):
+    """shortest_paths() predecessors match the expected result."""
+    _dist, pred = event_graph.shortest_paths()
+    expected = np.array(
+        [
+            [0, 0, 1, -1, 2],
+            [-1, 1, 1, 1, 2],
+            [-1, -1, 2, -1, 2],
+            [-1, -1, -1, 3, -1],
+            [-1, -1, -1, -1, 4],
+        ]
+    )
+    np.testing.assert_array_equal(pred, expected)
+
+
+def test_shortest_paths_a_to_d_is_unreachable(event_graph):
+    """Transition a->d needs a->b@1 then b->d@5, gap of 4 > delta."""
+    dist, _pred = event_graph.shortest_paths()
+    assert dist[0, 3] == np.inf
+
+
+def test_fastest_path_distances(event_graph):
+    """Fastest-path distances over edge deltas match the expected result."""
+    fastest = dijkstra(event_graph.sparse_adj_matrix(edge_attr="edge_delta"), directed=True)
+    expected = np.array(
+        [
+            [0, 1, 2, np.inf],
+            [np.inf, 0, 1, np.inf],
+            [np.inf, np.inf, 0, np.inf],
+            [np.inf, np.inf, np.inf, 0],
+        ]
+    )
+    np.testing.assert_array_equal(fastest, expected)
+
+
+def test_to_temporal_graph_round_trip(event_graph, temporal_graph):
+    """An EventGraph converts back to an equivalent TemporalGraph."""
+    rebuilt = event_graph.to_temporal_graph()
+    assert isinstance(rebuilt, TemporalGraph)
+    assert torch.equal(
+        rebuilt.data.edge_index.as_tensor(),
+        temporal_graph.data.edge_index.as_tensor(),
+    )
+    assert torch.equal(rebuilt.data.time, temporal_graph.data.time)
+    assert rebuilt.n == temporal_graph.n
+    for node in ("a", "b", "c", "d", "e"):
+        assert rebuilt.mapping.to_idx(node) == temporal_graph.mapping.to_idx(node)
+
+
+def test_multi_order_model_construction(event_graph, temporal_graph):
+    """A MultiOrderModel built from an EventGraph matches one from a TemporalGraph."""
+    mom_eg = MultiOrderModel.from_event_graph(event_graph, max_order=2)
+    mom_tg = MultiOrderModel.from_temporal_graph(temporal_graph, delta=DELTA, max_order=2)
+
+    for k in (1, 2):
+        assert torch.equal(
+            mom_eg.layers[k].data.edge_index.as_tensor(),
+            mom_tg.layers[k].data.edge_index.as_tensor(),
+        )
+        assert torch.equal(
+            mom_eg.layers[k].data.edge_weight,
+            mom_tg.layers[k].data.edge_weight,
+        )
+
+
+def test_to_device(event_graph):
+    """Moving an EventGraph moves its underlying TemporalGraph too."""
+    moved = event_graph.to(torch.device("cpu"))
+    assert isinstance(moved, EventGraph)
+    assert moved is event_graph
+    assert moved.to_temporal_graph().data.edge_index.device.type == "cpu"
+
+
+def test_reduce_delta(temporal_graph, event_graph):
+    """Reducing delta reproduces the graph built directly with the smaller delta."""
+    eg_delta4 = EventGraph.from_temporal_graph(temporal_graph, delta=4)
+    eg_delta2 = eg_delta4.reduce_delta(decrement=2)
+
+    assert eg_delta2.delta == 2
+    assert eg_delta2.num_events == event_graph.num_events
+    assert eg_delta2.n_first_order == event_graph.n_first_order
+    assert torch.equal(eg_delta2.data.node_time, event_graph.data.node_time)
+    assert torch.equal(eg_delta2.data.node_sequence, event_graph.data.node_sequence)
+    assert eg_delta2.edge_delta_map() == event_graph.edge_delta_map()
+
+
+@pytest.fixture
+def attributed_temporal_graph(temporal_graph) -> TemporalGraph:
+    """Temporal graph carrying one edge-, node- and graph-level attribute."""
+    # edges are sorted by time, i.e. (a,b)@1, (b,c)@2, (c,e)@3, (b,d)@5
+    temporal_graph.data.edge_weight = torch.tensor([10.0, 20.0, 30.0, 40.0])
+    temporal_graph.data.edge_temperature = np.array([4, 3, 2, 1])  # arbitrary edge-level attribute
+    temporal_graph.data.node_color = torch.arange(5)
+    temporal_graph.data.dataset_name = "toy"
+    return temporal_graph
+
+
+def test_lift_attrs(attributed_temporal_graph):
+    """Edge attributes become node attributes, node attributes are dropped, graph attributes stay."""
+    attrs = EventGraph.lift_attrs(attributed_temporal_graph)
+
+    assert set(attrs) == {"node_temperature", "node_weight", "dataset_name"}
+    assert torch.equal(attrs["node_weight"], torch.tensor([10.0, 20.0, 30.0, 40.0]))
+    np.testing.assert_array_equal(attrs["node_temperature"], np.array([4, 3, 2, 1]))
+    assert attrs["dataset_name"] == "toy"
+
+
+def test_lift_attrs_copies(attributed_temporal_graph):
+    """Lifted ndarray/tensor attributes are copies, so the event graph does not alias the temporal graph."""
+    attrs = EventGraph.lift_attrs(attributed_temporal_graph)
+    attrs["node_weight"][0] = -1.0
+    attrs["node_temperature"][0] = -1.0
+
+    assert attributed_temporal_graph.data.edge_weight[0].item() == 10.0
+    assert attributed_temporal_graph.data.edge_temperature[0].item() == 4
+
+
+def test_from_temporal_graph_propagates_attrs(attributed_temporal_graph):
+    """Building an event graph propagates the attributes of the temporal graph."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+
+    assert torch.equal(eg.data.node_weight, torch.tensor([10.0, 20.0, 30.0, 40.0]))
+    assert eg.data.dataset_name == "toy"
+    assert "node_color" not in eg.data
+    # the lifted attribute is recognized as a node attribute of the event graph
+    assert "node_weight" in eg.node_attrs()
+    assert "node_temperature" in eg.node_attrs()
+    assert "node_weight" not in eg.edge_attrs()
+
+
+def test_from_temporal_graph_getitem(attributed_temporal_graph):
+    """Indexing an EventGraph works as expected."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+
+    assert eg["dataset_name"] == "toy"
+    assert eg["node_weight"][0].item() == 10.0
+    assert eg["node_temperature"][0].item() == 4
+    assert eg[("node_temperature", "b->c@2")] == 3
+
+
+def test_reduce_delta_keeps_attrs(attributed_temporal_graph):
+    """Reducing delta keeps node and graph attributes and masks edge attributes."""
+    eg = EventGraph.from_temporal_graph(attributed_temporal_graph, delta=DELTA)
+    eg.data.edge_label = torch.arange(eg.m)
+    kept = eg.data.edge_delta <= 1
+
+    reduced = eg.reduce_delta(1)
+
+    assert torch.equal(reduced.data.node_weight, eg.data.node_weight)
+    assert reduced.data.dataset_name == "toy"
+    assert torch.equal(reduced.data.edge_label, eg.data.edge_label[kept])
+    assert reduced.data.edge_label.size(0) == reduced.m
+
+
+def test_reduce_delta_to_zero_removes_all_edges(event_graph):
+    """Reducing delta 2->0 leaves the events but drops every continuation edge."""
+    reduced = event_graph.reduce_delta(2)
+    assert reduced.delta == 0
+    assert reduced.num_events == event_graph.num_events
+    assert reduced.data.edge_index.as_tensor().numel() == 0
+    with pytest.raises(ValueError):
+        event_graph.reduce_delta(3)  # would make delta negative
+
+
+"""
+The following tests illustrate that an EventGraph can be constructed from a raw
+`torch_geometric.data.Data` object.
+"""
+@pytest.fixture
+def event_data() -> Data:
+    return Data(
+        edge_index=torch.tensor([[0, 1], [1, 2]]),
+        num_nodes=4,
+        node_sequence=torch.tensor([[0, 1], [1, 2], [2, 4], [1, 3]]),
+        node_time=torch.tensor([1, 2, 3, 5]),
+    )
+
+
+def test_construct_from_data(event_data):
+    """An EventGraph can be built from a raw Data object with correct edge deltas."""
+    eg = EventGraph(event_data, delta=DELTA)
+    got = {
+        tuple(c): d
+        for c, d in zip(
+            eg.data.edge_index.as_tensor().t().tolist(), eg.data.edge_delta.tolist()
+        )
+    }
+    assert got == {(0, 1): 1, (1, 2): 1}
+
+
+def test_construct_from_data_to_temporal_graph(event_data):
+    """An EventGraph built from raw Data still converts to a TemporalGraph."""
+    first_order_mapping = IndexMap(["a", "b", "c", "d", "e"])
+    eg = EventGraph(event_data, delta=DELTA, first_order_mapping=first_order_mapping, n_first_order=5)
+    tg = eg.to_temporal_graph()
+    assert isinstance(tg, TemporalGraph)
+    assert tg.n == 5
+    assert torch.equal(
+        tg.data.edge_index.as_tensor(),
+        torch.tensor([[0, 1, 2, 1], [1, 2, 4, 3]]),
+    )
+    assert tg.data.time.tolist() == [1, 2, 3, 5]
