@@ -157,7 +157,7 @@ class HigherOrderGraph(Graph):
         return IndexMap([tuple(v.tolist()) for v in node_sequence])
 
     @classmethod
-    def from_aggregated(
+    def aggregate(
         cls,
         edge_index: torch.Tensor,
         node_sequence: torch.Tensor,
@@ -252,7 +252,7 @@ class HigherOrderGraph(Graph):
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         node_sequence = torch.arange(g.n, device=edge_index.device).unsqueeze(1)
 
-        return cls.from_aggregated(
+        return cls.aggregate(
             edge_index,
             node_sequence,
             first_order_mapping=g.mapping,
@@ -381,7 +381,7 @@ class HigherOrderGraph(Graph):
             edge_index, self.data.node_sequence, edge_weight=edge_weight, aggr=aggr
         )
 
-        return HigherOrderGraph.from_aggregated(
+        return HigherOrderGraph.aggregate(
             ho_index,
             node_sequence,
             first_order_mapping=self.first_order_mapping,

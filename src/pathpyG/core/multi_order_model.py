@@ -121,7 +121,7 @@ class MultiOrderModel:
 
         # Aggregate
         if save:
-            gk = HigherOrderGraph.from_aggregated(
+            gk = HigherOrderGraph.aggregate(
                 ho_index,
                 node_sequence,
                 first_order_mapping=mapping,
@@ -167,7 +167,7 @@ class MultiOrderModel:
         else:
             edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
         if cached or max_order == 1:
-            m.layers[1] = HigherOrderGraph.from_aggregated(
+            m.layers[1] = HigherOrderGraph.aggregate(
                 edge_index=edge_index,
                 node_sequence=node_sequence,
                 edge_weight=edge_weight,
@@ -185,7 +185,7 @@ class MultiOrderModel:
 
             # Aggregate
             if cached or max_order == 2:
-                m.layers[2] = HigherOrderGraph.from_aggregated(
+                m.layers[2] = HigherOrderGraph.aggregate(
                     edge_index=edge_index,
                     node_sequence=node_sequence,
                     edge_weight=edge_weight,
