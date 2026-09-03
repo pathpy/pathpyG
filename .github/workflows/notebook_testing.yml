@@ -34,3 +34,4 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           pytest --nbmake docs/tutorial/*ipynb --no-cov
+          pytest --nbmake docs/tutorial/advanced/*ipynb --no-cov
