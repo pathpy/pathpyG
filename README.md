@@ -62,3 +62,4 @@ Development
 pathpyG development takes place on Github: https://github.com/pathpy/pathpyG
 
 Please submit any reproducible bugs you encounter to the [issue tracker](https://github.com/pathpy/pathpyG/issues).
+
