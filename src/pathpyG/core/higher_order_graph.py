@@ -395,6 +395,15 @@ class HigherOrderGraph(Graph):
         Each higher-order node is replaced by one of the first-order nodes of its path,
         and the weights of higher-order edges mapping to the same first-order edge are
         summed. First-order nodes not traversed by any path remain as isolated nodes.
+        
+        Warning: This is a projection, not an inverse transformation
+            This method does not reconstruct the original first-order graph from
+            which this higher-order graph was built. Instead, it maps each higher-
+            order node to either the first or last first-order node in its represented path.
+            
+            Consequently, the result preserves flow encoded by the higher-order model
+            under the selected projection, but may differ from the original graph in its
+            edge set. In particular, isolated first-order edges cannot be recovered.
 
         Args:
             mode: Which first-order node of the path represents it. Either "last" or "first".
