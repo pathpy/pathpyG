@@ -18,7 +18,7 @@ def example_data(name: str) -> str:
 
     Args:
         name: File name of the dataset, e.g. `temporal_clusters.tedges`.
-        
+
     Returns:
         Either the path of a local copy of the dataset or a URL from which it can be read.
     """
