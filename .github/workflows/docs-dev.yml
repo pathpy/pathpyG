@@ -26,10 +26,13 @@ jobs:
         # First configure git correctly
         # Then use the alias of the current dev version to delete it based on its identifier
         # Then deploy the new version so that there is only one dev version at a time
+        # Only make dev the default if no stable version exists yet, so stable stays the default once published
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git fetch origin gh-pages --depth=1
           mike delete --push $(mike list | grep dev | awk '{print $1}' | tr -d '()')
           mike deploy --push --update-aliases "${{ env.package_version }}-dev" dev
-          mike set-default --push --allow-empty dev
+          if ! mike list stable > /dev/null 2>&1; then
+            mike set-default --push dev
+          fi

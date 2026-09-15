@@ -20,6 +20,9 @@ jobs:
           python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
 
       - name: Publish docs
+        env:
+          # Pin "Open in Colab" links to the commit these docs are built from	
+          DOCS_GIT_REF: ${{ github.sha }}
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
