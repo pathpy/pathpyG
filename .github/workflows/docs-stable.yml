@@ -2,9 +2,12 @@ name: Publish Stable Docs
 
 on:
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
