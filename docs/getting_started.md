@@ -30,9 +30,6 @@ uv pip install pathpyg[cu129]
 
 You can install the latest stable release of PathpyG via pip:
 
-!!! warning "TODO"
-    This is not yet available. We will release the first stable version soon.
-
 ```bash
 pip install pathpyg
 ```
