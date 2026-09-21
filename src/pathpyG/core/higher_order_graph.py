@@ -9,7 +9,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce
 
-from pathpyG.algorithms.lift_order import aggregate_edge_index, lift_order_step
+from pathpyG.algorithms.lift_order import aggregate_edge_index
 from pathpyG.core.event_graph import EventGraph
 from pathpyG.core.graph import Graph
 from pathpyG.core.index_map import IndexMap
@@ -357,37 +357,6 @@ class HigherOrderGraph(Graph):
         from pathpyG.core.multi_order_model import MultiOrderModel
 
         return MultiOrderModel.from_event_graph(eg, max_order=order, cached=False).layers[order]
-
-    def lift(self, aggr: str = "src") -> HigherOrderGraph:
-        """Return the De Bruijn graph of order `k + 1` obtained by lifting this graph.
-
-        Nodes of the result are the edges of this graph, i.e. the paths of length `k + 1`
-        that exist in this graph's topology.
-
-        Args:
-            aggr: Aggregation used for the lifted edge weights. One of "src", "dst",
-                "max", "mul" or "add".
-
-        Returns:
-            HigherOrderGraph: A higher-order graph of order `k + 1`.
-        """
-        edge_index = self.data.edge_index.as_tensor()
-        if "edge_weight" in self.data:
-            edge_weight = self.data.edge_weight
-        else:
-            edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
-
-        ho_index, node_sequence, ho_weight = lift_order_step(
-            edge_index, self.data.node_sequence, edge_weight=edge_weight, aggr=aggr
-        )
-
-        return HigherOrderGraph.aggregate(
-            ho_index,
-            node_sequence,
-            first_order_mapping=self.first_order_mapping,
-            edge_weight=ho_weight,
-            n_first_order=self.n_first_order,
-        )
 
     def to_first_order(self, mode: str = "last") -> Graph:
         """Project the higher-order graph back onto the first-order nodes.
