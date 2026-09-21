@@ -25,6 +25,13 @@ def test_init():
     assert g.order == 1
 
 
+def test_init_rejects_node_sequence():
+    """A Graph is always first-order; graphs whose nodes are paths are HigherOrderGraphs."""
+    data = Data(edge_index=torch.tensor([[0, 1], [1, 2]]), num_nodes=3, node_sequence=torch.tensor([[0], [1], [2]]))
+    with pytest.raises(ValueError):
+        Graph(data)
+
+
 def test_init_with_edge_index():
     edge_index = EdgeIndex(get_random_edge_index(100, 100, 1000))
     data = Data(edge_index=edge_index, num_nodes=100)
