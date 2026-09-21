@@ -79,8 +79,13 @@ plugins:
 
 extra:
   version:
-    default: dev
+    # Only the stable version hides the "not the latest version" banner
+    default: stable
     provider: mike
+  # Version being built by mike (e.g. "0.2.0-dev"); empty for plain mkdocs builds
+  docs_version: !ENV [MIKE_DOCS_VERSION, ""]
+  # Git ref for "Open in Colab" links; set to the build commit for stable docs
+  git_ref: !ENV [DOCS_GIT_REF, main]
 
 extra_css:
   - overrides/assets/stylesheets/header.css  # Remove the sitename from the header, since the logo already contains it
