@@ -2,9 +2,12 @@ name: Publish Stable Docs
 
 on:
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -20,6 +23,9 @@ jobs:
           python -c 'import pathpyG; print(f"package_version={pathpyG.__version__}")' >> "$GITHUB_ENV"
 
       - name: Publish docs
+        env:
+          # Pin "Open in Colab" links to the commit these docs are built from	
+          DOCS_GIT_REF: ${{ github.sha }}
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com

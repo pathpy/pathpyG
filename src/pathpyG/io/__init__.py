@@ -1,5 +1,6 @@
 """PathpyG input/output module."""
 
+from pathpyG.io.datasets import example_data
 from pathpyG.io.netzschleuder import list_netzschleuder_records, read_netzschleuder_graph, read_netzschleuder_record
 from pathpyG.io.pandas import (
     add_edge_attributes,
@@ -15,6 +16,7 @@ from pathpyG.io.pandas import (
 )
 
 __all__ = [
+    "example_data",
     "list_netzschleuder_records",
     "read_netzschleuder_graph",
     "read_netzschleuder_record",
