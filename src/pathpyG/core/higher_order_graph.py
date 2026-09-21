@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Union
 
+import numpy as np
 import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce
@@ -27,8 +28,16 @@ class HigherOrderGraph(Graph):
     aggregated into an `edge_weight`. Timestamps are not represented: this
     is a model of how paths flow rather than a record of what happened.
 
-    Order 1 is the degenerate case and is simply the weighted first-order graph, with
-    plain node IDs rather than tuples.
+    The order `k` is the memory of the model: the next step of a path depends on the
+    last `k` first-order nodes visited.
+
+    - Order 1 is simply the weighted first-order graph, with plain node IDs rather than tuples.
+    - Order 0 is the memoryless model, in which every step is an independent draw from a fixed
+        distribution over first-order nodes. It has a single node, the empty path `()`, and one
+        self-loop per first-order node, weighted by how often that node is visited. Since all
+        loops share the same endpoints, the first-order node each loop emits is stored in the
+        `edge_first_order_node` edge attribute. The transition probabilities of the loops are
+        the node visitation probabilities.
 
     Info:
         In addition to the attributes of [`Graph`][pathpyG.Graph], the `data` object holds:
@@ -38,10 +47,12 @@ class HigherOrderGraph(Graph):
         - `edge_weight`: [Tensor][torch.Tensor] with the aggregated weight of each transition.
         - `inverse_idx`: [Tensor][torch.Tensor] mapping each row of the *pre-aggregation*
             node sequence to the index of the higher-order node it was merged into.
+        - `edge_first_order_node` (order 0 only): [Tensor][torch.Tensor] with the index of
+            the first-order node emitted by each self-loop.
 
     Attributes:
         data (Data): PyG Data object containing edges and attributes.
-        mapping (IndexMap): Mapping from higher-order node IDs (tuples, for order > 1) to indices.
+        mapping (IndexMap): Mapping from higher-order node IDs (tuples, for order other than 1) to indices.
         first_order_mapping (IndexMap): Mapping of the underlying first-order node IDs to indices.
         n_first_order (int): Number of first-order nodes the higher-order nodes are built from.
 
@@ -53,6 +64,8 @@ class HigherOrderGraph(Graph):
         >>> print(h.order, h.nodes)
         1 ['a', 'c', 'd']
     """
+
+    _internal_node_attrs: frozenset[str] = frozenset({"node_sequence"})
 
     def __init__(
         self,
@@ -74,8 +87,9 @@ class HigherOrderGraph(Graph):
                 to an empty mapping.
             n_first_order: Number of first-order nodes. Defaults to the number of IDs in
                 `first_order_mapping`, or the largest index in the node sequence plus one.
-            mapping: Mapping of higher-order node IDs to indices. For order > 1 this must
-                use tuple IDs; for order 1 it must not.
+                Required for order 0 if `first_order_mapping` has no IDs.
+            mapping: Mapping of higher-order node IDs to indices. For order 1 this must
+                use plain IDs; for any other order it must use tuple IDs.
 
         Raises:
             ValueError: If the order, the node sequence, and the mapping disagree, or if
@@ -86,8 +100,10 @@ class HigherOrderGraph(Graph):
 
         super().__init__(data, mapping=mapping)
 
-        # `Graph` creates an identity node sequence if none is given, so `self.order`
-        # (inherited: the width of the node sequence) is now well-defined.
+        if "node_sequence" not in self.data:
+            # An order-1 node is a first-order node, so the node sequence is the identity.
+            self.data.node_sequence = torch.arange(self.data.num_nodes, device=self.device).unsqueeze(1)
+
         if order is not None and order != self.order:
             raise ValueError(f"order={order} does not match node sequence of width {self.order}")
 
@@ -103,6 +119,9 @@ class HigherOrderGraph(Graph):
             self._n_first_order = int(n_first_order)
         elif self.first_order_mapping.has_ids:
             self._n_first_order = self.first_order_mapping.num_ids()
+        elif self.order == 0:
+            # The empty path does not refer to any first-order node to infer the count from.
+            raise ValueError("an order-0 graph requires `n_first_order` or a `first_order_mapping` with IDs")
         elif self.data.node_sequence.numel() > 0:
             self._n_first_order = int(self.data.node_sequence.max().item()) + 1
         else:
@@ -120,25 +139,57 @@ class HigherOrderGraph(Graph):
                     f"but there are only {self._n_first_order} first-order nodes"
                 )
 
+        if self.order == 0:
+            if self.n > 1:
+                raise ValueError(f"an order-0 graph has at most one node (the empty path), got {self.n}")
+            if "edge_first_order_node" not in self.data:
+                raise ValueError("an order-0 graph requires an `edge_first_order_node` edge attribute")
+            emitted = self.data.edge_first_order_node
+            if emitted.numel() > 0 and int(emitted.max().item()) >= self._n_first_order:
+                raise ValueError(
+                    f"edge_first_order_node refers to first-order node {int(emitted.max().item())}, "
+                    f"but there are only {self._n_first_order} first-order nodes"
+                )
+
         if self.mapping.has_ids:
-            # Higher-order nodes are paths and are identified by tuples; first-order
-            # nodes are entities and are identified by plain IDs.
-            if self.mapping.has_tuple_ids != (self.order > 1):
+            # Higher-order nodes are paths and are identified by tuples (the empty tuple
+            # for order 0); first-order nodes are entities and are identified by plain IDs.
+            if self.mapping.has_tuple_ids != (self.order != 1):
                 raise ValueError(
                     f"a mapping for a graph of order {self.order} must "
-                    f"{'use' if self.order > 1 else 'not use'} tuple IDs"
+                    f"{'use' if self.order != 1 else 'not use'} tuple IDs"
                 )
             if self.mapping.num_ids() != self.n:
                 logger.warning(
                     "mapping has %s IDs but graph has %s nodes", self.mapping.num_ids(), self.n
                 )
 
+    @property
+    def order(self) -> int:
+        """Return the order of the graph, i.e. the number of first-order nodes in each node's path."""
+        return self.data.node_sequence.size(1)
+
+    def to(self, device: torch.device) -> HigherOrderGraph:
+        """Move all tensors to the given device.
+
+        Args:
+            device: torch device to which all tensors shall be moved
+
+        Returns:
+            HigherOrderGraph: self
+        """
+        super().to(device)
+        self.data.node_sequence = self.data.node_sequence.to(device)
+        if "inverse_idx" in self.data:
+            self.data.inverse_idx = self.data.inverse_idx.to(device)
+        return self
+
     @staticmethod
     def _validate_order(order: int) -> None:
         """Reject orders for which no De Bruijn graph is defined."""
-        if order < 1:
-            logger.error("order must be at least 1, got %s", order)
-            raise ValueError(f"order must be at least 1, got {order}")
+        if order < 0:
+            logger.error("order must be at least 0, got %s", order)
+            raise ValueError(f"order must be at least 0, got {order}")
 
     @staticmethod
     def _build_mapping(node_sequence: torch.Tensor, first_order_mapping: IndexMap) -> IndexMap:
@@ -149,6 +200,9 @@ class HigherOrderGraph(Graph):
             # An order beyond the longest observed path yields a graph without nodes,
             # and `IndexMap` cannot be built from an empty list of IDs.
             return IndexMap()
+        if order == 0:
+            # The only order-0 node is the empty path.
+            return IndexMap([()])
         if order == 1:
             # Order-1 node indices are first-order node indices, so the mapping carries over.
             return first_order_mapping
@@ -179,8 +233,15 @@ class HigherOrderGraph(Graph):
 
         Returns:
             HigherOrderGraph: The aggregated higher-order graph.
+
+        Raises:
+            ValueError: If `node_sequence` has width 0. Use
+                [`from_node_weights`][pathpyG.HigherOrderGraph.from_node_weights] to build
+                an order-0 graph.
         """
         order = node_sequence.size(1)
+        if order == 0:
+            raise ValueError("order-0 graphs cannot be aggregated from an edge index; use from_node_weights")
         if first_order_mapping is None:
             first_order_mapping = IndexMap()
         if n_first_order is None:
@@ -189,7 +250,7 @@ class HigherOrderGraph(Graph):
             else:
                 n_first_order = int(node_sequence.max().item()) + 1 if node_sequence.numel() > 0 else 0
 
-        data = aggregate_edge_index(edge_index, node_sequence, edge_weight, aggr=aggr).data
+        data = aggregate_edge_index(edge_index, node_sequence, edge_weight, aggr=aggr)
 
         if order == 1 and n_first_order > data.num_nodes:
             # Order-1 indices are first-order indices, so first-order nodes that are not
@@ -206,29 +267,57 @@ class HigherOrderGraph(Graph):
         )
 
     @classmethod
-    def from_aggregated_graph(
-        cls,
-        g: Graph,
-        first_order_mapping: Optional[IndexMap] = None,
-        n_first_order: Optional[int] = None,
+    def from_node_weights(
+        cls, node_weight: torch.Tensor, first_order_mapping: Optional[IndexMap] = None
     ) -> HigherOrderGraph:
-        """Adopt an already-aggregated [`Graph`][pathpyG.Graph] as a higher-order graph.
+        """Create the order-0 graph for the given visitation weights of first-order nodes.
+
+        The result has a single node, the empty path `()`, with one self-loop per first-order
+        node. Each loop carries the node's weight as `edge_weight` and the node's index as
+        `edge_first_order_node`. Nodes with weight 0 keep their loop, so that every first-order
+        node is represented.
 
         Args:
-            g: Aggregated graph carrying a `node_sequence` of shape `(num_nodes, order)`.
+            node_weight: Tensor of shape `(n_first_order,)` with the weight of each first-order node.
             first_order_mapping: Mapping of the underlying first-order node IDs.
-            n_first_order: Number of first-order nodes.
 
         Returns:
-            HigherOrderGraph: The same graph, typed as a higher-order graph.
+            HigherOrderGraph: A higher-order graph of order 0.
+
+        Examples:
+            >>> import torch
+            >>> import pathpyG as pp
+            >>> h = pp.HigherOrderGraph.from_node_weights(
+            ...     torch.tensor([3.0, 1.0, 4.0, 4.0, 0.0]), first_order_mapping=pp.IndexMap(list("abcde"))
+            ... )
+            >>> print(h.order, h.nodes, h.m)
+            0 [()] 5
+            >>> print(h.transition_probabilities(edge_attr="edge_weight"))
+            tensor([0.2500, 0.0833, 0.3333, 0.3333, 0.0000])
         """
-        if isinstance(g, HigherOrderGraph):
-            return g
+        n_first_order = node_weight.size(0)
+        if first_order_mapping is None:
+            first_order_mapping = IndexMap()
+        elif first_order_mapping.has_ids and first_order_mapping.num_ids() != n_first_order:
+            raise ValueError(
+                f"first_order_mapping has {first_order_mapping.num_ids()} IDs, "
+                f"but {n_first_order} node weights were given"
+            )
+
+        device = node_weight.device
+        data = Data(
+            edge_index=torch.zeros((2, n_first_order), dtype=torch.long, device=device),
+            num_nodes=1,
+            node_sequence=torch.empty((1, 0), dtype=torch.long, device=device),
+            edge_weight=node_weight,
+            edge_first_order_node=torch.arange(n_first_order, device=device),
+        )
         return cls(
-            g.data,
+            data,
+            order=0,
             first_order_mapping=first_order_mapping,
             n_first_order=n_first_order,
-            mapping=g.mapping,
+            mapping=IndexMap([()]),
         )
 
     @classmethod
@@ -309,7 +398,8 @@ class HigherOrderGraph(Graph):
 
         Args:
             path_data: The observed paths.
-            order: The order `k` of the graph to compute.
+            order: The order `k` of the graph to compute. Order 0 yields the memoryless
+                model of node visitation frequencies.
             mode: The process that we assume. Either "diffusion" or "propagation".
 
         Returns:
@@ -379,7 +469,12 @@ class HigherOrderGraph(Graph):
 
         Returns:
             Graph: A weighted first-order graph.
+
+        Raises:
+            ValueError: If the graph has order 0, whose only node refers to no first-order node.
         """
+        if self.order == 0:
+            raise ValueError("an order-0 graph cannot be projected onto first-order nodes")
         if mode == "last":
             projection = self.data.node_sequence[:, -1]
         elif mode == "first":
@@ -417,7 +512,12 @@ class HigherOrderGraph(Graph):
 
         Returns:
             torch.Tensor: Edge index of shape `(2, ·)`, higher-order nodes in the first row.
+
+        Raises:
+            ValueError: If the graph has order 0, whose only node refers to no first-order node.
         """
+        if self.order == 0:
+            raise ValueError("an order-0 graph has no first-order nodes to connect to")
         if device is None:
             device = first_order_graph.device if first_order_graph is not None else self.device
 
@@ -444,11 +544,93 @@ class HigherOrderGraph(Graph):
     def node_id(self, idx: int) -> Union[str, int, tuple]:
         """Return the first-order path represented by the higher-order node `idx`."""
         seq = self.data.node_sequence[idx]
+        if self.order == 0:
+            return ()
         if self.order == 1:
             return self.first_order_mapping.to_id(int(seq[0].item()))
         if self.first_order_mapping.has_ids:
             return tuple(self.first_order_mapping.to_ids(seq.cpu()).tolist())
         return tuple(seq.tolist())
+
+    def __add__(self, other: Graph, reduce: str = "sum") -> HigherOrderGraph:
+        """Combine this higher-order graph with another one of the same order.
+
+        Nodes are matched by the paths they represent, as described for
+        [`Graph.__add__`][pathpyG.Graph.__add__]. The first-order node sets are joined as well.
+
+        Args:
+            other: Higher-order graph of the same order to be combined with this graph
+            reduce: Reduction method for node attributes of nodes that are present in both graphs.
+
+        Returns:
+            HigherOrderGraph: The combined higher-order graph.
+
+        Raises:
+            TypeError: If `other` is not a `HigherOrderGraph`.
+            ValueError: If the graphs have different orders, or only one of them has first-order node IDs.
+        """
+        if not isinstance(other, HigherOrderGraph):
+            raise TypeError("a HigherOrderGraph can only be combined with another HigherOrderGraph")
+        if other.order != self.order:
+            raise ValueError(f"cannot combine graphs of order {self.order} and {other.order}")
+
+        data, mapping = self._add_data(other, reduce)
+        device = data.edge_index.device
+
+        fo_self, fo_other = self.first_order_mapping, other.first_order_mapping
+        if self.order == 1:
+            # Order-1 nodes are first-order nodes, so the joint mapping is the first-order mapping.
+            first_order_mapping = mapping
+            n_first_order = data.num_nodes
+        elif fo_self.has_ids and fo_other.has_ids:
+            if np.array_equal(fo_self.node_ids, fo_other.node_ids):  # type: ignore[arg-type]
+                first_order_mapping = fo_self
+            else:
+                first_order_mapping = IndexMap(
+                    np.unique(np.concatenate([fo_self.node_ids, fo_other.node_ids])).tolist()
+                )
+            n_first_order = first_order_mapping.num_ids()
+        elif not fo_self.has_ids and not fo_other.has_ids:
+            first_order_mapping = IndexMap()
+            n_first_order = max(self.n_first_order, other.n_first_order)
+        else:
+            raise ValueError("cannot combine graphs where only one has first-order node IDs")
+
+        # Rebuild the node sequence from the joint mapping, whose IDs are the paths.
+        if self.order == 0:
+            data.node_sequence = torch.empty((data.num_nodes, 0), dtype=torch.long, device=device)
+            data.edge_first_order_node = first_order_mapping.to_idxs(
+                np.concatenate(
+                    [
+                        fo_self.to_ids(self.data.edge_first_order_node.cpu()),
+                        fo_other.to_ids(other.data.edge_first_order_node.cpu()),
+                    ]
+                ),
+                device=device,
+            )
+        elif self.order == 1:
+            data.node_sequence = torch.arange(data.num_nodes, device=device).unsqueeze(1)
+        else:
+            data.node_sequence = first_order_mapping.to_idxs(
+                mapping.to_ids(np.arange(data.num_nodes)), device=device
+            ).reshape(data.num_nodes, self.order)
+
+        # Each pre-aggregation row keeps pointing at the (renumbered) node it was merged into.
+        if "inverse_idx" in data:
+            data.inverse_idx = mapping.to_idxs(
+                np.concatenate(
+                    [self.mapping.to_ids(self.data.inverse_idx.cpu()), other.mapping.to_ids(other.data.inverse_idx.cpu())]
+                ),
+                device=device,
+            )
+
+        return HigherOrderGraph(
+            data,
+            order=self.order,
+            first_order_mapping=first_order_mapping,
+            n_first_order=n_first_order,
+            mapping=mapping,
+        )
 
     def __str__(self) -> str:
         """Return a human-readable summary of the higher-order graph."""

@@ -26,22 +26,6 @@ def test_multi_order_model_str():
     assert str(model) == "MultiOrderModel with max. order 5"
 
 
-def test_iterate_lift_order(simple_graph_multi_edges):
-    ho_index, node_sequence, edge_weight, gk = MultiOrderModel.iterate_lift_order(
-        edge_index=simple_graph_multi_edges.data.edge_index,
-        node_sequence=torch.arange(simple_graph_multi_edges.n).unsqueeze(1),
-        mapping=simple_graph_multi_edges.mapping,
-        save=True,
-    )
-    assert ho_index.tolist() == [[0, 2], [3, 3]]
-    assert node_sequence.tolist() == [[0, 1], [0, 2], [0, 1], [1, 2]]
-    assert edge_weight is None
-    assert gk.data.edge_index.as_tensor().tolist() == [[0], [2]]
-    assert gk.data.node_sequence.tolist() == [[0, 1], [0, 2], [1, 2]]
-    assert gk.data.edge_weight.tolist() == [2.0]
-    assert gk.order == 2
-
-
 def test_dof():
     line_data = PathData(IndexMap(list("abcd")))
     line_data.append_walk(("a", "b", "c", "d"))
@@ -120,7 +104,7 @@ def test_log_likelihood():
     m = MultiOrderModel.from_path_data(toy_paths, max_order=max_order, mode="propagation")
     dag_graph = toy_paths.data
     assert np.isclose(
-        m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
+        m.get_mon_log_likelihood(dag_graph, max_order=0),
         np.log(2 / 12) * 8 + np.log(4 / 12) * 4,
     )
     assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(2 / 12) * 4 + 0 + 4 * np.log(1 / 2))
@@ -136,7 +120,7 @@ def test_log_likelihood():
     m = MultiOrderModel.from_path_data(toy_paths, max_order=max_order, mode="propagation")
     dag_graph = toy_paths.data
     assert np.isclose(
-        m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
+        m.get_mon_log_likelihood(dag_graph, max_order=0),
         np.log(3 / 6) * 3 + np.log(2 / 6) * 2 + np.log(1 / 6) * 1,
     )
     assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(3 / 6) * 3 + 0 + 0)

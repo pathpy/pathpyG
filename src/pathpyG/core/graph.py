@@ -49,15 +49,13 @@ class Graph:
     and edge attributes. Data on nodes and edges are stored in an underlying instance of
     [`torch_geometric.data.Data`][torch_geometric.data.Data].
 
+    A `Graph` is always a first-order graph. Graphs whose nodes are paths of first-order
+    nodes are represented by [`HigherOrderGraph`][pathpyG.HigherOrderGraph].
+
     Info:
         The `data` attribute is a PyG Data object that contains the following attributes:
-            
-        - `edge_index`: [Edge index][torch_geometric.EdgeIndex] of the graph. Entries correspond to indices in the node sequence.
-        - `node_sequence`: Node sequence [tensor][torch.Tensor] of shape `(num_nodes, order)` where each entry
-            corresponds to the index of first-order nodes in the underlying graph and mapping. For first-order graphs,
-            the indices in the node sequence is identical to the indices in the edge index. For higher-order graphs,
-            the node sequence contains tuples of node indices representing higher-order nodes that correspond to paths in
-            the underlying first-order graph.
+
+        - `edge_index`: [Edge index][torch_geometric.EdgeIndex] of the graph.
 
     Attributes:
         data (Data): PyG Data object containing edges and attributes.
@@ -68,6 +66,10 @@ class Graph:
         col_ptr (torch.Tensor): CSC column pointer for efficient predecessor retrieval.
         row (torch.Tensor): CSC row indices for efficient predecessor retrieval.
     """
+
+    # Node-level attributes that subclasses manage themselves; they are not reported
+    # by `node_attrs()` and are not accepted by a plain `Graph`.
+    _internal_node_attrs: frozenset[str] = frozenset()
 
     def __init__(self, data: Data, mapping: Optional[IndexMap] = None):
         """Generate graph instance from a pyG `Data` object.
@@ -91,7 +93,17 @@ class Graph:
 
             g = pp.Graph(data, mapping=pp.IndexMap(["a", "b", "c"]))
             ```
+
+        Raises:
+            ValueError: If `data` carries a `node_sequence`, i.e. describes a higher-order graph.
         """
+        if "node_sequence" in data and "node_sequence" not in self._internal_node_attrs:
+            logger.error("A Graph is a first-order graph and cannot carry a node_sequence")
+            raise ValueError(
+                "a Graph is a first-order graph and cannot carry a `node_sequence`; "
+                "use HigherOrderGraph for graphs whose nodes are paths"
+            )
+
         if mapping is None:
             self.mapping = IndexMap()
         else:
@@ -131,10 +143,6 @@ class Graph:
 
         ((self.row_ptr, self.col), _) = self.data.edge_index.get_csr()
         ((self.col_ptr, self.row), _) = self.data.edge_index.get_csc()
-
-        # create node_sequence mapping for higher-order graphs
-        if "node_sequence" not in self.data:
-            self.data.node_sequence = torch.arange(data.num_nodes).reshape(-1, 1)
 
     @staticmethod
     def from_edge_index(
@@ -298,7 +306,6 @@ class Graph:
             Graph: self
         """
         self.data.edge_index = self.data.edge_index.to(device)
-        self.data.node_sequence = self.data.node_sequence.to(device)
         for attr in self.node_attrs():
             if isinstance(self.data[attr], torch.Tensor):
                 self.data[attr] = self.data[attr].to(device)
@@ -317,14 +324,15 @@ class Graph:
         """Return a list of node attributes.
 
         This method returns a list containing the names of all node-level attributes,
-        ignoring the special `node_sequence` attribute.
+        ignoring attributes that a subclass manages internally (such as the `node_sequence`
+        of a [`HigherOrderGraph`][pathpyG.HigherOrderGraph]).
 
         Returns:
             list: list of node attributes
         """
         attrs = []
         for k in self.data.keys():
-            if k != "node_sequence" and k.startswith("node_"):
+            if k not in self._internal_node_attrs and k.startswith("node_"):
                 attrs.append(k)
         return attrs
 
@@ -660,12 +668,12 @@ class Graph:
 
     @property
     def order(self) -> int:
-        """Return order of graph.
+        """Return the order of the graph, which is always 1 for a first-order graph.
 
         Returns:
-            int: order of the (De Bruijn) graph
+            int: order of the graph
         """
-        return self.data.node_sequence.size(1)
+        return 1
 
     def is_directed(self) -> bool:
         """Return whether graph is directed.
@@ -715,9 +723,7 @@ class Graph:
             >>> g2 = pp.Graph.from_edge_index(torch.tensor([[0, 2, 3], [3, 2, 1]]))
             >>> print(g1 + g2)
             Directed graph with 4 nodes and 6 edges
-            {   'Edge Attributes': {},
-                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([8, 1])", 'num_nodes': "<class 'int'>"},
-                'Node Attributes': {}}
+            {'Edge Attributes': {}, 'Graph Attributes': {'num_nodes': "<class 'int'>"}, 'Node Attributes': {}}
 
             Adding two graphs with identical node IDs:
 
@@ -725,9 +731,7 @@ class Graph:
             >>> g2 = pp.Graph.from_edge_list([("a", "c"), ("c", "b")])
             >>> print(g1 + g2)
             Directed graph with 3 nodes and 4 edges
-            {   'Edge Attributes': {},
-                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
-                'Node Attributes': {}}
+            {'Edge Attributes': {}, 'Graph Attributes': {'num_nodes': "<class 'int'>"}, 'Node Attributes': {}}
 
             Adding two graphs with non-overlapping node IDs:
 
@@ -735,9 +739,7 @@ class Graph:
             >>> g2 = pp.Graph.from_edge_list([("c", "d"), ("d", "e")])
             >>> print(g1 + g2)
             Directed graph with 5 nodes and 4 edges
-            {   'Edge Attributes': {},
-                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
-                'Node Attributes': {}}
+            {'Edge Attributes': {}, 'Graph Attributes': {'num_nodes': "<class 'int'>"}, 'Node Attributes': {}}
 
             Adding two graphs with partly overlapping node IDs:
 
@@ -745,9 +747,20 @@ class Graph:
             >>> g2 = pp.Graph.from_edge_list([("b", "d"), ("d", "e")])
             >>> print(g1 + g2)
             Directed graph with 5 nodes and 4 edges
-            {   'Edge Attributes': {},
-                'Graph Attributes': {'node_sequence': "<class 'torch.Tensor'> -> torch.Size([6, 1])", 'num_nodes': "<class 'int'>"},
-                'Node Attributes': {}}
+            {'Edge Attributes': {}, 'Graph Attributes': {'num_nodes': "<class 'int'>"}, 'Node Attributes': {}}
+        """
+        data, mapping = self._add_data(other, reduce)
+        return Graph(data, mapping=mapping)
+
+    def _add_data(self, other: Graph, reduce: str = "sum") -> tuple[Data, IndexMap]:
+        """Combine the data of this graph with that of `other`, remapping node indices to a joint mapping.
+
+        Args:
+            other: Other graph to be combined with this graph
+            reduce: Reduction method for node attributes of nodes that are present in both graphs.
+
+        Returns:
+            The combined `Data` object and the joint `IndexMap`.
         """
         d1 = self.data.clone()
         m1 = self.mapping
@@ -764,16 +777,9 @@ class Graph:
         d.num_nodes = mapping.num_ids()
         d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
 
-        # For higher-order graphs, we need to update the inverse_idx attribute
-        if "inverse_idx" in d:
-            d.inverse_idx = mapping.to_idxs(
-                np.concatenate([m1.to_ids(d1.inverse_idx), m2.to_ids(d2.inverse_idx)]),
-                device=d.inverse_idx.device,
-            )
-
         # If both graphs contain node attributes, reduce them using the specified method
         for k in d1.keys():
-            if k != "node_sequence" and k.startswith("node_"):
+            if k not in self._internal_node_attrs and k.startswith("node_"):
                 if isinstance(d[k], torch.Tensor):
                     d[k] = torch_geometric.utils.scatter(
                         d[k],
@@ -786,7 +792,7 @@ class Graph:
                     )
                 else:
                     raise ValueError("Node attribute " + k + " is not a tensor and cannot be reduced.")
-        return Graph(d, mapping=mapping)
+        return d, mapping
 
     def _summary(self) -> str:
         """Return a one-line summary of the graph, to be overridden by subclasses."""
