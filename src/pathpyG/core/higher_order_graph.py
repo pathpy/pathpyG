@@ -574,15 +574,19 @@ class HigherOrderGraph(Graph):
         if other.order != self.order:
             raise ValueError(f"cannot combine graphs of order {self.order} and {other.order}")
 
+        fo_self, fo_other = self.first_order_mapping, other.first_order_mapping
+        if self.order != 1 and fo_self.has_ids != fo_other.has_ids:
+            # The paths of one graph would be named by IDs and those of the other by indices.
+            raise ValueError("cannot combine graphs where only one has first-order node IDs")
+
         data, mapping = self._add_data(other, reduce)
         device = data.edge_index.device
 
-        fo_self, fo_other = self.first_order_mapping, other.first_order_mapping
         if self.order == 1:
             # Order-1 nodes are first-order nodes, so the joint mapping is the first-order mapping.
             first_order_mapping = mapping
             n_first_order = data.num_nodes
-        elif fo_self.has_ids and fo_other.has_ids:
+        elif fo_self.has_ids:
             if np.array_equal(fo_self.node_ids, fo_other.node_ids):  # type: ignore[arg-type]
                 first_order_mapping = fo_self
             else:
@@ -590,11 +594,9 @@ class HigherOrderGraph(Graph):
                     np.unique(np.concatenate([fo_self.node_ids, fo_other.node_ids])).tolist()
                 )
             n_first_order = first_order_mapping.num_ids()
-        elif not fo_self.has_ids and not fo_other.has_ids:
+        else:
             first_order_mapping = IndexMap()
             n_first_order = max(self.n_first_order, other.n_first_order)
-        else:
-            raise ValueError("cannot combine graphs where only one has first-order node IDs")
 
         # Rebuild the node sequence from the joint mapping, whose IDs are the paths.
         if self.order == 0:
