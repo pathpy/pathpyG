@@ -198,11 +198,6 @@ class TemporalGraph(Graph):
         return self
 
     @property
-    def order(self) -> int:
-        """Return order 1, since all temporal graphs must be order one."""
-        return 1
-
-    @property
     def start_time(self) -> Union[int, float]:
         """Return the timestamp of the first event in the temporal graph."""
         return self.data.time.min().item()

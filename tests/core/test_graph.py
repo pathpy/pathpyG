@@ -21,8 +21,15 @@ def test_init():
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
-    assert g.data.node_sequence.size() == (g.n, 1)
+    assert "node_sequence" not in g.data
     assert g.order == 1
+
+
+def test_init_rejects_node_sequence():
+    """A Graph is always first-order; graphs whose nodes are paths are HigherOrderGraphs."""
+    data = Data(edge_index=torch.tensor([[0, 1], [1, 2]]), num_nodes=3, node_sequence=torch.tensor([[0], [1], [2]]))
+    with pytest.raises(ValueError):
+        Graph(data)
 
 
 def test_init_with_edge_index():
