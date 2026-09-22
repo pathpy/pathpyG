@@ -281,3 +281,39 @@ def test_temporal_model_has_no_order_zero_layer(simple_temporal_graph):
     # the likelihoods do
     with pytest.raises(ValueError):
         m.get_mon_log_likelihood(weighted_paths().data, max_order=0)
+
+
+def memoryless_paths() -> PathData:
+    """Return all four transitions between a and b with equal weight, so that no order beats order 0."""
+    paths = PathData(IndexMap(list("ab")))
+    for walk in [("a", "a"), ("a", "b"), ("b", "a"), ("b", "b")]:
+        paths.append_walk(walk, weight=10)
+    return paths
+
+
+def test_estimate_order_returns_zero_for_memoryless_paths():
+    paths = memoryless_paths()
+    m = MultiOrderModel.from_path_data(paths, max_order=2)
+    assert m.estimate_order(paths, max_order=1) == 0
+    assert m.estimate_order(paths) == 0
+
+
+@pytest.mark.parametrize("max_order", [0, -1, 3])
+def test_estimate_order_rejects_invalid_max_order(max_order):
+    paths = memoryless_paths()
+    m = MultiOrderModel.from_path_data(paths, max_order=2)
+    with pytest.raises(ValueError):
+        m.estimate_order(paths, max_order=max_order)
+
+
+def test_estimate_order_rejects_missing_layers(simple_temporal_graph):
+    paths = PathData(IndexMap(list("abcd")))
+    paths.append_walk(("a", "b", "c", "d"))
+    # uncached models lack the intermediate layers
+    m = MultiOrderModel.from_path_data(paths, max_order=3, cached=False)
+    with pytest.raises(ValueError):
+        m.estimate_order(paths)
+    # temporal models lack the order-0 layer
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=2, delta=4)
+    with pytest.raises(ValueError):
+        m.estimate_order(paths, max_order=1)

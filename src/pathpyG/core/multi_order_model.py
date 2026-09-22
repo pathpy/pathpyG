@@ -508,28 +508,33 @@ class MultiOrderModel:
 
         Raises:
             ValueError: If the provided max_order is larger than the maximum order of the multi-order model
+                or if a layer of order 0 to max_order is missing from the multi-order model			
                 or if the input does not have the same set of nodes as the multi-order network
         """
         if max_order is None:
             max_order = max(self.layers)
-        if max_order > max(self.layers):
-            logger.error("max_order cannot be larger than maximum order of multi-order network")
-            raise ValueError("max_order cannot be larger than maximum order of multi-order network")
-        if max_order <= 1:
-            logger.error("max_order must be larger than one")
-            raise ValueError("max_order must be larger than one")
+        if max_order < 1:
+            logger.error("max_order must be at least 1, got %s", max_order)
+            raise ValueError(f"max_order must be at least 1, got {max_order}")
+        missing = [k for k in range(max_order + 1) if k not in self.layers]
+        if missing:
+            logger.error("MultiOrderModel is missing layers %s", missing)
+            raise ValueError(
+                f"estimating the order up to {max_order} requires layers 0 to {max_order}, but layers {missing} "
+                "are missing; build the model from path data with cached=True and a sufficient max_order"
+            )
         if set(dag_data.mapping.node_ids).intersection(set(self.layers[1].mapping.node_ids)) != set(  # type: ignore[arg-type]
             dag_data.mapping.node_ids  # type: ignore[arg-type]
         ):
             logger.error("Input paths do not have same set of nodes as multi-order network")
             raise ValueError("Input paths do not have same set of nodes as multi-order network")
 
-        max_accepted_order = 1
+        max_accepted_order = 0
         dag_graph = dag_data.data
 
         # Test for highest order that passes
         # likelihood ratio test against null model
-        for k in range(2, max_order + 1):
+        for k in range(1, max_order + 1):
             if self.likelihood_ratio_test(
                 dag_graph, max_order_null=k - 1, max_order=k, significance_threshold=significance_threshold
             )[0]:
