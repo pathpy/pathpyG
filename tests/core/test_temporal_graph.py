@@ -153,9 +153,3 @@ def test_get_window(long_temporal_graph):
 
 def test_str(simple_temporal_graph):
     assert str(simple_temporal_graph)
-
-
-def test_order():
-    t = TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 2)])
-    assert t.order == 1
-    assert "node_sequence" not in t.data

@@ -49,8 +49,9 @@ class Graph:
     and edge attributes. Data on nodes and edges are stored in an underlying instance of
     [`torch_geometric.data.Data`][torch_geometric.data.Data].
 
-    A `Graph` is always a first-order graph. Graphs whose nodes are paths of first-order
-    nodes are represented by [`HigherOrderGraph`][pathpyG.HigherOrderGraph].
+    A `Graph` is always a first-order graph, i.e. its nodes are entities rather than paths.
+    Only [`HigherOrderGraph`][pathpyG.HigherOrderGraph], whose nodes are paths of first-order
+    nodes, has an `order`.
 
     Info:
         The `data` attribute is a PyG Data object that contains the following attributes:
@@ -665,15 +666,6 @@ class Graph:
             num_self_loops = (self.data.edge_index[0] == self.data.edge_index[1]).sum().item()
             num_edges_wo_self_loops = self.data.edge_index.size(1) - int(num_self_loops)
             return int(num_edges_wo_self_loops / 2 + num_self_loops)
-
-    @property
-    def order(self) -> int:
-        """Return the order of the graph, which is always 1 for a first-order graph.
-
-        Returns:
-            int: order of the graph
-        """
-        return 1
 
     def is_directed(self) -> bool:
         """Return whether graph is directed.

@@ -22,7 +22,8 @@ def test_init():
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
     assert "node_sequence" not in g.data
-    assert g.order == 1
+    # only a HigherOrderGraph has an order
+    assert not hasattr(g, "order")
 
 
 def test_init_rejects_node_sequence():
