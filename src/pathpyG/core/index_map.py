@@ -387,9 +387,13 @@ class IndexMap:
             if self.id_shape == (-1,):
                 return torch.tensor([self.id_to_idx[node] for node in nodes.flatten()], device=device).reshape(shape)
             else:
+                # Leading dimensions index the IDs, trailing ones span a single tuple ID. The number
+                # of IDs is computed explicitly since `reshape(-1, 0)` is ambiguous for empty tuples.
+                lead_shape = shape[: len(shape) - len(self.id_shape) + 1]
+                ids = nodes.reshape(int(np.prod(lead_shape)), *self.id_shape[1:])
                 return torch.tensor(
-                    [self.id_to_idx[tuple(node.tolist())] for node in nodes.reshape(self.id_shape)], device=device
-                ).reshape(shape[: -len(self.id_shape) + 1])
+                    [self.id_to_idx[tuple(node.tolist())] for node in ids], dtype=torch.long, device=device
+                ).reshape(lead_shape)
         else:
             return torch.tensor(nodes, device=device)
 
