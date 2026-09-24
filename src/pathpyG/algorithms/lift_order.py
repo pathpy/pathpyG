@@ -4,8 +4,6 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce, cumsum, degree
 
-from pathpyG.core.graph import Graph
-
 
 def aggregate_node_attributes(
     edge_index: torch.Tensor, node_attribute: torch.Tensor, aggr: str = "src"
@@ -134,7 +132,7 @@ def lift_order_step(
     extension of the node sequences, so that the result again describes a graph whose
     nodes are paths of first-order nodes. The result is **not** aggregated: duplicate
     node sequences are left for [`aggregate_edge_index`][pathpyG.algorithms.lift_order.aggregate_edge_index]
-    (or [`HigherOrderGraph.from_aggregated`][pathpyG.HigherOrderGraph.from_aggregated]) to merge.
+    (or [`HigherOrderGraph.aggregate`][pathpyG.core.higher_order_graph.HigherOrderGraph.aggregate]) to merge.
 
     Args:
         edge_index: A **sorted** edge index tensor of shape (2, num_edges).
@@ -158,46 +156,97 @@ def lift_order_step(
 
 
 def aggregate_edge_index(
-    edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None, aggr: str = "sum"
-) -> Graph:
-    """Aggregate the possibly duplicated edges in the (higher-order) edge index.
+    edge_index: torch.Tensor,
+    node_sequence: torch.Tensor,
+    edge_weight: torch.Tensor | None = None,
+    node_weight: torch.Tensor | None = None,
+    edge_attrs: dict[str, torch.Tensor] | None = None,
+    min_num_nodes: int | None = None,
+    aggr: str = "sum",
+) -> Data:
+    r"""Aggregate the possibly duplicated edges in the (higher-order) edge index.
 
-    Aggregate the possibly duplicated edges in the (higher-order) edge index and return a graph object
-    containing the (higher-order) edge index without duplicates and the node sequences.
+    Aggregate the possibly duplicated edges in the (higher-order) edge index and return the
+    (higher-order) edge index without duplicates, together with the node sequences.
+
+    Like the rest of this module this works at the level of tensors and does not build a graph
+    object. Use [`HigherOrderGraph.aggregate`][pathpyG.core.higher_order_graph.HigherOrderGraph.aggregate]
+    to obtain a De Bruijn graph with its node ID mapping.
 
     This method can be seen as a higher-order generalization of the `torch_geometric.utils.coalesce` method.
     It is used for example to generate the DeBruijn graph of a given order from the corresponding line graph.
+
+    Rows of `node_sequence` are *instances*: one entry per occurrence of a higher-order node in the
+    data, before identical occurrences are merged. `edge_weight` and `node_weight` are given per
+    instance and are summed onto the merged edges and nodes respectively.
+
+    Info: Node and edge weights
+        For a De Bruijn graph of order $k$ built from observed paths, the aggregated weights are the
+        occurrence counts of $k$-grams and $(k+1)$-grams. They satisfy
+
+        $$
+        \mathrm{node\_weight}_k(w) = \mathrm{start\_weight}_k(w)
+            + \sum_{u \to w \in E_k} \mathrm{edge\_weight}_k(u \to w),
+        $$
+
+        because every occurrence of $w$ either starts an observation or is preceded by exactly one
+        instance of an in-edge of $w$. See
+        [`HigherOrderGraph`][pathpyG.core.higher_order_graph.HigherOrderGraph].
 
     Args:
         edge_index: The edge index of a (higher-order) graph where each source and destination node
             corresponds to a node which is an edge in the (k-1)-th order graph.
         node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to.
-        edge_weight: The edge weights corresponding to the edge index.
+        edge_weight: The edge weights corresponding to the edge index. Defaults to ones.
+        node_weight: Per-instance node weights, aligned with the rows of `node_sequence`. If given,
+            they are summed onto the aggregated nodes and stored as `node_weight`.
+        edge_attrs: Further per-instance edge attributes to carry along, keyed by the name to store
+            them under. They are reduced with `aggr` just like `edge_weight`.
+        min_num_nodes: Lower bound on the number of nodes of the aggregated graph. Only meaningful
+            for order 1, where first-order nodes that no path traverses are kept as isolated nodes
+            so that node-indexed attributes cover every first-order node.
         aggr: The aggregation method to use for the edge weights. One of "sum", "mean", "min", "max".
 
     Returns:
-        A graph object containing the aggregated edge index, the node sequences, the edge weights and the inverse index.
+        A [Data][torch_geometric.data.Data] object holding the aggregated edge index, the node
+        sequences and the edge weights, as well as the aggregated node weights if `node_weight`
+        was given.
     """
     if edge_weight is None:
         edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
 
-    unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
-    # If first order, then the indices in the node sequence are the inverse idx we would need already
-    if node_sequence.size(1) == 1:
-        mapped_edge_index = node_sequence.squeeze()[edge_index]
+    order = node_sequence.size(1)
+    if order == 1:
+        # Order-1 node indices already *are* first-order node indices, so no remapping is
+        # needed and untraversed first-order nodes remain as isolated nodes.
+        instance_to_node = node_sequence.squeeze(1)
+        num_nodes = int(instance_to_node.max().item()) + 1 if instance_to_node.numel() > 0 else 0
+        if min_num_nodes is not None:
+            num_nodes = max(num_nodes, min_num_nodes)
+        unique_nodes = torch.arange(num_nodes, device=edge_index.device).unsqueeze(1)
+        mapped_edge_index = instance_to_node[edge_index]
     else:
-        mapped_edge_index = inverse_idx[edge_index]
-    aggregated_edge_index, edge_weight = coalesce(
+        unique_nodes, instance_to_node = torch.unique(node_sequence, dim=0, return_inverse=True)
+        num_nodes = unique_nodes.size(0)
+        mapped_edge_index = instance_to_node[edge_index]
+
+    extra_attributes = list((edge_attrs or {}).items())
+    aggregated_edge_index, aggregated_attributes = coalesce(
         mapped_edge_index,
-        edge_attr=edge_weight,
-        num_nodes=unique_nodes.size(0),
+        edge_attr=[edge_weight] + [value for _, value in extra_attributes],
+        num_nodes=num_nodes,
         reduce=aggr,
     )
     data = Data(
         edge_index=aggregated_edge_index,
-        num_nodes=unique_nodes.size(0),
+        num_nodes=num_nodes,
         node_sequence=unique_nodes,
-        edge_weight=edge_weight,
-        inverse_idx=inverse_idx,
+        edge_weight=aggregated_attributes[0],
     )
-    return Graph(data)
+    for (name, _), value in zip(extra_attributes, aggregated_attributes[1:]):
+        data[name] = value
+    if node_weight is not None:
+        aggregated_node_weight = torch.zeros(num_nodes, dtype=node_weight.dtype, device=node_weight.device)
+        aggregated_node_weight.scatter_add_(0, instance_to_node, node_weight)
+        data.node_weight = aggregated_node_weight
+    return data

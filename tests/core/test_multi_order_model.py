@@ -1,18 +1,21 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 
-import numpy as np
+import pytest
 import torch
-from scipy.stats import chi2
 from torch_geometric import EdgeIndex
 
+from pathpyG.algorithms.temporal import extract_time_respecting_walks
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.path_data import PathData
+from pathpyG.core.temporal_graph import TemporalGraph
 
 
 def test_multi_order_model_init():
     model = MultiOrderModel()
     assert model.layers == {}
+    assert model.walk_length is None
+    assert model.num_observations == 0.0
 
 
 def test_multi_order_model_str():
@@ -24,6 +27,9 @@ def test_multi_order_model_str():
 
     model.layers[5] = "bar"
     assert str(model) == "MultiOrderModel with max. order 5"
+
+    model.walk_length = 7
+    assert str(model) == "MultiOrderModel with max. order 5 of time-respecting walks of 7 events"
 
 
 def test_iterate_lift_order(simple_graph_multi_edges):
@@ -42,124 +48,19 @@ def test_iterate_lift_order(simple_graph_multi_edges):
     assert gk.order == 2
 
 
-def test_dof():
-    line_data = PathData(IndexMap(list("abcd")))
-    line_data.append_walk(("a", "b", "c", "d"))
-    max_order = 4
-    m = MultiOrderModel.from_path_data(line_data, max_order=max_order)
-    for order in range(max_order + 1):
-        assert m.get_mon_dof(assumption="paths", max_order=order) == 3
-
-    #########
-
-    toy_paths_ho = PathData(IndexMap(list("abcde")))
-    toy_paths_ho.append_walk(("a", "c", "d"))
-    toy_paths_ho.append_walk(("b", "c", "e"))
-    max_order = 2
-    m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=max_order, mode="propagation")
-    assert m.get_mon_dof(assumption="paths", max_order=0) == 4
-    assert m.get_mon_dof(assumption="paths", max_order=1) == 5
-    assert m.get_mon_dof(assumption="paths", max_order=2) == 7
-
-
-def test_likelihood_ratio_test():
-    significance_threshold = 0.1
-
-    llh_zeroth = np.log(1 / 6) * 4 + np.log(2 / 6) * 2
-    llh_first = np.log(1 / 6) * 2 + 0 + 2 * np.log(1 / 2)
-    llh_second = np.log(1 / 6) * 2 + 0 + 0
-    dof_zeroth = 4
-    dof_first = 5
-    dof_second = 7
-    x_01 = -2 * (llh_zeroth - llh_first)
-    x_12 = -2 * (llh_first - llh_second)
-    dof_diff_01 = dof_first - dof_zeroth
-    dof_diff_12 = dof_second - dof_first
-    p_01 = 1 - chi2.cdf(x_01, dof_diff_01)
-    p_12 = 1 - chi2.cdf(x_12, dof_diff_12)
-
-    toy_paths_ho = PathData(IndexMap(list("abcde")))
-    toy_paths_ho.append_walk(("a", "c", "d"))
-    toy_paths_ho.append_walk(("b", "c", "e"))
-    dag_graph = toy_paths_ho.data
-    max_order = 2
-    m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=max_order)
-
-    bool_code_01, p_01_code = m.likelihood_ratio_test(
-        dag_graph, max_order_null=0, max_order=1, assumption="paths", significance_threshold=significance_threshold
+def test_iterate_lift_order_carries_node_weights(simple_graph_multi_edges):
+    """A node of the lifted graph is an edge of the input, so the input's edge weights become its node weights."""
+    edge_index = simple_graph_multi_edges.data.edge_index
+    _, _, _, gk = MultiOrderModel.iterate_lift_order(
+        edge_index=edge_index,
+        node_sequence=torch.arange(simple_graph_multi_edges.n).unsqueeze(1),
+        mapping=simple_graph_multi_edges.mapping,
+        edge_weight=torch.tensor([3.0, 5.0, 7.0, 11.0]),
+        save=True,
     )
-
-    bool_code_12, p_12_code = m.likelihood_ratio_test(
-        dag_graph, max_order_null=1, max_order=2, assumption="paths", significance_threshold=significance_threshold
-    )
-
-    assert bool_code_01 == (p_01 < significance_threshold)
-    assert np.isclose(p_01_code, p_01)
-    assert bool_code_12 == (p_12 < significance_threshold)
-    assert np.isclose(p_12_code, p_12)
-
-
-def test_log_likelihood():
-    toy_paths_ho = PathData(IndexMap(list("abcde")))
-    toy_paths_ho.append_walk(("a", "c", "d"))
-    toy_paths_ho.append_walk(("b", "c", "e"))
-    max_order = 2
-    m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=max_order, mode="propagation")
-    dag_graph = toy_paths_ho.data
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=0), np.log(1 / 6) * 4 + np.log(2 / 6) * 2)
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(1 / 6) * 2 + 0 + 2 * np.log(1 / 2))
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=2), np.log(1 / 6) * 2 + 0 + 0)
-    ################
-
-    toy_paths = PathData(IndexMap(list("abcde")))
-    toy_paths.append_walk(("a", "c", "d"))
-    toy_paths.append_walk(("b", "c", "e"))
-    toy_paths.append_walk(("a", "c", "e"))
-    toy_paths.append_walk(("b", "c", "d"))
-    max_order = 2
-    m = MultiOrderModel.from_path_data(toy_paths, max_order=max_order, mode="propagation")
-    dag_graph = toy_paths.data
-    assert np.isclose(
-        m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
-        np.log(2 / 12) * 8 + np.log(4 / 12) * 4,
-    )
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(2 / 12) * 4 + 0 + 4 * np.log(1 / 2))
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=2), np.log(1 / 6) * 4 + 0 + 4 * np.log(1 / 2))
-
-    ################
-
-    toy_paths = PathData(IndexMap(list("abcde")))
-    toy_paths.append_walk(("a",))
-    toy_paths.append_walk(("a", "b"))
-    toy_paths.append_walk(("a", "b", "c"))
-    max_order = 2
-    m = MultiOrderModel.from_path_data(toy_paths, max_order=max_order, mode="propagation")
-    dag_graph = toy_paths.data
-    assert np.isclose(
-        m.get_mon_log_likelihood(dag_graph, max_order=0),  # fails already at computing log_lh here
-        np.log(3 / 6) * 3 + np.log(2 / 6) * 2 + np.log(1 / 6) * 1,
-    )
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=1), np.log(3 / 6) * 3 + 0 + 0)
-    assert np.isclose(m.get_mon_log_likelihood(dag_graph, max_order=2), np.log(3 / 6) * 3 + 0 + 0)
-
-
-def test_estimate_order():
-    significance_threshold = 0.01
-    max_order = 2
-
-    ###
-
-    toy_paths_ho = PathData(IndexMap(list("abcde")))
-    toy_paths_ho.append_walk(("a", "c", "d"), weight=3)
-    toy_paths_ho.append_walk(("b", "c", "e"), weight=3)
-    m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=2)
-    assert m.estimate_order(toy_paths_ho, max_order=max_order, significance_threshold=significance_threshold) == 1
-
-    toy_paths_ho = PathData(IndexMap(list("abcde")))
-    toy_paths_ho.append_walk(("a", "c", "d"), weight=4)
-    toy_paths_ho.append_walk(("b", "c", "e"), weight=4)
-    m = MultiOrderModel.from_path_data(toy_paths_ho, max_order=max_order)
-    assert m.estimate_order(toy_paths_ho, max_order=2, significance_threshold=significance_threshold) == 2
+    # The three distinct edges (a,b), (a,c) and (b,c) carry 3 + 7, 5 and 11.
+    assert gk.data.node_sequence.tolist() == [[0, 1], [0, 2], [1, 2]]
+    assert gk.data.node_weight.tolist() == [10.0, 5.0, 11.0]
 
 
 def test_multi_order_model_from_paths(simple_walks_2):
@@ -168,9 +69,32 @@ def test_multi_order_model_from_paths(simple_walks_2):
     g2 = m.layers[2]
     assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [2, 2, 3, 4]]))
     assert torch.equal(g1.data.edge_weight, torch.tensor([2.0, 2.0, 2.0, 2.0]))
+    assert torch.equal(g1.data.node_weight, torch.tensor([2.0, 2.0, 4.0, 2.0, 2.0]))
 
     assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1], [2, 3]]))
     assert torch.equal(g2.data.edge_weight, torch.tensor([2.0, 2.0]))
+    assert torch.equal(g2.data.node_weight, torch.tensor([2.0, 2.0, 2.0, 2.0]))
+    assert m.num_observations == 4.0
+    assert m.walk_length is None
+
+
+def test_from_path_data_keeps_untraversed_nodes():
+    """First-order nodes no path traverses stay in the order-1 layer, with weight zero.
+
+    Regression test: they used to be missing, which shifted the indices of the zeroth-order
+    node distribution and silently mis-assigned the emission probabilities.
+    """
+    paths = PathData(IndexMap(list("abcde")))
+    paths.append_walk(("a", "b", "c"))
+    model = MultiOrderModel.from_path_data(paths, max_order=2)
+
+    assert model.layers[1].n == 5
+    assert model.layers[1].data.node_weight.tolist() == [1.0, 1.0, 1.0, 0.0, 0.0]
+
+
+def test_from_path_data_rejects_invalid_order(simple_walks_2):
+    with pytest.raises(ValueError, match="max_order must be at least one"):
+        MultiOrderModel.from_path_data(simple_walks_2, max_order=0)
 
 
 def test_multi_order_from_temporal_graph(simple_temporal_graph):
@@ -181,44 +105,95 @@ def test_multi_order_from_temporal_graph(simple_temporal_graph):
     assert torch.equal(g1.data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
     assert torch.equal(g2.data.edge_index, EdgeIndex([[0, 1, 1], [1, 2, 3]]))
     assert torch.equal(g3.data.edge_index, EdgeIndex([[0, 0], [1, 2]]))
+    assert m.walk_length == 3
 
 
-def test_to_DBGNN_data(simple_temporal_graph):
+def test_temporal_graph_walk_length_validation(simple_temporal_graph):
+    with pytest.raises(ValueError, match="must be at least max_order"):
+        MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4, walk_length=2)
+    with pytest.raises(ValueError, match="max_order must be at least one"):
+        MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=0, delta=4)
+
+
+def test_temporal_graph_without_walks_of_the_requested_length(caplog):
+    """The De Bruijn layers still describe the topology; only the statistics are empty."""
+    graph = TemporalGraph.from_edge_list([("a", "b", 1), ("c", "d", 99)])
+    with caplog.at_level("WARNING"):
+        model = MultiOrderModel.from_temporal_graph(graph, delta=1, max_order=2)
+    assert "no time-respecting walk" in caplog.text
+    assert model.num_observations == 0.0
+    assert model.layers[1].data.node_weight.tolist() == [0.0, 0.0, 0.0, 0.0]
+    assert model.layers[1].data.edge_num_walks.tolist() == [1.0, 1.0]
+
+    with pytest.raises(ValueError, match="no observations at all"):
+        model.log_likelihood(max_order=1)
+
+
+def test_temporal_layers_keep_unrealizable_parts(simple_temporal_graph):
+    """Walks that no observation can contain stay in the topology but carry weight zero."""
+    # With delta=1 only (a->b)@1 has no delta-respecting neighbour at all.
+    graph = TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 9), ("c", "d", 10)])
+    model = MultiOrderModel.from_temporal_graph(graph, delta=1, max_order=2)
+
+    assert model.layers[2].nodes == [("a", "b"), ("b", "c"), ("c", "d")]
+    assert model.layers[2].data.node_weight.tolist() == [0.0, 1.0, 1.0]
+    assert model.layers[1].data.edge_weight.tolist() == [0.0, 1.0, 1.0]
+    # The De Bruijn weights still count every event once.
+    assert model.layers[1].data.edge_num_walks.tolist() == [1.0, 1.0, 1.0]
+
+
+@pytest.mark.parametrize("delta", [1, 4, 10])
+@pytest.mark.parametrize("walk_length", [1, 2, 3])
+def test_temporal_statistics_match_enumerated_walks(long_temporal_graph, delta, walk_length):
+    """The dynamic program must reproduce what enumerating the walks gives, weight for weight."""
+    try:
+        temporal = MultiOrderModel.from_temporal_graph(
+            long_temporal_graph, delta=delta, max_order=walk_length, walk_length=walk_length
+        )
+    except ValueError:
+        pytest.skip("no walk of this length exists for this delta")
+
+    walks = extract_time_respecting_walks(long_temporal_graph, delta=delta, length=walk_length)
+    enumerated = MultiOrderModel.from_path_data(walks, max_order=walk_length)
+
+    assert temporal.num_observations == pytest.approx(float(walks.data.dag_weight.sum()))
+    for order in range(1, walk_length + 1):
+        temporal_layer, enumerated_layer = temporal.layers[order], enumerated.layers[order]
+        assert _nonzero_node_weights(temporal_layer) == _nonzero_node_weights(enumerated_layer)
+        assert _nonzero_edge_weights(temporal_layer) == _nonzero_edge_weights(enumerated_layer)
+
+
+def _nonzero_node_weights(layer) -> dict:
+    weights = layer.data.node_weight
+    return {layer.node_id(i): pytest.approx(float(weights[i])) for i in range(layer.n) if weights[i] != 0}
+
+
+def _nonzero_edge_weights(layer) -> dict:
+    edge_index = layer.data.edge_index.as_tensor()
+    weights = layer.data.edge_weight
+    return {
+        (layer.node_id(int(source)), layer.node_id(int(destination))): pytest.approx(float(weight))
+        for source, destination, weight in zip(edge_index[0], edge_index[1], weights)
+        if weight != 0
+    }
+
+
+def test_to_dbgnn_data(simple_temporal_graph):
     m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=3, delta=4)
     data = m.to_dbgnn_data(max_order=3)
     assert torch.equal(data.edge_index, EdgeIndex([[0, 1, 2, 2], [1, 2, 3, 4]]))
     assert torch.equal(data.edge_index_higher_order, EdgeIndex([[0, 0], [1, 2]]))
 
 
-def test_paths_indexing():
-    """Indexing test.
-    
-    This test was create to test that start indexes (ixs_start_paths_ho) of paths in 
-    get_intermediate_order_log_likelihood work correcly. Paths 'shrink' when encoded 
-    throgh higher-order nodes, and ixs_start_paths_ho has to correctly account for it.
-    """
-    paths_list = [
-        ("d", "b", "c"),
-        ("a", "b", "c"),
-        ("a", "b", "e"),
-        ("d", "b", "e"),
-        ("a",)
-        ]
-    frequencies = [
-        1,
-        20,
-        1,
-        20,
-        1
-        ]
-    mapping = IndexMap()
-    mapping.add_ids(np.unique(np.hstack(paths_list)))
-    pathdata = PathData(mapping)
-    pathdata.append_walks(node_seqs=paths_list, weights=frequencies)
-    max_order = 3
-    mon = MultiOrderModel.from_path_data(pathdata, max_order=max_order)
-    detected_order = mon.estimate_order(
-        pathdata,
-        max_order=max_order
-        )
-    assert detected_order == 2
+def test_to_dbgnn_data_uses_distinct_walk_counts(simple_temporal_graph):
+    """DBGNN is fed the De Bruijn weights, which do not depend on the observation length."""
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=2, delta=4)
+    data = m.to_dbgnn_data(max_order=2)
+    assert torch.equal(data.edge_weights, m.layers[1].data.edge_num_walks.float())
+    assert torch.equal(data.edge_weights_higher_order, m.layers[2].data.edge_num_walks.float())
+
+
+def test_to_dbgnn_data_missing_order(simple_temporal_graph):
+    m = MultiOrderModel.from_temporal_graph(simple_temporal_graph, max_order=2, delta=4)
+    with pytest.raises(ValueError, match="not found"):
+        m.to_dbgnn_data(max_order=5)

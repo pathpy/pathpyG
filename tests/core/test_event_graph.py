@@ -225,6 +225,9 @@ def test_higher_order_graph_from_weighted_event_graph(temporal_graph):
     Regression test: order 2 used to count each continuation once instead of carrying
     the weight of the event it starts from, so it disagreed with the temporal-graph
     route for every order but 2.
+
+    The De Bruijn weight that propagates the temporal edge weights is `edge_num_walks`;
+    `edge_weight` holds the observation statistics used for model selection.
     """
     temporal_graph.data.edge_weight = torch.tensor([2.0, 5.0, 11.0, 7.0])
     event_graph = EventGraph.from_temporal_graph(temporal_graph, delta=DELTA)
@@ -240,12 +243,18 @@ def test_higher_order_graph_from_weighted_event_graph(temporal_graph):
             from_tg.data.edge_index.as_tensor(),
         )
         assert torch.equal(from_eg.data.edge_weight, from_tg.data.edge_weight)
+        assert torch.equal(from_eg.data.edge_num_walks, from_tg.data.edge_num_walks)
 
     # The weights must actually reflect the temporal graph, not just agree with each other.
     order_2 = HigherOrderGraph.from_event_graph(event_graph, order=2)
     assert order_2.nodes == [("a", "b"), ("b", "c"), ("b", "d"), ("c", "e")]
     # (a,b)->(b,c) carries the weight of event (a->b)@1, (b,c)->(c,e) that of (b->c)@2
-    assert order_2.data.edge_weight.tolist() == [2.0, 5.0]
+    assert order_2.data.edge_num_walks.tolist() == [2.0, 5.0]
+    # The two observed walks of two events are (a->b, b->c) and (b->c, c->e), so (b,c) occurs
+    # twice and (a,b) and (c,e) once each. (b,d) is isolated in the event graph and realized by
+    # no walk of two events: it stays in the De Bruijn topology but carries weight zero and
+    # contributes nothing to any likelihood.
+    assert order_2.data.node_weight.tolist() == [1.0, 2.0, 0.0, 1.0]
 
 
 def test_to_device(event_graph):

@@ -51,7 +51,7 @@ class Graph:
 
     Info:
         The `data` attribute is a PyG Data object that contains the following attributes:
-            
+
         - `edge_index`: [Edge index][torch_geometric.EdgeIndex] of the graph. Entries correspond to indices in the node sequence.
         - `node_sequence`: Node sequence [tensor][torch.Tensor] of shape `(num_nodes, order)` where each entry
             corresponds to the index of first-order nodes in the underlying graph and mapping. For first-order graphs,
@@ -162,8 +162,9 @@ class Graph:
 
             You can also include a mapping of node IDs:
 
-            >>> g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-            ...                              mapping=pp.IndexMap(['a', 'b', 'c']))
+            >>> g = pp.Graph.from_edge_index(
+            ...     torch.LongTensor([[1, 1, 2], [0, 2, 1]]), mapping=pp.IndexMap(["a", "b", "c"])
+            ... )
             >>> print(g.mapping)
             a -> 0
             b -> 1
@@ -763,13 +764,6 @@ class Graph:
         d = d1.concat(d2)
         d.num_nodes = mapping.num_ids()
         d.edge_index = EdgeIndex(d.edge_index, sparse_size=(d.num_nodes, d.num_nodes))
-
-        # For higher-order graphs, we need to update the inverse_idx attribute
-        if "inverse_idx" in d:
-            d.inverse_idx = mapping.to_idxs(
-                np.concatenate([m1.to_ids(d1.inverse_idx), m2.to_ids(d2.inverse_idx)]),
-                device=d.inverse_idx.device,
-            )
 
         # If both graphs contain node attributes, reduce them using the specified method
         for k in d1.keys():

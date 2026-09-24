@@ -73,7 +73,24 @@ def test_aggregate_edge_index():
             [4, 5],  # Node 3
         ]
     )
-    g = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
-    assert g.data.edge_index.as_tensor().tolist() == [[0, 0, 1], [1, 2, 0]]
-    assert g.data.edge_weight.tolist() == [3, 3, 4]
-    assert g.data.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+    data = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
+    assert data.edge_index.tolist() == [[0, 0, 1], [1, 2, 0]]
+    assert data.edge_weight.tolist() == [3, 3, 4]
+    assert data.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+    # A tensor-level helper: it returns the aggregated data, not a graph object.
+    assert not hasattr(data, "mapping")
+
+
+def test_aggregate_edge_index_aggregates_node_weights():
+    """Per-instance node weights are summed onto the nodes that instances are merged into."""
+    data = aggregate_edge_index(
+        edge_index=torch.tensor([[0, 2], [1, 1]]),
+        node_sequence=torch.tensor([[1, 2], [2, 3], [1, 2]]),
+        edge_weight=torch.tensor([1.0, 2.0]),
+        node_weight=torch.tensor([5.0, 7.0, 11.0]),
+        edge_attrs={"edge_num_walks": torch.tensor([2.0, 3.0])},
+    )
+    # Instances 0 and 2 are both the path (1, 2), so their node weights add up.
+    assert data.node_weight.tolist() == [16.0, 7.0]
+    assert data.edge_weight.tolist() == [3.0]
+    assert data.edge_num_walks.tolist() == [5.0]

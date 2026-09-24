@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from pathpyG import config
+from pathpyG.algorithms.temporal_generative_models import temporal_clusters
 from pathpyG.core.multi_order_model import MultiOrderModel
-from pathpyG.core.path_data import PathData
-from pathpyG.core.temporal_graph import TemporalGraph
+from pathpyG.io.pandas import read_csv_path_data
 
 # to run benchmarks, do the following:
 # > pip install pytest-benchmark
@@ -13,13 +13,13 @@ from pathpyG.core.temporal_graph import TemporalGraph
 
 
 def higher_order_paths(max_order):
-    paths = PathData.from_ngram("docs/data/tube_paths_train.ngram")
-    MultiOrderModel.from_PathData(paths, max_order=max_order)
+    paths = read_csv_path_data("docs/data/tube_paths_train.ngram", weight=True, sep=",")
+    MultiOrderModel.from_path_data(paths, max_order=max_order)
 
 
 def higher_order_temporal_graph(max_order):
-    t = TemporalGraph.from_csv("docs/data/ants_1_1.tedges")
-    MultiOrderModel.from_temporal_graph(t, delta=30, max_order=max_order)
+    graph = temporal_clusters(seed=0)
+    MultiOrderModel.from_temporal_graph(graph, delta=1, max_order=max_order)
 
 
 @pytest.mark.benchmark

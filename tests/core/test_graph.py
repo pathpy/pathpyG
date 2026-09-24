@@ -372,14 +372,17 @@ def test_add_with_edge_attrs():
 
 
 def test_higher_order_graph(simple_walks, simple_walks_2):
+    """Adding two higher-order graphs merges their nodes and sums their observation counts."""
     ho_g1 = MultiOrderModel.from_path_data(simple_walks, max_order=2).layers[2]
     ho_g2 = MultiOrderModel.from_path_data(simple_walks_2, max_order=2).layers[2]
     g = ho_g1 + ho_g2
 
     assert g.n == 4
     assert g.m == 4
-    assert (g.mapping.to_ids(g.data.inverse_idx[:ho_g1.data.inverse_idx.size(0)]) == ho_g1.mapping.to_ids(ho_g1.data.inverse_idx)).all()
-    assert (g.mapping.to_ids(g.data.inverse_idx[ho_g1.data.inverse_idx.size(0):]) == ho_g2.mapping.to_ids(ho_g2.data.inverse_idx)).all()
+    assert g.mapping.to_ids(torch.arange(g.n)).tolist() == [["A", "C"], ["B", "C"], ["C", "D"], ["C", "E"]]
+    # Both graphs observe every second-order node twice, so the merged graph observes each four times.
+    assert torch.equal(g.data.node_weight, ho_g1.data.node_weight + ho_g2.data.node_weight)
+    assert g.data.node_weight.tolist() == [4.0, 4.0, 4.0, 4.0]
 
 
 def test_get_node_attr(simple_graph):
