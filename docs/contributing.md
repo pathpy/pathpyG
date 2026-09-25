@@ -32,7 +32,7 @@ To ensure version consistency, we use a [Development Container](https://containe
 
 ## Documentation
 
-This project uses [`MkDocs`](https://www.mkdocs.org/) for documentation. It is a static site generator that creates the necessary `html`-files automatically from the `markdown`-files and [:jupyter_logo: Jupyter](https://jupyter.org/) notebooks in the `docs/`-directory and the `Python`-files in `src/`. The documentation is hosted on GitHub Pages.
+This project uses [`MkDocs`](https://www.mkdocs.org/) for documentation. It is a static site generator that creates the necessary `html`-files automatically from the `markdown`-files and [marimo](https://marimo.io/) notebooks in the `docs/`-directory and the `Python`-files in `src/`. The documentation is hosted on GitHub Pages.
 
 ### Hosting the documentation locally
 
@@ -85,7 +85,17 @@ If you want to ignore specific `.py`-files in the code reference, you can add th
 
 ### Tutorials
 
-The tutorials are written in :jupyter_logo: Jupyter notebooks. They are located in the `docs/`-directory. You can add new tutorials by adding the notebook to the `docs/tutorial/`-directory and adding the path to the `mkdocs.yml`-file under `nav:`. The tutorials are automatically converted to `html`-files when the documentation is built.
+The tutorials are written as [marimo](https://marimo.io/) notebooks, i.e. plain `.py`-files, and are located in the `docs/tutorial/`-directory. You can open and edit a tutorial with
+```bash
+marimo edit docs/tutorial/basic_concepts.py
+```
+
+You can add new tutorials by adding the notebook to the `docs/tutorial/`-directory and adding the path to the `mkdocs.yml`-file under `nav:`. Note that the path in `nav:` needs to end with `.ipynb` instead of `.py`, since `docs/gen_tutorial_pages.py` executes each notebook and exports it (including all outputs) to a Jupyter notebook when the documentation is built, which is then rendered by `mkdocs-jupyter`. Notebooks that take too long to execute can be added to `NO_EXECUTE` in `docs/gen_tutorial_pages.py`.
+
+All tutorials are tested in CI by running them as Python scripts. You can do the same locally with
+```bash
+python docs/tutorial/basic_concepts.py
+```
 
 ### Adding new pages
 
