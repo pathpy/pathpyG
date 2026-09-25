@@ -8,6 +8,7 @@
 			"extensions": [
 				"ms-python.python",
 				"ms-toolsai.jupyter",
+				"marimo-team.vscode-marimo",
 				"charliermarsh.ruff",
 				"ms-python.mypy-type-checker"
 			],
@@ -24,6 +25,7 @@
 		"extensions": [
 			"ms-python.python",
 			"ms-toolsai.jupyter",
+			"marimo-team.vscode-marimo",
 			"charliermarsh.ruff",
 			"ms-python.mypy-type-checker"
 		]

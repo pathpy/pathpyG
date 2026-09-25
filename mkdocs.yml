@@ -45,6 +45,7 @@ plugins:
   - gen-files:
       scripts:
       - docs/gen_ref_pages.py
+      - docs/gen_tutorial_pages.py  # Export the marimo tutorials (with outputs) to Jupyter notebooks
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
@@ -64,13 +65,12 @@ plugins:
               - https://pytorch.org/docs/stable/objects.inv
               - https://pandas.pydata.org/docs/objects.inv
               - https://networkx.org/documentation/stable/objects.inv
-  - mkdocs-jupyter:
+  - mkdocs-jupyter:  # Renders the Jupyter notebooks exported from the marimo tutorials by docs/gen_tutorial_pages.py
       ignore_h1_titles: True
-      ignore: ["gen_ref_pages.py", "reference/pathpyG/visualisations/plot/documentation_plots.ipynb", "tutorial/archive/_higher_order_scalability.ipynb", "tutorial/archive/_scalability_analysis.ipynb"]
-      execute: True
-      execute_ignore: ["tutorial/manim_tutorial.ipynb", "tutorial/dbgnn.ipynb"]  # Skip notebooks that take too long
-      allow_errors: False
-      include_source: True
+      include: ["*.ipynb"]  # The marimo sources (*.py) are copied as-is so that they can be downloaded
+      ignore: ["reference/pathpyG/visualisations/plot/documentation_plots.ipynb"]
+      execute: False  # The notebooks are already executed during the export
+      include_source: False
       include_requirejs: False
   - git-revision-date-localized
   - mike: # Versioning
@@ -84,7 +84,7 @@ extra:
     provider: mike
   # Version being built by mike (e.g. "0.2.0-dev"); empty for plain mkdocs builds
   docs_version: !ENV [MIKE_DOCS_VERSION, ""]
-  # Git ref for "Open in Colab" links; set to the build commit for stable docs
+  # Git ref for "Open in molab" links; set to the build commit for stable docs
   git_ref: !ENV [DOCS_GIT_REF, main]
 
 extra_css:

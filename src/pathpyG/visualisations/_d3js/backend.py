@@ -28,7 +28,7 @@ from pathpyG.visualisations.pathpy_plot import PathPyPlot
 from pathpyG.visualisations.plot_backend import PlotBackend
 from pathpyG.visualisations.temporal_network_plot import TemporalNetworkPlot
 from pathpyG.visualisations.unfolded_network_plot import TimeUnfoldedNetworkPlot
-from pathpyG.visualisations.utils import rgb_to_hex, unit_str_to_float
+from pathpyG.visualisations.utils import in_marimo_notebook, rgb_to_hex, unit_str_to_float
 
 # create logger
 logger = logging.getLogger("root")
@@ -39,6 +39,8 @@ SUPPORTED_KINDS: dict[type, str] = {
     TimeUnfoldedNetworkPlot: "unfolded",
 }
 _CDN_URL = "https://cdn.jsdelivr.net/npm/d3@7/+esm"
+# Extra iframe height in px for the controls of temporal plots and the default body margin
+_MARIMO_IFRAME_MARGIN = 60
 
 
 class D3jsBackend(PlotBackend):
@@ -124,12 +126,18 @@ class D3jsBackend(PlotBackend):
         """Display visualization in appropriate environment.
 
         Automatically detects environment and displays visualization:
+        - marimo notebooks: Inline HTML display inside an iframe
         - Jupyter notebooks: Inline HTML display with IPython widgets
         - Scripts/terminals: Opens temporary HTML file in system browser
 
         !!! info "Environment Detection"
             Uses pathpyG config to detect interactive environment
             and choose appropriate display method automatically.
+
+        !!! note "marimo"
+            marimo does not execute `<script>` tags in HTML outputs, so the
+            visualization is embedded via `marimo.iframe`. The iframe height is the
+            configured plot height plus a margin for the controls of temporal plots.
         """
         # Default to CDN version if reachable
         try:
@@ -139,7 +147,12 @@ class D3jsBackend(PlotBackend):
         except (urllib.error.URLError, urllib.error.HTTPError):
             self.config["d3js_local"] = config.get("d3js_local", True)
 
-        if config["environment"]["interactive"]:
+        if in_marimo_notebook():
+            import marimo as mo
+
+            height = unit_str_to_float(self.config["height"], "px") + _MARIMO_IFRAME_MARGIN
+            mo.output.append(mo.iframe(self.to_html(), height=f"{height:.0f}px"))
+        elif config["environment"]["interactive"]:
             from IPython.display import display_html, HTML  # noqa I001
 
             display_html(HTML(self.to_html()))

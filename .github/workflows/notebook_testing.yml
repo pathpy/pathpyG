@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  pytest:
+  marimo:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,6 +22,7 @@ jobs:
         with:
           files: |
             .github/workflows/notebook_testing.yml
+            docs/tutorial/**
             src/**
             tests/**
             pyproject.toml
@@ -30,8 +31,25 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup
 
-      - name: Run tests
+      - name: Check notebooks
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          pytest --nbmake docs/tutorial/*ipynb --no-cov
-          pytest --nbmake docs/tutorial/advanced/*ipynb --no-cov
+          marimo check docs/tutorial/*.py docs/tutorial/advanced/*.py
+
+      # marimo notebooks are Python scripts; running them executes all cells
+      # and exits with a non-zero status if any cell raises an error.
+      - name: Run tutorial notebooks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          MPLBACKEND: Agg
+        run: |
+          failed=()
+          for notebook in docs/tutorial/*.py docs/tutorial/advanced/*.py; do
+            echo "::group::${notebook}"
+            python "${notebook}" || failed+=("${notebook}")
+            echo "::endgroup::"
+          done
+          if [ ${#failed[@]} -gt 0 ]; then
+            printf '::error::Notebook failed: %s\n' "${failed[@]}"
+            exit 1
+          fi
