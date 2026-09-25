@@ -106,6 +106,57 @@ def lift_order_edge_index_weighted(
     return ho_index, ho_edge_weight
 
 
+def lift_node_sequence(edge_index: torch.Tensor, node_sequence: torch.Tensor) -> torch.Tensor:
+    """Extend node sequences by one order along an edge index.
+
+    Each edge `(u, v)` of the (k-1)-th order graph becomes a node of the k-th order graph,
+    representing the path of `u` followed by the last first-order node of `v`.
+
+    Args:
+        edge_index: A **sorted** edge index tensor of shape (2, num_edges).
+        node_sequence: The node sequences of the (k-1)-th order graph, of shape (num_nodes, k-1).
+
+    Returns:
+        The node sequences of the k-th order graph, of shape (num_edges, k).
+    """
+    return torch.cat([node_sequence[edge_index[0]], node_sequence[edge_index[1]][:, -1:]], dim=1)
+
+
+def lift_order_step(
+    edge_index: torch.Tensor,
+    node_sequence: torch.Tensor,
+    edge_weight: torch.Tensor | None = None,
+    aggr: str = "src",
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
+    """Lift an edge index together with its node sequences by one order.
+
+    Combines the line-graph transformation of the edge index with the corresponding
+    extension of the node sequences, so that the result again describes a graph whose
+    nodes are paths of first-order nodes. The result is **not** aggregated: duplicate
+    node sequences are left for [`aggregate_edge_index`][pathpyG.algorithms.lift_order.aggregate_edge_index]
+    (or [`HigherOrderGraph.from_aggregated`][pathpyG.HigherOrderGraph.from_aggregated]) to merge.
+
+    Args:
+        edge_index: A **sorted** edge index tensor of shape (2, num_edges).
+        node_sequence: The node sequences of the (k-1)-th order graph.
+        edge_weight: The edge weights of the (k-1)-th order graph. If None, the lifted
+            graph is returned without weights.
+        aggr: The aggregation method for the edge weights. One of "src", "dst", "max",
+            "mul" or "add". Ignored if `edge_weight` is None.
+
+    Returns:
+        A tuple of the lifted edge index, the lifted node sequences and the aggregated
+        edge weights (None if `edge_weight` was None).
+    """
+    if edge_weight is None:
+        ho_index = lift_order_edge_index(edge_index, num_nodes=node_sequence.size(0))
+    else:
+        ho_index, edge_weight = lift_order_edge_index_weighted(
+            edge_index, edge_weight=edge_weight, num_nodes=node_sequence.size(0), aggr=aggr
+        )
+    return ho_index, lift_node_sequence(edge_index, node_sequence), edge_weight
+
+
 def aggregate_edge_index(
     edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None, aggr: str = "sum"
 ) -> Graph:

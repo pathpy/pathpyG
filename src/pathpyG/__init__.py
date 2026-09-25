@@ -8,6 +8,7 @@ from importlib.metadata import version as get_version
 __version__ = get_version("pathpyG")
 
 from pathpyG.core.graph import Graph
+from pathpyG.core.higher_order_graph import HigherOrderGraph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.path_data import PathData
@@ -21,6 +22,7 @@ from pathpyG.visualisations import layout, plot
 
 __all__ = [
     "Graph",
+    "HigherOrderGraph",
     "TemporalGraph",
     "EventGraph",
     "PathData",
