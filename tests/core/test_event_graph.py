@@ -7,6 +7,7 @@ from scipy.sparse.csgraph import dijkstra
 from torch_geometric.data import Data
 
 from pathpyG.core.event_graph import EventGraph
+from pathpyG.core.higher_order_graph import HigherOrderGraph
 from pathpyG.core.index_map import IndexMap
 from pathpyG.core.multi_order_model import MultiOrderModel
 from pathpyG.core.temporal_graph import TemporalGraph
@@ -216,6 +217,35 @@ def test_multi_order_model_construction(event_graph, temporal_graph):
             mom_eg.layers[k].data.edge_weight,
             mom_tg.layers[k].data.edge_weight,
         )
+
+
+def test_higher_order_graph_from_weighted_event_graph(temporal_graph):
+    """Aggregating an EventGraph respects the edge weights of the temporal graph.
+
+    Regression test: order 2 used to count each continuation once instead of carrying
+    the weight of the event it starts from, so it disagreed with the temporal-graph
+    route for every order but 2.
+    """
+    temporal_graph.data.edge_weight = torch.tensor([2.0, 5.0, 11.0, 7.0])
+    event_graph = EventGraph.from_temporal_graph(temporal_graph, delta=DELTA)
+
+    for k in (1, 2, 3):
+        from_eg = HigherOrderGraph.from_event_graph(event_graph, order=k)
+        from_tg = MultiOrderModel.from_temporal_graph(temporal_graph, delta=DELTA, max_order=k).layers[k]
+
+        assert from_eg.order == k
+        assert from_eg.nodes == from_tg.nodes
+        assert torch.equal(
+            from_eg.data.edge_index.as_tensor(),
+            from_tg.data.edge_index.as_tensor(),
+        )
+        assert torch.equal(from_eg.data.edge_weight, from_tg.data.edge_weight)
+
+    # The weights must actually reflect the temporal graph, not just agree with each other.
+    order_2 = HigherOrderGraph.from_event_graph(event_graph, order=2)
+    assert order_2.nodes == [("a", "b"), ("b", "c"), ("b", "d"), ("c", "e")]
+    # (a,b)->(b,c) carries the weight of event (a->b)@1, (b,c)->(c,e) that of (b->c)@2
+    assert order_2.data.edge_weight.tolist() == [2.0, 5.0]
 
 
 def test_to_device(event_graph):

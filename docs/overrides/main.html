@@ -7,14 +7,15 @@
   {%- endif %}
 {%- endblock %}
 
-<!-- Includes a download button in the Jupyter tutorials -->
+<!-- Includes download and "Open in molab" buttons in the marimo tutorials -->
 {% block content %}
 {% if page.nb_url %}
-    <a href="{{ page.nb_url }}" title="Download Notebook" class="md-content__button md-icon">
+    {% set nb_src = page.file.src_uri | replace(".ipynb", ".py") %}
+    <a href="{{ base_url }}/{{ nb_src }}" title="Download Notebook" class="md-content__button md-icon" download>
         {% include ".icons/material/download.svg" %}
     </a>
-    <a href="https://colab.research.google.com/github/pathpy/pathpyG/blob/{{ config.extra.git_ref }}/docs/{{ page.file.src_uri }}" title="Open in Google Colab" class="md-content__button md-icon">
-      {% include ".icons/simple/googlecolab.svg" %}
+    <a href="https://molab.marimo.io/github/pathpy/pathpyG/blob/{{ config.extra.git_ref }}/docs/{{ nb_src }}" title="Open in molab" class="md-content__button md-icon">
+      {% include ".icons/material/rocket-launch.svg" %}
     </a>
 {% endif %}
 {{ super() }}

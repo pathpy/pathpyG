@@ -18,17 +18,33 @@ nav:
     - Docker Installation: docker_installation.md
   - Tutorial:
     - tutorial.md
-    - Basic Concepts: tutorial/basic_concepts.ipynb    
-    - Temporal Graphs: tutorial/temporal_graphs.ipynb
-    - Interactive Graph Visualisation: tutorial/visualisation.ipynb    
-    - Temporal Graph Visualisation using Manim: tutorial/manim_tutorial.ipynb
-    - Graph Learning in Netzschleuder Data: tutorial/netzschleuder.ipynb
-    - Path Data and Higher-Order Models: tutorial/paths_higher_order.ipynb    
-    - Higher-Order Models for Time-Respecting Paths: tutorial/trp_higher_order.ipynb    
-    - Causality-Aware GNNs: tutorial/dbgnn.ipynb    
-    - Generative Models for Random Graphs: tutorial/generative_models.ipynb
-    - Implementation Concepts: tutorial/implementation_concepts.ipynb
+    - Basic Concepts: tutorial/basic/basic_concepts.ipynb    
+    - Temporal Graphs: tutorial/basic/temporal_graphs.ipynb
+    - Interactive Graph Visualisation: tutorial/basic/visualisation.ipynb    
+    - Temporal Graph Visualisation using Manim: tutorial/basic/manim_tutorial.ipynb
+    - Graph Learning in Netzschleuder Data: tutorial/basic/netzschleuder.ipynb
+    - Path Data and Higher-Order Models: tutorial/basic/paths_higher_order.ipynb    
+    - Higher-Order Models for Time-Respecting Paths: tutorial/basic/trp_higher_order.ipynb    
+    - Causality-Aware GNNs: tutorial/basic/dbgnn.ipynb    
+    - Generative Models for Random Graphs: tutorial/basic/generative_models.ipynb
+    - Implementation Concepts: tutorial/basic/implementation_concepts.ipynb
     - Develop your own plot Functions: plot_tutorial.md
+  - Advanced Tutorial:
+    - Introducing pathpyG: tutorial/advanced/01-01-pathpyG.ipynb
+    - Visualizing Networks with pathpyG: tutorial/advanced/01-02-visualisation.ipynb
+    - Laplacian Eigenmaps and Logistic Regression: tutorial/advanced/01-03-supervised-graph-learning.ipynb
+    - Perceptron Classification: tutorial/advanced/01-04-perceptron.ipynb
+    - PyTorch, Autograd, and Stochastic Gradient Descent: tutorial/advanced/01-05-torch-SGD.ipynb
+    - Feed-Forward Neural Networks: tutorial/advanced/01-06-neural-networks.ipynb
+    - Neural Message Passing in PyTorch Geometric: tutorial/advanced/01-07-message-passing-pyG.ipynb
+    - Graph Convolutional Networks: tutorial/advanced/01-08-GCNs.ipynb
+    - Node Classification with Additional Node Features: tutorial/advanced/01-09-GCN-node-features.ipynb
+    - Semi-Supervised Learning with GCNs: tutorial/advanced/01-10-semi-supervised.ipynb
+    - Temporal Graphs in pathpyG: tutorial/advanced/02-01-temporal-graphs.ipynb
+    - Time-Respecting Paths, Centralities and Communities: tutorial/advanced/02-02-trp-centralities-communities.ipynb
+    - Higher-Order Models for Time-Respecting Paths: tutorial/advanced/02-03-trp-event-graphs.ipynb
+    - Why Standard Temporal GNNs Ignore Causality: tutorial/advanced/02-05-tgn-baseline.ipynb
+    - Causality-Aware Graph Neural Networks: tutorial/advanced/02-06-dbgnn.ipynb
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
     - contributing.md
@@ -66,9 +82,8 @@ plugins:
               - https://networkx.org/documentation/stable/objects.inv
   - mkdocs-jupyter:
       ignore_h1_titles: True
-      ignore: ["gen_ref_pages.py", "reference/pathpyG/visualisations/plot/documentation_plots.ipynb", "tutorial/archive/_higher_order_scalability.ipynb", "tutorial/archive/_scalability_analysis.ipynb"]
-      execute: True
-      execute_ignore: ["tutorial/manim_tutorial.ipynb", "tutorial/dbgnn.ipynb"]  # Skip notebooks that take too long
+      ignore: ["*.py", "reference/pathpyG/visualisations/plot/documentation_plots.ipynb", "tutorial/archive/*"]
+      execute: False  # The committed notebooks already contain all outputs, see docs/export_tutorials.py
       allow_errors: False
       include_source: True
       include_requirejs: False

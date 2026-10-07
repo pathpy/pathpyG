@@ -31,7 +31,6 @@ Online documentation is available at [pathpy.net](https://www.pathpy.net).
 
 The documentation includes multiple tutorials that introduce the use of pathpyG to model temporal graph and path data. You will also find an API reference and other useful information that will help you to get started.
 
-
 Dependencies
 ------------
 
@@ -62,3 +61,43 @@ Development
 pathpyG development takes place on Github: https://github.com/pathpy/pathpyG
 
 Please submit any reproducible bugs you encounter to the [issue tracker](https://github.com/pathpy/pathpyG/issues).
+
+To build the notebooks and the documentation locally, follow these steps:
+
+1. Install the package with `pip install -e .[vis,cpu] --group doc`.
+
+Unless using `uv`, you may have to specify extra URLs for `pip` to install `pytorch` successfully:
+
+```bash
+pip install -e ".[vis,cpu]" --group doc \
+  --extra-index-url https://download.pytorch.org/whl/cpu \
+  --find-links https://data.pyg.org/whl/torch-2.8.0+cpu.html
+```
+
+2. Run `python docs/export_tutorials.py` to generate the tutorials.
+
+```bash
+python docs/export_tutorials.py docs/tutorial/basic/*.py docs/tutorial/advanced/*.py
+python docs/export_tutorials.py --check
+```
+
+3. Create a local branch `docs-local` and generate the `dev` documentation on that branch.
+
+```bash
+git branch -D docs-local
+VERSION=$(python -c "import pathpyG; print(pathpyG.__version__)")
+mike deploy -b docs-local --update-aliases "$VERSION-dev" dev
+```
+
+4. Generate the `stable` documentation on the `docs-local` branch.
+
+```bash
+DOCS_GIT_REF=$(git rev-parse HEAD) mike deploy -b docs-local --update-aliases "$VERSION" stable
+mike set-default -b docs-local stable
+```
+
+5. Serve the documentation from the `docs-local` branch.
+
+```bash
+mike serve -b docs-local
+```

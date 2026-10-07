@@ -24,7 +24,7 @@ jobs:
 
       - name: Publish docs
         env:
-          # Pin "Open in Colab" links to the commit these docs are built from	
+          # Pin "Open in molab" links to the commit these docs are built from	
           DOCS_GIT_REF: ${{ github.sha }}
         run: |
           git config user.name github-actions
