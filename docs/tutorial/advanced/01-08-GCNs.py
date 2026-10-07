@@ -124,6 +124,9 @@ def _(mo):
 def _(torch, torch_geometric):
     class GraphConvolution(torch_geometric.nn.MessagePassing):
         """A graph convolution layer following (Kipf, Welling 2017)."""
+        # Arguments passed to `propagate()`. pyG usually infers them from the source code of the class,
+        # which is not possible for classes defined in marimo notebooks
+        propagate_type = {'x': torch.Tensor, 'norm': torch.Tensor}
 
         def __init__(self, in_ch, out_ch):
             """Initialize the layer parameters."""

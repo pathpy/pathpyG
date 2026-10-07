@@ -341,7 +341,7 @@ def _(mo):
 
 @app.cell
 def _(device, m, t, torch):
-    data = m.to_dbgnn_data(max_order=2, mapping='last')
+    data = m.to_dbgnn_data(max_order=2, mapping='last').to(device)
     data.y = torch.tensor([ int(i) // 10 for i in t.mapping.node_ids], device=device)
     return (data,)
 

@@ -239,25 +239,25 @@ def _(mo):
     mo.md(r"""
     To generate a `MultiOrderModel` consisting of multiple layers of higher-order De Bruijn graph models, we can use the `MultiOrderModel.from_temporal_graph` method. We can further specify the maximum order of the highest-order layer, as well as the maximum time difference $\delta$ for time-respecting paths.
 
-    We use a maximum time difference of 15 minutes. As you can see below, we can efficiently generate a 5-th order model despite using a temporal graph with more than 188,000 time-stamped edges and considering all time-respecting paths up to length five with a large maximum time difference. Thanks to the use of GPU-accelerated operations, creating such a model takes less than 12 seconds on an (old) RTX 2090 GPU.
+    We use a maximum time difference of 15 minutes. As you can see below, we can efficiently generate a 5-th order model despite using a temporal graph with more than 188,000 time-stamped edges and considering all time-respecting paths up to length five with a large maximum time difference. Thanks to the use of GPU-accelerated operations, creating such a model takes less than 12 seconds on an (old) RTX 2080 GPU.
     """)
     return
 
 
 @app.cell
-def _():
+def _(device, mo, pp, t_sp):
     # Cell tags: skip-execution
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # m = pp.MultiOrderModel.from_temporal_graph(t_sp.to(device), delta=900, max_order=5)
-    return
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        m_2 = pp.MultiOrderModel.from_temporal_graph(t_sp.to(device), delta=900, max_order=5)
+    return (m_2,)
 
 
 @app.cell
-def _(m_1):
+def _(m_2):
     # Cell tags: skip-execution
-    print(m_1.layers[1])
-    print(m_1.layers[3])
+    print(m_2.layers[1])
+    print(m_2.layers[3])
     return
 
 

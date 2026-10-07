@@ -278,11 +278,11 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # e_i = pp.core.event_graph.EventGraph.build_edge_index(t, delta=1)
-    return
+def _(mo, pp, t):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        e_i = pp.core.event_graph.EventGraph.build_edge_index(t, delta=1)
+    return (e_i,)
 
 
 @app.cell
@@ -342,11 +342,11 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # dist, pred = pp.algorithms.temporal_shortest_paths(t, delta=1)
-    return
+def _(mo, pp, t):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        dist, pred = pp.algorithms.temporal_shortest_paths(t, delta=1)
+    return dist, pred
 
 
 @app.cell
@@ -442,11 +442,11 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # cl = pp.algorithms.centrality.temporal_closeness_centrality(t_baboons, delta=24*60)
-    return
+def _(mo, pp, t_baboons):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        cl = pp.algorithms.centrality.temporal_closeness_centrality(t_baboons, delta=24*60)
+    return (cl,)
 
 
 @app.cell
@@ -466,17 +466,17 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # cl = pp.algorithms.centrality.temporal_closeness_centrality(t_baboons, delta=1)
-    return
+def _(mo, pp, t_baboons):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        cl_1 = pp.algorithms.centrality.temporal_closeness_centrality(t_baboons, delta=1)
+    return (cl_1,)
 
 
 @app.cell
-def _(cl, pp, t_baboons):
-    print(cl)
-    _node_size = {v: 15 * (x / max(cl.values())) for v, x in cl.items()}
+def _(cl_1, pp, t_baboons):
+    print(cl_1)
+    _node_size = {v: 15 * (x / max(cl_1.values())) for v, x in cl_1.items()}
     pp.plot(t_baboons, node_size=_node_size, node_color=t_baboons.nodes)
     return
 
@@ -490,11 +490,11 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # bw = pp.algorithms.centrality.temporal_betweenness_centrality(t_baboons, delta=24*60)
-    return
+def _(mo, pp, t_baboons):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        bw = pp.algorithms.centrality.temporal_betweenness_centrality(t_baboons, delta=24*60)
+    return (bw,)
 
 
 @app.cell
@@ -506,17 +506,17 @@ def _(bw, pp, t_baboons):
 
 
 @app.cell
-def _():
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # bw = pp.algorithms.centrality.temporal_betweenness_centrality(t_baboons, delta=1)
-    return
+def _(mo, pp, t_baboons):
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        bw_1 = pp.algorithms.centrality.temporal_betweenness_centrality(t_baboons, delta=1)
+    return (bw_1,)
 
 
 @app.cell
-def _(bw, pp, t_baboons):
-    print(bw)
-    _node_size = {v: 15 * (x / max(bw.values())) for v, x in bw.items()}
+def _(bw_1, pp, t_baboons):
+    print(bw_1)
+    _node_size = {v: 15 * (x / max(bw_1.values())) for v, x in bw_1.items()}
     pp.plot(t_baboons, node_size=_node_size, node_color=t_baboons.nodes)
     return
 

@@ -478,9 +478,10 @@ def _(mo):
 def _(pp, torch):
     if torch.cuda.is_available():
         g_6 = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c')], device='cuda')
-        g_6.data.is_cuda
+        print(g_6.data.is_cuda)
     else:
-        print('CUDA not available')
+        print('CUDA not available, creating the graph on the CPU instead')
+        g_6 = pp.Graph.from_edge_list([('a', 'b'), ('b', 'c'), ('a', 'c')])
     return (g_6,)
 
 

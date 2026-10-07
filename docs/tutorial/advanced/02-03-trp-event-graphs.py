@@ -275,7 +275,7 @@ def _(pp, t_email):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    And finally, for the largest data set from the Sociopatterns collaboration, we use a maximum time difference of 15 minutes. As you can see below, we can efficiently generate a 5-th order model despite using a temporal graph with more than 188,000 time-stamped edges and considering all time-respecting paths up to length five with a large maximum time difference. Thanks to the use of GPU-accelerated operations, creating such a model takes less than 12 seconds on an (old) RTX 2090 GPU.
+    And finally, for the largest data set from the Sociopatterns collaboration, we use a maximum time difference of 15 minutes. As you can see below, we can efficiently generate a 5-th order model despite using a temporal graph with more than 188,000 time-stamped edges and considering all time-respecting paths up to length five with a large maximum time difference. Thanks to the use of GPU-accelerated operations, creating such a model takes less than 12 seconds on an (old) RTX 2080 GPU.
     """)
     return
 

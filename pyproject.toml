@@ -203,6 +203,8 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 120
+# Generated from the marimo notebooks (`*.py`) by `docs/export_tutorials.py`, which are linted instead
+extend-exclude = ["docs/tutorial/**/*.ipynb"]
 
 [tool.ruff.format]
 docstring-code-format = true

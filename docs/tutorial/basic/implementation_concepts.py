@@ -264,9 +264,9 @@ def _(mo):
 def _(graph, outdegree_per_dst, ptrs, torch):
     # Use these pointers to get the start of the edges for each higher-order src and repeat it `outdegree` times
     # Since we keep the ordering, all new higher-order edges that have the same src are indexed consecutively
-    _ho_edge_dsts = torch.repeat_interleave(ptrs[graph.data.edge_index[1]], outdegree_per_dst)
-    print('Higher-order edge destination indices (before correction):\n', _ho_edge_dsts.tolist())
-    return
+    ho_edge_dsts = torch.repeat_interleave(ptrs[graph.data.edge_index[1]], outdegree_per_dst)
+    print('Higher-order edge destination indices (before correction):\n', ho_edge_dsts.tolist())
+    return (ho_edge_dsts,)
 
 
 @app.cell(hide_code=True)
@@ -312,10 +312,10 @@ def _(mo):
 
 
 @app.cell
-def _(graph, idx_correction_1):
-    _ho_edge_dsts = _ho_edge_dsts + idx_correction_1
-    print('Higher-order edge destination indices (after correction):\n', _ho_edge_dsts.tolist())
-    print('Higher-order edge destinations:\n', graph.mapping.to_ids(graph.data.edge_index[:, _ho_edge_dsts]).T)
+def _(graph, ho_edge_dsts, idx_correction_1):
+    ho_edge_dsts_1 = ho_edge_dsts + idx_correction_1
+    print('Higher-order edge destination indices (after correction):\n', ho_edge_dsts_1.tolist())
+    print('Higher-order edge destinations:\n', graph.mapping.to_ids(graph.data.edge_index[:, ho_edge_dsts_1]).T)
     return
 
 

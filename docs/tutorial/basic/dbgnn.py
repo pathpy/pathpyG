@@ -151,12 +151,12 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(mo, pp, t):
     # Cell tags: skip-execution
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # m = pp.MultiOrderModel.from_temporal_graph(t, max_order=2)
-    return
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        m = pp.MultiOrderModel.from_temporal_graph(t, max_order=2)
+    return (m,)
 
 
 @app.cell
@@ -233,12 +233,12 @@ def _(deepcopy, t):
 
 
 @app.cell
-def _():
+def _(mo, pp, t_shuffled):
     # Cell tags: skip-execution
-    # magic command not supported in marimo; please file an issue to add support
-    # %%capture
-    # g2_shuffled = pp.MultiOrderModel.from_temporal_graph(t_shuffled, max_order=2).layers[2]
-    return
+    # Hide the progress output (originally done via `%%capture` in Jupyter)
+    with mo.capture_stdout(), mo.capture_stderr():
+        g2_shuffled = pp.MultiOrderModel.from_temporal_graph(t_shuffled, max_order=2).layers[2]
+    return (g2_shuffled,)
 
 
 @app.cell

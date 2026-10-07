@@ -516,4 +516,4 @@ You can find the default values for each argument in `pathpyG.toml` located in t
     However, if you want to change either `color`, `size`, or `opacity` for nodes or edges, the preferred way is to use the dedicated keyword arguments described in the previous sections.
 
 ---
-For more details and usage examples, see [Manim Visualisation Tutorial](/tutorial/manim_tutorial),[Visualisation Tutorial](/tutorial/visualisation) and [Develop your own plot Functions](/plot_tutorial)
+For more details and usage examples, see [Manim Visualisation Tutorial](/tutorial/basic/manim_tutorial),[Visualisation Tutorial](/tutorial/basic/visualisation) and [Develop your own plot Functions](/plot_tutorial)

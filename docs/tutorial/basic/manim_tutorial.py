@@ -47,7 +47,7 @@ def _(mo):
     mo.md(r"""
     ## Motivation and Learning Objectives
 
-    While you already learned how to visualise graphs with `PathpyG` in the [interactive graph visualisation](/tutorial/visualisation/) tutorial, those visualisations mostly considered static graphs.
+    While you already learned how to visualise graphs with `PathpyG` in the [interactive graph visualisation](/tutorial/basic/visualisation/) tutorial, those visualisations mostly considered static graphs.
     In this tutorial, you will learn how to use the `Manim` backend in `PathpyG` to generate videos (`.mp4`) or animations (`.gif`) of temporal graphs.
 
     ## Let's Get Started
@@ -173,7 +173,7 @@ def _(mo):
     mo.md(r"""
     ## Real-World Example
 
-    As a final example, we show how to visualise a real-world temporal graph with `Manim`. We use [Netschleuder Online Repository](https://networks.skewed.de/) (see our next tutorial our next tutorial [Graph Learning in Netzschleuder Data](/tutorial/netzschleuder/) for more information) to obtain a temporal interaction graph between baboons and color the types of interactions in different colors.
+    As a final example, we show how to visualise a real-world temporal graph with `Manim`. We use [Netschleuder Online Repository](https://networks.skewed.de/) (see our next tutorial our next tutorial [Graph Learning in Netzschleuder Data](/tutorial/basic/netzschleuder/) for more information) to obtain a temporal interaction graph between baboons and color the types of interactions in different colors.
     """)
     return
 

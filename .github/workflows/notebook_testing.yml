@@ -34,7 +34,14 @@ jobs:
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          marimo check docs/tutorial/*.py docs/tutorial/advanced/*.py
+          marimo check docs/tutorial/basic/*.py docs/tutorial/advanced/*.py
+
+      # The documentation renders the committed `.ipynb` exports of the notebooks without executing them,
+      # so they have to be re-exported whenever a notebook changes.
+      - name: Check exported notebooks are in sync
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          python docs/export_tutorials.py --check
 
       # marimo notebooks are Python scripts; running them executes all cells
       # and exits with a non-zero status if any cell raises an error.
@@ -44,7 +51,7 @@ jobs:
           MPLBACKEND: Agg
         run: |
           failed=()
-          for notebook in docs/tutorial/*.py docs/tutorial/advanced/*.py; do
+          for notebook in docs/tutorial/basic/*.py docs/tutorial/advanced/*.py; do
             echo "::group::${notebook}"
             python "${notebook}" || failed+=("${notebook}")
             echo "::endgroup::"
