@@ -77,7 +77,7 @@ pip install -e ".[vis,cpu]" --group doc \
 2. Run `python docs/export_tutorials.py` to generate the tutorials.
 
 ```bash
-python docs/export_tutorials.py docs/tutorial/basic/*.py docs/tutorial/advanced/*.py
+python docs/export_tutorials.py docs/tutorial/getting_started/*.py docs/tutorial/graph_learning/*.py docs/tutorial/advanced/*.py
 python docs/export_tutorials.py --check
 ```
 

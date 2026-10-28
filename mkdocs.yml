@@ -14,37 +14,38 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   - Getting Started:
-    - getting_started.md
-    - Docker Installation: docker_installation.md
-  - Tutorial:
-    - tutorial.md
-    - Basic Concepts: tutorial/basic/basic_concepts.ipynb    
-    - Temporal Graphs: tutorial/basic/temporal_graphs.ipynb
-    - Interactive Graph Visualisation: tutorial/basic/visualisation.ipynb    
-    - Temporal Graph Visualisation using Manim: tutorial/basic/manim_tutorial.ipynb
-    - Graph Learning in Netzschleuder Data: tutorial/basic/netzschleuder.ipynb
-    - Path Data and Higher-Order Models: tutorial/basic/paths_higher_order.ipynb    
-    - Higher-Order Models for Time-Respecting Paths: tutorial/basic/trp_higher_order.ipynb    
-    - Causality-Aware GNNs: tutorial/basic/dbgnn.ipynb    
-    - Generative Models for Random Graphs: tutorial/basic/generative_models.ipynb
-    - Implementation Concepts: tutorial/basic/implementation_concepts.ipynb
-    - Develop your own plot Functions: plot_tutorial.md
-  - Advanced Tutorial:
-    - Introducing pathpyG: tutorial/advanced/01-01-pathpyG.ipynb
-    - Visualizing Networks with pathpyG: tutorial/advanced/01-02-visualisation.ipynb
-    - Laplacian Eigenmaps and Logistic Regression: tutorial/advanced/01-03-supervised-graph-learning.ipynb
-    - Perceptron Classification: tutorial/advanced/01-04-perceptron.ipynb
-    - PyTorch, Autograd, and Stochastic Gradient Descent: tutorial/advanced/01-05-torch-SGD.ipynb
-    - Feed-Forward Neural Networks: tutorial/advanced/01-06-neural-networks.ipynb
-    - Neural Message Passing in PyTorch Geometric: tutorial/advanced/01-07-message-passing-pyG.ipynb
-    - Graph Convolutional Networks: tutorial/advanced/01-08-GCNs.ipynb
-    - Node Classification with Additional Node Features: tutorial/advanced/01-09-GCN-node-features.ipynb
-    - Semi-Supervised Learning with GCNs: tutorial/advanced/01-10-semi-supervised.ipynb
-    - Temporal Graphs in pathpyG: tutorial/advanced/02-01-temporal-graphs.ipynb
-    - Time-Respecting Paths, Centralities and Communities: tutorial/advanced/02-02-trp-centralities-communities.ipynb
-    - Higher-Order Models for Time-Respecting Paths: tutorial/advanced/02-03-trp-event-graphs.ipynb
-    - Why Standard Temporal GNNs Ignore Causality: tutorial/advanced/02-05-tgn-baseline.ipynb
-    - Causality-Aware Graph Neural Networks: tutorial/advanced/02-06-dbgnn.ipynb
+    - Installation:
+      - getting_started.md
+      - Docker Installation: docker_installation.md
+    - Tutorials:
+      - tutorial.md
+      - Basic Concepts: tutorial/getting_started/basic_concepts.ipynb
+      - Networks, Adjacency and Laplacian Matrices: tutorial/getting_started/network_matrices.ipynb
+      - Temporal Graphs: tutorial/getting_started/temporal_graphs.ipynb
+      - Interactive Graph Visualisation: tutorial/getting_started/visualisation.ipynb
+      - Temporal Graph Visualisation using Manim: tutorial/getting_started/manim_tutorial.ipynb
+      - Generative Models for Random Graphs: tutorial/getting_started/generative_models.ipynb
+      - Graph Learning in Netzschleuder Data: tutorial/getting_started/netzschleuder.ipynb
+  - Advanced Concepts:
+    - Graph Learning Foundations:
+      - Laplacian Eigenmaps and Logistic Regression: tutorial/graph_learning/supervised_graph_learning.ipynb
+      - Perceptron Classification: tutorial/graph_learning/perceptron.ipynb
+      - PyTorch, Autograd, and Stochastic Gradient Descent: tutorial/graph_learning/torch_sgd.ipynb
+      - Feed-Forward Neural Networks: tutorial/graph_learning/neural_networks.ipynb
+      - Neural Message Passing in PyTorch Geometric: tutorial/graph_learning/message_passing_pyg.ipynb
+      - Graph Convolutional Networks: tutorial/graph_learning/gcns.ipynb
+      - Node Classification with Additional Node Features: tutorial/graph_learning/gcn_node_features.ipynb
+      - Semi-Supervised Learning with GCNs: tutorial/graph_learning/semi_supervised.ipynb
+    - Causality-Aware Temporal Network Analysis:
+      - Time-Respecting Paths, Centralities and Communities: tutorial/advanced/trp_centralities_communities.ipynb
+      - Path Data and Higher-Order Models: tutorial/advanced/paths_higher_order.ipynb
+      - Higher-Order Models for Time-Respecting Paths: tutorial/advanced/trp_higher_order.ipynb
+    - Causality-Aware Temporal Graph Learning:
+      - De Bruijn Graph Neural Networks: tutorial/advanced/dbgnn.ipynb
+      - Why Standard Temporal GNNs Ignore Causality: tutorial/advanced/tgn_baseline.ipynb
+    - Extending PathpyG:
+      - Implementation Concepts: tutorial/advanced/implementation_concepts.ipynb
+      - Develop your own plot Functions: plot_tutorial.md
   - Code Reference: reference/ # The rest is done automatically by literate-nav
   - Contributing: 
     - contributing.md

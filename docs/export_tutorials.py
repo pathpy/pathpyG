@@ -10,7 +10,7 @@ Usage:
     uv run --extra cpu python docs/export_tutorials.py
 
     # Re-export specific notebooks, e.g. after a change to pathpyG that affects their outputs
-    uv run --extra cpu python docs/export_tutorials.py docs/tutorial/basic/basic_concepts.py
+    uv run --extra cpu python docs/export_tutorials.py docs/tutorial/getting_started/basic_concepts.py
 
     # Only check that all `.ipynb` are in sync with their `.py` (exits with status 1 otherwise)
     uv run python docs/export_tutorials.py --check
