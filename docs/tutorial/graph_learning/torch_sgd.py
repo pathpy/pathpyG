@@ -20,7 +20,7 @@ def _(mo):
     *Training Workshop: Introduction to Deep Graph Learning*
     *Ingo Scholtes, CAIDAS, Julius-Maximilians-Universität Würzburg (JMU), Germany*
 
-    For the simple example discussed in the previous notebook, the parameters learned by the perceptron model (using gradient descent minimization of the loss function) are identical to the parameters that we obtained by fitting the logistic regression model (using gradient ascent maximization of the likelihood function). This is one of the simplest possible examples of a neural network, where the "network" actually consists of a single neuron that maps one or more inputs to a single output.
+    For the simple example discussed in the previous notebook, the perceptron model trained by gradient descent minimization of a loss function yields a decision boundary that closely resembles that of a logistic regression classifier. This is one of the simplest possible examples of a neural network, where the "network" actually consists of a single neuron that maps one or more inputs to a single output.
 
     We now implement this simple perceptron classifier in the popular neural network library `pytorch`. We also introduce the `autograd` feature, which is used to automatically calculate gradients of loss functions.
     """)
@@ -241,11 +241,11 @@ def _(mo):
 
     3.) We finally perform the actual optimization step, i.e. using the learning rate, we nudge the model parameters in the direction of the gradient.
 
-    For the sigmoid activation function $\sigma(x) = \frac{1}{e+e^{-x}}$ we obtain the gradients
+    For the sigmoid activation function $\sigma(x) = \frac{1}{1+e^{-x}}$ we obtain the gradients
 
     $ \Delta \beta_{j}=  (\hat{y}_{s}-y_{s})y_s(1-y_s)x_{sj} $
 
-    We are now ready to train our first `pytorch` model. We follow the same approach as before, i.e. we create the model, set the hyperparameters and initialize an optimizer. Here we use the implementation of stochastic gradient descent included in `pytorch`. This actually follows the same approach as our implementation in the previous notebooks, however here the gradients are (automatically) computed such that we minimize a loss function (rather than maximizing the likelihood function).
+    We are now ready to train our first `pytorch` model. We follow the same approach as before, i.e. we create the model, set the hyperparameters and initialize an optimizer. Here we use the implementation of stochastic gradient descent included in `pytorch`. This actually follows the same approach as our implementation in the previous notebooks, however here the gradients are (automatically) computed such that we minimize a loss function.
 
     The name "stochastic" gradient descent refers to the fact that - rather than calculating the gradient for the whole data set it is estimated based on a small sample (i.e. for the batch size used in each iteration).
     """)
@@ -273,7 +273,7 @@ def _(mo):
     mo.md(r"""
     We now compare this to a analytical derivation of the gradient, which we can calculate as (verify this as an home exercise!):
 
-    $\nabla L = (\frac{\partial L}{\partial \beta_0}, \frac{\partial L}{\partial \beta_1}) = \left(2 \cdot (\hat{y}_i-y_i)\cdot y_i\cdot (1-y_i), 2 \cdot (\hat{y}_i-y_i)\cdot y_i\cdot (1-y_i)\cdot x_i \right)$
+    $\nabla L = (\frac{\partial L}{\partial \beta_0}, \frac{\partial L}{\partial \beta_1}) = \left(2 \cdot (y_i-\hat{y}_i)\cdot y_i\cdot (1-y_i), 2 \cdot (y_i-\hat{y}_i)\cdot y_i\cdot (1-y_i)\cdot x_i \right)$
     """)
     return
 

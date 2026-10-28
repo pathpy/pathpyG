@@ -323,11 +323,11 @@ def _(mo):
     mo.md(r"""
     To generate an undirected random graph based on the stochastic block model, we must minimally specify two parameters:
 
-    The stochastic block matrix $M$ contains edge probabilities for all pairs of nodes where the source and target belong to different blocks.
+    The stochastic block matrix $M$ contains edge probabilities for all pairs of blocks, i.e. the entry $M_{ij}$ is the probability of an edge between a node in block $i$ and a node in block $j$. The diagonal entries thus give the probabilities of edges within a block.
 
     The block assignment vector $z$ assigns nodes to blocks (based on their index). The length of this vector implicitly determined the number of nodes.
 
-    In the example below, we generate a random graph with eight nodes, where the first four nodes `a` - `d` are assigned to block 0 and the last four nodes `e` - `h` are assigned to block 1. Edges between node pairs where both nodes are in block 0 are generated with probability $0.95$. If both nodes are in block 1 edges are generated with probability $0.85$. If the nodes are in different blocks, edges are generated with probability $0.1$.
+    In the example below, we generate a random graph with eight nodes, where the first four nodes `a` - `d` are assigned to block 0 and the last four nodes `e` - `h` are assigned to block 1. Edges between node pairs where both nodes are in block 0 are generated with probability $0.95$. If both nodes are in block 1 edges are generated with probability $0.85$. If the nodes are in different blocks, edges are generated with probability $0.15$.
     """)
     return
 

@@ -111,7 +111,7 @@ def _(mo):
 
     The `plot` function in `pathpyG` stands out as the simplest and most direct method for creating visualizations. Designed to encapsulate all the plotting capabilities of `pathpyG` in a single command, it streamlines the process of generating quick and efficient plots. This functionality is particularly beneficial for users who seek immediate visual feedback from their data without delving into more complex coding. The only prerequisite for using this function is the `Graph` object, which serves as the foundation for the visualization. Moreover, when working within an interactive environment, such as a `Jupyter notebook`, the `plot` function is particularly powerful. In such settings, invoking the `plot` command will automatically generate and display an interactive visualization. This feature is particularly beneficial as it allows for immediate visual feedback, making it an ideal tool for exploratory data analysis where quick and efficient visualization is key.
 
-    In the interactive visualization below, you can zoom and pan (by holding the Shift key while using the mouse or mouse wheel) and drag individual nodes. Try what happens if you drag a node and release the mouse button.
+    In the interactive visualization below, you can drag individual nodes. Try what happens if you drag a node and release the mouse button.
     """)
     return
 
@@ -163,7 +163,7 @@ def _(mo):
     mo.md(r"""
     ### Quick Introduction to Layouts
 
-    An important aspect to consider is the layout of your plot. The previous plot we generated is static, meaning the positions of the nodes are fixed and do not change. This fixed arrangement presents a unique challenge, as finding the optimal placement for nodes and edges to convey information effectively is not a straightforward task. To assist with this, `pathpyG` supports simple layout functions designed to create visually appealing and coherent graphs. By default, nodes are assigned random locations for computational efficiency. However, this arrangement can be significantly improved with the use of the `layout` keyword in the `plot` function, allowing for more structured and meaningful representations of your graph.
+    An important aspect to consider is the layout of your plot. The previous plot we generated is static, meaning the positions of the nodes are fixed and do not change. This fixed arrangement presents a unique challenge, as finding the optimal placement for nodes and edges to convey information effectively is not a straightforward task. To assist with this, `pathpyG` supports simple layout functions designed to create visually appealing and coherent graphs. By default, the `matplotlib` and `tikz` backends place nodes using the Fruchterman-Reingold spring layout, while the interactive `d3js` backend runs a force simulation in the browser. This arrangement can be adjusted with the use of the `layout` keyword in the `plot` function, allowing for more structured and meaningful representations of your graph.
 
     For example, `pathpyG` includes support for sophisticated layout algorithms, such as the Fruchterman-Reingold algorithm for force-directed layouts. This can be activated using the `"fr"` option, which applies a physics-based approach to arrange nodes and edges in a way that visually represents their relational dynamics. Such force-directed layouts are particularly useful for highlighting the underlying structure and relationships within the data.
     """)
@@ -238,7 +238,7 @@ def _(mo):
     mo.md(r"""
     ### Colormaps
 
-    In many instances, particularly when visualizing numerical data, the use of color gradients to represent values can greatly enhance the clarity and effectiveness of a plot. `pathpyG` addresses this need through its native support for `colormaps`. When the colors of node or edge elements are defined using `int` or `float` values, `pathpyG` automatically assigns colors based on these colormaps, effectively interpolating the correct color value for each element. By default, `pathpyG` offers a simple colormap that transitions from red to green, sufficient for many basic visualization needs. However, for more customized or advanced styling, users have the option to utilize any colormap from the extensive color palettes provided by `matplotlib`. This library offers a wide range of color schemes, enabling you to select the perfect palette to convey the nuances of your data.
+    In many instances, particularly when visualizing numerical data, the use of color gradients to represent values can greatly enhance the clarity and effectiveness of a plot. `pathpyG` addresses this need through its native support for `colormaps`. When the colors of node or edge elements are defined using `int` or `float` values, `pathpyG` automatically assigns colors based on these colormaps, effectively interpolating the correct color value for each element. By default, `pathpyG` uses the `cividis` colormap from `matplotlib`, which is sufficient for many basic visualization needs. However, for more customized or advanced styling, users have the option to utilize any colormap from the extensive color palettes provided by `matplotlib`. This library offers a wide range of color schemes, enabling you to select the perfect palette to convey the nuances of your data.
     """)
     return
 

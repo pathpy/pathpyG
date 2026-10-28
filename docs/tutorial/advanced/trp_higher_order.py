@@ -175,7 +175,7 @@ def _(pp, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    If we only need a single order $k$, we can directly create the corresponding `HigherOrderGraph` using the class method `HigherOrderGraph.from_temporal_graph`. Note that each call constructs all lower orders internally, so if we need several orders, it is more efficient to create a `MultiOrderModel` once and access its layers. For the third-order model of our example, we obtain the four time-respecting paths of length two as nodes:
+    If we only need a single order $k$, we can directly create the corresponding `HigherOrderGraph` using the class method `HigherOrderGraph.from_temporal_graph`. Note that each call constructs all lower orders internally, so if we need several orders, it is more efficient to create a `MultiOrderModel` once and access its layers. For the third-order model of our example, we obtain the six different time-respecting paths of length two as nodes and the four time-respecting paths of length three as edges:
     """)
     return
 

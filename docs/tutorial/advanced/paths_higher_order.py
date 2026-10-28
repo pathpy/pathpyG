@@ -218,11 +218,11 @@ def _(mo):
 @app.cell
 def _(paths_2, pp):
     _m = pp.MultiOrderModel.from_path_data(paths_2, max_order=1)
-    g_2 = _m.layers[1]
-    print(g_2.data.edge_index)
-    print(g_2.data.edge_weight)
-    pp.plot(g_2);
-    return (g_2,)
+    _g = _m.layers[1]
+    print(_g.data.edge_index)
+    print(_g.data.edge_weight)
+    pp.plot(_g);
+    return
 
 
 @app.cell(hide_code=True)
@@ -244,8 +244,9 @@ def _(mo):
 @app.cell
 def _(paths, pp):
     _m = pp.MultiOrderModel.from_path_data(paths, max_order=2)
-    pp.plot(_m.layers[2], edge_size=5);
-    return
+    g_2 = _m.layers[2]
+    pp.plot(g_2, edge_size=5);
+    return (g_2,)
 
 
 @app.cell(hide_code=True)
@@ -277,15 +278,16 @@ def _(mo):
 @app.cell
 def _(paths_2, pp):
     _m = pp.MultiOrderModel.from_path_data(paths_2, max_order=2)
-    pp.plot(_m.layers[2]);
-    return
+    g_2b = _m.layers[2]
+    pp.plot(g_2b);
+    return (g_2b,)
 
 
 @app.cell
-def _(g_2):
-    print(g_2.mapping)
-    print(g_2.data.edge_index)
-    print(g_2.data.edge_weight)
+def _(g_2b):
+    print(g_2b.mapping)
+    print(g_2b.data.edge_index)
+    print(g_2b.data.edge_weight)
     return
 
 
@@ -361,6 +363,13 @@ def _(mo):
     mo.md(r"""
     Let us compare this to a second-order graph model of the second path data set `paths_2` from above, which corresponds to a network where all possible paths of length two actually occur. Hence, different from the data in `paths`, all pairs of nodes in this graph can causally influence each other via paths of length two.
     """)
+    return
+
+
+@app.cell
+def _(g_2b):
+    for _e in g_2b.edges:
+        print(_e, g_2b['edge_weight', _e[0], _e[1]].item())
     return
 
 
@@ -551,7 +560,7 @@ def _(device, paths_tube, pp):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    As we shall see in the following two units, the `MultiOrderGraph` class is also the basis for the GPU-based analysis and modelling of causal structures in temporal graphs. In particular, the underlying generalization of first-order static graph models to higher-order De Bruijn graphs allows us to easily build causality-aware graph neural network architectures that consider both the topology and the temoral ordering of time-stamped edges in a temporal graph. We will
+    As we shall see in the following two units, the `MultiOrderModel` class is also the basis for the GPU-based analysis and modelling of causal structures in temporal graphs. In particular, the underlying generalization of first-order static graph models to higher-order De Bruijn graphs allows us to easily build causality-aware graph neural network architectures that consider both the topology and the temoral ordering of time-stamped edges in a temporal graph.
     """)
     return
 

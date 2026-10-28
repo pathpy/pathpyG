@@ -97,7 +97,7 @@ def _(t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    We can also directly create a temporal graph from an instance of `pyG.TemporalData`
+    We can also directly create a temporal graph from a `pyG` `Data` object that has an `edge_index` and a `time` tensor
     """)
     return
 
@@ -213,7 +213,7 @@ def _(pp, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The source nodes, destination nodes and timestamps of time-stamped edges are stored as a `pyG TemporalData` object, which we can access in the following way.
+    The source nodes, destination nodes and timestamps of time-stamped edges are stored in a `pyG` `Data` object with an `edge_index` and a `time` tensor, which we can access in the following way.
     """)
     return
 

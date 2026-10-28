@@ -187,7 +187,7 @@ def _(pp):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The timestamps are provided in seconds since epoch (converted from unix time). We first convert them to a more human-readable format (hours since the first interaction):
+    The timestamps are provided in seconds since epoch (converted from unix time). We first convert them to a more human-readable format (12-hour intervals since the first interaction):
     """)
     return
 
@@ -227,7 +227,7 @@ def _(colors, g, pp):
     pp.plot(
         g,
         backend="manim",
-        layout_window_size=12,  # three days
+        layout_window_size=12,  # six days
         layout="kk",
         edge_color=colors,
         edge_size=2.5,

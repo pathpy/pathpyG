@@ -348,7 +348,7 @@ def _(deg, source, target):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Apart from an edge index and a tensor with the node features, the `propagate` function of the `MessagePassing` base class accepts an argument `norm`. It is a tensor of shape (m,1), whose entries capture the normalization factors that are applied in the exchange of all messages across all $m$ edges of the network. The symmetric degree-based normalization term
+    Apart from an edge index and a tensor with the node features, the `propagate` function of the `MessagePassing` base class accepts an argument `norm`. It is a tensor with $m$ entries, one per edge, which capture the normalization factors that are applied in the exchange of all messages across all $m$ edges of the network. The symmetric degree-based normalization term
 
     $$ \frac{1}{\sqrt{d_i} \cdot \sqrt{d_j}} $$
 
@@ -375,7 +375,7 @@ def _(deg, source, target):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Let's now put all pieces together: We include self-loops, the linear transformation of node features using an instance of `torch.nn.Linear`, as well as the symmetric degree-based normalization. Conveniently, we can pass a normalization tensor (with one entry per directed edge) to the `propagate` function. We then apply this during the actual message passing, implemented in the body of `message`. This is done by multiplying the transposed normalization tensor (which we compute as `view(-1,1)`) with the node features. Note that in the `message` function node features are automatically **lifted** to the level of edges, i.e. `x_j` has shape $(m,1)$ and includes the node features of all source nodes for all (directed) edges. This allows us to simply multiply the transposed `norm` tensor (shape $(1,m)$) with `x_j` (shape $(m,1$):
+    Let's now put all pieces together: We include self-loops, the linear transformation of node features using an instance of `torch.nn.Linear`, as well as the symmetric degree-based normalization. Conveniently, we can pass a normalization tensor (with one entry per directed edge) to the `propagate` function. We then apply this during the actual message passing, implemented in the body of `message`. This is done by reshaping the normalization tensor to shape $(m,1)$ using `view(-1,1)` and multiplying it element-wise with the node features. Note that in the `message` function node features are automatically **lifted** to the level of edges, i.e. `x_j` has shape $(m,d)$ and includes the $d$-dimensional node features of the source nodes of all (directed) edges. Reshaping `norm` to shape $(m,1)$ allows it to be broadcast against `x_j`, so that each message is scaled by the normalization factor of its edge:
     """)
     return
 

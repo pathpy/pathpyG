@@ -127,7 +127,7 @@ def _(torch):
     # create perceptron and configure learning process
     model = Perceptron()
 
-    # we use the mean absolute diff between target and prediction as loss function
+    # we use the mean squared error between target and prediction as loss function
     loss_func = torch.nn.MSELoss()
 
     # the number of epochs gives the number of times we run the 
@@ -281,7 +281,7 @@ def _(mo):
     mo.md(r"""
     We can now train our model. Following the previous notebook, for this we need:
 
-    1) A loss function to evaluate the current performance of our model. Note that the loss function must be chosen such that it fits the output of our model. Here, by using the sigmoid activation function and a single output variable, our model outputs the probability of a class (e.g. class 1). Here, we can use the binary cross entropy loss function, which
+    1) A loss function to evaluate the current performance of our model. Note that the loss function must be chosen such that it fits the output of our model. Here, by using the sigmoid activation function and a single output variable, our model outputs the probability of a class (e.g. class 1). Here, we again use the mean squared error between the predicted class probability and the label as loss function. A binary cross entropy loss, which is tailored to probabilistic outputs, would be an equally valid choice and is used in the later tutorials on graph convolutional networks.
 
     2) Gradients of all our model parameters, which are automatically calculated by the `autograd` module when we backpropagate the loss function
 

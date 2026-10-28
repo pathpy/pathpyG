@@ -284,7 +284,7 @@ def _(mo):
 
     Time-respecting paths also let us uncover **temporal communities**: groups of nodes that are connected by many time-respecting paths, even in cases where this pattern is not visible in the topology of the time-aggregated graph. This is exactly the phenomenon that motivates the higher-order De Bruijn graph models introduced in the following tutorials, but here we first take a simple, simulation-based perspective.
 
-    We load a synthetic temporal graph with 30 nodes and 60,000 time-stamped interactions, which was generated with a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community). Note that the CSV file uses the column names `source`, `target`, `time` instead of the `v`, `w`, `t` expected by `pp.io.read_csv_temporal_graph`, so we read it with `pandas` and rename the columns ourselves before converting it to a `TemporalGraph`:
+    We load a synthetic temporal graph with 30 nodes and 60,000 time-stamped interactions, which was generated with a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community). We read the CSV file with `pandas` and convert the resulting `DataFrame`, whose columns `v`, `w`, `t` give the source, target and timestamp of each interaction, to a `TemporalGraph`:
     """)
     return
 
@@ -300,7 +300,7 @@ def _(pd, pp):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    We now simulate a random walker that takes time-respecting steps through this temporal graph. We repeatedly pick a random time-stamped edge $(u,v;t_1)$ as the first step of a walk. The walk can only continue to a second edge $(v,w;t_2)$ if it is time-respecting for $\delta=1$, i.e. if $0 < t_2-t_1 \leq \delta$. If a valid continuation exists, we have simulated a time-respecting walk of length two from $u$ to $w$, and we record this by incrementing the entry $(u,w)$ of a matrix $M$. Walks that cannot be continued are simply discarded. Repeating this many times and normalizing by the number of successful walks gives us a matrix whose entries capture how often pairs of nodes are connected by a time-respecting walk of length two.
+    We now simulate a random walker that takes time-respecting steps through this temporal graph. We repeatedly pick a random time-stamped edge $(u,v;t_1)$ as the first step of a walk and look at the next edge $(v',w;t_2)$ in the time-ordered sequence of events. The walk continues only if this edge starts where the first one ended, i.e. $v'=v$, and if it is time-respecting for $\delta=1$, i.e. if $0 < t_2-t_1 \leq \delta$. In this case we have simulated a time-respecting walk of length two from $u$ to $w$, and we record this by incrementing the entry $(u,w)$ of a matrix $M$. Walks that cannot be continued in this way are simply discarded. Repeating this many times gives us a matrix whose entries count how often pairs of nodes were connected by a simulated time-respecting walk of length two.
     """)
     return
 

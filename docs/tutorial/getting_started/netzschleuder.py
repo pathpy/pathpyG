@@ -266,7 +266,7 @@ def _(mo):
 
 @app.cell
 def _(data, torch_geometric):
-    transform = torch_geometric.transforms.RandomNodeSplit(split='train_rest', num_val=0.5, num_test=0)
+    transform = torch_geometric.transforms.RandomNodeSplit(split='train_rest', num_val=0, num_test=0.5)
     data_1 = transform(data)
     return (data_1,)
 
@@ -328,7 +328,7 @@ def _(TruncatedSVD, data_1, g_1, model, plt):
     low_dim = svd.fit_transform(embedding.cpu().detach().numpy())
     _colors = {}
     for v in range(g_1.n):
-        if not data_1.val_mask[v]:
+        if not data_1.test_mask[v]:
             _colors[v] = 'grey'
         elif data_1.y[v].item() == 0.0:
             _colors[v] = 'blue'

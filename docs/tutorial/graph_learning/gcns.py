@@ -313,7 +313,7 @@ def _(data, model, torch):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The following function trains the network and plots the evolution of the accuracy in the training and test set. Since we have a binary classification task, we use binary cross entropy as a loss function.
+    The following function trains the network and plots the evolution of the training loss. Since we have a binary classification task, we use binary cross entropy as a loss function.
     """)
     return
 
