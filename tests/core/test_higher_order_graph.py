@@ -179,12 +179,11 @@ def test_add_order_zero():
     assert g.nodes == [()]
     assert g.n_first_order == 4
     assert g.first_order_mapping.node_ids.tolist() == list("abcd")
-    # emitted nodes are re-indexed to the joint first-order mapping; loops are kept as multi-edges
+    # emitted nodes are re-indexed to the joint first-order mapping; loops emitting the same node are merged
     assert sorted(zip(g.data.edge_first_order_node.tolist(), g.data.edge_weight.tolist())) == [
         (0, 1.0),
         (1, 2.0),
-        (2, 3.0),
-        (2, 4.0),
+        (2, 7.0),
         (3, 5.0),
     ]
 

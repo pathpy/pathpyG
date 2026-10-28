@@ -7,8 +7,9 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
+from torch_geometric import EdgeIndex
 from torch_geometric.data import Data
-from torch_geometric.utils import coalesce
+from torch_geometric.utils import coalesce, scatter
 
 from pathpyG.algorithms.lift_order import aggregate_edge_index
 from pathpyG.core.event_graph import EventGraph
@@ -557,10 +558,13 @@ class HigherOrderGraph(Graph):
 
         Nodes are matched by the paths they represent, as described for
         [`Graph.__add__`][pathpyG.Graph.__add__]. The first-order node sets are joined as well.
+        Edges that are present in both graphs, i.e. repeated observations of the same path, are
+        merged into a single edge whose `edge_weight` is the sum of their weights.
 
         Args:
             other: Higher-order graph of the same order to be combined with this graph
-            reduce: Reduction method for node attributes of nodes that are present in both graphs.
+            reduce: Reduction method for node attributes of nodes that are present in both graphs,
+                and for edge attributes other than `edge_weight` of edges that are present in both graphs.
 
         Returns:
             HigherOrderGraph: The combined higher-order graph.
@@ -617,6 +621,8 @@ class HigherOrderGraph(Graph):
                 mapping.to_ids(np.arange(data.num_nodes)), device=device
             ).reshape(data.num_nodes, self.order)
 
+        self._coalesce_edges(data, reduce)
+
         # Each pre-aggregation row keeps pointing at the (renumbered) node it was merged into.
         if "inverse_idx" in data:
             data.inverse_idx = mapping.to_idxs(
@@ -633,6 +639,41 @@ class HigherOrderGraph(Graph):
             n_first_order=n_first_order,
             mapping=mapping,
         )
+
+    @staticmethod
+    def _coalesce_edges(data: Data, reduce: str = "sum") -> None:
+        """Merge duplicate edges of `data` in place, summing their `edge_weight`.
+
+        Edges are identified by their endpoints. For order 0, all edges are self-loops of the
+        empty path, so they are additionally identified by the first-order node they emit.
+
+        Args:
+            data: Data object of a higher-order graph, possibly containing duplicate edges.
+            reduce: Reduction method for edge attributes other than `edge_weight`.
+
+        Raises:
+            ValueError: If an edge attribute other than `edge_weight` is not a tensor.
+        """
+        edge_index = data.edge_index.as_tensor() if isinstance(data.edge_index, EdgeIndex) else data.edge_index
+        key = edge_index
+        if data.node_sequence.size(1) == 0:
+            key = torch.cat([edge_index, data.edge_first_order_node.unsqueeze(0)])
+        unique_key, inverse = torch.unique(key, dim=1, return_inverse=True)
+        num_edges = unique_key.size(1)
+
+        if "edge_weight" not in data:
+            data.edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
+        for k in data.keys():
+            if not k.startswith("edge_") or k in ("edge_index", "edge_first_order_node"):
+                continue
+            if not isinstance(data[k], torch.Tensor):
+                raise ValueError("Edge attribute " + k + " is not a tensor and cannot be reduced.")
+            # Edge weights count observations, so they are always summed.
+            data[k] = scatter(data[k], inverse, dim=0, dim_size=num_edges, reduce="sum" if k == "edge_weight" else reduce)
+
+        data.edge_index = unique_key[:2].contiguous()
+        if data.node_sequence.size(1) == 0:
+            data.edge_first_order_node = unique_key[2].contiguous()
 
     def __str__(self) -> str:
         """Return a human-readable summary of the higher-order graph."""
