@@ -179,12 +179,11 @@ def test_add_order_zero():
     assert g.nodes == [()]
     assert g.n_first_order == 4
     assert g.first_order_mapping.node_ids.tolist() == list("abcd")
-    # emitted nodes are re-indexed to the joint first-order mapping; loops are kept as multi-edges
+    # emitted nodes are re-indexed to the joint first-order mapping; loops emitting the same node are merged
     assert sorted(zip(g.data.edge_first_order_node.tolist(), g.data.edge_weight.tolist())) == [
         (0, 1.0),
         (1, 2.0),
-        (2, 3.0),
-        (2, 4.0),
+        (2, 7.0),
         (3, 5.0),
     ]
 
@@ -206,6 +205,39 @@ def test_add_rebuilds_node_sequence(paths):
     assert g.order == 2
     for node, seq in zip(g.nodes, g.data.node_sequence.tolist()):
         assert tuple(g.first_order_mapping.to_ids(seq).tolist()) == node
+
+
+def test_add_aggregates_repeated_edges(paths):
+    other = PathData(IndexMap(list("abcde")))
+    other.append_walk(("a", "c", "d"), weight=2)
+    other.append_walk(("c", "e", "a"))
+    g = HigherOrderGraph.from_path_data(paths, order=2) + HigherOrderGraph.from_path_data(other, order=2)
+
+    edges = {edge: g["edge_weight", edge[0], edge[1]].item() for edge in g.edges}
+    assert edges == {
+        (("a", "c"), ("c", "d")): 5.0,
+        (("b", "c"), ("c", "d")): 1.0,
+        (("c", "e"), ("e", "a")): 1.0,
+    }
+
+
+def test_add_order_one_aggregates_repeated_edges(paths):
+    h = HigherOrderGraph.from_path_data(paths, order=1)
+    g = h + h
+    assert g.m == h.m
+    assert g.data.edge_weight.sum().item() == 2 * h.data.edge_weight.sum().item()
+
+
+def test_add_reduces_other_edge_attributes(paths):
+    h1 = HigherOrderGraph.from_path_data(paths, order=2)
+    h2 = HigherOrderGraph.from_path_data(paths, order=2)
+    h1.data.edge_time = torch.tensor([1.0, 4.0])
+    h2.data.edge_time = torch.tensor([3.0, 2.0])
+    g = h1.__add__(h2, reduce="max")
+
+    assert g.m == 2
+    assert g.data.edge_time.tolist() == [3.0, 4.0]
+    assert g.data.edge_weight.tolist() == (2 * h1.data.edge_weight).tolist()
 
 
 def test_add_rejects_different_orders(paths):

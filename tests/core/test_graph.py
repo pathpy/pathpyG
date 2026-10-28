@@ -385,7 +385,9 @@ def test_higher_order_graph(simple_walks, simple_walks_2):
     g = ho_g1 + ho_g2
 
     assert g.n == 4
-    assert g.m == 4
+    # both graphs contain the same two paths, whose weights are summed
+    assert g.m == 2
+    assert g.data.edge_weight.tolist() == (ho_g1.data.edge_weight + ho_g2.data.edge_weight).tolist()
     assert (g.mapping.to_ids(g.data.inverse_idx[:ho_g1.data.inverse_idx.size(0)]) == ho_g1.mapping.to_ids(ho_g1.data.inverse_idx)).all()
     assert (g.mapping.to_ids(g.data.inverse_idx[ho_g1.data.inverse_idx.size(0):]) == ho_g2.mapping.to_ids(ho_g2.data.inverse_idx)).all()
 
