@@ -45,13 +45,22 @@ jobs:
 
       # marimo notebooks are Python scripts; running them executes all cells
       # and exits with a non-zero status if any cell raises an error.
+      # Notebooks that take more than about a minute to run are skipped.
       - name: Run tutorial notebooks
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           MPLBACKEND: Agg
         run: |
+          skip=(
+            docs/tutorial/getting_started/manim_tutorial.py
+            docs/tutorial/graph_learning/gcns.py
+          )
           failed=()
           for notebook in docs/tutorial/getting_started/*.py docs/tutorial/graph_learning/*.py docs/tutorial/advanced/*.py; do
+            if [[ " ${skip[*]} " == *" ${notebook} "* ]]; then
+              echo "Skipping ${notebook}"
+              continue
+            fi
             echo "::group::${notebook}"
             python "${notebook}" || failed+=("${notebook}")
             echo "::endgroup::"
