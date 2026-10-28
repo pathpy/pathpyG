@@ -40,7 +40,7 @@ def _(mo):
     mo.md(r"""
     ## Motivation and Learning Objectives
 
-    The inner workings of the core classes of PathpyG are based on tensor operations provided by PyTorch and PyTorch Geometric. Especially the creation of higher-order structures using the lift-order functions and the `MultiOderModel` heavily rely on tensor operations for efficiency reasons. While these implementations are highly optimized, they are very hard to read and understand for newcomers. This tutorial aims to explain the general concepts and ideas behind these implementations in a more accessible way. Additionally, we will provide step-by-step explanations of the core functions in the following sections.
+    The inner workings of the core classes of PathpyG are based on tensor operations provided by PyTorch and PyTorch Geometric. Especially the creation of higher-order structures using the lift-order functions and the `MultiOrderModel` heavily rely on tensor operations for efficiency reasons. While these implementations are highly optimized, they are very hard to read and understand for newcomers. This tutorial aims to explain the general concepts and ideas behind these implementations in a more accessible way. Additionally, we will provide step-by-step explanations of the core functions in the following sections.
     """)
     return
 
@@ -89,7 +89,7 @@ def _(Data, graph, pp):
     _second_order_edge_index = pp.algorithms.lift_order.lift_order_edge_index(edge_index=graph.data.edge_index, num_nodes=graph.n)
     second_order_mapping = pp.IndexMap(graph.edges)
     second_order_data = Data(edge_index=_second_order_edge_index, node_sequence=graph.data.edge_index.t())
-    line_graph = pp.Graph(data=second_order_data, mapping=second_order_mapping)
+    line_graph = pp.HigherOrderGraph(data=second_order_data, first_order_mapping=graph.mapping, mapping=second_order_mapping)
     pp.plot(line_graph);
     return (line_graph,)
 
@@ -97,7 +97,7 @@ def _(Data, graph, pp):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    To create the higher-order `PathpyG.Graph`, we needed to specify a `node_sequence` in the `Data` object. The node sequence above was given by the original edges of the graph. This `node_sequence` keeps track of which original nodes correspond to which higher-order nodes in the higher-order graph. In a second order graph, each higher-order node corresponds to an edge in the original graph. In a graph of order k, each higher-order node corresponds to a path of length k in the original graph. With this, we can always trace back which higher-order node corresponds to which original nodes.
+    To create the higher-order graph, we used a `HigherOrderGraph` and specified a `node_sequence` in the `Data` object. A plain `pp.Graph` is always a first-order graph and does not accept a `node_sequence`. The node sequence above was given by the original edges of the graph. This `node_sequence` keeps track of which original nodes correspond to which higher-order nodes in the higher-order graph. In a second order graph, each higher-order node corresponds to an edge in the original graph. In a graph of order k, each higher-order node corresponds to a path of k nodes (i.e. of length k-1) in the original graph. With this, we can always trace back which higher-order node corresponds to which original nodes.
 
     As long as we have this mapping from higher-order nodes to original nodes, we can always do an additional line graph transformation to create even higher order graphs. Below, we create a third-order graph:
     """)
@@ -109,7 +109,7 @@ def _(Data, graph, line_graph, pp, torch):
     third_order_edge_index = pp.algorithms.lift_order.lift_order_edge_index(edge_index=line_graph.data.edge_index, num_nodes=line_graph.n)
     third_order_data = Data(edge_index=third_order_edge_index, node_sequence=torch.cat([line_graph.data.node_sequence[line_graph.data.edge_index[0]], line_graph.data.node_sequence[line_graph.data.edge_index[1]][:, -1:]], dim=1))
     third_order_mapping = pp.IndexMap([tuple(seq) for seq in graph.mapping.to_ids(third_order_data.node_sequence).tolist()])
-    third_order_graph = pp.Graph(data=third_order_data, mapping=third_order_mapping)
+    third_order_graph = pp.HigherOrderGraph(data=third_order_data, first_order_mapping=graph.mapping, mapping=third_order_mapping)
     pp.plot(third_order_graph);
     return
 
@@ -365,11 +365,11 @@ def _(mo):
 
 
 @app.cell
-def _(Data, graph, pp, t):
+def _(Data, pp, t):
     event_edge_index = pp.core.event_graph.EventGraph.build_edge_index(t, delta=2)
     event_mapping = pp.IndexMap(t.temporal_edges)
-    event_data = Data(edge_index=event_edge_index, node_sequence=graph.data.edge_index.t())
-    event_graph = pp.Graph(data=event_data, mapping=event_mapping)
+    event_data = Data(edge_index=event_edge_index, node_sequence=t.data.edge_index.t(), node_time=t.data.time)
+    event_graph = pp.EventGraph(data=event_data, delta=2, first_order_mapping=t.mapping, n_first_order=t.n, mapping=event_mapping)
     pp.plot(event_graph);
     return
 
@@ -428,10 +428,12 @@ def _(Data, filter_time_respecting_edges, pp, sort_edge_index, t):
     _second_order_edge_index = pp.algorithms.lift_order.lift_order_edge_index(edge_index=sorted_edge_index, num_nodes=t.n)
     # Filter the edges based on the lifted edge index
     filtered_edge_index = filter_time_respecting_edges(_second_order_edge_index, timestamps=time, delta=2)
-    # Create `pp.Graph` from the filtered edge index
+    # Create an `EventGraph` from the filtered edge index
     filtered_event_mapping = pp.IndexMap([tuple([*t.mapping.to_ids(edge).tolist(), timestamp.item()]) for edge, timestamp in zip(sorted_edge_index.t(), time)])
-    filtered_event_data = Data(edge_index=filtered_edge_index, node_sequence=sorted_edge_index.t())
-    filtered_event_graph = pp.Graph(data=filtered_event_data, mapping=filtered_event_mapping)
+    filtered_event_data = Data(edge_index=filtered_edge_index, node_sequence=sorted_edge_index.t(), node_time=time)
+    filtered_event_graph = pp.EventGraph(
+        data=filtered_event_data, delta=2, first_order_mapping=t.mapping, n_first_order=t.n, mapping=filtered_event_mapping
+    )
     pp.plot(filtered_event_graph);
     return
 
@@ -664,7 +666,7 @@ def _(pp, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    We can see that the second-order graph created by the `MultiOrderModel` is different from the one created by the `EventGraph.build_edge_index` function directly. This is because the `MultiOrderModel` higher-order DeBruijn graph representation. This representation merges higher-order nodes that correspond to the same path in the original graph. This means that temporal edges that appear in the event graph as different nodes will be merged into one node in the DeBruijn graph if they correspond to the same path in the original graph. This results in a more compact representation of the higher-order graph.
+    We can see that the second-order graph created by the `MultiOrderModel` is different from the one created by the `EventGraph.build_edge_index` function directly. This is because the `MultiOrderModel` uses a higher-order De Bruijn graph representation. This representation merges higher-order nodes that correspond to the same path in the original graph. This means that temporal edges that appear in the event graph as different nodes will be merged into one node in the DeBruijn graph if they correspond to the same path in the original graph. This results in a more compact representation of the higher-order graph.
 
     The same is true for paths. We can create a multi-order model from a collection of paths as follows:
     """)
@@ -742,8 +744,8 @@ def _(mo):
 
 @app.cell
 def _(pp, third_order_edge_index_1, third_order_node_sequence):
-    third_order_paths = pp.algorithms.lift_order.aggregate_edge_index(edge_index=third_order_edge_index_1, node_sequence=third_order_node_sequence)
-    return (third_order_paths,)
+    third_order_paths_data = pp.algorithms.lift_order.aggregate_edge_index(edge_index=third_order_edge_index_1, node_sequence=third_order_node_sequence)
+    return (third_order_paths_data,)
 
 
 @app.cell(hide_code=True)
@@ -755,8 +757,12 @@ def _(mo):
 
 
 @app.cell
-def _(mapping, pp, third_order_paths):
-    third_order_paths.mapping = pp.IndexMap([tuple(mapping.to_ids(v).tolist()) for v in third_order_paths.data.node_sequence])
+def _(paths, pp, third_order_paths_data):
+    third_order_paths = pp.HigherOrderGraph(
+        third_order_paths_data,
+        first_order_mapping=paths.mapping,
+        mapping=pp.IndexMap([tuple(paths.mapping.to_ids(v).tolist()) for v in third_order_paths_data.node_sequence]),
+    )
     pp.plot(third_order_paths);
     return
 

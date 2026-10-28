@@ -141,11 +141,11 @@ def _(pp, style, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    In fact, the topology of this graph corresponds to that of a random graph, i.e. there are not patterns whatsoever in the topology of links. Nevertheless, the temporal graph contains a cluster pattern in the topology of causal or time-respecting paths. In particular, the temporal ordering of time-stamped edges is such that nodes with the same cluster label are more frequently connected by time-respecting paths than nodes with different cluster labels. Hence, nodes within the same clusters can more strongly influence each other in a causal way, i.e. via multiple interactions that follow the arrow of time.
+    In fact, the topology of this graph corresponds to that of a random graph, i.e. there are no patterns whatsoever in the topology of links. Nevertheless, the temporal graph contains a cluster pattern in the topology of causal or time-respecting paths. In particular, the temporal ordering of time-stamped edges is such that nodes with the same cluster label are more frequently connected by time-respecting paths than nodes with different cluster labels. Hence, nodes within the same clusters can more strongly influence each other in a causal way, i.e. via multiple interactions that follow the arrow of time.
 
     Traditional (temporal) graph neural networks will not be able to learn from this pattern, as it is due to the specific microscopic temporal ordering of edges. Using higher-order De Bruijn graph models implemented in pathpyG, we can learn from temporal graph data that contains such patterns. Let us explain this step by step.
 
-    Referring to the previous tutorial on causal paths in temporal graphs, we first create a node-time directed acyclic graph that captures the causal structure of the temporal graph. In this small example, we will only consider two time-stamped edges $(u,v;t)$ and $(v,w;t')$ to contribute to a causal path iff $0 < t'-t \leq 1$, i.e. we use a delta for the maximum time difference of one time step.
+    Building on the previous notebooks on time-respecting paths in temporal graphs, we directly construct a multi-order model whose second-order layer captures the causal structure of the temporal graph. We only consider two time-stamped edges $(u,v;t)$ and $(v,w;t')$ to contribute to a causal path iff $0 < t'-t \leq 1$, i.e. we use the default maximum time difference $\delta=1$.
     """)
     return
 
@@ -169,7 +169,7 @@ def _(m):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    We can get the first and second order networks from the Multi Order Network object. The first order network is the network of nodes and edges, while the second order network is the network of first order edges as second order nodes and second order edges. The second order network is a De Bruijn graph that captures the temporal-topological patterns in the data.
+    We can get the first and second order networks from the `MultiOrderModel` object. The first order network is the network of nodes and edges, while the second-order network uses first-order edges as nodes and edges represent time-respecting paths of length two. The second order network is a De Bruijn graph that captures temporal-topological patterns in the network.
     """)
     return
 

@@ -1,5 +1,6 @@
 import pytest
 import torch
+from torch_geometric.data import Data
 
 from pathpyG.algorithms.lift_order import (
     aggregate_edge_index,
@@ -73,7 +74,27 @@ def test_aggregate_edge_index():
             [4, 5],  # Node 3
         ]
     )
-    g = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
-    assert g.data.edge_index.as_tensor().tolist() == [[0, 0, 1], [1, 2, 0]]
-    assert g.data.edge_weight.tolist() == [3, 3, 4]
-    assert g.data.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+    d = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
+    assert d.edge_index.tolist() == [[0, 0, 1], [1, 2, 0]]
+    assert d.edge_weight.tolist() == [3, 3, 4]
+    assert d.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+
+
+def test_aggregate_edge_index_returns_data():
+    d = aggregate_edge_index(edge_index=torch.tensor([[0], [1]]), node_sequence=torch.tensor([[0, 1], [1, 2]]))
+    assert isinstance(d, Data)
+    assert d.inverse_idx.tolist() == [0, 1]
+    assert d.edge_weight.tolist() == [1.0]
+
+
+def test_aggregate_edge_index_first_order_with_unvisited_node():
+    """First-order indices are kept as node indices, even if a lower index is never visited."""
+    # first-order nodes 0..4; node 1 is never visited; the steps are 0->4 and 2->0
+    d = aggregate_edge_index(
+        edge_index=torch.tensor([[0, 2], [1, 3]]), node_sequence=torch.tensor([[0], [4], [2], [0]])
+    )
+    assert d.num_nodes == 5
+    assert d.edge_index.tolist() == [[0, 2], [4, 0]]
+    assert d.edge_weight.tolist() == [1.0, 1.0]
+    assert d.node_sequence.tolist() == [[0], [1], [2], [3], [4]]
+    assert d.inverse_idx.tolist() == [0, 4, 2, 0]

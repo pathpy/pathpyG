@@ -4,8 +4,6 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import coalesce, cumsum, degree
 
-from pathpyG.core.graph import Graph
-
 
 def aggregate_node_attributes(
     edge_index: torch.Tensor, node_attribute: torch.Tensor, aggr: str = "src"
@@ -134,7 +132,7 @@ def lift_order_step(
     extension of the node sequences, so that the result again describes a graph whose
     nodes are paths of first-order nodes. The result is **not** aggregated: duplicate
     node sequences are left for [`aggregate_edge_index`][pathpyG.algorithms.lift_order.aggregate_edge_index]
-    (or [`HigherOrderGraph.from_aggregated`][pathpyG.HigherOrderGraph.from_aggregated]) to merge.
+    (or [`HigherOrderGraph.aggregate`][pathpyG.HigherOrderGraph.aggregate]) to merge.
 
     Args:
         edge_index: A **sorted** edge index tensor of shape (2, num_edges).
@@ -159,10 +157,10 @@ def lift_order_step(
 
 def aggregate_edge_index(
     edge_index: torch.Tensor, node_sequence: torch.Tensor, edge_weight: torch.Tensor | None = None, aggr: str = "sum"
-) -> Graph:
+) -> Data:
     """Aggregate the possibly duplicated edges in the (higher-order) edge index.
 
-    Aggregate the possibly duplicated edges in the (higher-order) edge index and return a graph object
+    Aggregate the possibly duplicated edges in the (higher-order) edge index and return a `Data` object
     containing the (higher-order) edge index without duplicates and the node sequences.
 
     This method can be seen as a higher-order generalization of the `torch_geometric.utils.coalesce` method.
@@ -171,33 +169,46 @@ def aggregate_edge_index(
     Args:
         edge_index: The edge index of a (higher-order) graph where each source and destination node
             corresponds to a node which is an edge in the (k-1)-th order graph.
-        node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to.
+        node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to,
+            of shape `(num_nodes, k)` with `k >= 1`.
         edge_weight: The edge weights corresponding to the edge index.
         aggr: The aggregation method to use for the edge weights. One of "sum", "mean", "min", "max".
 
     Returns:
-        A graph object containing the aggregated edge index, the node sequences, the edge weights and the inverse index.
+        A `Data` object containing the aggregated edge index, the node sequences, the edge weights and the
+        inverse index. For order 1, node indices are first-order node indices, so the result has one node per
+        first-order node up to the largest one that occurs, including those not traversed by any edge.
+
+    Raises:
+        ValueError: If `node_sequence` has width 0. Edges of an order-0 graph cannot be told apart by their
+            endpoints and hence cannot be aggregated this way.
     """
+    if node_sequence.size(1) == 0:
+        raise ValueError("cannot aggregate an order-0 node sequence by its endpoints")
+
     if edge_weight is None:
         edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
 
-    unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
-    # If first order, then the indices in the node sequence are the inverse idx we would need already
     if node_sequence.size(1) == 1:
-        mapped_edge_index = node_sequence.squeeze()[edge_index]
+        # For order 1 the node sequence holds first-order indices, which are already the aggregated
+        # node indices. They may skip first-order nodes that are never visited, so the aggregated
+        # graph must span every index up to the largest one rather than only the distinct values.
+        inverse_idx = node_sequence.squeeze(1)
+        num_nodes = int(inverse_idx.max()) + 1 if inverse_idx.numel() > 0 else 0
+        unique_nodes = torch.arange(num_nodes, device=node_sequence.device).unsqueeze(1)
     else:
-        mapped_edge_index = inverse_idx[edge_index]
+        unique_nodes, inverse_idx = torch.unique(node_sequence, dim=0, return_inverse=True)
+        num_nodes = unique_nodes.size(0)
     aggregated_edge_index, edge_weight = coalesce(
-        mapped_edge_index,
+        inverse_idx[edge_index],
         edge_attr=edge_weight,
-        num_nodes=unique_nodes.size(0),
+        num_nodes=num_nodes,
         reduce=aggr,
     )
-    data = Data(
+    return Data(
         edge_index=aggregated_edge_index,
-        num_nodes=unique_nodes.size(0),
+        num_nodes=num_nodes,
         node_sequence=unique_nodes,
         edge_weight=edge_weight,
         inverse_idx=inverse_idx,
     )
-    return Graph(data)
