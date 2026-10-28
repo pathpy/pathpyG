@@ -56,7 +56,7 @@ class TemporalGraph(Graph):
 
         # reorder temporal data
         # Note that we do not use `torch_geometric.self.data.Data.sort_by_time` because it cannot sort numpy arrays`
-        sorted_idx = torch.argsort(self.data.time)
+        sorted_idx = torch.argsort(self.data.time, stable=True)
         # slicing an EdgeIndex discards its metadata, so restore it after reordering
         is_undirected = self.data.edge_index.is_undirected
         for edge_attr in set(self.data.edge_attrs()).union(set(["time"])):
