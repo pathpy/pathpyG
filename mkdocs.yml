@@ -39,6 +39,8 @@ nav:
     - Causality-Aware Temporal Network Analysis:
       - Time-Respecting Paths, Centralities and Communities: tutorial/advanced/trp_centralities_communities.ipynb
       - Path Data and Higher-Order Models: tutorial/advanced/paths_higher_order.ipynb
+      - Working with Higher-Order De Bruijn Graphs: tutorial/advanced/higher_order_graphs.ipynb
+      - Event Graphs: tutorial/advanced/event_graphs.ipynb
       - Higher-Order Models for Time-Respecting Paths: tutorial/advanced/trp_higher_order.ipynb
     - Causality-Aware Temporal Graph Learning:
       - De Bruijn Graph Neural Networks: tutorial/advanced/dbgnn.ipynb

@@ -66,7 +66,7 @@ def _(mo):
 
     We can construct such a DAG using the function `pp.core.event_graph.EventGraph.build_edge_index`, which returns an edge_index. We can pass this to the constructor of a `Graph` object, which we can use to visualize the resulting DAG.
 
-    We call such a DAG a directed acyclic temporal event graph. We will use it to construct higher-order models for time-respecting paths in [Higher-Order Models for Time-Respecting Paths](../trp_higher_order/).
+    We call such a DAG a directed acyclic temporal event graph. In [Event Graphs](../event_graphs/), we introduce the class `EventGraph`, which simplifies working with such event graphs.
     """)
     return
 

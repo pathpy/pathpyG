@@ -76,7 +76,7 @@ def _(mo):
     mo.md(r"""
     As you can see, these time-respecting paths are actually very similar to the paths data that we have previously represented using the `PathData` object. In fact, we could - in theory - first extract all time-respecting paths of all lengths, add them to a `PathData` object and then use the `MultiOrderModel` class to generate higher-order De Bruijn graph models of all orders. In the example above, since we have paths of length one to four, we could create higher-order models with orders from one to four.
 
-    However, this approach would not be efficient for large temporal graphs, as it is computationally expensive to calculate all possible time-respecting paths as well as subpaths of length $k$, especially for larger values of $\delta$. To avoid this bottleneck, `pathpyG` uses a smarter, GPU-based algorithm to calculate time-respecting paths of length $k$ that are needed for a given order $k$.
+    However, this approach would not be efficient for large temporal graphs, as it is computationally expensive to calculate all possible time-respecting paths as well as subpaths of length $k$, especially for larger values of $\delta$. To avoid this bottleneck, `pathpyG` uses a smarter, GPU-based algorithm to calculate time-respecting paths of length $k$ that are needed for a given order $k$, starting from the event graph introduced in [Event Graphs](../event_graphs/).
 
     For the example above, we can generate all higher-order models up to order four as follows:
     """)
