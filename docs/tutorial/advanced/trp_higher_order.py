@@ -95,7 +95,7 @@ def _(pp, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Remember that in a $k$-th order model nodes capture paths of length $k-1$, while edges capture paths of length $k$.
+    Each layer `m.layers[k]` is a `HigherOrderGraph`, which we have introduced in [Working with Higher-Order De Bruijn Graphs](../higher_order_graphs/). This is why printing a layer shows its order as well as the number of first-order nodes from which its higher-order nodes are built. Remember that in a $k$-th order model nodes capture paths of length $k-1$, while edges capture paths of length $k$.
 
     This implies that the first-order model has four nodes and six edges, which simply corresponds to the time-aggregated weighted graph for our example temporal network.
     """)
@@ -175,6 +175,22 @@ def _(pp, t):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    If we only need a single order $k$, we can directly create the corresponding `HigherOrderGraph` using the class method `HigherOrderGraph.from_temporal_graph`. Note that each call constructs all lower orders internally, so if we need several orders, it is more efficient to create a `MultiOrderModel` once and access its layers. For the third-order model of our example, we obtain the four time-respecting paths of length two as nodes:
+    """)
+    return
+
+
+@app.cell
+def _(pp, t):
+    g3 = pp.HigherOrderGraph.from_temporal_graph(t, order=3, delta=1)
+    print(g3)
+    print(g3.nodes)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Constructing Higher-Order De Bruijn Graph Models for Empirical Temporal Networks
 
     Let us now use `pathpyG` to construct higher-order De Bruijn graph models for time-respecting paths in empirical temporal networks. For this, we first read a number of temporal graphs using `pp.io.read_csv_temporal_graph`. In the following, we use the following three publicly available data sets:
@@ -212,18 +228,37 @@ def _(mo):
     mo.md(r"""
     To generate a `MultiOrderModel` consisting of multiple layers of higher-order De Bruijn graph models, we can use the `MultiOrderModel.from_temporal_graph` method. We can further specify the maximum order of the highest-order layer, as well as the maximum time difference $\delta$ for time-respecting paths.
 
-    For the ants, we consider time-respecting paths with a maximum time difference of 30 seconds up to length four:
+    For the ants, we consider time-respecting paths with a maximum time difference of 30 seconds up to length four. Since we want to compare this to a smaller maximum time difference of 20 seconds below, we first construct an `EventGraph` (see [Event Graphs](../event_graphs/)), from which we can create a `MultiOrderModel` using `MultiOrderModel.from_event_graph`:
     """)
     return
 
 
 @app.cell
-def _(pp, t_ants):
-    m_2 = pp.MultiOrderModel.from_temporal_graph(t_ants, delta=30, max_order=4)
+def _(mo, pp, t_ants):
+    # Hide the progress output
+    with mo.capture_stdout(), mo.capture_stderr():
+        eg_ants = pp.EventGraph.from_temporal_graph(t_ants, delta=30)
+    m_2 = pp.MultiOrderModel.from_event_graph(eg_ants, max_order=4)
     print(m_2.layers[1])
     print(m_2.layers[2])
     print(m_2.layers[3])
     print(m_2.layers[4])
+    return (eg_ants,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Rather than constructing the time-respecting paths for a maximum time difference of 20 seconds from scratch, we can reduce the maximum time difference of the existing event graph. The resulting higher-order models have fewer edges, since fewer pairs of interactions are close enough in time to form a time-respecting path:
+    """)
+    return
+
+
+@app.cell
+def _(eg_ants, pp):
+    m_2_20 = pp.MultiOrderModel.from_event_graph(eg_ants.reduce_delta(10), max_order=4)
+    print(m_2_20.layers[2])
+    print(m_2_20.layers[4])
     return
 
 
