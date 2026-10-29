@@ -16,6 +16,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      actions: write  # To start the workflow publishing the stable docs
 
     steps:
       - name: Checkout repository
@@ -33,6 +34,7 @@ jobs:
         run: uv publish --trusted-publishing always
 
       - name: Create release tag
+        id: release
         # Adding a `--prerelease` flag in `gh release create` makes the release not
         # show up as the latest stable release.
         run: |
@@ -44,5 +46,13 @@ jobs:
             prerelease=""
           fi
           gh release create "v${version}" --title "v${version}" --generate-notes ${prerelease}
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease:+true}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish stable docs
+        if: steps.release.outputs.prerelease != 'true'
+        run: gh workflow run docs-stable.yml --repo "${{ github.repository }}" --ref "${{ steps.release.outputs.tag }}"
         env:
           GH_TOKEN: ${{ github.token }}
