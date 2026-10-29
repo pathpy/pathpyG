@@ -26,7 +26,15 @@ def _copy_attr(value: Any) -> Any:
 
 
 class EventGraph(Graph):
-    """A directed acyclic graph whose nodes are time-stamped events."""
+    """A directed acyclic graph whose nodes are time-stamped events.
+
+    Each event is a temporal edge of an underlying temporal graph. The `node_sequence`
+    node attribute of shape `(num_events, 2)` holds the source and target first-order
+    node of each event, and `node_time` holds its timestamp.
+    """
+
+    # The event graph manages the first-order edge of each event itself.
+    _internal_node_attrs: frozenset[str] = frozenset({"node_sequence"})
 
     # Attributes that are constructed explicitly when lifting a temporal graph and that
     # must therefore not be overwritten by propagated attributes.
@@ -190,6 +198,7 @@ class EventGraph(Graph):
     def to(self, device: torch.device) -> "EventGraph":
         """Move the event graph and its underlying temporal graph to the given device."""
         super().to(device)
+        self.data.node_sequence = self.data.node_sequence.to(device)
         if self._temporal_graph is not None:
             self._temporal_graph.to(device)
         return self
