@@ -10,7 +10,7 @@
 <!-- Includes download and "Open in molab" buttons in the marimo tutorials -->
 {% block content %}
 {% if page.nb_url %}
-    {% set nb_src = page.file.src_uri | replace(".ipynb", ".py") %}
+    {% set nb_src = page.file.src_uri | replace("_notebooks/", "") | replace(".ipynb", ".py") %}
     <a href="{{ base_url }}/{{ nb_src }}" title="Download Notebook" class="md-content__button md-icon" download>
         {% include ".icons/material/download.svg" %}
     </a>

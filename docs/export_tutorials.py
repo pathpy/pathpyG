@@ -4,6 +4,10 @@ The marimo notebooks (`*.py`) are the source of the tutorials. Since executing t
 the exported Jupyter notebooks (`*.ipynb`), including the outputs of all cells, are committed to the
 repository and rendered by the `mkdocs-jupyter` plugin without executing them again.
 
+The exported notebooks are stored in `docs/_notebooks/`, mirroring the location of the marimo notebooks
+in `docs/`, e.g. `docs/tutorial/advanced/dbgnn.py` is exported to `docs/_notebooks/tutorial/advanced/dbgnn.ipynb`.
+They are generated files and should not be edited directly.
+
 Usage:
 
     # Re-export (and execute) all notebooks whose `.ipynb` is out of sync with its `.py`
@@ -25,11 +29,18 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-TUTORIAL_DIR = Path("docs", "tutorial")
+DOCS_DIR = Path("docs")
+TUTORIAL_DIR = DOCS_DIR / "tutorial"
+NOTEBOOK_DIR = DOCS_DIR / "_notebooks"
 MAX_WORKERS = 4
 # Share the CPU cores between the notebooks exported in parallel. Otherwise, each notebook uses all cores for torch
 # operations, and the resulting oversubscription slows down the export drastically
 THREADS_PER_WORKER = str(max(1, (os.cpu_count() or 1) // MAX_WORKERS))
+
+
+def exported_path(notebook: Path) -> Path:
+    """Return the path of the exported Jupyter notebook of a marimo notebook in `docs/`."""
+    return NOTEBOOK_DIR / notebook.resolve().relative_to(DOCS_DIR.resolve()).with_suffix(".ipynb")
 
 
 def export(notebook: Path, output: Path, execute: bool) -> None:
@@ -37,6 +48,7 @@ def export(notebook: Path, output: Path, execute: bool) -> None:
     cmd = [sys.executable, "-m", "marimo", "export", "ipynb", str(notebook), "-o", str(output), "--sort", "top-down"]
     if execute:
         cmd.append("--include-outputs")
+    output.parent.mkdir(parents=True, exist_ok=True)
     env = {"OMP_NUM_THREADS": THREADS_PER_WORKER, "MKL_NUM_THREADS": THREADS_PER_WORKER} | os.environ
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     if result.returncode != 0:
@@ -51,7 +63,7 @@ def cell_sources(ipynb: Path) -> list[tuple[str, str]]:
 
 def is_in_sync(notebook: Path) -> bool:
     """Check whether the committed `.ipynb` of a marimo notebook contains the same cells as the notebook itself."""
-    ipynb = notebook.with_suffix(".ipynb")
+    ipynb = exported_path(notebook)
     if not ipynb.exists():
         return False
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -61,9 +73,9 @@ def is_in_sync(notebook: Path) -> bool:
 
 
 def update(notebook: Path) -> None:
-    """Execute a marimo notebook and export it, including all outputs, to the `.ipynb` next to it."""
+    """Execute a marimo notebook and export it, including all outputs, to its `.ipynb` in `docs/_notebooks/`."""
     print(f"Exporting {notebook}", flush=True)
-    export(notebook, notebook.with_suffix(".ipynb"), execute=True)
+    export(notebook, exported_path(notebook), execute=True)
     print(f"Finished exporting {notebook}", flush=True)
 
 
@@ -86,7 +98,7 @@ def main() -> int:
             notebooks = [nb for nb, ok in zip(notebooks, executor.map(is_in_sync, notebooks)) if not ok]
     if args.check:
         for notebook in notebooks:
-            print(f"{notebook.with_suffix('.ipynb')} is out of sync with {notebook}")
+            print(f"{exported_path(notebook)} is out of sync with {notebook}")
         if notebooks:
             print("Run `uv run --extra cpu python docs/export_tutorials.py` to re-export them")
         return 1 if notebooks else 0

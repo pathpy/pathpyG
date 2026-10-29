@@ -23,6 +23,8 @@ jobs:
           files: |
             .github/workflows/notebook_testing.yml
             docs/tutorial/**
+            docs/_notebooks/**
+            docs/export_tutorials.py
             src/**
             tests/**
             pyproject.toml

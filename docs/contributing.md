@@ -90,13 +90,13 @@ The tutorials are written as [marimo](https://marimo.io/) notebooks, i.e. plain 
 marimo edit docs/tutorial/getting_started/basic_concepts.py
 ```
 
-Executing all tutorials takes a long time, so the documentation does not execute them when it is built. Instead, each notebook is exported (including the outputs of all cells) to a Jupyter notebook next to it, which is committed to the repository and rendered by `mkdocs-jupyter`. After changing a tutorial, re-export it with
+Executing all tutorials takes a long time, so the documentation does not execute them when it is built. Instead, each notebook is exported (including the outputs of all cells) to a Jupyter notebook in `docs/_notebooks/`, which is committed to the repository and rendered by `mkdocs-jupyter`. The exported notebooks mirror the location of the marimo notebooks, e.g. `docs/tutorial/getting_started/basic_concepts.py` is exported to `docs/_notebooks/tutorial/getting_started/basic_concepts.ipynb`. They are generated files, so do not edit them directly. After changing a tutorial, re-export it with
 ```bash
 uv run --extra cpu --extra vis python docs/export_tutorials.py docs/tutorial/getting_started/basic_concepts.py
 ```
 Without any arguments, `docs/export_tutorials.py` re-exports all notebooks whose `.ipynb` is out of sync with their `.py`. CI checks that all exported notebooks are in sync.
 
-You can add new tutorials by adding the notebook to one of the tutorial directories, exporting it as described above and adding the path to the `mkdocs.yml`-file under `nav:`. Note that the path in `nav:` needs to end with `.ipynb` instead of `.py`.
+You can add new tutorials by adding the notebook to one of the tutorial directories, exporting it as described above and adding the path to the `mkdocs.yml`-file under `nav:`. Note that the path in `nav:` is the path of the exported notebook (e.g. `_notebooks/tutorial/getting_started/basic_concepts.ipynb`).
 
 All tutorials are tested in CI by running them as Python scripts. You can do the same locally with
 ```bash
