@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+      - dev
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -23,6 +28,8 @@ jobs:
           echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Publish docs
+        env:
+          DOCS_GIT_REF: ${{ github.ref_name }}
         # First configure git correctly
         # Then use the alias of the current dev version to delete it based on its identifier
         # Then deploy the new version so that there is only one dev version at a time
