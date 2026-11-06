@@ -21,8 +21,16 @@ def test_init():
     assert isinstance(g.data, Data)
     assert isinstance(g.mapping, IndexMap)
     assert isinstance(g.edge_to_index, dict)
-    assert g.data.node_sequence.size() == (g.n, 1)
-    assert g.order == 1
+    assert "node_sequence" not in g.data
+    # only a HigherOrderGraph has an order
+    assert not hasattr(g, "order")
+
+
+def test_init_rejects_node_sequence():
+    """A Graph is always first-order; graphs whose nodes are paths are HigherOrderGraphs."""
+    data = Data(edge_index=torch.tensor([[0, 1], [1, 2]]), num_nodes=3, node_sequence=torch.tensor([[0], [1], [2]]))
+    with pytest.raises(ValueError):
+        Graph(data)
 
 
 def test_init_with_edge_index():
@@ -378,11 +386,10 @@ def test_higher_order_graph(simple_walks, simple_walks_2):
     g = ho_g1 + ho_g2
 
     assert g.n == 4
-    assert g.m == 4
+    # both graphs contain the same two paths, whose weights are summed
+    assert g.m == 2
     assert g.mapping.to_ids(torch.arange(g.n)).tolist() == [["A", "C"], ["B", "C"], ["C", "D"], ["C", "E"]]
-    # Both graphs observe every second-order node twice, so the merged graph observes each four times.
-    assert torch.equal(g.data.node_weight, ho_g1.data.node_weight + ho_g2.data.node_weight)
-    assert g.data.node_weight.tolist() == [4.0, 4.0, 4.0, 4.0]
+    assert g.data.edge_weight.tolist() == (ho_g1.data.edge_weight + ho_g2.data.edge_weight).tolist()
 
 
 def test_get_node_attr(simple_graph):

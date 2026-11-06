@@ -1,4 +1,7 @@
-.md-header__topic {
+/* Hide the site name (the logo already contains it) and the page title that replaces it on scroll.
+   The first topic itself has to stay visible, since mike's version selector is appended to it. */
+.md-header__topic:first-child > .md-ellipsis,
+.md-header__topic[data-md-component="header-topic"] {
   display: none;
 }
 

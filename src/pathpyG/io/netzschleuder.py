@@ -28,12 +28,12 @@ def list_netzschleuder_records(base_url: str = "https://networks.skewed.de", **k
 
         >>> import pathpyG as pp
         >>> pp.io.list_netzschleuder_records()
-        ['7th_graders', 'academia_edu', 'add_health', ...]
+        ['7th_graders', 'academia_edu', ...]
 
         Return a list of all data sets with a given tag
 
         >>> pp.io.list_netzschleuder_records(tags="Temporal")
-        ['ambassador', 'board_directors', 'caida_as', ...]
+        ['ambassador', ...]
 
     Returns:
         Either a list of data set names or a dictionary containing all data set names and network attributes.
@@ -62,8 +62,10 @@ def read_netzschleuder_record(name: str, base_url: str = "https://networks.skewe
 
         >>> import pathpyG as pp
         >>> metadata = pp.io.read_netzschleuder_record("karate")
-        >>> print(metadata)
-        {'analyses': {'77': {'average_degree': 4.52...}, ...}
+        >>> metadata["nets"]
+        ['77', '78']
+        >>> metadata["analyses"]["77"]["average_degree"]
+        4.52...
 
     Returns:
         Dictionary containing key-value pairs of metadata

@@ -142,39 +142,35 @@ CASES = [
 ]
 
 
-# --------------------------------------------------------------- node weight identity
+# ------------------------------------------------------- occurrence and start weights
+
+
+def edge_sequence_ids(model, order):
+    """First-order node IDs of the path each edge of a layer stands for, as tuples."""
+    mapping = model.layers[order].first_order_mapping
+    return [tuple(mapping.to_ids(sequence).tolist()) for sequence in model._edge_sequences(order)]
 
 
 @pytest.mark.parametrize("walks,weights,node_ids,max_order", CASES)
-def test_node_weight_matches_enumeration(walks, weights, node_ids, max_order):
+def test_edge_weights_count_occurrences(walks, weights, node_ids, max_order):
+    """The edges of layer k count the paths of k + 1 nodes; for k = 0 these are the node visits."""
     model = build(walks, weights, node_ids, max_order)
-    for order in range(1, max_order + 1):
-        layer = model.layers[order]
-        expected = enumerate_occurrences(walks, weights, order)
-        observed = {
-            layer.node_id(i): float(layer.data.node_weight[i]) for i in range(layer.n) if layer.data.node_weight[i] != 0
-        }
-        if order == 1:
-            expected = {key[0]: value for key, value in expected.items()}
-        assert observed == pytest.approx(expected)
+    for order in range(max_order + 1):
+        weights_by_path = dict(zip(edge_sequence_ids(model, order), model.layers[order].data.edge_weight.tolist()))
+        observed = {path: weight for path, weight in weights_by_path.items() if weight != 0}
+        assert observed == pytest.approx(enumerate_occurrences(walks, weights, order + 1))
 
 
 @pytest.mark.parametrize("walks,weights,node_ids,max_order", CASES)
-def test_start_weight_identity(walks, weights, node_ids, max_order):
-    """node_weight = start_weight + weighted in-degree, at every order and for every layer."""
+def test_start_weights_match_enumeration(walks, weights, node_ids, max_order):
+    """Edge weight of layer k minus the weighted in-degree in layer k + 1 counts the observation starts."""
     model = build(walks, weights, node_ids, max_order)
-    for order in range(1, max_order + 1):
-        layer = model.layers[order]
-        start_weight = model._start_weight(order)
-        incoming = torch.zeros(layer.n, dtype=start_weight.dtype)
-        incoming.scatter_add_(0, layer.data.edge_index.as_tensor()[1], layer.data.edge_weight)
-        assert torch.allclose(layer.data.node_weight, start_weight + incoming)
-
-        expected = enumerate_starts(walks, weights, order)
-        if order == 1:
-            expected = {key[0]: value for key, value in expected.items()}
-        observed = {layer.node_id(i): float(start_weight[i]) for i in range(layer.n) if start_weight[i] != 0}
-        assert observed == pytest.approx(expected)
+    for order in range(max_order):
+        start_weight = model._start_weight_on_edges(order)
+        assert bool((start_weight >= 0).all())
+        starts_by_path = dict(zip(edge_sequence_ids(model, order), start_weight.tolist()))
+        observed = {path: weight for path, weight in starts_by_path.items() if weight != 0}
+        assert observed == pytest.approx(enumerate_starts(walks, weights, order + 1))
 
 
 @pytest.mark.parametrize("walks,weights,node_ids,max_order", CASES)
@@ -209,12 +205,17 @@ def test_start_weights_are_matched_by_sequence_not_by_position():
     assert not torch.equal(edge_sequences, node_sequences)
     assert sorted(map(tuple, edge_sequences.tolist())) == sorted(map(tuple, node_sequences.tolist()))
 
-    # Each layer-1 edge must carry the start weight of the two-gram it actually is.
-    start_weight = model._start_weight(2)
-    by_sequence = {tuple(sequence): float(weight) for sequence, weight in zip(node_sequences.tolist(), start_weight)}
+    # Each layer-1 edge must carry the start weight of the two-gram it actually is: its own weight
+    # minus the weight flowing into the layer-2 node with the same sequence, looked up by sequence.
+    second_order = model.layers[2]
+    incoming = defaultdict(float)
+    for destination, weight in zip(second_order.data.edge_index.as_tensor()[1].tolist(), second_order.data.edge_weight):
+        incoming[tuple(node_sequences[destination].tolist())] += float(weight)
     on_edges = model._start_weight_on_edges(1)
+    edge_weight = model.layers[1].data.edge_weight
     for position, sequence in enumerate(edge_sequences.tolist()):
-        assert float(on_edges[position]) == pytest.approx(by_sequence[tuple(sequence)])
+        expected = float(edge_weight[position]) - incoming[tuple(sequence)]
+        assert float(on_edges[position]) == pytest.approx(expected)
 
 
 # ------------------------------------------------------------------- log-likelihood
@@ -452,7 +453,7 @@ def test_estimate_order_requires_cached_layers():
     paths = PathData(IndexMap(list("abcde")))
     paths.append_walks(TOY_WALKS, [4.0, 4.0])
     model = MultiOrderModel.from_path_data(paths, max_order=3, cached=False)
-    assert set(model.layers) == {1, 3}
+    assert set(model.layers) == {0, 1, 3}
     with pytest.raises(ValueError, match="cached=True"):
         model.estimate_order(max_order=3)
 

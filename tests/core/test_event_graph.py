@@ -253,8 +253,11 @@ def test_higher_order_graph_from_weighted_event_graph(temporal_graph):
     # The two observed walks of two events are (a->b, b->c) and (b->c, c->e), so (b,c) occurs
     # twice and (a,b) and (c,e) once each. (b,d) is isolated in the event graph and realized by
     # no walk of two events: it stays in the De Bruijn topology but carries weight zero and
-    # contributes nothing to any likelihood.
-    assert order_2.data.node_weight.tolist() == [1.0, 2.0, 0.0, 1.0]
+    # contributes nothing to any likelihood. The order-2 nodes are the order-1 edges, whose
+    # weights therefore count these occurrences.
+    order_1 = MultiOrderModel.from_event_graph(event_graph, max_order=2).layers[1]
+    occurrences = dict(zip(order_1.edges, order_1.data.edge_weight.tolist()))
+    assert occurrences == {("a", "b"): 1.0, ("b", "c"): 2.0, ("b", "d"): 0.0, ("c", "e"): 1.0}
 
 
 def test_to_device(event_graph):

@@ -9,6 +9,7 @@ from typing import Any, Optional, Union
 import numpy as np
 import pandas as pd
 import torch
+from pandas.io.common import get_handle
 from torch_geometric.data import Data
 
 from pathpyG.core.graph import Graph
@@ -575,13 +576,15 @@ def read_csv_path_data(
     """Read multiple paths stored in an n-gram csv file.
 
     Args:
-        path_or_buf: File, path or file-like object that the [pandas.read_table][] function will read from
+        path_or_buf: File, path, URL or file-like object to read the paths from. Paths and URLs are
+            resolved by the same pandas machinery used by [pandas.read_csv][], so compressed files
+            and remote locations are supported.
         weight: If True the last column of each row in the CSV file will be interpreted as a count or weight
         sep: character that separates the nodes (and weight) in each line of the input file
         device: The device on which the PathData object should be created
     """
-    with open(path_or_buf, "r") as f:
-        reader = csv.reader(f, delimiter=sep)
+    with get_handle(path_or_buf, "r") as handles:
+        reader = csv.reader(handles.handle, delimiter=sep)
         if weight:
             data = [(row[:-1], ast.literal_eval(row[-1])) for row in reader]
             paths, weights = zip(*data)

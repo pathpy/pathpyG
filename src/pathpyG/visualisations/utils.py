@@ -47,6 +47,7 @@ be useful for custom visualization development and data preprocessing.
 
 import base64
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Callable
@@ -66,6 +67,21 @@ def in_jupyter_notebook() -> bool:
         return False
     except AttributeError:
         return False
+
+
+def in_marimo_notebook() -> bool:
+    """Detects whether the current Python session is running inside a marimo notebook.
+
+    marimo is an optional dependency, so it is only queried if it has already been
+    imported, which is always the case when code runs inside a marimo notebook.
+
+    Returns:
+        bool: True if running inside a marimo notebook, False otherwise
+    """
+    marimo = sys.modules.get("marimo")
+    if marimo is None:
+        return False
+    return marimo.running_in_notebook()
 
 
 def prepare_tempfile() -> tuple[str, str]:

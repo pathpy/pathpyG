@@ -103,9 +103,11 @@ class MultiOrderModel:
     Layer $k$ has one node per observed path of $k$ first-order nodes and one edge per observed path
     of $k+1$ first-order nodes, weighted by how often each occurs in the data.
 
-    Together with the `node_weight` of each layer, that is everything the multi-order likelihood
-    needs, so none of the methods below takes the observed data again: a fitted model *is* its own
-    sufficient statistic.
+    Layer $0$ is the memoryless model: its single node is the empty path, with one self-loop per
+    first-order node weighted by how often that node is visited. The edge weights of layer $k-1$
+    count the occurrences of the nodes of layer $k$, so the layers $0, \dots, K$ are everything the
+    multi-order likelihood needs and none of the methods below takes the observed data again: a
+    fitted model *is* its own sufficient statistic.
 
     Info: Choosing the order
         Two selectors are available and both are reached through
@@ -185,63 +187,18 @@ class MultiOrderModel:
     # ------------------------------------------------------------------ construction
 
     @staticmethod
-    def iterate_lift_order(
-        edge_index: torch.Tensor,
-        node_sequence: torch.Tensor,
-        mapping: IndexMap,
-        edge_weight: torch.Tensor | None = None,
-        aggr: str = "src",
-        save: bool = True,
-        n_first_order: Optional[int] = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, HigherOrderGraph | None]:
-        """Lift order by one and optionally aggregate the result into a De Bruijn graph.
-
-        This is a helper function that should not be called directly. Only use it for edge indices
-        after the special cases have been handled, e.g. in `from_temporal_graph`, which filters
-        non-time-respecting paths of order 2.
-
-        A node of the lifted graph is an edge of the input graph, so the input's `edge_weight` is
-        exactly the per-instance `node_weight` of the lifted graph.
-
-        Args:
-            edge_index: The edge index of the (k-1)-th order graph.
-            node_sequence: The node sequences of the (k-1)-th order graph.
-            mapping: The [IndexMap][pathpyG.IndexMap] mapping higher-order nodes to first-order nodes.
-            edge_weight: The edge weights of the (k-1)-th order graph.
-            aggr: The aggregation method to use. One of "src", "dst", "max", "mul".
-            save: Whether to compute the aggregated graph and later save it in the layers dictionary.
-            n_first_order: The number of first-order nodes the node sequences refer to.
-                Defaults to the number of IDs in `mapping`.
-
-        Returns:
-            The lifted edge index, the lifted node sequences, the lifted edge weights and, if
-            `save` is set, the aggregated De Bruijn graph of the lifted order.
-        """
-        lifted_edge_index, lifted_node_sequence, lifted_edge_weight = lift_order_step(
-            edge_index, node_sequence, edge_weight=edge_weight, aggr=aggr
-        )
-
-        layer = None
-        if save:
-            layer = HigherOrderGraph.aggregate(
-                lifted_edge_index,
-                lifted_node_sequence,
-                first_order_mapping=mapping,
-                edge_weight=lifted_edge_weight,
-                node_weight=edge_weight,
-                n_first_order=n_first_order,
-            )
-        return lifted_edge_index, lifted_node_sequence, lifted_edge_weight, layer
-
-    @staticmethod
     def from_path_data(path_data: PathData, max_order: int = 1, cached: bool = True) -> MultiOrderModel:
         """Create De Bruijn graph models for the paths in a [PathData][pathpyG.PathData] object.
+
+        The model always holds the memoryless layer of order 0, whose self-loops count how often
+        each first-order node is visited, and the layer of order 1.
 
         Args:
             path_data: The observed paths.
             max_order: The maximum order of the model that should be computed.
-            cached: Whether to keep the aggregated higher-order graphs below the maximum order.
-                Required for every model-selection method.
+            cached: Whether to keep the aggregated higher-order graphs between order 1 and the
+                maximum order. Required for every model-selection method. The layers of order 0 and
+                1 are always kept.
 
         Returns:
             MultiOrderModel: A multi-order model where each layer is a De Bruijn graph of order k.
@@ -251,12 +208,12 @@ class MultiOrderModel:
             >>> paths = pp.PathData(pp.IndexMap(list("abc")))
             >>> paths.append_walk(("a", "b", "c"), weight=2)
             >>> model = pp.MultiOrderModel.from_path_data(paths, max_order=2)
-            >>> print(model.layers[1].data.node_weight.tolist())
-            [2.0, 2.0, 2.0]
+            >>> print(sorted(model.layers), model.layers[0].data.edge_weight.tolist())
+            [0, 1, 2] [2.0, 2.0, 2.0]
         """
-        if max_order < 1:
-            logger.error("max_order must be at least one, got %s", max_order)
-            raise ValueError(f"max_order must be at least one, got {max_order}")
+        if max_order < 0:
+            logger.error("max_order must not be negative, got %s", max_order)
+            raise ValueError(f"max_order must not be negative, got {max_order}")
 
         model = MultiOrderModel()
         data = path_data.data
@@ -264,34 +221,34 @@ class MultiOrderModel:
         node_sequence = data.node_sequence
         # Each path contributes its weight to every node and every edge it consists of.
         edge_weight = data.dag_weight.repeat_interleave(data.dag_num_edges)
-        node_weight = data.dag_weight.repeat_interleave(data.dag_num_nodes)
+        visit_weight = data.dag_weight.repeat_interleave(data.dag_num_nodes)
 
         observed_nodes = int(node_sequence.max().item()) + 1 if node_sequence.numel() > 0 else 0
         # Nodes that are not traversed by any path are still first-order nodes of the model.
         num_first_order_nodes = max(path_data.mapping.num_ids(), observed_nodes)
-
         model.num_observations = float(data.dag_weight.sum().item())
-        model.layers[1] = HigherOrderGraph.aggregate(
-            edge_index=edge_index,
-            node_sequence=node_sequence,
-            first_order_mapping=path_data.mapping,
-            edge_weight=edge_weight,
-            node_weight=node_weight,
-            n_first_order=num_first_order_nodes,
-        )
 
-        for order in range(2, max_order + 1):
-            edge_index, node_sequence, edge_weight, layer = MultiOrderModel.iterate_lift_order(
-                edge_index=edge_index,
-                node_sequence=node_sequence,
-                mapping=path_data.mapping,
-                edge_weight=edge_weight,
-                aggr="src",
-                save=cached or order == max_order,
-                n_first_order=num_first_order_nodes,
-            )
-            if layer is not None:
-                model.layers[order] = layer
+        # Order 0: every visit of a node, weighted by the frequency of its path.
+        node_visits = torch.zeros(num_first_order_nodes, dtype=visit_weight.dtype, device=visit_weight.device)
+        node_visits.scatter_add_(0, node_sequence.squeeze(1), visit_weight)
+        model.layers[0] = HigherOrderGraph.from_node_weights(node_visits, first_order_mapping=path_data.mapping)
+
+        # The paths themselves are the unaggregated order-1 data (one node per visit). Each
+        # iteration lifts the unaggregated order-(k-1) data to order k and aggregates it only if
+        # the layer is kept. The aggregated layers are never lifted themselves.
+        for order in range(1, max_order + 1):
+            if order > 1:
+                edge_index, node_sequence, edge_weight = lift_order_step(
+                    edge_index, node_sequence, edge_weight=edge_weight, aggr="src"
+                )
+            if order == 1 or cached or order == max_order:
+                model.layers[order] = HigherOrderGraph.aggregate(
+                    edge_index=edge_index,
+                    node_sequence=node_sequence,
+                    first_order_mapping=path_data.mapping,
+                    edge_weight=edge_weight,
+                    n_first_order=num_first_order_nodes,
+                )
 
         return model
 
@@ -318,20 +275,24 @@ class MultiOrderModel:
         `edge_num_walks` counts, does depend on `k` and is therefore kept separately.
 
         Info: Layer attributes
-            Each layer of order $k$ carries
+            Each layer of order $k \geq 1$ carries
 
-            - `node_weight` and `edge_weight`: how often each walk of $k$ resp. $k+1$ first-order
-              nodes is realized inside an observation, counting a walk once per position it can
-              take. These are the statistics every model-selection method uses.
+            - `edge_weight`: how often each walk of $k+1$ first-order nodes is realized inside an
+              observation, counting a walk once per position it can take. This is the statistic every
+              model-selection method uses.
             - `edge_num_walks`: the number of *distinct* time-respecting walks of $k$ events that
               realize the edge. This is the classical De Bruijn graph weight.
 
             The two coincide for $k =$ `walk_length`, and differ below it.
 
+            The layer of order 0 counts the *visits* of each first-order node in the same way: a node
+            is visited in an observation as the source of each of its events and, once per
+            observation, as the destination of its last event.
+
             A layer keeps the full De Bruijn topology of the temporal graph, including walks that no
             observation of `walk_length` events can contain -- an event isolated in the event graph,
-            for instance. Those carry `node_weight` and `edge_weight` zero and contribute nothing to
-            any likelihood, but they remain part of the graph.
+            for instance. Those carry `edge_weight` zero and contribute nothing to any likelihood,
+            but they remain part of the graph.
 
         Note: Numerics
             The counts are computed in `float64` by a dynamic program (see
@@ -343,12 +304,13 @@ class MultiOrderModel:
             graph: The temporal graph.
             delta: The maximum time difference between two consecutive events of a walk.
             max_order: The maximum order of the model that should be computed.
-            walk_length: Number of events of each observed walk. Defaults to `max_order` and must be
-                at least `max_order`. Models built with a different `walk_length` describe different
+            walk_length: Number of events of each observed walk. Defaults to `max_order` (but at least
+                one) and must be at least `max_order`. Models built with a different `walk_length` describe different
                 observation sets and their likelihoods are not comparable.
             weight: The edge attribute of the temporal graph to use as edge weight.
-            cached: Whether to keep the aggregated higher-order graphs below the maximum order.
-                Required for every model-selection method.
+            cached: Whether to keep the aggregated higher-order graphs between order 1 and the
+                maximum order. Required for every model-selection method. The layers of order 0 and
+                1 are always kept.
             event_graph: Precomputed event graph edge index for the given delta, to avoid computing
                 the same event graph twice.
 
@@ -362,14 +324,14 @@ class MultiOrderModel:
             >>> print(model)
             MultiOrderModel with max. order 2 of time-respecting walks of 2 events
         """
-        if max_order < 1:
-            logger.error("max_order must be at least one, got %s", max_order)
-            raise ValueError(f"max_order must be at least one, got {max_order}")
+        if max_order < 0:
+            logger.error("max_order must not be negative, got %s", max_order)
+            raise ValueError(f"max_order must not be negative, got {max_order}")
         if walk_length is None:
-            walk_length = max_order
-        if walk_length < max_order:
-            logger.error("walk_length %s is smaller than max_order %s", walk_length, max_order)
-            raise ValueError(f"walk_length ({walk_length}) must be at least max_order ({max_order})")
+            walk_length = max(max_order, 1)
+        if walk_length < max(max_order, 1):
+            logger.error("walk_length %s is smaller than max(max_order, 1) = %s", walk_length, max(max_order, 1))
+            raise ValueError(f"walk_length ({walk_length}) must be at least max_order ({max_order}) and at least one")
 
         data = graph.data if graph.data.is_sorted_by_time() else graph.data.sort_by_time()
         edge_index = _as_tensor(data.edge_index)
@@ -429,23 +391,24 @@ class MultiOrderModel:
         observations_ending_at = num_preceding[walk_length - 1]
         model.num_observations = float(observations_ending_at.sum().item())
 
-        # A first-order node occurs in an observation either as the source of one of its events or,
-        # once per observation, as the destination of its last event.
-        node_weight = torch.zeros(graph.n, dtype=torch.float64, device=device)
-        node_weight.scatter_add_(0, edge_index[0], event_realizations)
-        node_weight.scatter_add_(0, edge_index[1], observations_ending_at)
+        # A first-order node is visited in an observation either as the source of one of its events
+        # or, once per observation, as the destination of its last event.
+        node_visits = torch.zeros(graph.n, dtype=torch.float64, device=device)
+        node_visits.scatter_add_(0, edge_index[0], event_realizations)
+        node_visits.scatter_add_(0, edge_index[1], observations_ending_at)
+        model.layers[0] = HigherOrderGraph.from_node_weights(node_visits, first_order_mapping=graph.mapping)
+        if max_order == 0:
+            return model
 
         node_sequence = torch.arange(graph.n, device=device).unsqueeze(1)
-        if cached or max_order == 1:
-            model.layers[1] = HigherOrderGraph.aggregate(
-                edge_index=edge_index,
-                node_sequence=node_sequence,
-                edge_weight=event_realizations,
-                node_weight=node_weight,
-                edge_attrs={"edge_num_walks": num_walks_per_event},
-                first_order_mapping=graph.mapping,
-                n_first_order=graph.n,
-            )
+        model.layers[1] = HigherOrderGraph.aggregate(
+            edge_index=edge_index,
+            node_sequence=node_sequence,
+            edge_weight=event_realizations,
+            edge_attrs={"edge_num_walks": num_walks_per_event},
+            first_order_mapping=graph.mapping,
+            n_first_order=graph.n,
+        )
 
         if max_order > 1:
             # Nodes of the working graph are walks of k-1 events, its edges walks of k events.
@@ -465,14 +428,12 @@ class MultiOrderModel:
                     num_walks_per_edge = num_walks_per_edge[lifted_index[0]]
                     working_index = lifted_index
 
-                node_weight = realization_weight(first_event, last_event, order - 1)
                 edge_weight = realization_weight(first_event[working_index[0]], last_event[working_index[1]], order)
                 if cached or order == max_order:
                     model.layers[order] = HigherOrderGraph.aggregate(
                         edge_index=working_index,
                         node_sequence=node_sequence,
                         edge_weight=edge_weight,
-                        node_weight=node_weight,
                         edge_attrs={"edge_num_walks": num_walks_per_edge},
                         first_order_mapping=graph.mapping,
                         n_first_order=graph.n,
@@ -538,33 +499,73 @@ class MultiOrderModel:
             logger.error("layer of order %s is missing", order)
             raise ValueError(
                 f"the layer of order {order} is required but missing. Build the model with "
-                "`cached=True` so that all intermediate orders are kept."
+                "`cached=True` and a sufficient `max_order` so that all intermediate orders are kept."
             )
-        layer = self.layers[order]
-        if "node_weight" not in layer.data:
-            logger.error("layer of order %s does not carry node weights", order)
-            raise ValueError(
-                f"the layer of order {order} does not carry a `node_weight`, so no likelihood can "
-                "be computed for it. Build the model with `from_path_data` or `from_temporal_graph`."
-            )
-        return layer
-
-    def _start_weight(self, order: int) -> torch.Tensor:
-        r"""Weight of the observations that *start* with each higher-order node of the given order.
-
-        Derived from the node weight identity
-        $\mathrm{node\_weight}_k = \mathrm{start\_weight}_k + \sum_{u \to w} \mathrm{edge\_weight}_k$,
-        so no separate statistic has to be stored.
-        """
-        layer = self._require_layer(order)
-        edge_index = _as_tensor(layer.data.edge_index)
-        incoming_weight = scatter(layer.data.edge_weight, edge_index[1], dim=0, dim_size=layer.n, reduce="sum")
-        return layer.data.node_weight - incoming_weight
+        return self.layers[order]
 
     def _edge_sequences(self, order: int) -> torch.Tensor:
-        """First-order node sequences of the edges of a layer, of shape `(num_edges, order + 1)`."""
+        """First-order node sequences of the edges of a layer, of shape `(num_edges, order + 1)`.
+
+        For order 0, every edge is a self-loop of the empty path and stands for the single
+        first-order node it emits.
+        """
         layer = self._require_layer(order)
+        if order == 0:
+            return layer.data.edge_first_order_node.unsqueeze(1)
         return lift_node_sequence(_as_tensor(layer.data.edge_index), layer.data.node_sequence)
+
+    def _start_weight_on_edges(self, order: int) -> torch.Tensor:
+        r"""Weight of the observations that *start* with each edge of the layer of the given order.
+
+        An edge $e$ of the layer of order $k$ is a path of $k+1$ first-order nodes, and so is a node
+        $w_e$ of the layer of order $k+1$; both describe the same occurrences. Every occurrence of
+        $w_e$ either starts an observation or is preceded by exactly one instance of an in-edge of
+        $w_e$, so the weight of the observations that start with $e$ is
+
+        $$
+        s_k(e) = \mathrm{edge\_weight}_k(e)
+            - \sum_{u \to w_e \in E_{k+1}} \mathrm{edge\_weight}_{k+1}(u \to w_e).
+        $$
+
+        The sum runs over *all* in-edges of $w_e$; this is not a statement that the in-degree is one.
+        For $k = 0$, $e$ is the self-loop emitting a first-order node $v$, $w_e$ is $v$ itself, and
+        $\mathrm{edge\_weight}_0(e)$ counts the visits of $v$.
+
+        The edges of one layer and the nodes of the next are **not** stored in the same order:
+        `Graph` sorts an edge index by source node only, which leaves the edges of one source in an
+        arbitrary order, so the two are matched by their sequences rather than by position.
+
+        Args:
+            order: The order $k$ of the layer whose edges to compute start weights for. The layer of
+                order $k+1$ must be present as well.
+
+        Returns:
+            torch.Tensor: Tensor of shape `(num_edges,)` aligned with the edges of layer $k$.
+
+        Raises:
+            ValueError: If one of the two layers is missing, or if they do not describe the same
+                paths, i.e. were not built from the same data.
+        """
+        layer = self._require_layer(order)
+        next_layer = self._require_layer(order + 1)
+        next_edge_index = _as_tensor(next_layer.data.edge_index)
+        incoming_weight = scatter(
+            next_layer.data.edge_weight, next_edge_index[1], dim=0, dim_size=next_layer.n, reduce="sum"
+        )
+        edge_sequences = self._edge_sequences(order)
+        next_node_sequence = next_layer.data.node_sequence
+        if edge_sequences.shape == next_node_sequence.shape and torch.equal(edge_sequences, next_node_sequence):
+            # The orders happen to agree, which they do on small graphs. Nothing relies on it.
+            return layer.data.edge_weight - incoming_weight
+        positions = _align_rows(edge_sequences, next_node_sequence)
+        if bool((positions < 0).any()):
+            logger.error("layers %s and %s describe different paths", order, order + 1)
+            raise ValueError(
+                f"the edges of the layer of order {order} and the nodes of the layer of order "
+                f"{order + 1} do not describe the same paths, so the layers were not built from the "
+                "same data."
+            )
+        return layer.data.edge_weight - incoming_weight[positions]
 
     @staticmethod
     def _weighted_log(counts: torch.Tensor, probabilities: torch.Tensor, positions: torch.Tensor) -> float:
@@ -582,13 +583,13 @@ class MultiOrderModel:
 
     def _translation_from(self, data: MultiOrderModel) -> torch.Tensor:
         """Map the first-order node indices of another model onto this model's indices."""
-        layer_one = self._require_layer(1)
-        other_layer_one = data._require_layer(1)
+        layer_zero = self._require_layer(0)
+        other_layer_zero = data._require_layer(0)
         return _index_translation(
-            other_layer_one.first_order_mapping,
-            layer_one.first_order_mapping,
-            other_layer_one.n_first_order,
-            layer_one.data.edge_index.device,
+            other_layer_zero.first_order_mapping,
+            layer_zero.first_order_mapping,
+            other_layer_zero.n_first_order,
+            layer_zero.data.edge_index.device,
         )
 
     def log_likelihood(self, max_order: int = 1, data: Optional[MultiOrderModel] = None) -> float:
@@ -603,19 +604,21 @@ class MultiOrderModel:
             \cdot \prod_{i=K}^{l} P^{(K)}(v_i \mid v_{i-K} \to \dots \to v_{i-1}).
         $$
 
-        Summed over the observed data, and writing $s_k$ for the weight of the observations that
-        start with a given node of layer $k$ and $w_K$ for the edge weights of layer $K$, this is
+        Every layer, including the memoryless layer of order 0, is a De Bruijn graph whose edges $E_k$
+        are paths of $k+1$ first-order nodes, and $P^{(k)}(e)$ is the relative transition frequency of
+        edge $e$ in layer $k$. For order 0 the edges are the self-loops of the empty path, one per
+        first-order node, so $P^{(0)}$ is the relative visitation frequency of the nodes. Summed over
+        the observed data, and writing $s_k(e)$ for the weight of the observations that *start* with
+        the path $e$ -- the edge weight of $e$ minus the weighted in-degree of the node of layer
+        $k+1$ that is the same path -- and $w_K$ for the edge weights of layer $K$, this is
 
         $$
-        \log \mathcal{L}(K) = \sum_{v} s_1(v) \log P^{(0)}(v)
-            + \sum_{k=1}^{K-1} \sum_{e \in E_k} s_{k+1}(e) \log P^{(k)}(e)
-            + \sum_{e \in E_K} w_K(e) \log P^{(K)}(e),
+        \log \mathcal{L}(K) = \sum_{k=0}^{K-1} \sum_{e \in E_k} s_k(e) \log P^{(k)}(e)
+            + \sum_{e \in E_K} w_K(e) \log P^{(K)}(e).
         $$
 
-        where the zeroth-order distribution $P^{(0)}$ is the relative visitation frequency of the
-        first-order nodes and $P^{(k)}$ are the relative transition frequencies of layer $k$. For
-        $K = 0$ every node of every path is drawn independently, so the first sum uses the full node
-        weights rather than $s_1$.
+        For $K = 0$ only the last sum remains: every node of every path is drawn independently from
+        the visitation frequencies.
 
         Note: The intermediate orders use *observed* transition frequencies
             Every layer is fitted to all transitions of its order that occur in the data, and the
@@ -660,30 +663,24 @@ class MultiOrderModel:
                 self.walk_length,
             )
 
-        layer_one = self._require_layer(1)
-        node_weight = layer_one.data.node_weight
-        total_node_weight = float(node_weight.sum().item())
-        if total_node_weight == 0:
+        layer_zero = self._require_layer(0)
+        if float(layer_zero.data.edge_weight.sum().item()) == 0:
             logger.error("the model carries no observations, so it has no likelihood")
             raise ValueError(
                 "the model carries no observations at all, so no likelihood is defined for it. "
                 "For a temporal graph this means no time-respecting walk of `walk_length` events "
                 "exists; use a smaller walk_length or a larger delta."
             )
-        node_probabilities = node_weight / total_node_weight
 
         if in_sample:
-            translation = torch.arange(layer_one.n, device=node_weight.device)
+            translation = torch.arange(layer_zero.n_first_order, device=layer_zero.data.edge_index.device)
         else:
             translation = self._translation_from(data)
 
-        zeroth_order_counts = data._require_layer(1).data.node_weight if max_order == 0 else data._start_weight(1)
-        total = MultiOrderModel._weighted_log(zeroth_order_counts, node_probabilities, translation)
-
-        for order in range(1, max_order + 1):
+        total = 0.0
+        for order in range(max_order + 1):
             if order < max_order:
-                # The first `max_order` transitions of each observation are drawn at increasing
-                # order; an order-(k+1) node is an order-k edge, so its start weight is the count.
+                # The first `max_order` nodes of each observation are drawn at increasing order.
                 counts = data._start_weight_on_edges(order)
             else:
                 counts = data._require_layer(order).data.edge_weight
@@ -692,29 +689,6 @@ class MultiOrderModel:
                 return total
 
         return total
-
-    def _start_weight_on_edges(self, order: int) -> torch.Tensor:
-        """Start weights of the order-(k+1) nodes, indexed by the edges of layer k they correspond to.
-
-        An order-(k+1) node and an order-k edge are the same sequence of k+1 first-order nodes, so
-        the two layers describe the same set. They are **not** stored in the same order, though:
-        `Graph` sorts an edge index by source node only, which leaves the edges of one source in an
-        arbitrary order, so the two have to be matched by their sequences rather than by position.
-        """
-        layer = self._require_layer(order)
-        next_layer = self._require_layer(order + 1)
-        start_weight = self._start_weight(order + 1)
-        edge_sequences = self._edge_sequences(order)
-        if edge_sequences.shape == next_layer.data.node_sequence.shape and torch.equal(
-            edge_sequences, next_layer.data.node_sequence
-        ):
-            # The orders happen to agree, which they do on small graphs. Nothing relies on it.
-            return start_weight
-        positions = _align_rows(edge_sequences, next_layer.data.node_sequence)
-        counts = torch.zeros(layer.m, dtype=start_weight.dtype, device=start_weight.device)
-        known = positions >= 0
-        counts[known] = start_weight[positions[known]]
-        return counts
 
     def _order_log_likelihood(
         self,
@@ -737,6 +711,11 @@ class MultiOrderModel:
 
     def _constraint_topology(self, constraint_graph: Optional[Graph] = None) -> tuple[torch.Tensor, int]:
         """Return the deduplicated first-order topology the model space is defined over."""
+        if 1 not in self.layers and constraint_graph is None:
+            # A model of order 0 only has no transitions, and its parameters do not depend on any.
+            layer_zero = self._require_layer(0)
+            empty = torch.empty((2, 0), dtype=torch.long, device=layer_zero.data.edge_index.device)
+            return empty, layer_zero.n_first_order
         layer_one = self._require_layer(1)
         observed_edges = torch.unique(_as_tensor(layer_one.data.edge_index), dim=1)
         if constraint_graph is None:
@@ -1021,7 +1000,9 @@ class MultiOrderModel:
         device = out_degree.device
 
         # Order zero: a single empty history whose successors are all first-order nodes.
-        zeroth_order_counts = self._require_layer(1).data.node_weight if max_order == 0 else self._start_weight(1)
+        zeroth_order_counts = (
+            self._start_weight_on_edges(0) if max_order > 0 else self._require_layer(0).data.edge_weight
+        )
         total = MultiOrderModel._log_dirichlet_multinomial(
             counts=zeroth_order_counts,
             history=torch.zeros(zeroth_order_counts.size(0), dtype=torch.long, device=device),
@@ -1223,6 +1204,9 @@ class MultiOrderModel:
         Returns:
             Data: The De Bruijn graph data.
         """
+        if max_order < 1:
+            logger.error("max_order must be at least 1 for the DBGNN, got %s", max_order)
+            raise ValueError(f"max_order must be at least 1 for the DBGNN, got {max_order}")
         if max_order not in self.layers:
             logger.error("higher-order graph of order %s not found", max_order)
             raise ValueError(f"Higher-order graph of order {max_order} not found.")

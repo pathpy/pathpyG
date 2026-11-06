@@ -159,12 +159,11 @@ def aggregate_edge_index(
     edge_index: torch.Tensor,
     node_sequence: torch.Tensor,
     edge_weight: torch.Tensor | None = None,
-    node_weight: torch.Tensor | None = None,
     edge_attrs: dict[str, torch.Tensor] | None = None,
     min_num_nodes: int | None = None,
     aggr: str = "sum",
 ) -> Data:
-    r"""Aggregate the possibly duplicated edges in the (higher-order) edge index.
+    """Aggregate the possibly duplicated edges in the (higher-order) edge index.
 
     Aggregate the possibly duplicated edges in the (higher-order) edge index and return the
     (higher-order) edge index without duplicates, together with the node sequences.
@@ -177,29 +176,21 @@ def aggregate_edge_index(
     It is used for example to generate the DeBruijn graph of a given order from the corresponding line graph.
 
     Rows of `node_sequence` are *instances*: one entry per occurrence of a higher-order node in the
-    data, before identical occurrences are merged. `edge_weight` and `node_weight` are given per
-    instance and are summed onto the merged edges and nodes respectively.
+    data, before identical occurrences are merged. `edge_weight` and `edge_attrs` are given per
+    edge instance and are reduced onto the merged edges.
 
-    Info: Node and edge weights
-        For a De Bruijn graph of order $k$ built from observed paths, the aggregated weights are the
-        occurrence counts of $k$-grams and $(k+1)$-grams. They satisfy
-
-        $$
-        \mathrm{node\_weight}_k(w) = \mathrm{start\_weight}_k(w)
-            + \sum_{u \to w \in E_k} \mathrm{edge\_weight}_k(u \to w),
-        $$
-
-        because every occurrence of $w$ either starts an observation or is preceded by exactly one
-        instance of an in-edge of $w$. See
-        [`HigherOrderGraph`][pathpyG.core.higher_order_graph.HigherOrderGraph].
+    Info: Edge weights count paths
+        For a De Bruijn graph of order $k$ built from observed paths, the aggregated `edge_weight`
+        counts how often each path of $k+1$ first-order nodes occurs. These paths are exactly the
+        nodes of the layer of order $k+1$, so the edge weights of one layer are the occurrence counts
+        of the nodes of the next. See [`HigherOrderGraph`][pathpyG.core.higher_order_graph.HigherOrderGraph].
 
     Args:
         edge_index: The edge index of a (higher-order) graph where each source and destination node
             corresponds to a node which is an edge in the (k-1)-th order graph.
-        node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to.
+        node_sequence: The node sequences of first order nodes that each node in the edge index corresponds to,
+            of shape `(num_nodes, k)` with `k >= 1`.
         edge_weight: The edge weights corresponding to the edge index. Defaults to ones.
-        node_weight: Per-instance node weights, aligned with the rows of `node_sequence`. If given,
-            they are summed onto the aggregated nodes and stored as `node_weight`.
         edge_attrs: Further per-instance edge attributes to carry along, keyed by the name to store
             them under. They are reduced with `aggr` just like `edge_weight`.
         min_num_nodes: Lower bound on the number of nodes of the aggregated graph. Only meaningful
@@ -209,30 +200,35 @@ def aggregate_edge_index(
 
     Returns:
         A [Data][torch_geometric.data.Data] object holding the aggregated edge index, the node
-        sequences and the edge weights, as well as the aggregated node weights if `node_weight`
-        was given.
+        sequences, the edge weights and the further edge attributes. For order 1, node indices are
+        first-order node indices, so the result has one node per first-order node up to the largest
+        one that occurs (or `min_num_nodes`), including those not traversed by any edge.
+
+    Raises:
+        ValueError: If `node_sequence` has width 0. Edges of an order-0 graph cannot be told apart by their
+            endpoints and hence cannot be aggregated this way.
     """
+    if node_sequence.size(1) == 0:
+        raise ValueError("cannot aggregate an order-0 node sequence by its endpoints")
+
     if edge_weight is None:
         edge_weight = torch.ones(edge_index.size(1), device=edge_index.device)
 
-    order = node_sequence.size(1)
-    if order == 1:
+    if node_sequence.size(1) == 1:
         # Order-1 node indices already *are* first-order node indices, so no remapping is
         # needed and untraversed first-order nodes remain as isolated nodes.
         instance_to_node = node_sequence.squeeze(1)
         num_nodes = int(instance_to_node.max().item()) + 1 if instance_to_node.numel() > 0 else 0
         if min_num_nodes is not None:
             num_nodes = max(num_nodes, min_num_nodes)
-        unique_nodes = torch.arange(num_nodes, device=edge_index.device).unsqueeze(1)
-        mapped_edge_index = instance_to_node[edge_index]
+        unique_nodes = torch.arange(num_nodes, device=node_sequence.device).unsqueeze(1)
     else:
         unique_nodes, instance_to_node = torch.unique(node_sequence, dim=0, return_inverse=True)
         num_nodes = unique_nodes.size(0)
-        mapped_edge_index = instance_to_node[edge_index]
 
     extra_attributes = list((edge_attrs or {}).items())
     aggregated_edge_index, aggregated_attributes = coalesce(
-        mapped_edge_index,
+        instance_to_node[edge_index],
         edge_attr=[edge_weight] + [value for _, value in extra_attributes],
         num_nodes=num_nodes,
         reduce=aggr,
@@ -245,8 +241,4 @@ def aggregate_edge_index(
     )
     for (name, _), value in zip(extra_attributes, aggregated_attributes[1:]):
         data[name] = value
-    if node_weight is not None:
-        aggregated_node_weight = torch.zeros(num_nodes, dtype=node_weight.dtype, device=node_weight.device)
-        aggregated_node_weight.scatter_add_(0, instance_to_node, node_weight)
-        data.node_weight = aggregated_node_weight
     return data
