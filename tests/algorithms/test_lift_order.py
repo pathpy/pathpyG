@@ -74,27 +74,51 @@ def test_aggregate_edge_index():
             [4, 5],  # Node 3
         ]
     )
-    d = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
-    assert d.edge_index.tolist() == [[0, 0, 1], [1, 2, 0]]
-    assert d.edge_weight.tolist() == [3, 3, 4]
-    assert d.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+    data = aggregate_edge_index(edge_index=edge_index, edge_weight=edge_weight, node_sequence=node_sequence)
+    assert data.edge_index.tolist() == [[0, 0, 1], [1, 2, 0]]
+    assert data.edge_weight.tolist() == [3, 3, 4]
+    assert data.node_sequence.tolist() == [[1, 2], [2, 3], [4, 5]]
+    # A tensor-level helper: it returns the aggregated data, not a graph object.
+    assert isinstance(data, Data)
+    assert not hasattr(data, "mapping")
+    assert "inverse_idx" not in data
+    assert "node_weight" not in data
 
 
-def test_aggregate_edge_index_returns_data():
-    d = aggregate_edge_index(edge_index=torch.tensor([[0], [1]]), node_sequence=torch.tensor([[0, 1], [1, 2]]))
-    assert isinstance(d, Data)
-    assert d.inverse_idx.tolist() == [0, 1]
-    assert d.edge_weight.tolist() == [1.0]
+def test_aggregate_edge_index_aggregates_edge_attributes():
+    """Further per-instance edge attributes are reduced onto the merged edges like the weights."""
+    data = aggregate_edge_index(
+        edge_index=torch.tensor([[0, 2], [1, 1]]),
+        node_sequence=torch.tensor([[1, 2], [2, 3], [1, 2]]),
+        edge_weight=torch.tensor([1.0, 2.0]),
+        edge_attrs={"edge_num_walks": torch.tensor([2.0, 3.0])},
+    )
+    # Instances 0 and 2 are both the path (1, 2), so both edges become the edge (1, 2) -> (2, 3).
+    assert data.edge_weight.tolist() == [3.0]
+    assert data.edge_num_walks.tolist() == [5.0]
 
 
 def test_aggregate_edge_index_first_order_with_unvisited_node():
     """First-order indices are kept as node indices, even if a lower index is never visited."""
     # first-order nodes 0..4; node 1 is never visited; the steps are 0->4 and 2->0
-    d = aggregate_edge_index(
+    data = aggregate_edge_index(
         edge_index=torch.tensor([[0, 2], [1, 3]]), node_sequence=torch.tensor([[0], [4], [2], [0]])
     )
-    assert d.num_nodes == 5
-    assert d.edge_index.tolist() == [[0, 2], [4, 0]]
-    assert d.edge_weight.tolist() == [1.0, 1.0]
-    assert d.node_sequence.tolist() == [[0], [1], [2], [3], [4]]
-    assert d.inverse_idx.tolist() == [0, 4, 2, 0]
+    assert data.num_nodes == 5
+    assert data.edge_index.tolist() == [[0, 2], [4, 0]]
+    assert data.edge_weight.tolist() == [1.0, 1.0]
+    assert data.node_sequence.tolist() == [[0], [1], [2], [3], [4]]
+
+
+def test_aggregate_edge_index_first_order_min_num_nodes():
+    """`min_num_nodes` keeps trailing first-order nodes that no path visits."""
+    data = aggregate_edge_index(
+        edge_index=torch.tensor([[0], [1]]), node_sequence=torch.tensor([[0], [1]]), min_num_nodes=4
+    )
+    assert data.num_nodes == 4
+    assert data.node_sequence.tolist() == [[0], [1], [2], [3]]
+
+
+def test_aggregate_edge_index_rejects_order_zero():
+    with pytest.raises(ValueError):
+        aggregate_edge_index(edge_index=torch.tensor([[0], [0]]), node_sequence=torch.empty((1, 0), dtype=torch.long))

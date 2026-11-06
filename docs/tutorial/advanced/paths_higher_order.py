@@ -398,7 +398,7 @@ def _(mo):
 @app.cell
 def _(paths, pp):
     m1 = pp.MultiOrderModel.from_path_data(paths, max_order=2)
-    print(m1.estimate_order(paths, significance_threshold=0.01))
+    print(m1.estimate_order(significance_threshold=0.01))
     return
 
 
@@ -413,7 +413,7 @@ def _(mo):
 @app.cell
 def _(paths_2, pp):
     m2 = pp.MultiOrderModel.from_path_data(paths_2, max_order=2)
-    print(m2.estimate_order(paths_2, significance_threshold=0.01))
+    print(m2.estimate_order(significance_threshold=0.01))
     return
 
 
@@ -435,7 +435,7 @@ def _(pp):
     paths_3.append_walk(('b', 'c', 'd'), weight=2.0)
     m3 = pp.MultiOrderModel.from_path_data(paths_3, max_order=2)
     print(m3.layers[1].data.edge_weight)
-    print(m3.estimate_order(paths_3, significance_threshold=0.01))
+    print(m3.estimate_order(significance_threshold=0.01))
     return g_3, m3, paths_3
 
 
@@ -449,7 +449,7 @@ def _(mo):
 
 @app.cell
 def _(m3, paths_3):
-    print(m3.estimate_order(paths_3, significance_threshold=0.15))
+    print(m3.estimate_order(significance_threshold=0.15))
     return
 
 
@@ -470,7 +470,7 @@ def _(g_3, pp):
     paths_3_1.append_walk(('b', 'c', 'd'), weight=1.0)
     m3_1 = pp.MultiOrderModel.from_path_data(paths_3_1, max_order=2)
     print(m3_1.layers[1].data.edge_weight)
-    print(m3_1.estimate_order(paths_3_1, significance_threshold=0.01))
+    print(m3_1.estimate_order(significance_threshold=0.01))
     return
 
 
@@ -481,8 +481,65 @@ def _(mo):
 
     [L Petrovic, I Scholtes: Learning the Markov order of paths, In Proc. of the ACM Web Conference (WWW'22), April 2022](https://dl.acm.org/doi/10.1145/3485447.3512091)
 
-    Unfortunately, this method has not yet been implemented in `pathpyG` but we are planning to add it soon.
+    This method is implemented in `pathpyG` as well.
+
+    ### Bayesian Model Selection
+
+    Rather than fitting the transition probabilities of each layer and then penalising how many of them there are, the Bayesian approach integrates them out under a Dirichlet prior. This yields a *model evidence* $p(D \mid K)$ for each order $K$, and two orders are compared through their **Bayes factor**, i.e. the difference of their log evidences. A positive log Bayes factor favours the higher order.
+
+    The practical consequence is that the Bayesian selector needs considerably less data before it can tell two orders apart. Recall the data set `paths_3` above, in which two of the four paths were observed six times and the other two twice. At a significance threshold of $0.01$ the likelihood ratio test could not reject a first-order model:
     """)
+    return
+
+
+@app.cell
+def _(m3):
+    print('likelihood ratio test:', m3.estimate_order(method='likelihood_ratio', significance_threshold=0.01))
+    print('Bayesian            :', m3.estimate_order(method='bayesian'))
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The Bayes factor already prefers the second-order model on this data. We can look at the evidence of each order directly, and at the Bayes factor between two of them. Note that order zero, the model in which every node is drawn independently of the previous ones, is part of every multi-order model and can be selected as well:
+    """)
+    return
+
+
+@app.cell
+def _(m3):
+    for _order in range(3):
+        print(f'log evidence for order {_order}: {m3.log_evidence(max_order=_order):.2f}')
+
+    print('log Bayes factor of order 2 over order 1:', round(m3.bayes_factor(null_max_order=1, max_order=2), 2))
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Both selectors are reached through the same `estimate_order` method, which also lets you choose how the orders are compared. `order_selection='largest_significant'` returns the largest order that beats the one just below it, `'dominates_all_lower_orders'` requires it to beat *every* lower order, and `'stop_at_first_insignificant'` gives up at the first order that fails.
+
+    A second difference matters when the underlying graph is only partially observed. By default, the number of free parameters of a model is counted over the transitions that the data actually takes. If you know which transitions the paths *could* have taken, pass that topology as a `constraint_graph`: the unobserved transitions are then counted as parameters that simply happened to stay unused, which makes both selectors more conservative.
+    """)
+    return
+
+
+@app.cell
+def _(m3, pp):
+    known_graph = pp.Graph.from_edge_list([
+        ('a', 'c'),
+        ('b', 'c'),
+        ('c', 'd'),
+        ('c', 'e'),
+        ('c', 'a'),  # possible, but never taken by an observed path
+        ('d', 'b'),
+    ])
+
+    print('parameters over the observed transitions:', m3.degrees_of_freedom(max_order=2))
+    print('parameters over the known topology      :', m3.degrees_of_freedom(max_order=2, constraint_graph=known_graph))
+    print('order with the known topology           :', m3.estimate_order(method='bayesian', constraint_graph=known_graph))
     return
 
 

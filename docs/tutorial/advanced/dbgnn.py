@@ -85,25 +85,24 @@ def _(mo):
     mo.md(r"""
     ## Temporal-Topological Clusters in Temporal Graphs
 
-    We use the synthetic temporal graph with 60.000 time-stamped interactions between 30 nodes and three planted temporal communities, which we have already explored in [Time-Respecting Paths, Centralities and Communities](../trp_centralities_communities/). We load it from a file containing edges with discrete time-stamps.
-
-    <div class="admonition note">
-        <p class="admonition-title">Dataset Availability</p>
-
-            Depending on how you are executing this notebook, the dataset may not be available locally. We use <code>pp.io.example_data</code> to resolve the file name: it returns the path of a local copy in the <code>docs/data</code> folder of the pathpyG repository, or - if you are running outside of a clone, e.g. in Google Colab - a URL pointing to the GitHub repository. Both can be passed directly to the <code>pp.io.read_csv_*</code> functions.
-
-
-    </div>
+    We use the synthetic temporal graph with 60.000 time-stamped interactions between 30 nodes and three planted temporal communities, which we have already explored in [Time-Respecting Paths, Centralities and Communities](../trp_centralities_communities/). We generate it with `pp.algorithms.temporal_clusters`, using the same parameters and seed as there. The generator plants a cluster pattern in the *causal* topology of the graph while leaving the time-aggregated weighted graph untouched, which is exactly the situation this tutorial is about. It follows the construction used in the paper linked above, and returns the cluster each node belongs to as the node attribute `node_cluster`.
     """)
     return
 
 
 @app.cell
 def _(device, pp):
-    t = pp.io.read_csv_temporal_graph(pp.io.example_data('temporal_clusters.tedges'))
+    t = pp.algorithms.temporal_clusters(
+        num_nodes=30,
+        num_edges=560,
+        num_clusters=3,
+        num_walks=30000,
+        seed=0,
+    ).to(device)
 
-    t = t.to(device)
-    return (t,)
+    node_cluster = t.data.node_cluster.tolist()
+    print(t)
+    return node_cluster, t
 
 
 @app.cell(hide_code=True)
@@ -115,9 +114,9 @@ def _(mo):
 
 
 @app.cell
-def _(pp, t):
+def _(node_cluster, pp, t):
     style = {}
-    style["node_color"] = ["green"] * 10 + ["red"] * 10 + ["blue"] * 10
+    style["node_color"] = [["green", "red", "blue"][cluster] for cluster in node_cluster]
     pp.plot(t, **style, show_labels=False);
     return (style,)
 
@@ -308,26 +307,22 @@ def _(mo):
     return
 
 
-@app.function
-def higher_order_class_assignment(ho_node_id):
-    """Assign class labels based on the higher-order node ids.
-    
-    There are three classes that were assigned based on the original node ids:
-        - Class 0: node ids 0-9
-        - Class 1: node ids 10-19
-        - Class 2: node ids 20-29
+@app.cell
+def _(node_cluster):
+    num_clusters = len(set(node_cluster))
 
-    The higher-order patterns were constructed such that the clusters are formed by second-order nodes whose first-order node ids belong to the same class.
-    We therefore assign higher-order class labels based on the first-order node ids in the higher-order node id tuple.
-    """
-    if ho_node_id[0] < 10 and ho_node_id[1] < 10:
-        return 0
-    elif ho_node_id[0] < 20 and ho_node_id[0] >= 10 and ho_node_id[1] < 20 and ho_node_id[1] >= 10:
-        return 1
-    elif ho_node_id[0] < 30 and ho_node_id[0] >= 20 and ho_node_id[1] < 30 and ho_node_id[1] >= 20:
-        return 2
-    else:
-        return 3
+
+    def higher_order_class_assignment(ho_node_id):
+        """Assign a class label to a second-order node from the clusters of its first-order nodes.
+
+        The cluster pattern was planted in the causal topology, so the second-order nodes that lie
+        within one cluster form the three clusters we are after. Second-order nodes that cross
+        clusters get the extra label `num_clusters`.
+        """
+        first, second = (node_cluster[int(node)] for node in ho_node_id)
+        return first if first == second else num_clusters
+
+    return (higher_order_class_assignment,)
 
 
 @app.cell
@@ -346,7 +341,7 @@ def _(mo):
 
 
 @app.cell
-def _(colors, fiedler, g2, np, opacities, plt):
+def _(colors, fiedler, g2, higher_order_class_assignment, np, opacities, plt):
     # Cell tags: skip-execution
     ho_class_ids = list(map(higher_order_class_assignment, g2.nodes))
     plt.scatter(
@@ -365,7 +360,7 @@ def _(mo):
 
 
 @app.cell
-def _(colors, fiedler_shuffled, g2_shuffled, np, opacities, plt):
+def _(colors, fiedler_shuffled, g2_shuffled, higher_order_class_assignment, np, opacities, plt):
     # Cell tags: skip-execution
     shuffled_ho_class_ids = list(map(higher_order_class_assignment, g2_shuffled.nodes))
     plt.scatter(
@@ -397,10 +392,10 @@ def _(mo):
 
 
 @app.cell
-def _(device, m, t, torch):
+def _(device, m, t):
     # Cell tags: skip-execution
     data = m.to_dbgnn_data(max_order=2, mapping="last")
-    data.y = torch.tensor([int(i) // 10 for i in t.nodes], device=device)
+    data.y = t.data.node_cluster.to(device)
     return (data,)
 
 

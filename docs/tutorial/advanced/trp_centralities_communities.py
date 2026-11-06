@@ -33,11 +33,9 @@ def _(mo):
 
 @app.cell
 def _():
-    import pandas as pd
-
     import pathpyG as pp
 
-    return pd, pp
+    return (pp,)
 
 
 @app.cell(hide_code=True)
@@ -284,15 +282,20 @@ def _(mo):
 
     Time-respecting paths also let us uncover **temporal communities**: groups of nodes that are connected by many time-respecting paths, even in cases where this pattern is not visible in the topology of the time-aggregated graph. This is exactly the phenomenon that motivates the higher-order De Bruijn graph models introduced in the following tutorials, but here we first take a simple, simulation-based perspective.
 
-    We load a synthetic temporal graph with 30 nodes and 60,000 time-stamped interactions, which was generated with a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community). We read the CSV file with `pandas` and convert the resulting `DataFrame`, whose columns `v`, `w`, `t` give the source, target and timestamp of each interaction, to a `TemporalGraph`:
+    We generate a synthetic temporal graph with 30 nodes and 60,000 time-stamped interactions and a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community) using `pp.algorithms.temporal_clusters`. The generator samples causal walks of two interactions on a random graph and exchanges time stamps between walks so that a walk tends to end in the community it started in. The time-aggregated graph is not changed by this, so the communities are only visible in the temporal ordering of the interactions. The generator also stores the community of each node as the node attribute `node_cluster`:
     """)
     return
 
 
 @app.cell
-def _(pd, pp):
-    df = pd.read_csv(pp.io.example_data('temporal_clusters.tedges'))
-    t_clusters = pp.io.df_to_temporal_graph(df)
+def _(pp):
+    t_clusters = pp.algorithms.temporal_clusters(
+        num_nodes=30,
+        num_edges=560,
+        num_clusters=3,
+        num_walks=30000,
+        seed=0,
+    )
     print(t_clusters)
     return (t_clusters,)
 

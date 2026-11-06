@@ -738,14 +738,20 @@ def _(paths, second_order_paths, torch):
 def _(mo):
     mo.md(r"""
     3. **Merge Higher-Order Nodes**: Finally, we need to merge the higher-order nodes that correspond to the same path in the original graph. For this, we create a unique mapping from the new `node_sequence` to unique indices. We can then use this mapping to update the higher-order edge index to reflect the merged nodes and then aggregate duplicate edges.
+
+    `pp.algorithms.lift_order.aggregate_edge_index` does this at the level of tensors and returns the aggregated `Data`. `HigherOrderGraph.aggregate` wraps it and additionally builds the mapping that names each higher-order node by the path it represents, which is what the `MultiOrderModel` layers are made of:
     """)
     return
 
 
 @app.cell
-def _(pp, third_order_edge_index_1, third_order_node_sequence):
-    third_order_paths_data = pp.algorithms.lift_order.aggregate_edge_index(edge_index=third_order_edge_index_1, node_sequence=third_order_node_sequence)
-    return (third_order_paths_data,)
+def _(paths, pp, third_order_edge_index_1, third_order_node_sequence):
+    third_order_paths = pp.HigherOrderGraph.aggregate(
+        edge_index=third_order_edge_index_1,
+        node_sequence=third_order_node_sequence,
+        first_order_mapping=paths.mapping,
+    )
+    return (third_order_paths,)
 
 
 @app.cell(hide_code=True)
@@ -757,12 +763,7 @@ def _(mo):
 
 
 @app.cell
-def _(paths, pp, third_order_paths_data):
-    third_order_paths = pp.HigherOrderGraph(
-        third_order_paths_data,
-        first_order_mapping=paths.mapping,
-        mapping=pp.IndexMap([tuple(paths.mapping.to_ids(v).tolist()) for v in third_order_paths_data.node_sequence]),
-    )
+def _(pp, third_order_paths):
     pp.plot(third_order_paths);
     return
 

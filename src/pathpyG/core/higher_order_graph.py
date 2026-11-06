@@ -22,7 +22,7 @@ logger = logging.getLogger("root")
 
 
 class HigherOrderGraph(Graph):
-    """A De Bruijn graph of order `k`, whose nodes are paths of `k` first-order nodes.
+    r"""A De Bruijn graph of order `k`, whose nodes are paths of `k` first-order nodes.
 
     A `HigherOrderGraph` has one node per distinct path of length `k`
     in the underlying first-order graph. Repeated observations of the same path are
@@ -45,11 +45,23 @@ class HigherOrderGraph(Graph):
 
         - `node_sequence`: [Tensor][torch.Tensor] of shape `(num_nodes, order)`, the
             first-order node indices making up the path each higher-order node represents.
-        - `edge_weight`: [Tensor][torch.Tensor] with the aggregated weight of each transition.
-        - `inverse_idx`: [Tensor][torch.Tensor] mapping each row of the *pre-aggregation*
-            node sequence to the index of the higher-order node it was merged into.
+        - `edge_weight`: [Tensor][torch.Tensor] with the aggregated weight of each transition,
+            i.e. how often each path of `order + 1` first-order nodes occurs in the data.
         - `edge_first_order_node` (order 0 only): [Tensor][torch.Tensor] with the index of
             the first-order node emitted by each self-loop.
+
+    Info: Edge weights of one order count the nodes of the next
+        A node $w$ of the graph of order $k$ is a path of $k$ first-order nodes, and so is an edge of
+        the graph of order $k-1$. Both describe the same occurrences, so
+
+        $$
+        \mathrm{occurrences}_k(w) = \mathrm{edge\_weight}_{k-1}(w),
+        $$
+
+        and for $k = 1$ the right-hand side is the weight of the order-0 self-loop that emits $w$,
+        i.e. how often the first-order node $w$ is visited. That is why no layer stores node weights:
+        the occurrence counts of order $k$ are read off the layer of order $k-1$. See
+        [`MultiOrderModel.log_likelihood`][pathpyG.core.multi_order_model.MultiOrderModel.log_likelihood].
 
     Attributes:
         data (Data): PyG Data object containing edges and attributes.
@@ -161,9 +173,7 @@ class HigherOrderGraph(Graph):
                     f"{'use' if self.order != 1 else 'not use'} tuple IDs"
                 )
             if self.mapping.num_ids() != self.n:
-                logger.warning(
-                    "mapping has %s IDs but graph has %s nodes", self.mapping.num_ids(), self.n
-                )
+                logger.warning("mapping has %s IDs but graph has %s nodes", self.mapping.num_ids(), self.n)
 
     @property
     def order(self) -> int:
@@ -181,8 +191,6 @@ class HigherOrderGraph(Graph):
         """
         super().to(device)
         self.data.node_sequence = self.data.node_sequence.to(device)
-        if "inverse_idx" in self.data:
-            self.data.inverse_idx = self.data.inverse_idx.to(device)
         return self
 
     @staticmethod
@@ -218,6 +226,7 @@ class HigherOrderGraph(Graph):
         node_sequence: torch.Tensor,
         first_order_mapping: Optional[IndexMap] = None,
         edge_weight: Optional[torch.Tensor] = None,
+        edge_attrs: Optional[dict[str, torch.Tensor]] = None,
         n_first_order: Optional[int] = None,
         aggr: str = "sum",
     ) -> HigherOrderGraph:
@@ -229,6 +238,8 @@ class HigherOrderGraph(Graph):
                 each (not yet aggregated) node represents.
             first_order_mapping: Mapping of the underlying first-order node IDs.
             edge_weight: Weight of each edge prior to aggregation. Defaults to ones.
+            edge_attrs: Further per-instance edge attributes to aggregate along with `edge_weight`,
+                keyed by the name to store them under.
             n_first_order: Number of first-order nodes, including isolated ones.
             aggr: Reduction used for the edge weights. One of "sum", "mean", "min", "max".
 
@@ -251,13 +262,16 @@ class HigherOrderGraph(Graph):
             else:
                 n_first_order = int(node_sequence.max().item()) + 1 if node_sequence.numel() > 0 else 0
 
-        data = aggregate_edge_index(edge_index, node_sequence, edge_weight, aggr=aggr)
-
-        if order == 1 and n_first_order > data.num_nodes:
-            # Order-1 indices are first-order indices, so first-order nodes that are not
-            # traversed by any path are simply isolated nodes of the order-1 graph.
-            data.num_nodes = n_first_order
-            data.node_sequence = torch.arange(n_first_order, device=edge_index.device).unsqueeze(1)
+        data = aggregate_edge_index(
+            edge_index,
+            node_sequence,
+            edge_weight=edge_weight,
+            edge_attrs=edge_attrs,
+            # Order-1 indices are first-order indices, so first-order nodes that are not traversed
+            # by any path are simply isolated nodes of the order-1 graph.
+            min_num_nodes=n_first_order if order == 1 else None,
+            aggr=aggr,
+        )
 
         return cls(
             data,
@@ -389,19 +403,18 @@ class HigherOrderGraph(Graph):
         cls._validate_order(order)
         from pathpyG.core.multi_order_model import MultiOrderModel
 
-        return MultiOrderModel.from_temporal_graph(
-            g, delta=delta, max_order=order, weight=weight, cached=False
-        ).layers[order]
+        return MultiOrderModel.from_temporal_graph(g, delta=delta, max_order=order, weight=weight, cached=False).layers[
+            order
+        ]
 
     @classmethod
-    def from_path_data(cls, path_data: PathData, order: int = 1, mode: str = "propagation") -> HigherOrderGraph:
+    def from_path_data(cls, path_data: PathData, order: int = 1) -> HigherOrderGraph:
         """Create the De Bruijn graph of order `k` modelling paths in [`PathData`][pathpyG.PathData].
 
         Args:
             path_data: The observed paths.
             order: The order `k` of the graph to compute. Order 0 yields the memoryless
                 model of node visitation frequencies.
-            mode: The process that we assume. Either "diffusion" or "propagation".
 
         Returns:
             HigherOrderGraph: A higher-order graph of order `order`. It has no nodes if
@@ -422,13 +435,13 @@ class HigherOrderGraph(Graph):
         cls._validate_order(order)
         from pathpyG.core.multi_order_model import MultiOrderModel
 
-        return MultiOrderModel.from_path_data(path_data, max_order=order, mode=mode, cached=False).layers[order]
+        return MultiOrderModel.from_path_data(path_data, max_order=order, cached=False).layers[order]
 
     @classmethod
     def from_event_graph(cls, eg: EventGraph, order: int = 2) -> HigherOrderGraph:
         """Aggregate an [`EventGraph`][pathpyG.core.event_graph.EventGraph] into an order-`k` graph.
 
-        Equivalent to [`from_temporal_graph`][pathpyG.HigherOrderGraph.from_temporal_graph]
+        Equivalent to [`from_temporal_graph`][pathpyG.core.higher_order_graph.HigherOrderGraph.from_temporal_graph]
         on the underlying temporal graph with the event graph's `delta`.
 
         Args:
@@ -455,12 +468,12 @@ class HigherOrderGraph(Graph):
         Each higher-order node is replaced by one of the first-order nodes of its path,
         and the weights of higher-order edges mapping to the same first-order edge are
         summed. First-order nodes not traversed by any path remain as isolated nodes.
-        
+
         Warning: This is a projection, not an inverse transformation
             This method does not reconstruct the original first-order graph from
             which this higher-order graph was built. Instead, it maps each higher-
             order node to either the first or last first-order node in its represented path.
-            
+
             Consequently, the result preserves flow encoded by the higher-order model
             under the selected projection, but may differ from the original graph in its
             edge set. In particular, isolated first-order edges cannot be recovered.
@@ -622,15 +635,6 @@ class HigherOrderGraph(Graph):
             ).reshape(data.num_nodes, self.order)
 
         self._coalesce_edges(data, reduce)
-
-        # Each pre-aggregation row keeps pointing at the (renumbered) node it was merged into.
-        if "inverse_idx" in data:
-            data.inverse_idx = mapping.to_idxs(
-                np.concatenate(
-                    [self.mapping.to_ids(self.data.inverse_idx.cpu()), other.mapping.to_ids(other.data.inverse_idx.cpu())]
-                ),
-                device=device,
-            )
 
         return HigherOrderGraph(
             data,

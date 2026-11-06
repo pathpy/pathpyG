@@ -41,7 +41,6 @@ def _():
 
     import matplotlib.pyplot as plt
     import numpy as np
-    import pandas as pd
     import torch
     from scipy.spatial.distance import pdist, squareform
     from sklearn.cluster import KMeans
@@ -78,7 +77,6 @@ def _():
         adjusted_rand_score,
         device,
         np,
-        pd,
         pdist,
         plt,
         pp,
@@ -93,27 +91,33 @@ def _(mo):
     mo.md(r"""
     ## Loading the Temporal Graph
 
-    We use the same synthetic temporal graph as in the previous notebooks: 30 nodes and 60,000 time-stamped interactions, generated with a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community). We first load it with `pathpyG` as usual, and then also build a `torch_geometric.data.TemporalData` object, which is the format expected by TGN. Since the data set does not contain any real edge attributes, we use a constant placeholder message for every interaction.
+    We use the same synthetic temporal graph as in the previous notebooks: 30 nodes and 60,000 time-stamped interactions, generated with `pp.algorithms.temporal_clusters` and a planted community structure (nodes 0-9, 10-19, and 20-29 each form a temporal community, stored in the node attribute `node_cluster`). We first generate it with `pathpyG` as usual, and then also build a `torch_geometric.data.TemporalData` object, which is the format expected by TGN. Since the data set does not contain any real edge attributes, we use a constant placeholder message for every interaction.
     """)
     return
 
 
 @app.cell
-def _(TemporalData, TemporalDataLoader, device, pd, pp, torch):
-    df = pd.read_csv(pp.io.example_data('temporal_clusters.tedges'))
-    t_clusters = pp.io.df_to_temporal_graph(df)
+def _(TemporalData, TemporalDataLoader, device, pp, torch):
+    t_clusters = pp.algorithms.temporal_clusters(
+        num_nodes=30,
+        num_edges=560,
+        num_clusters=3,
+        num_walks=30000,
+        seed=0,
+    )
     print(t_clusters)
 
     num_nodes = t_clusters.n
+    node_cluster = t_clusters.data.node_cluster.numpy()
 
-    src = torch.tensor(df['v'].values, dtype=torch.long)
-    dst = torch.tensor(df['w'].values, dtype=torch.long)
-    t = torch.tensor(df['t'].values, dtype=torch.long)
-    msg = torch.ones((len(df), 1), dtype=torch.float)
+    # The interactions of a TemporalGraph are sorted by time, as TGN expects.
+    src, dst = t_clusters.data.edge_index.as_tensor()
+    t = t_clusters.data.time.to(torch.long)
+    msg = torch.ones((t_clusters.m, 1), dtype=torch.float)
 
     data = TemporalData(src=src, dst=dst, t=t, msg=msg).to(device)
     train_loader = TemporalDataLoader(data, batch_size=500, neg_sampling_ratio=1.0)
-    return data, num_nodes, train_loader
+    return data, node_cluster, num_nodes, train_loader
 
 
 @app.cell(hide_code=True)
@@ -304,8 +308,8 @@ def _(mo):
 
 
 @app.cell
-def _(KMeans, adjusted_rand_score, np, num_nodes, pdist, squareform, z_final):
-    labels = np.array([i // 10 for i in range(num_nodes)])  # true community of each node
+def _(KMeans, adjusted_rand_score, node_cluster, np, num_nodes, pdist, squareform, z_final):
+    labels = node_cluster  # true community of each node
 
     D = squareform(pdist(z_final))
     within = [D[i, j] for i in range(num_nodes) for j in range(num_nodes) if i != j and labels[i] == labels[j]]
@@ -328,10 +332,10 @@ def _(mo):
 
 
 @app.cell
-def _(TruncatedSVD, plt, z_final):
+def _(TruncatedSVD, node_cluster, plt, z_final):
     low_dim = TruncatedSVD(n_components=2, random_state=0).fit_transform(z_final)
 
-    colors = ['green'] * 10 + ['red'] * 10 + ['blue'] * 10
+    colors = [['green', 'red', 'blue'][cluster] for cluster in node_cluster]
     plt.figure(figsize=(6, 5))
     plt.scatter(low_dim[:, 0], low_dim[:, 1], c=colors)
     plt.xlabel('SVD component 1')

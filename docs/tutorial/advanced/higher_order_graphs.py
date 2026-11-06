@@ -266,7 +266,7 @@ def _(mo):
 
     The order $k$ of a De Bruijn graph can be viewed as the *memory* of a model for paths: in a model of order $k$, the next node of a path depends on the last $k$ nodes. A first-order model thus only remembers the current node, i.e. it corresponds to a Markov chain on the first-order graph.
 
-    We can go one step further and consider a model of order zero without any memory, in which each node of a path is drawn independently from a fixed distribution over the first-order nodes, irrespective of the edges of the graph. For path data, we can create this model with `order=0`:
+    We can go one step further and consider a model of order zero without any memory, in which each node of a path is drawn independently from a fixed distribution over the first-order nodes, irrespective of the edges of the graph. We can create this model with `order=0`:
     """)
     return
 
@@ -298,7 +298,7 @@ def _(g0):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    You can also create an order-zero graph from given node weights using the class method `HigherOrderGraph.from_node_weights`. A `MultiOrderModel` created from path data always contains the order-zero layer, which allows the method `estimate_order` introduced in [Path Data and Higher-Order Models](../paths_higher_order/) to detect that a set of paths does not even warrant a first-order model. Let us test this for walks in which each node is chosen uniformly at random, independently of the previous nodes:
+    You can also create an order-zero graph from given node weights using the class method `HigherOrderGraph.from_node_weights`. A `MultiOrderModel` always contains the order-zero layer, which allows the method `estimate_order` introduced in [Path Data and Higher-Order Models](../paths_higher_order/) to detect that a set of paths does not even warrant a first-order model. Let us test this for walks in which each node is chosen uniformly at random, independently of the previous nodes:
     """)
     return
 
@@ -315,7 +315,7 @@ def _(mo, pp):
     # Hide a warning about the beta status of sparse tensors in PyTorch
     with mo.capture_stderr():
         m_random = pp.MultiOrderModel.from_path_data(random_paths, max_order=2)
-        estimated_order = m_random.estimate_order(random_paths, significance_threshold=0.01)
+        estimated_order = m_random.estimate_order(significance_threshold=0.01)
     print(sorted(m_random.layers))
     print(estimated_order)
     return
@@ -324,7 +324,7 @@ def _(mo, pp):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Note that the order-zero model is only defined for path data. For temporal graphs, `MultiOrderModel.from_temporal_graph` starts with the first-order layer.
+    The order-zero layer of a model built from a temporal graph with `MultiOrderModel.from_temporal_graph` counts visits in the same way: each time-respecting walk of `walk_length` events visits the source of each of its events, and the target of its last event.
     """)
     return
 

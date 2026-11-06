@@ -1,3 +1,7 @@
+"""Tests for the De Bruijn graph layer type."""
+
+# pylint: disable=missing-function-docstring
+
 from __future__ import annotations
 
 import pytest
@@ -59,7 +63,6 @@ def test_to_device(paths):
     moved = h.to(torch.device("cpu"))
     assert moved is h
     assert h.data.node_sequence.device.type == "cpu"
-    assert h.data.inverse_idx.device.type == "cpu"
 
 
 # ---------------------------------------------------------------------------
@@ -136,10 +139,18 @@ def test_from_path_data_order_zero(paths):
     ]
 
 
-def test_from_temporal_graph_rejects_order_zero():
+def test_from_temporal_graph_order_zero():
+    """Each event is one observation; a node is visited as a source and as the final destination."""
     t = TemporalGraph.from_edge_list([("a", "b", 1), ("b", "c", 2)])
-    with pytest.raises(ValueError):
-        HigherOrderGraph.from_temporal_graph(t, order=0)
+    h = HigherOrderGraph.from_temporal_graph(t, order=0)
+    assert h.order == 0
+    visits = dict(zip(h.first_order_mapping.to_ids(h.data.edge_first_order_node).tolist(), h.data.edge_weight.tolist()))
+    assert visits == {"a": 1.0, "b": 2.0, "c": 1.0}
+
+
+def test_negative_order_is_rejected(paths):
+    with pytest.raises(ValueError, match="order must be at least 0"):
+        HigherOrderGraph.from_path_data(paths, order=-1)
 
 
 def test_str_order_zero(order_zero):
@@ -248,3 +259,79 @@ def test_add_rejects_different_orders(paths):
 def test_add_rejects_plain_graph(paths):
     with pytest.raises(TypeError):
         HigherOrderGraph.from_path_data(paths, order=1) + Graph.from_edge_list([("a", "b")])
+
+
+# ---------------------------------------------------------------------------
+# Aggregation and stored attributes
+# ---------------------------------------------------------------------------
+
+
+def test_layers_store_neither_node_weights_nor_an_instance_to_node_map():
+    """Occurrence counts of order k are the edge weights of order k - 1, so layers keep only edge weights."""
+    paths = PathData(IndexMap(list("abc")))
+    paths.append_walk(("a", "b", "c"))
+    for layer in MultiOrderModel.from_path_data(paths, max_order=2).layers.values():
+        assert "node_weight" not in layer.data
+        assert "inverse_idx" not in layer.data
+
+
+def test_order_one_keeps_untraversed_nodes_as_isolated_nodes():
+    graph = HigherOrderGraph.aggregate(torch.tensor([[0], [1]]), torch.tensor([[0], [1]]), n_first_order=5)
+    assert graph.n == 5
+    assert graph.data.node_sequence.tolist() == [[0], [1], [2], [3], [4]]
+
+
+def test_aggregate_carries_extra_edge_attributes():
+    graph = HigherOrderGraph.aggregate(
+        torch.tensor([[0, 2], [1, 1]]),
+        torch.tensor([[1, 2], [2, 3], [1, 2]]),
+        edge_weight=torch.tensor([1.0, 2.0]),
+        edge_attrs={"edge_num_walks": torch.tensor([5.0, 7.0])},
+        n_first_order=4,
+    )
+    assert graph.data.edge_weight.tolist() == [3.0]
+    assert graph.data.edge_num_walks.tolist() == [12.0]
+
+
+def test_from_graph_builds_an_order_one_graph():
+    graph = Graph.from_edge_list([("a", "c"), ("c", "d"), ("a", "c")])
+    higher_order = HigherOrderGraph.from_graph(graph)
+    assert higher_order.order == 1
+    assert higher_order.nodes == ["a", "c", "d"]
+    assert higher_order.data.edge_weight.tolist() == [2.0, 1.0]
+
+
+def test_from_path_data_and_from_temporal_graph_agree_with_the_model():
+    paths = PathData(IndexMap(list("acd")))
+    paths.append_walk(("a", "c", "d"), weight=2.0)
+    assert HigherOrderGraph.from_path_data(paths, order=2).nodes == [("a", "c"), ("c", "d")]
+
+    temporal = TemporalGraph.from_edge_list([("a", "c", 1), ("c", "d", 2)])
+    from_graph = HigherOrderGraph.from_temporal_graph(temporal, order=2, delta=1)
+    from_model = MultiOrderModel.from_temporal_graph(temporal, delta=1, max_order=2).layers[2]
+    assert from_graph.nodes == from_model.nodes == [("a", "c"), ("c", "d")]
+
+
+def test_mapping_must_use_tuples_above_order_one():
+    data = Data(edge_index=torch.tensor([[0], [1]]), node_sequence=torch.tensor([[0, 1], [1, 2]]), num_nodes=2)
+    with pytest.raises(ValueError, match="must use tuple IDs"):
+        HigherOrderGraph(data, mapping=IndexMap(["x", "y"]), n_first_order=3)
+
+
+def test_to_first_order_projects_and_sums():
+    paths = PathData(IndexMap(list("abcd")))
+    paths.append_walks([("a", "b", "c"), ("a", "b", "d")], [2.0, 3.0])
+    second_order = MultiOrderModel.from_path_data(paths, max_order=2).layers[2]
+
+    projected = second_order.to_first_order(mode="last")
+    assert projected.n == 4
+    assert projected.data.edge_weight.tolist() == [2.0, 3.0]
+
+
+def test_node_id_returns_the_first_order_path():
+    paths = PathData(IndexMap(list("abc")))
+    paths.append_walk(("a", "b", "c"))
+    model = MultiOrderModel.from_path_data(paths, max_order=2)
+    assert model.layers[0].node_id(0) == ()
+    assert model.layers[1].node_id(0) == "a"
+    assert model.layers[2].node_id(0) == ("a", "b")

@@ -171,8 +171,9 @@ class Graph:
 
             You can also include a mapping of node IDs:
 
-            >>> g = pp.Graph.from_edge_index(torch.LongTensor([[1, 1, 2], [0, 2, 1]]),
-            ...                              mapping=pp.IndexMap(['a', 'b', 'c']))
+            >>> g = pp.Graph.from_edge_index(
+            ...     torch.LongTensor([[1, 1, 2], [0, 2, 1]]), mapping=pp.IndexMap(["a", "b", "c"])
+            ... )
             >>> print(g.mapping)
             a -> 0
             b -> 1

@@ -42,6 +42,7 @@ nav:
       - Working with Higher-Order De Bruijn Graphs: _notebooks/tutorial/advanced/higher_order_graphs.ipynb
       - Event Graphs: _notebooks/tutorial/advanced/event_graphs.ipynb
       - Higher-Order Models for Time-Respecting Paths: _notebooks/tutorial/advanced/trp_higher_order.ipynb
+      - Model Selection for Time-Respecting Paths: _notebooks/tutorial/advanced/temporal_model_selection.ipynb
     - Causality-Aware Temporal Graph Learning:
       - De Bruijn Graph Neural Networks: _notebooks/tutorial/advanced/dbgnn.ipynb
       - Why Standard Temporal GNNs Ignore Causality: _notebooks/tutorial/advanced/tgn_baseline.ipynb

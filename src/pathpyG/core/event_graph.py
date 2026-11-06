@@ -1,4 +1,5 @@
 """Event graph representation of a temporal graph and related operations."""
+
 from __future__ import annotations
 
 import logging
@@ -106,6 +107,9 @@ class EventGraph(Graph):
                 ho_edge_index = x[edge_index[1, x[:, 0]] == edge_index[0, x[:, 1]]]
                 second_order.append(ho_edge_index)
 
+        if not second_order:
+            # No pair of events is delta-respecting, so the event graph has no edges at all.
+            return torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
         ho_index = torch.cat(second_order, dim=0).t().contiguous()
         return ho_index
 
@@ -173,7 +177,13 @@ class EventGraph(Graph):
         for key, value in cls.lift_attrs(temporal_graph).items():
             data[key] = value
 
-        event_graph = cls(data, delta=delta, first_order_mapping=temporal_graph.mapping, n_first_order=temporal_graph.n, mapping=mapping)
+        event_graph = cls(
+            data,
+            delta=delta,
+            first_order_mapping=temporal_graph.mapping,
+            n_first_order=temporal_graph.n,
+            mapping=mapping,
+        )
 
         # Attach a clone of the temporal graph since we already have it
         event_graph._temporal_graph = TemporalGraph(temporal_graph.data.clone(), mapping=temporal_graph.mapping)
@@ -265,9 +275,7 @@ class EventGraph(Graph):
         """
         new_delta = self.delta - decrement
         if new_delta < 0:
-            raise ValueError(
-                f"decrement={decrement} exceeds current delta={self.delta}"
-            )
+            raise ValueError(f"decrement={decrement} exceeds current delta={self.delta}")
 
         ei = self.data.edge_index
         edge_delta = self.data.node_time[ei[1]] - self.data.node_time[ei[0]]

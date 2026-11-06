@@ -16,7 +16,7 @@ class PathData:
 
     Info:
         The `data` attribute is a PyG Data object that contains the following attributes:
-            
+
         - `edge_index`: Edge index (as [Tensor][torch.Tensor]) of all stored paths concatenated to a graph with multiple components.
             Each node is mapped to a unique index so that it is possible to store multiple paths with the same nodes
             in different paths and repeating nodes in the same path without ambiguity.
@@ -29,10 +29,7 @@ class PathData:
     Examples:
         >>> import pathpyG as pp
         >>> # Generate toy example graph
-        >>> g = pp.Graph.from_edge_list([('a', 'c'),
-        ...                      ('b', 'c'),
-        ...                      ('c', 'd'),
-        ...                      ('c', 'e')])
+        >>> g = pp.Graph.from_edge_list([("a", "c"), ("b", "c"), ("c", "d"), ("c", "e")])
         >>> # Store observations of walks using the index mapping
         >>> # from the graph above
         >>> paths = pp.PathData(g.mapping)
@@ -157,6 +154,78 @@ class PathData:
             num_edges=dag_num_nodes - 1,
             num_nodes=dag_num_nodes,
         )
+
+    @classmethod
+    def from_walks(
+        cls,
+        node_sequence: torch.Tensor,
+        weights: torch.Tensor | None = None,
+        num_nodes_per_walk: torch.Tensor | None = None,
+        mapping: IndexMap | None = None,
+    ) -> "PathData":
+        """Build a `PathData` object from walks given as node *indices*, without a Python loop.
+
+        This is the vectorised counterpart of [`append_walks`][pathpyG.core.path_data.PathData.append_walks]: it
+        takes indices rather than node IDs and builds the whole multi-component DAG in a handful of
+        tensor operations, which matters when the walks come out of a tensor computation such as
+        [`extract_time_respecting_walks`][pathpyG.algorithms.extract_time_respecting_walks].
+
+        Args:
+            node_sequence: Either a tensor of shape `(num_walks, num_walk_nodes)` holding walks that
+                all have the same length, or a flat tensor of concatenated walks, in which case
+                `num_nodes_per_walk` is required.
+            weights: Weight of each walk. Defaults to one per walk.
+            num_nodes_per_walk: Number of nodes of each walk, required for a flat `node_sequence`.
+            mapping: Mapping from node IDs to indices.
+
+        Returns:
+            PathData: The walks, stored as a single DAG with one component per walk.
+
+        Examples:
+            >>> import torch
+            >>> import pathpyG as pp
+            >>> walks = pp.PathData.from_walks(torch.tensor([[0, 2, 3], [1, 2, 4]]), mapping=pp.IndexMap(list("abcde")))
+            >>> print(walks.get_walk(0), walks.get_walk(1))
+            ('a', 'c', 'd') ('b', 'c', 'e')
+        """
+        device = node_sequence.device
+        if num_nodes_per_walk is None:
+            if node_sequence.dim() != 2:
+                raise ValueError(
+                    "`node_sequence` must be of shape (num_walks, num_walk_nodes) when "
+                    "`num_nodes_per_walk` is not given"
+                )
+            num_nodes_per_walk = torch.full(
+                (node_sequence.size(0),), node_sequence.size(1), dtype=torch.long, device=device
+            )
+        flat_node_sequence = node_sequence.reshape(-1)
+
+        path_data = cls(mapping=mapping, device=device)
+        num_edges_per_walk = num_nodes_per_walk - 1
+        total_edges = int(num_edges_per_walk.sum().item())
+        if total_edges > 0:
+            # Each walk contributes the edges between consecutive nodes of its own block, so an
+            # edge is located by its walk's start offset plus its position within that walk.
+            walk_start = cumsum(num_nodes_per_walk)[:-1]
+            source = torch.repeat_interleave(walk_start, num_edges_per_walk) + (
+                torch.arange(total_edges, device=device)
+                - torch.repeat_interleave(cumsum(num_edges_per_walk)[:-1], num_edges_per_walk)
+            )
+            edge_index = torch.stack([source, source + 1])
+        else:
+            edge_index = torch.empty((2, 0), dtype=torch.long, device=device)
+
+        if weights is None:
+            weights = torch.ones(num_nodes_per_walk.size(0), dtype=torch.float, device=device)
+
+        path_data._append_data(
+            edge_index=edge_index,
+            node_sequence=flat_node_sequence.reshape(-1, 1),
+            weights=weights.to(torch.float),
+            num_edges=num_edges_per_walk,
+            num_nodes=num_nodes_per_walk,
+        )
+        return path_data
 
     def get_walk(self, i: int) -> tuple:
         """Return the i-th walk (based on when it was appended) as a tuple of node IDs.

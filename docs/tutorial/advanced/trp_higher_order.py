@@ -113,6 +113,13 @@ def _(m, pp):
 def _(mo):
     mo.md(r"""
     For the second-order model, we have six nodes, which map to the six different edges (each edge trivially being a time-respecting path of length one) of the temporal graph. The six edges in the second-order model represent the six different time-respecting paths of length two (see above). Since the time-respecting path $a \rightarrow b \rightarrow a$  occurs twice at different times, we have one edge with weight two.
+
+    <div class="admonition note">
+        <p class="admonition-title">Two kinds of edge weight</p>
+        <p>
+            Layers of a model built from a temporal graph carry two weights. <code>edge_num_walks</code> counts the <em>distinct</em> time-respecting walks an edge represents, which is the De Bruijn graph weight shown here. <code>edge_weight</code> instead counts how often the edge is realized inside the observations that the model is fitted to, i.e. inside the time-respecting walks of <code>walk_length</code> events; that is the statistic used for model selection. The two agree at the maximum order of the model and can differ below it.
+        </p>
+    </div>
     """)
     return
 
@@ -120,7 +127,7 @@ def _(mo):
 @app.cell
 def _(m, pp):
     print(m.layers[2])
-    print(m.layers[2].data.edge_weight)
+    print(m.layers[2].data.edge_num_walks)
     pp.plot(m.layers[2]);
     return
 
